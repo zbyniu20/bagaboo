@@ -3,45 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebVR Gorilla Tag - Ultimate Playability Edition</title>
+    <title>Gorilla Tag - Simple Lobby Prototype</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Courier New', Courier, monospace; }
-        #lobby {
+        #menu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle, #2a2a20, #0a0a08); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 1000; color: #d4d4aa;
         }
-        #lobby h1 { margin-bottom: 5px; font-size: 38px; text-shadow: 0 0 10px #ffffaa; text-transform: uppercase; letter-spacing: 3px; }
-        #lobby p.subtitle { margin-bottom: 25px; color: #aaa; font-size: 14px; }
-        .form-group { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; width: 340px; justify-content: space-between; color: white;}
-        input, select { padding: 10px; font-size: 16px; border-radius: 2px; border: 1px solid #aa8822; background: #111; color: white; width: 180px; }
+        #menu h1 { margin-bottom: 5px; font-size: 38px; text-shadow: 0 0 10px #ffffaa; text-transform: uppercase; letter-spacing: 3px; }
+        #menu p.subtitle { margin-bottom: 25px; color: #aaa; font-size: 14px; }
+        .form-group { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; width: 300px; justify-content: space-between; color: white;}
+        input { padding: 10px; font-size: 16px; border-radius: 2px; border: 1px solid #aa8822; background: #111; color: white; width: 150px; }
         input[type="color"] { padding: 0; height: 40px; cursor: pointer; }
-        .btn-group { display: flex; gap: 15px; margin-top: 20px; }
-        button { padding: 15px 25px; font-size: 16px; font-weight: bold; border: 1px solid #aa8822; border-radius: 2px; cursor: pointer; background: #111; color: #aa8822; text-transform: uppercase; }
+        button { padding: 15px 30px; font-size: 18px; font-weight: bold; border: 1px solid #aa8822; border-radius: 2px; cursor: pointer; background: #111; color: #aa8822; text-transform: uppercase; margin-top: 20px; }
         button:hover { background: #332200; box-shadow: 0 0 15px #aa8822; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        #status { margin-top: 20px; font-weight: bold; font-size: 16px; color: #ffeb3b; }
         #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #fff; font-weight: bold; z-index: 100; display: none; text-shadow: 1px 1px 3px #000; }
         #VRButton { display: none !important; }
-        .connected #VRButton { display: block !important; border: 1px solid #aa8822 !important; background: #111 !important; color: white !important; }
+        .started #VRButton { display: block !important; border: 1px solid #aa8822 !important; background: #111 !important; color: white !important; }
     </style>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <div id="lobby">
-        <h1>Gorilla Tag: The Maze</h1>
-        <p class="subtitle">Direct Momentum Engine | Full Body VR</p>
+    <div id="menu">
+        <h1>Gorilla Tag: Lobby</h1>
+        <p class="subtitle">20x20m Arena Prototype</p>
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" value="Survivor" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#8B4513" /></div>
-        <div class="form-group"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. play1" /></div>
-        <div class="btn-group">
-            <button id="btnHost">Host Game</button>
-            <button id="btnJoin">Join Game</button>
-        </div>
-        <div id="status">Initializing...</div>
+        <button id="btnStart">Start Prototype</button>
     </div>
-    <div id="info">Connected! Click "ENTER VR". Push off the grid floor to move instantly.</div>
-    <div id="audio-container" style="display:none;"></div>
+    
+    <div id="info">Click "ENTER VR" below. Push off the grid floor to move around!</div>
 
     <script type="importmap">
         { "imports": {
@@ -54,16 +45,10 @@
         import * as THREE from 'three';
         import { VRButton } from 'three/addons/webxr/VRButton.js';
 
-        let myProfile = { name: "Survivor", color: "#8B4513", id: null };
-        let myStream = null;
-        const statusDiv = document.getElementById('status');
-
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
-            myStream = s; statusDiv.innerText = "Mic ready. Enter Room Code.";
-        }).catch(() => { statusDiv.innerText = "Mic denied. Enter Room Code."; });
+        let myColor = "#8B4513";
 
         // ==========================================
-        // 1. ENGINE & RENDERER
+        // 1. ENGINE & RENDERER SETUP
         // ==========================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x11161c);
@@ -76,24 +61,18 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         renderer.xr.enabled = true;
-        renderer.shadowMap.enabled = false;
         document.body.appendChild(renderer.domElement);
         document.body.appendChild(VRButton.createButton(renderer));
 
         scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 1.8));
 
-        const flashlight = new THREE.SpotLight(0xfff5b6, 100, 40, Math.PI / 3, 0.5, 1.5);
-        camera.add(flashlight);
-        const flashTarget = new THREE.Object3D(); flashTarget.position.set(0, 0, -1); camera.add(flashTarget);
-        flashlight.target = flashTarget;
-
-        // Player Physics State (Direct Momentum)
-        const playerPos = new THREE.Vector3(0, 0, 0);
+        // Physics State (Direct Momentum)
+        const playerPos = new THREE.Vector3(0, 0, 0); // Spawn w środku
         const playerVel = new THREE.Vector3(0, 0, 0);
         const playerRadius = 0.35;
 
         // ==========================================
-        // 2. PROCEDURAL HIGH-CONTRAST TEXTURES
+        // 2. TEXTURES & HIGH-CONTRAST ENVIRONMENT
         // ==========================================
         function createGridTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
@@ -107,364 +86,91 @@
             }
             const tex = new THREE.CanvasTexture(canvas);
             tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-            tex.repeat.set(16, 16);
+            tex.repeat.set(8, 8);
             return tex;
         }
-        const floorGridTex = createGridTexture();
-
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playScarySound(type) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            if (type === 'spawn') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(60, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 2.5);
-                gain.gain.setValueAtTime(0.8, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 4.5);
-                osc.start(); osc.stop(audioCtx.currentTime + 4.5);
-            } else if (type === 'jumpscare') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(120, audioCtx.currentTime);
-                osc.frequency.linearRampToValueAtTime(1800, audioCtx.currentTime + 0.15);
-                gain.gain.setValueAtTime(1.5, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.6);
-            }
-        }
-
-        const jsCanvas = document.createElement('canvas'); jsCanvas.width = 256; jsCanvas.height = 256;
-        const jsCtx = jsCanvas.getContext('2d');
-        jsCtx.fillStyle = '#000'; jsCtx.fillRect(0, 0, 256, 256);
-        jsCtx.fillStyle = '#ff0055'; jsCtx.beginPath(); jsCtx.arc(80, 100, 25, 0, Math.PI * 2); jsCtx.arc(176, 100, 25, 0, Math.PI * 2); jsCtx.fill();
-        const jumpscareMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(jsCanvas), transparent: true, opacity: 0, depthTest: false }));
-        jumpscareMesh.position.set(0, 0, -0.5); camera.add(jumpscareMesh);
-
-        function createLabelSprite(text, bgColor = "#000", textColor = "#00ffcc") {
-            const c = document.createElement('canvas'); c.width = 256; c.height = 64;
-            const ctx = c.getContext('2d');
-            ctx.fillStyle = bgColor; ctx.fillRect(0, 0, 256, 64);
-            ctx.strokeStyle = textColor; ctx.lineWidth = 4; ctx.strokeRect(0, 0, 256, 64);
-            ctx.font = "bold 28px Courier New"; ctx.fillStyle = textColor; ctx.textAlign = "center"; ctx.fillText(text, 128, 42);
-            const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c) }));
-            sp.scale.set(1.5, 0.375, 1);
-            return sp;
-        }
-
-        // ==========================================
-        // 3. WORLD BUILD (LOBBY & MAZE)
-        // ==========================================
-        const lobbyGroup = new THREE.Group(); scene.add(lobbyGroup);
-        const lobbyBoxes = []; const lobbyTrampolines = []; const portals = []; const lobbyRopes = [];
 
         const mats = {
+            floor: new THREE.MeshLambertMaterial({ map: createGridTexture() }),
             wall: new THREE.MeshLambertMaterial({ color: 0x334155 }),
-            floor: new THREE.MeshLambertMaterial({ map: floorGridTex }),
-            wood: new THREE.MeshLambertMaterial({ color: 0xd97706 }),
-            grip: new THREE.MeshLambertMaterial({ color: 0x10b981 }),
-            pillar: new THREE.MeshLambertMaterial({ color: 0x475569 }),
-            trampoline: new THREE.MeshBasicMaterial({ color: 0xfbbf24 }),
-            mezzanine: new THREE.MeshLambertMaterial({ color: 0x1e293b }),
-            rope: new THREE.MeshLambertMaterial({ color: 0x059669 })
+            obstacle: new THREE.MeshLambertMaterial({ color: 0xd97706 }),
+            pillar: new THREE.MeshLambertMaterial({ color: 0x475569 })
         };
 
-        function addLobbyBlock(x, y, z, w, h, d, mat, isTrampoline = false) {
+        const obstacles = [];
+
+        function addBlock(x, y, z, w, h, d, mat) {
             const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-            mesh.position.set(x, y, z); lobbyGroup.add(mesh);
-            const box3 = new THREE.Box3(new THREE.Vector3(x - w / 2, y - h / 2, z - d / 2), new THREE.Vector3(x + w / 2, y + h / 2, z + d / 2));
-            if (isTrampoline) lobbyTrampolines.push(box3);
-            else lobbyBoxes.push(box3);
+            mesh.position.set(x, y, z); scene.add(mesh);
+            obstacles.push(new THREE.Box3(new THREE.Vector3(x - w/2, y - h/2, z - d/2), new THREE.Vector3(x + w/2, y + h/2, z + d/2)));
         }
 
-        addLobbyBlock(0, -0.5, 0, 20, 1, 20, mats.floor);
-        addLobbyBlock(0, 16.5, 0, 20, 1, 20, mats.wall);
-        addLobbyBlock(0, 8, -10.5, 21, 16, 1, mats.wall);
-        addLobbyBlock(0, 8, 10.5, 21, 16, 1, mats.wall);
-        addLobbyBlock(-10.5, 8, 0, 1, 16, 21, mats.wall);
-        addLobbyBlock(10.5, 8, 0, 1, 16, 21, mats.wall);
+        // Lobby 20x20 m, wys. 15 m
+        addBlock(0, -0.5, 0, 20, 1, 20, mats.floor); // Podłoga
+        addBlock(0, 15.5, 0, 20, 1, 20, mats.wall);  // Sufit
+        addBlock(0, 7.5, -10.5, 21, 15, 1, mats.wall); // Ściana Północna
+        addBlock(0, 7.5, 10.5, 21, 15, 1, mats.wall);  // Ściana Południowa
+        addBlock(-10.5, 7.5, 0, 1, 15, 21, mats.wall); // Ściana Zachodnia
+        addBlock(10.5, 7.5, 0, 1, 15, 21, mats.wall); // Ściana Wschodnia
 
-        addLobbyBlock(0, 6.75, 0, 2.2, 13.5, 2.2, mats.pillar);
-        for (let i = 0; i < 20; i++) {
-            const angle = (i * Math.PI) / 2;
-            addLobbyBlock(Math.cos(angle) * 1.6, 0.8 + i * 0.65, Math.sin(angle) * 1.6, 1.0, 0.3, 1.0, mats.grip);
-        }
-
-        addLobbyBlock(-7, 0.2, -7, 2.5, 0.4, 2.5, mats.trampoline, true);
-        addLobbyBlock(7, 0.2, 7, 2.5, 0.4, 2.5, mats.trampoline, true);
-        addLobbyBlock(-7, 0.2, 7, 2.5, 0.4, 2.5, mats.trampoline, true);
-        addLobbyBlock(7, 0.2, -7, 2.5, 0.4, 2.5, mats.trampoline, true);
-
-        const parkourPath = [
-            [-9, 1.5, 7], [-9, 3.0, 3], [-9, 4.5, -1], [-9, 6.0, -5],
-            [-6, 7.5, -9], [-2, 9.0, -9], [2, 10.5, -9], [6, 12.0, -9],
-            [9, 13.0, -6], [9, 13.5, -2], [9, 14.0, 2]
-        ];
-        parkourPath.forEach(([x, y, z]) => addLobbyBlock(x, y, z, 2.0, 0.4, 2.0, mats.wood));
-
-        function addLobbyRope(x, z) {
-            const rMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 12), mats.rope);
-            rMesh.position.set(x, 10, z); lobbyGroup.add(rMesh);
-            lobbyRopes.push(rMesh);
-        }
-        addLobbyRope(-4, -4); addLobbyRope(4, 4); addLobbyRope(-4, 4);
-
-        addLobbyBlock(0, 14, 8.5, 20, 0.5, 3, mats.mezzanine);
-        addLobbyBlock(0, 14, -8.5, 20, 0.5, 3, mats.mezzanine);
-        addLobbyBlock(-8.5, 14, 0, 3, 0.5, 14, mats.mezzanine);
-        addLobbyBlock(8.5, 14, 0, 3, 0.5, 14, mats.mezzanine);
-
-        for (let i = 1; i <= 10; i++) {
-            const isActive = (i === 1);
-            const row = i <= 5 ? 0 : 1; const col = (i - 1) % 5;
-            const px = -6 + col * 3; const pz = row === 0 ? 9.2 : -9.2;
-            const pMesh = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.2, 0.6), new THREE.MeshBasicMaterial({ color: isActive ? 0x00ffcc : 0xaa2255, wireframe: !isActive }));
-            pMesh.position.set(px, 15.2, pz); lobbyGroup.add(pMesh);
-            portals.push({ level: i, active: isActive, box3: new THREE.Box3().setFromObject(pMesh) });
-        }
-
-        // --- MAZE (Level 1) ---
-        const mazeGroup = new THREE.Group(); scene.add(mazeGroup); mazeGroup.visible = false;
-        const mazeBoxes = [];
-        const MAZE_OFFSET_X = 500;
-        const GRID_SIZE = 14; const CELL_SIZE = 5;
-        let seed = 12345;
-        function sRand() { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }
-
-        const grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill({ v: false, r: true, b: true }));
-        function carve(cx, cy) {
-            grid[cy][cx] = { ...grid[cy][cx], v: true };
-            const dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]].sort(() => sRand() - 0.5);
-            for (let [dx, dy] of dirs) {
-                let nx = cx + dx, ny = cy + dy;
-                if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE && !grid[ny][nx].v) {
-                    if (dx === 1) grid[cy][cx].r = false; else if (dx === -1) grid[ny][nx].r = false;
-                    if (dy === 1) grid[cy][cx].b = false; else if (dy === -1) grid[ny][nx].b = false;
-                    carve(nx, ny);
-                }
-            }
-        }
-        carve(0, 0);
-
-        const wallGeo = new THREE.BoxGeometry(CELL_SIZE + 0.6, 8, 0.6);
-        const backroomsMat = new THREE.MeshLambertMaterial({ color: 0xeab308 });
-        const wallInst = new THREE.InstancedMesh(wallGeo, backroomsMat, GRID_SIZE * GRID_SIZE * 2 + 60);
-        let wCount = 0; const dummy = new THREE.Object3D();
-
-        function addMazeWall(x, z, rotY) {
-            dummy.position.set(x, 4, z); dummy.rotation.set(0, rotY, 0); dummy.updateMatrix();
-            wallInst.setMatrixAt(wCount++, dummy.matrix);
-            const halfW = rotY ? 0.3 : (CELL_SIZE + 0.6) / 2;
-            const halfD = rotY ? (CELL_SIZE + 0.6) / 2 : 0.3;
-            mazeBoxes.push(new THREE.Box3(new THREE.Vector3(x - halfW, 0, z - halfD), new THREE.Vector3(x + halfW, 8, z + halfD)));
-        }
-
-        for (let i = 0; i < GRID_SIZE; i++) {
-            addMazeWall(MAZE_OFFSET_X + i * CELL_SIZE, -CELL_SIZE / 2, 0);
-            addMazeWall(MAZE_OFFSET_X - CELL_SIZE / 2, i * CELL_SIZE, Math.PI / 2);
-        }
-
-        const arrowGeo = new THREE.PlaneGeometry(1.5, 1.5);
-        const arrowMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
-        for (let y = 0; y < GRID_SIZE; y++) {
-            for (let x = 0; x < GRID_SIZE; x++) {
-                let px = MAZE_OFFSET_X + x * CELL_SIZE; let pz = y * CELL_SIZE;
-                if (grid[y][x].r) addMazeWall(px + CELL_SIZE / 2, pz, Math.PI / 2);
-                if (grid[y][x].b) addMazeWall(px, pz + CELL_SIZE / 2, 0);
-                if ((x + y) % 3 === 0 && (x < GRID_SIZE - 1 || y < GRID_SIZE - 1)) {
-                    const arrow = new THREE.Mesh(arrowGeo, arrowMat);
-                    arrow.rotation.x = -Math.PI / 2; arrow.position.set(px, 0.02, pz);
-                    arrow.rotation.z = Math.atan2((GRID_SIZE - 1 - y), (GRID_SIZE - 1 - x));
-                    mazeGroup.add(arrow);
-                }
-            }
-        }
-        wallInst.count = wCount; mazeGroup.add(wallInst);
-
-        const mFloor = new THREE.Mesh(new THREE.BoxGeometry(75, 1, 75), new THREE.MeshLambertMaterial({ map: floorGridTex }));
-        mFloor.position.set(MAZE_OFFSET_X + 32.5, -0.5, 32.5); mazeGroup.add(mFloor);
-        mazeBoxes.push(new THREE.Box3(new THREE.Vector3(MAZE_OFFSET_X - 5, -1, -5), new THREE.Vector3(MAZE_OFFSET_X + 70, 0, 70)));
-
-        const exitMesh = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 3), new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true }));
-        exitMesh.position.set(MAZE_OFFSET_X + 13 * CELL_SIZE, 2, 13 * CELL_SIZE); mazeGroup.add(exitMesh);
-        const mazeExitBox = new THREE.Box3().setFromObject(exitMesh);
-
-        // Monster
-        const monsterGroup = new THREE.Group();
-        const mMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
-        const limbs = [];
-        for (let i = 0; i < 12; i++) {
-            const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.0), mMat);
-            limb.position.set((Math.random() - 0.5) * 0.8, 1.4, (Math.random() - 0.5) * 0.8);
-            monsterGroup.add(limb); limbs.push(limb);
-        }
-        scene.add(monsterGroup); monsterGroup.visible = false;
-
-        let currentZone = 'lobby';
-        let activeBoxes = lobbyBoxes;
-        let levelStartTime = 0;
-        const playerPathHistory = [];
-        let monsterPathIndex = 0;
-        let gameStateMaze = 'maze_safe';
-
-        function switchZone(toZone) {
-            playerPathHistory.length = 0; isGrabbingRope = false;
-            if (toZone === 'maze') {
-                lobbyGroup.visible = false; mazeGroup.visible = true;
-                activeBoxes = mazeBoxes; currentZone = 'maze';
-                playerPos.set(MAZE_OFFSET_X, playerRadius, 0);
-                playerVel.set(0, 0, 0);
-                gameStateMaze = 'maze_safe'; levelStartTime = clock.getElapsedTime();
-            } else {
-                mazeGroup.visible = false; lobbyGroup.visible = true;
-                monsterGroup.visible = false; activeBoxes = lobbyBoxes;
-                currentZone = 'lobby';
-                playerPos.set(0, playerRadius, 0);
-                playerVel.set(0, 0, 0);
-            }
-        }
-
-        function triggerJumpscare() {
-            jumpscareMesh.material.opacity = 1; playScarySound('jumpscare');
-            setTimeout(() => { jumpscareMesh.material.opacity = 0; switchZone('lobby'); }, 900);
-        }
+        // Proste przeszkody w środku do wspinaczki i odbijania się
+        addBlock(0, 7.5, 0, 2, 15, 2, mats.pillar);   // Centralny filar
+        addBlock(-5, 1.5, -5, 3, 3, 3, mats.obstacle); // Skrzynia 1
+        addBlock(5, 2.5, 5, 4, 5, 2, mats.obstacle);  و// Ściana przeszkoda 2
+        addBlock(-6, 4, 4, 2, 8, 2, mats.obstacle);   // Słup przeszkoda 3
 
         // ==========================================
-        // 4. FULL BODY AVATARS & MULTIPLAYER
+        // 3. FULL BODY AVATAR
         // ==========================================
-        function createAvatar(color, name, isLocal) {
+        function createAvatar(color) {
             const g = new THREE.Group();
             const hMat = new THREE.MeshLambertMaterial({ color: color });
             
+            // Torso widoczne po spojrzeniu w dół
             const torso = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.55, 0.3), hMat);
             torso.position.set(0, -0.3, -0.1);
             g.add(torso);
-
-            const head = new THREE.Group();
-            if (!isLocal) {
-                const face = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.28), hMat); head.add(face);
-                const lbl = createLabelSprite(name || "Player"); lbl.position.set(0, 0.35, 0); head.add(lbl);
-                g.add(head);
-            }
-            
-            const handL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.14), hMat);
-            const handR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.14), hMat);
-            if (!isLocal) g.add(handL, handR);
-
-            return { group: g, torso, head, handL, handR };
+            return g;
         }
 
-        const controller1 = renderer.xr.getController(0); const controller2 = renderer.xr.getController(1);
-        playerRig.add(controller1); playerRig.add(controller2);
+        const controller1 = renderer.xr.getController(0); 
+        const controller2 = renderer.xr.getController(1);
+        playerRig.add(controller1, controller2);
         
-        const localAvatar = createAvatar(myProfile.color, myProfile.name, true);
-        camera.add(localAvatar.group); // Torso i cała sylwetka widoczna przy patrzeniu w dół
+        const localAvatar = createAvatar(myColor);
+        camera.add(localAvatar.group); // Przypięte do kamery
 
-        let isGrabbingRope = false;
-        function onSqueezeStart(e) {
-            const ctrl = e.target; const pos = new THREE.Vector3(); ctrl.getWorldPosition(pos);
-            for (let rope of lobbyRopes) {
-                if (rope.position.distanceTo(pos) < 2.0 && currentZone === 'lobby') {
-                    isGrabbingRope = true; playerVel.set(0, 0, 0); break;
-                }
-            }
-        }
-        function onSqueezeEnd() { isGrabbingRope = false; }
-        controller1.addEventListener('squeezestart', onSqueezeStart); controller1.addEventListener('squeezeend', onSqueezeEnd);
-        controller2.addEventListener('squeezestart', onSqueezeStart); controller2.addEventListener('squeezeend', onSqueezeEnd);
-
-        let peer = null; let hostConn = null; let clients = []; let isHost = false;
-        const playersState = {}; const remoteVisuals = {};
-
-        function updateRemoteVisuals(id, st) {
-            if (!remoteVisuals[id]) {
-                remoteVisuals[id] = createAvatar(st.c, st.n, false);
-                scene.add(remoteVisuals[id].group);
-            }
-            const v = remoteVisuals[id];
-            v.head.position.fromArray(st.h);
-            v.torso.position.set(st.h[0], st.h[1] - 0.35, st.h[2]);
-            v.torso.rotation.y = st.ry || 0;
-            v.handL.position.fromArray(st.l);
-            v.handR.position.fromArray(st.r);
-        }
-
-        function playAudioStream(stream) {
-            const audio = document.createElement('audio'); audio.srcObject = stream; audio.autoplay = true;
-            document.getElementById('audio-container').appendChild(audio);
-        }
-
-        function startNetworkLoop() {
-            document.body.classList.add('connected');
-            document.getElementById('lobby').style.display = 'none';
+        // ==========================================
+        // 4. UI & START
+        // ==========================================
+        document.getElementById('btnStart').onclick = () => {
+            myColor = document.getElementById('playerColor').value;
+            localAvatar.children[0].material.color.set(myColor);
+            document.body.classList.add('started');
+            document.getElementById('menu').style.display = 'none';
             document.getElementById('info').style.display = 'block';
-            localAvatar.torso.material.color.set(myProfile.color);
-
-            setInterval(() => {
-                if (!myProfile.id) return;
-                const hp = new THREE.Vector3(); const lp = new THREE.Vector3(); const rp = new THREE.Vector3();
-                camera.getWorldPosition(hp); controller1.getWorldPosition(lp); controller2.getWorldPosition(rp);
-                const ry = new THREE.Euler().setFromQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()), "YXZ").y;
-                const mySt = { n: myProfile.name, c: myProfile.color, h: hp.toArray(), l: lp.toArray(), r: rp.toArray(), ry: ry };
-
-                if (isHost) {
-                    playersState[myProfile.id] = mySt;
-                    clients.forEach(conn => { if (conn.open) conn.send({ type: 'state', players: playersState }); });
-                } else if (hostConn && hostConn.open) {
-                    hostConn.send({ type: 'update', state: mySt });
-                }
-            }, 50);
-        }
-
-        document.getElementById('btnHost').onclick = () => {
-            const code = document.getElementById('roomCode').value.trim(); if (!code) return alert("Enter Room Code!");
-            myProfile.name = document.getElementById('playerName').value || "Host";
-            myProfile.color = document.getElementById('playerColor').value;
-            isHost = true; peer = new Peer("vr-play-" + code);
-            peer.on('open', id => { myProfile.id = id; startNetworkLoop(); });
-            peer.on('connection', conn => {
-                clients.push(conn);
-                conn.on('data', d => { if (d.type === 'update') { playersState[conn.peer] = d.state; updateRemoteVisuals(conn.peer, d.state); } });
-            });
-            peer.on('call', call => { if (myStream) call.answer(myStream); call.on('stream', s => playAudioStream(s)); });
-        };
-
-        document.getElementById('btnJoin').onclick = () => {
-            const code = document.getElementById('roomCode').value.trim(); if (!code) return alert("Enter Room Code!");
-            myProfile.name = document.getElementById('playerName').value || "Guest";
-            myProfile.color = document.getElementById('playerColor').value;
-            isHost = false; peer = new Peer();
-            peer.on('open', id => {
-                myProfile.id = id; hostConn = peer.connect("vr-play-" + code);
-                hostConn.on('open', () => startNetworkLoop());
-                hostConn.on('data', d => { if (d.type === 'state') { for (let pid in d.players) { if (pid !== myProfile.id) updateRemoteVisuals(pid, d.players[pid]); } } });
-                if (myStream) { const call = peer.call("vr-play-" + code, myStream); call.on('stream', s => playAudioStream(s)); }
-            });
         };
 
         // ==========================================
-        // 5. DIRECT GORILLA TAG MOMENTUM LOOP
+        // 5. GORILLA TAG MOMENTUM LOOP
         // ==========================================
-        const prevLocal1 = new THREE.Vector3(); const prevLocal2 = new THREE.Vector3();
+        const prevLocal1 = new THREE.Vector3(); 
+        const prevLocal2 = new THREE.Vector3();
         const clock = new THREE.Clock();
 
-        function processMovement(ctrl, handMesh, prevPos) {
+        function processMovement(ctrl, prevPos) {
             const currPos = ctrl.position.clone();
-            if (prevPos.lengthSq() > 0 && !isGrabbingRope) {
+            if (prevPos.lengthSq() > 0) {
                 const deltaLocal = new THREE.Vector3().subVectors(currPos, prevPos);
                 if (deltaLocal.lengthSq() > 0.000001) {
                     const handWorld = new THREE.Vector3();
-                    handMesh.getWorldPosition(handWorld);
+                    ctrl.getWorldPosition(handWorld);
 
-                    if (currentZone === 'lobby') {
-                        for (let i = 0; i < lobbyTrampolines.length; i++) {
-                            if (lobbyTrampolines[i].distanceToPoint(handWorld) < 0.3) {
-                                playerVel.y = 12.0; prevPos.copy(currPos); return;
-                            }
-                        }
-                    }
-
-                    // Dotknięcie podłoża (Y <= 0.35) lub przeszkody
+                    // Detekcja dotyku podłogi (Y <= 0.35) lub przeszkód
                     let touch = (handWorld.y <= 0.35);
                     if (!touch) {
-                        for (let i = 0; i < activeBoxes.length; i++) {
-                            if (activeBoxes[i].distanceToPoint(handWorld) <= 0.2) {
+                        for (let i = 0; i < obstacles.length; i++) {
+                            if (obstacles[i].distanceToPoint(handWorld) <= 0.2) {
                                 touch = true; break;
                             }
                         }
@@ -472,8 +178,7 @@
 
                     if (touch) {
                         const deltaWorld = deltaLocal.clone().applyQuaternion(playerRig.quaternion);
-                        // Bezpośredni impuls pędu Gorilla Tag
-                        playerVel.addScaledVector(deltaWorld, -25.0);
+                        playerVel.addScaledVector(deltaWorld, -25.0); // Odepchnięcie w stylu Gorilla Tag
                     }
                 }
             }
@@ -482,22 +187,17 @@
 
         renderer.setAnimationLoop(() => {
             const dt = Math.min(clock.getDelta(), 0.05);
-            const time = clock.getElapsedTime();
 
             if (renderer.xr.isPresenting) {
-                processMovement(controller1, localAvatar.handL, prevLocal1);
-                processMovement(controller2, localAvatar.handR, prevLocal2);
+                processMovement(controller1, prevLocal1);
+                processMovement(controller2, prevLocal2);
             }
 
-            // Grawitacja i opór powietrza
-            if (isGrabbingRope) {
-                playerVel.set(0, -1.0, 0);
-            } else {
-                playerVel.y -= 12.0 * dt; // Grawitacja
-                playerVel.multiplyScalar(Math.pow(0.85, dt * 60)); // Tłumienie pędu
-            }
+            // Grawitacja i tarcie
+            playerVel.y -= 12.0 * dt; 
+            playerVel.multiplyScalar(Math.pow(0.85, dt * 60));
 
-            // Integracja pozycji
+            // Aktualizacja pozycji
             playerPos.addScaledVector(playerVel, dt);
 
             // Kolizja z podłogą
@@ -506,56 +206,12 @@
                 if (playerVel.y < 0) playerVel.y = 0;
             }
 
-            // Aplikowanie pozycji do rig'a VR
+            // Pozycja zestawu VR w scenie
             playerRig.position.set(
                 playerPos.x - camera.position.x,
                 playerPos.y - playerRadius,
                 playerPos.z - camera.position.z
             );
-
-            // Strefy i potwór
-            if (currentZone === 'lobby') {
-                if (portals[0].box3.containsPoint(camera.getWorldPosition(new THREE.Vector3()))) switchZone('maze');
-            } else {
-                const camPos = camera.getWorldPosition(new THREE.Vector3());
-                if (mazeExitBox.containsPoint(camPos)) switchZone('lobby');
-
-                if (playerPathHistory.length === 0 || playerPathHistory[playerPathHistory.length - 1].distanceToSquared(camPos) > 0.16) {
-                    playerPathHistory.push(camPos.clone());
-                }
-
-                const timeInMaze = time - levelStartTime;
-                if (gameStateMaze === 'maze_safe' && timeInMaze > 20) {
-                    gameStateMaze = 'maze_anim';
-                    monsterGroup.visible = true;
-                    const spawnIdx = Math.max(0, playerPathHistory.length - 15);
-                    monsterGroup.position.copy(playerPathHistory[spawnIdx] || camPos);
-                    monsterGroup.position.y = 0;
-                    monsterPathIndex = spawnIdx;
-                    playScarySound('spawn');
-                } else if (gameStateMaze === 'maze_anim') {
-                    for (let i = 0; i < limbs.length; i++) {
-                        limbs[i].rotation.x = Math.sin(time * 25 + i);
-                        limbs[i].rotation.z = Math.cos(time * 25 + i);
-                    }
-                    if (timeInMaze > 25) gameStateMaze = 'maze_chase';
-                } else if (gameStateMaze === 'maze_chase') {
-                    monsterPathIndex = Math.min(monsterPathIndex + 12 * dt, playerPathHistory.length - 1);
-                    const targetPt = playerPathHistory[Math.floor(monsterPathIndex)];
-                    if (targetPt) {
-                        monsterGroup.position.lerp(targetPt, 0.15);
-                        monsterGroup.position.y = 0;
-                    }
-                    for (let i = 0; i < limbs.length; i++) {
-                        limbs[i].rotation.x = Math.sin(time * 15 + i) * 0.6;
-                    }
-                    if (monsterGroup.position.distanceToSquared(camPos) < 1.8) {
-                        triggerJumpscare();
-                    }
-                }
-            }
-
-            if (playerPos.y < -5) switchZone('lobby');
 
             renderer.render(scene, camera);
         });
