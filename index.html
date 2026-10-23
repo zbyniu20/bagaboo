@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebVR Gorilla Tag - Backrooms Maze Edition</title>
+    <title>WebVR Gorilla Tag - Optimized & Expanded Lobby</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Courier New', Courier, monospace; }
         #lobby {
@@ -11,16 +11,17 @@
             background: radial-gradient(circle, #2a2a20, #0a0a08); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 1000; color: #d4d4aa;
         }
-        #lobby h1 { margin-bottom: 5px; font-size: 40px; text-shadow: 0 0 10px #ffffaa; text-transform: uppercase; letter-spacing: 3px; }
-        #lobby p.subtitle { margin-bottom: 25px; color: #888; font-size: 14px; }
+        #lobby h1 { margin-bottom: 5px; font-size: 38px; text-shadow: 0 0 10px #ffffaa; text-transform: uppercase; letter-spacing: 3px; }
+        #lobby p.subtitle { margin-bottom: 25px; color: #aaa; font-size: 14px; }
         .form-group { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; width: 340px; justify-content: space-between; color: white;}
         input, select { padding: 10px; font-size: 16px; border-radius: 2px; border: 1px solid #aa8822; background: #111; color: white; width: 180px; }
         input[type="color"] { padding: 0; height: 40px; cursor: pointer; }
         .btn-group { display: flex; gap: 15px; margin-top: 20px; }
         button { padding: 15px 25px; font-size: 16px; font-weight: bold; border: 1px solid #aa8822; border-radius: 2px; cursor: pointer; background: #111; color: #aa8822; text-transform: uppercase; }
         button:hover { background: #332200; box-shadow: 0 0 15px #aa8822; }
-        #status { margin-top: 20px; font-weight: bold; font-size: 16px; color: #ff5555; }
-        #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #fff; font-weight: bold; z-index: 100; display: none; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #status { margin-top: 20px; font-weight: bold; font-size: 16px; color: #ffeb3b; }
+        #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #fff; font-weight: bold; z-index: 100; display: none; text-shadow: 1px 1px 3px #000; }
         #VRButton { display: none !important; }
         .connected #VRButton { display: block !important; border: 1px solid #aa8822 !important; background: #111 !important; color: white !important; }
     </style>
@@ -29,17 +30,17 @@
 <body>
     <div id="lobby">
         <h1>Gorilla Tag: The Maze</h1>
-        <p class="subtitle">Climb the Lobby. Survive Level 1.</p>
+        <p class="subtitle">Ultra-Optimized Edition | Expanded Parkour Lobby</p>
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" value="Survivor" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
-        <div class="form-group"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. maze1" /></div>
+        <div class="form-group"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. fast1" /></div>
         <div class="btn-group">
             <button id="btnHost">Host Game</button>
             <button id="btnJoin">Join Game</button>
         </div>
         <div id="status">Initializing...</div>
     </div>
-    <div id="info">Connected. Click "ENTER VR". Look up to find the levels.</div>
+    <div id="info">Connected! Click "ENTER VR". Climb to the top mezzanine to enter Level 1.</div>
     <div id="audio-container" style="display:none;"></div>
 
     <script type="importmap">
@@ -57,362 +58,540 @@
 
         let myProfile = { name: "Survivor", color: "#3d2314" };
         let myStream = null;
-
         const statusDiv = document.getElementById('status');
-        async function initMic() {
-            try { myStream = await navigator.mediaDevices.getUserMedia({ audio: true }); statusDiv.innerText = "Mic access granted."; } 
-            catch (err) { statusDiv.innerText = "Mic access denied."; }
-        }
-        initMic();
+
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+            myStream = s; statusDiv.innerText = "Mic ready. Enter Room Code.";
+        }).catch(() => { statusDiv.innerText = "Mic denied. Enter Room Code."; });
 
         // ==========================================
-        // 1. ENGINE & PHYSICS
+        // 1. ENGINE & HIGH-PERFORMANCE RENDERER
         // ==========================================
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x050505);
-        scene.fog = new THREE.FogExp2(0x050505, 0.04); 
+        scene.background = new THREE.Color(0x181a1b);
+        scene.fog = new THREE.FogExp2(0x181a1b, 0.025);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 400);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 120);
         const playerRig = new THREE.Group(); playerRig.add(camera); scene.add(playerRig);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.xr.enabled = true; 
-        renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.8;
-        document.body.appendChild(renderer.domElement); 
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Zapobiega przeładowaniu GPU
+        renderer.xr.enabled = true;
+        renderer.shadowMap.enabled = false; // Wyłączenie cieni daje ogromny skok FPS w VR!
+        document.body.appendChild(renderer.domElement);
         document.body.appendChild(VRButton.createButton(renderer));
 
-        const ambientLight = new THREE.AmbientLight(0xffffee, 0.3); scene.add(ambientLight);
-        
-        // Czołówka gracza
-        const flashlight = new THREE.SpotLight(0xfff5b6, 150, 40, Math.PI/4, 0.5, 1);
-        camera.add(flashlight);
-        const flashlightTarget = new THREE.Object3D(); flashlightTarget.position.set(0, 0, -1); camera.add(flashlightTarget);
-        flashlight.target = flashlightTarget;
+        // Oświetlenie niewymagające ciężkich cieni (Hemisphere + Point/Spot)
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x333344, 1.5);
+        scene.add(hemiLight);
 
+        const flashlight = new THREE.SpotLight(0xfff5b6, 80, 35, Math.PI / 3, 0.5, 1.5);
+        camera.add(flashlight);
+        const flashTarget = new THREE.Object3D(); flashTarget.position.set(0, 0, -1); camera.add(flashTarget);
+        flashlight.target = flashTarget;
+
+        // Fizyka zoptymalizowana
         const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12.0, 0) });
         world.broadphase = new CANNON.SAPBroadphase(world);
+        world.allowSleep = true;
         const physicsMat = new CANNON.Material();
-        const contactMat = new CANNON.ContactMaterial(physicsMat, physicsMat, { friction: 0.8, restitution: 0.0 });
-        world.addContactMaterial(contactMat);
+        world.addContactMaterial(new CANNON.ContactMaterial(physicsMat, physicsMat, { friction: 0.8, restitution: 0.0 }));
 
-        const radius = 0.35; 
-        const playerBody = new CANNON.Body({ mass: 50, shape: new CANNON.Sphere(radius), material: physicsMat, position: new CANNON.Vec3(0, 2, 0), linearDamping: 0.1, fixedRotation: true });
+        const radius = 0.35;
+        const playerBody = new CANNON.Body({
+            mass: 50, shape: new CANNON.Sphere(radius), material: physicsMat,
+            position: new CANNON.Vec3(0, 2, 0), linearDamping: 0.1, fixedRotation: true, allowSleep: false
+        });
         world.addBody(playerBody);
 
         // ==========================================
-        // 2. PROCEDURAL GENERATORS (TEXTURES, JUMPSCARE, AUDIO)
+        // 2. AUDIO & JUMPSCARE
         // ==========================================
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playScarySound(type) {
-            if(audioCtx.state === 'suspended') audioCtx.resume();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
             if (type === 'spawn') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(50, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 2);
-                gain.gain.setValueAtTime(1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 5);
-                osc.start(); osc.stop(audioCtx.currentTime + 5);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(60, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 2.5);
+                gain.gain.setValueAtTime(0.8, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 4.5);
+                osc.start(); osc.stop(audioCtx.currentTime + 4.5);
             } else if (type === 'jumpscare') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-                osc.frequency.linearRampToValueAtTime(2000, audioCtx.currentTime + 0.1);
-                gain.gain.setValueAtTime(2, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+                osc.type = 'square'; osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(1800, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(1.5, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.6);
             }
         }
 
-        // Texture for Jumpscare
-        const jsCanvas = document.createElement('canvas'); jsCanvas.width = 512; jsCanvas.height = 512;
+        const jsCanvas = document.createElement('canvas'); jsCanvas.width = 256; jsCanvas.height = 256;
         const jsCtx = jsCanvas.getContext('2d');
-        jsCtx.fillStyle = 'black'; jsCtx.fillRect(0,0,512,512);
-        jsCtx.fillStyle = 'red'; jsCtx.beginPath(); jsCtx.arc(150, 200, 50, 0, Math.PI*2); jsCtx.arc(350, 200, 50, 0, Math.PI*2); jsCtx.fill(); // Oczy
-        jsCtx.strokeStyle = 'white'; jsCtx.lineWidth = 10; jsCtx.beginPath(); jsCtx.moveTo(100, 400); jsCtx.lineTo(256, 450); jsCtx.lineTo(400, 400); jsCtx.stroke(); // Usta
-        for(let i=0; i<1000; i++) { jsCtx.fillStyle = Math.random()>0.5?'white':'black'; jsCtx.fillRect(Math.random()*512, Math.random()*512, 5, 5); } // Szum
-        const jumpscareMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(jsCanvas), transparent: true, opacity: 0}));
-        jumpscareMesh.position.set(0, 0, -1); camera.add(jumpscareMesh); // Przypięte do twarzy
+        jsCtx.fillStyle = '#000'; jsCtx.fillRect(0, 0, 256, 256);
+        jsCtx.fillStyle = '#e0e0e0'; jsCtx.beginPath(); jsCtx.arc(80, 100, 25, 0, Math.PI * 2); jsCtx.arc(176, 100, 25, 0, Math.PI * 2); jsCtx.fill();
+        jsCtx.fillStyle = '#000'; jsCtx.beginPath(); jsCtx.arc(80, 100, 8, 0, Math.PI * 2); jsCtx.arc(176, 100, 8, 0, Math.PI * 2); jsCtx.fill();
+        jsCtx.strokeStyle = '#e0e0e0'; jsCtx.lineWidth = 6; jsCtx.beginPath(); jsCtx.arc(128, 190, 40, 0, Math.PI, true); jsCtx.stroke();
+        const jumpscareMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(jsCanvas), transparent: true, opacity: 0, depthTest: false }));
+        jumpscareMesh.position.set(0, 0, -0.5); camera.add(jumpscareMesh);
+
+        function createLabelSprite(text, bgColor = "#111", textColor = "#fff") {
+            const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = bgColor; ctx.fillRect(0, 0, 256, 64);
+            ctx.font = "bold 32px Courier New"; ctx.fillStyle = textColor; ctx.textAlign = "center"; ctx.fillText(text, 128, 42);
+            const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c) }));
+            sp.scale.set(1.5, 0.375, 1);
+            return sp;
+        }
 
         // ==========================================
-        // 3. WORLD BUILDING: LOBBY & MAZE
+        // 3. ROZBUDOWANE LOBBY (16x16m, wys. 14m)
         // ==========================================
-        const obstacles = []; const portals = []; let mazeExitBox = null;
-        
-        function addPhysBox(x, y, z, w, h, d, mat, addToObstacles = true) {
+        const lobbyGroup = new THREE.Group(); scene.add(lobbyGroup);
+        const lobbyObstacles = []; const lobbyTrampolines = []; const portals = [];
+        const lobbyCompoundBody = new CANNON.Body({ mass: 0, material: physicsMat });
+        world.addBody(lobbyCompoundBody);
+
+        const mats = {
+            wall: new THREE.MeshLambertMaterial({ color: 0x2c3539 }),
+            floor: new THREE.MeshLambertMaterial({ color: 0x1f262a }),
+            wood: new THREE.MeshLambertMaterial({ color: 0x6e472b }),
+             grip: new THREE.MeshLambertMaterial({ color: 0x3b7a57 }),
+            pillar: new THREE.MeshLambertMaterial({ color: 0x3d484d }),
+            trampoline: new THREE.MeshBasicMaterial({ color: 0xffeb3b }),
+            mezzanine: new THREE.MeshLambertMaterial({ color: 0x4a5568 })
+        };
+
+        function addLobbyBlock(x, y, z, w, h, d, mat, isTrampoline = false) {
             const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-            mesh.position.set(x, y, z); scene.add(mesh);
-            const shape = new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2));
-            const body = new CANNON.Body({ mass: 0, shape: shape, material: physicsMat });
-            body.position.set(x, y, z); world.addBody(body);
-            const box3 = new THREE.Box3(new THREE.Vector3(x-w/2, y-h/2, z-d/2), new THREE.Vector3(x+w/2, y+h/2, z+d/2));
-            if(addToObstacles) obstacles.push({ body, box3 });
-            return mesh;
+            mesh.position.set(x, y, z); lobbyGroup.add(mesh);
+            
+            lobbyCompoundBody.addShape(new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)), new CANNON.Vec3(x, y, z));
+            const box3 = new THREE.Box3(new THREE.Vector3(x - w / 2, y - h / 2, z - d / 2), new THREE.Vector3(x + w / 2, y + h / 2, z + d / 2));
+            
+            if (isTrampoline) lobbyTrampolines.push(box3);
+            else lobbyObstacles.push(box3);
         }
 
-        // --- LOBBY (10x10x10m w punkcie 0,0,0) ---
-        const lobbyMat = new THREE.MeshStandardMaterial({color: 0x444444, roughness: 0.9});
-        addPhysBox(0, -0.5, 0, 10, 1, 10, lobbyMat); // Podłoga
-        addPhysBox(0, 5, -5.5, 11, 10, 1, lobbyMat); addPhysBox(0, 5, 5.5, 11, 10, 1, lobbyMat); // Ściany
-        addPhysBox(-5.5, 5, 0, 1, 10, 11, lobbyMat); addPhysBox(5.5, 5, 0, 1, 10, 11, lobbyMat);
+        // Konstrukcja pokoju Lobby (16x16x14)
+        addLobbyBlock(0, -0.5, 0, 16, 1, 16, mats.floor); // Podłoga
+        addLobbyBlock(0, 14.5, 0, 16, 1, 16, mats.wall); // Sufit
+        addLobbyBlock(0, 7, -8.5, 17, 14, 1, mats.wall); // Północ
+        addLobbyBlock(0, 7, 8.5, 17, 14, 1, mats.wall);  // Południe
+        addLobbyBlock(-8.5, 7, 0, 1, 14, 17, mats.wall); // Zachód
+        addLobbyBlock(8.5, 7, 0, 1, 14, 17, mats.wall);  // Wschód
 
-        // Przeszkody do parkouru w Lobby (Zygzak do góry)
-        const woodMat = new THREE.MeshStandardMaterial({color: 0x8B4513});
-        addPhysBox(4, 1.5, -4, 2, 0.5, 2, woodMat); addPhysBox(0, 3.0, -4, 2, 0.5, 2, woodMat);
-        addPhysBox(-4, 4.5, -4, 2, 0.5, 2, woodMat); addPhysBox(-4, 6.0, 0, 2, 0.5, 2, woodMat);
-        addPhysBox(0, 7.5, 4, 3, 0.5, 3, woodMat); // Platforma główna u góry
-
-        // 10 Portali
-        const portalMat = new THREE.MeshBasicMaterial({color: 0x00ffaa});
-        for(let i=1; i<=10; i++) {
-            const px = -4.5 + (i%5)*2.2; const pz = i<=5 ? 4.5 : 2.5;
-            const p = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), portalMat.clone());
-            if(i !== 1) p.material.color.setHex(0xff0000); // Tylko lvl 1 jest zielony
-            p.position.set(px, 9, pz); scene.add(p);
-            portals.push({ mesh: p, level: i, box3: new THREE.Box3().setFromObject(p) });
+        // 1. Centralna Wieża Wspinaczkowa z uchwytami (wys. 11.5m)
+        addLobbyBlock(0, 5.75, 0, 1.8, 11.5, 1.8, mats.pillar);
+        for (let i = 0; i < 16; i++) {
+            const angle = (i * Math.PI) / 2;
+            const hx = Math.cos(angle) * 1.4; const hz = Math.sin(angle) * 1.4;
+            addLobbyBlock(hx, 0.8 + i * 0.68, hz, 0.9, 0.3, 0.9, mats.grip);
         }
 
-        // --- MAZE (Level 1) - 70x70m w punkcie X=500 ---
+        // 2. Trampoliny na dole (szybkie wybicie na średnie piętro)
+        addLobbyBlock(-5.5, 0.2, -5.5, 2.2, 0.4, 2.2, mats.trampoline, true);
+        addLobbyBlock(5.5, 0.2, 5.5, 2.2, 0.4, 2.2, mats.trampoline, true);
+
+        // 3. Ścieżka Parkour A (Zachodnia i Północna ściana - kaskadowe półki)
+        const pathA = [
+            [-7, 1.2, 5], [-7, 2.4, 2], [-7, 3.6, -1], [-7, 4.8, -4],
+            [-4.5, 6.0, -7], [-1.5, 7.2, -7], [1.5, 8.4, -7], [4.5, 9.6, -7], [6.5, 10.8, -4.5]
+        ];
+        pathA.forEach(([x, y, z]) => addLobbyBlock(x, y, z, 1.8, 0.4, 1.8, mats.wood));
+
+        // 4. Ścieżka Parkour B (Wschodnia i Południowa ściana - wyzwanie z kolumnami i belkami)
+        const pathB = [
+            [7, 1.5, -5], [7, 3.0, -1.5], [7, 4.5, 2], [4.5, 6.0, 4.5],
+            [1.5, 7.5, 7], [-2, 9.0, 7], [-5.5, 10.5, 6]
+        ];
+        pathB.forEach(([x, y, z]) => addLobbyBlock(x, y, z, 1.6, 0.4, 1.6, mats.grip));
+
+        // 5. Mostki powietrzne łączące centralną wieżę z antresolą
+        addLobbyBlock(0, 6.0, -3.5, 1.2, 0.3, 3.5, mats.wood);
+        addLobbyBlock(3.5, 9.0, 0, 3.5, 0.3, 1.2, mats.wood);
+        addLobbyBlock(-3.5, 11.5, 0, 4.5, 0.4, 1.5, mats.mezzanine);
+
+        // 6. Górna Antresola (Mezzanine) na wysokości 11.5m dookoła pokoju
+        addLobbyBlock(0, 11.5, 6.5, 16, 0.5, 3, mats.mezzanine);  // Południowy taras (Główny)
+        addLobbyBlock(0, 11.5, -6.5, 16, 0.5, 3, mats.mezzanine); // Północny taras
+        addLobbyBlock(-6.5, 11.5, 0, 3, 0.5, 10, mats.mezzanine); // Zachodni pomost
+        addLobbyBlock(6.5, 11.5, 0, 3, 0.5, 10, mats.mezzanine);  // Wschodni pomost
+
+        // 7. 10 Portali na górnej antresoli (5 na Południu, 5 na Północy)
+        for (let i = 1; i <= 10; i++) {
+            const isActive = (i === 1);
+            const row = i <= 5 ? 0 : 1;
+            const col = (i - 1) % 5;
+            const px = -6 + col * 3;
+            const pz = row === 0 ? 7.2 : -7.2;
+
+            const pMat = new THREE.MeshBasicMaterial({ color: isActive ? 0x00ff88 : 0x552222, wireframe: !isActive });
+            const pMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.0, 0.6), pMat);
+            pMesh.position.set(px, 12.8, pz);
+            lobbyGroup.add(pMesh);
+
+            const label = createLabelSprite(isActive ? "LVL 1: MAZE" : "LVL " + i + " (LOCKED)", isActive ? "#004422" : "#331111");
+            label.position.set(px, 14.1, pz);
+            lobbyGroup.add(label);
+
+            portals.push({ level: i, active: isActive, box3: new THREE.Box3().setFromObject(pMesh) });
+        }
+
+        // ==========================================
+        // 4. ZOPTYMALIZOWANY LABIRYNT (70x70m) - 1 COMPOUND BODY!
+        // ==========================================
+        const mazeGroup = new THREE.Group(); scene.add(mazeGroup); mazeGroup.visible = false;
+        const mazeObstacles = [];
+        const mazeCompoundBody = new CANNON.Body({ mass: 0, material: physicsMat });
+        // Dodajemy do świata dopiero po wejściu do labiryntu!
+
         const MAZE_OFFSET_X = 500;
         const GRID_SIZE = 14; const CELL_SIZE = 5;
-        
-        // Generator labiryntu (Pseudo-Random DFS by labirynt był zawsze ten sam)
+
         let seed = 12345;
-        function random() { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }
-        
-        const grid = Array(GRID_SIZE).fill().map(()=>Array(GRID_SIZE).fill({v:false, r:true, b:true})); // visited, right-wall, bottom-wall
+        function sRand() { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+
+        const grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill({ v: false, r: true, b: true }));
         function carve(cx, cy) {
-            grid[cy][cx] = {...grid[cy][cx], v:true};
-            const dirs = [[0,-1], [1,0], [0,1], [-1,0]].sort(()=>random()-0.5); // N, E, S, W
-            for(let [dx, dy] of dirs) {
-                let nx = cx+dx, ny = cy+dy;
-                if(nx>=0 && nx<GRID_SIZE && ny>=0 && ny<GRID_SIZE && !grid[ny][nx].v) {
-                    if(dx===1) grid[cy][cx].r = false; else if(dx===-1) grid[ny][nx].r = false;
-                    if(dy===1) grid[cy][cx].b = false; else if(dy===-1) grid[ny][nx].b = false;
+            grid[cy][cx] = { ...grid[cy][cx], v: true };
+            const dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]].sort(() => sRand() - 0.5);
+            for (let [dx, dy] of dirs) {
+                let nx = cx + dx, ny = cy + dy;
+                if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE && !grid[ny][nx].v) {
+                    if (dx === 1) grid[cy][cx].r = false; else if (dx === -1) grid[ny][nx].r = false;
+                    if (dy === 1) grid[cy][cx].b = false; else if (dy === -1) grid[ny][nx].b = false;
                     carve(nx, ny);
                 }
             }
         }
-        carve(0,0);
+        carve(0, 0);
 
-        // Renderowanie ścian (InstancedMesh dla wydajności)
-        const wallGeo = new THREE.BoxGeometry(CELL_SIZE + 1, 10, 1);
-        const backroomsMat = new THREE.MeshStandardMaterial({color: 0xcccc77, roughness: 1.0}); // Żółte tapety
-        const wallInst = new THREE.InstancedMesh(wallGeo, backroomsMat, GRID_SIZE*GRID_SIZE*2 + 50);
+        const wallGeo = new THREE.BoxGeometry(CELL_SIZE + 0.6, 8, 0.6);
+        const backroomsMat = new THREE.MeshLambertMaterial({ color: 0xb5a642 });
+        const wallInst = new THREE.InstancedMesh(wallGeo, backroomsMat, GRID_SIZE * GRID_SIZE * 2 + 60);
         let wCount = 0; const dummy = new THREE.Object3D();
-        
+
         function addMazeWall(x, z, rotY) {
-            dummy.position.set(x, 5, z); dummy.rotation.set(0, rotY, 0); dummy.updateMatrix();
+            dummy.position.set(x, 4, z); dummy.rotation.set(0, rotY, 0); dummy.updateMatrix();
             wallInst.setMatrixAt(wCount++, dummy.matrix);
-            const body = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(rotY?0.5:(CELL_SIZE+1)/2, 5, rotY?(CELL_SIZE+1)/2:0.5)), material: physicsMat });
-            body.position.set(x, 5, z); world.addBody(body);
-            
-            const w = rotY?1:CELL_SIZE+1; const d = rotY?CELL_SIZE+1:1;
-            obstacles.push({ body, box3: new THREE.Box3(new THREE.Vector3(x-w/2, 0, z-d/2), new THREE.Vector3(x+w/2, 10, z+d/2)) });
+
+            const halfW = rotY ? 0.3 : (CELL_SIZE + 0.6) / 2;
+            const halfD = rotY ? (CELL_SIZE + 0.6) / 2 : 0.3;
+            mazeCompoundBody.addShape(new CANNON.Box(new CANNON.Vec3(halfW, 4, halfD)), new CANNON.Vec3(x, 4, z));
+            mazeObstacles.push(new THREE.Box3(new THREE.Vector3(x - halfW, 0, z - halfD), new THREE.Vector3(x + halfW, 8, z + halfD)));
         }
 
-        // Granice Labiryntu
-        for(let i=0; i<GRID_SIZE; i++) {
-            addMazeWall(MAZE_OFFSET_X + i*CELL_SIZE, -CELL_SIZE/2, 0); // Top
-            addMazeWall(MAZE_OFFSET_X - CELL_SIZE/2, i*CELL_SIZE, Math.PI/2); // Left
+        for (let i = 0; i < GRID_SIZE; i++) {
+            addMazeWall(MAZE_OFFSET_X + i * CELL_SIZE, -CELL_SIZE / 2, 0);
+            addMazeWall(MAZE_OFFSET_X - CELL_SIZE / 2, i * CELL_SIZE, Math.PI / 2);
         }
-        
-        // Wewnętrzne ściany z Grid'a
-        for(let y=0; y<GRID_SIZE; y++) {
-            for(let x=0; x<GRID_SIZE; x++) {
-                let px = MAZE_OFFSET_X + x*CELL_SIZE; let pz = y*CELL_SIZE;
-                if(grid[y][x].r) addMazeWall(px + CELL_SIZE/2, pz, Math.PI/2);
-                if(grid[y][x].b) addMazeWall(px, pz + CELL_SIZE/2, 0);
-                
-                // Strzałki (Podpowiedzi co 3 kratki, wskazujące mniej więcej w stronę rogu 13,13)
-                if((x+y)%4 === 0 && (x<GRID_SIZE-1 || y<GRID_SIZE-1)) {
-                    const arrow = new THREE.Mesh(new THREE.PlaneGeometry(2,2), new THREE.MeshBasicMaterial({color: 0x00ff00}));
-                    arrow.rotation.x = -Math.PI/2; arrow.position.set(px, 0.01, pz);
-                    arrow.rotation.z = Math.atan2((GRID_SIZE-1-y), (GRID_SIZE-1-x));
-                    scene.add(arrow);
+
+        const arrowGeo = new THREE.PlaneGeometry(1.5, 1.5);
+        const arrowMat = new THREE.MeshBasicMaterial({ color: 0x00ff66 });
+
+        for (let y = 0; y < GRID_SIZE; y++) {
+            for (let x = 0; x < GRID_SIZE; x++) {
+                let px = MAZE_OFFSET_X + x * CELL_SIZE; let pz = y * CELL_SIZE;
+                if (grid[y][x].r) addMazeWall(px + CELL_SIZE / 2, pz, Math.PI / 2);
+                if (grid[y][x].b) addMazeWall(px, pz + CELL_SIZE / 2, 0);
+
+                if ((x + y) % 3 === 0 && (x < GRID_SIZE - 1 || y < GRID_SIZE - 1)) {
+                    const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+                    arrow.rotation.x = -Math.PI / 2; arrow.position.set(px, 0.02, pz);
+                    arrow.rotation.z = Math.atan2((GRID_SIZE - 1 - y), (GRID_SIZE - 1 - x));
+                    mazeGroup.add(arrow);
                 }
             }
         }
-        scene.add(wallInst);
+        wallInst.count = wCount;
+        mazeGroup.add(wallInst);
 
-        // Podłoga i Sufit Labiryntu (Zamknięta puszka)
-        const floorMat = new THREE.MeshStandardMaterial({color: 0x555544, roughness: 0.9});
-        addPhysBox(MAZE_OFFSET_X + 32.5, -0.5, 32.5, 75, 1, 75, floorMat); // Podłoga
-        addPhysBox(MAZE_OFFSET_X + 32.5, 10.5, 32.5, 75, 1, 75, floorMat); // Sufit (Brak ucieczki)
+        // Podłoga i sufit Labiryntu
+        const mazeFloorMat = new THREE.MeshLambertMaterial({ color: 0x4a4532 });
+        const mFloor = new THREE.Mesh(new THREE.BoxGeometry(75, 1, 75), mazeFloorMat);
+        mFloor.position.set(MAZE_OFFSET_X + 32.5, -0.5, 32.5); mazeGroup.add(mFloor);
+        mazeCompoundBody.addShape(new CANNON.Box(new CANNON.Vec3(37.5, 0.5, 37.5)), new CANNON.Vec3(MAZE_OFFSET_X + 32.5, -0.5, 32.5));
+        mazeObstacles.push(new THREE.Box3(new THREE.Vector3(MAZE_OFFSET_X - 5, -1, -5), new THREE.Vector3(MAZE_OFFSET_X + 70, 0, 70)));
 
-        // Wyjście z Labiryntu (Róg 13,13)
-        const exitMesh = new THREE.Mesh(new THREE.BoxGeometry(4, 0.2, 4), new THREE.MeshBasicMaterial({color: 0x00aaff}));
-        exitMesh.position.set(MAZE_OFFSET_X + 13*CELL_SIZE, 0.1, 13*CELL_SIZE); scene.add(exitMesh);
-        mazeExitBox = new THREE.Box3().setFromObject(exitMesh);
+        const mCeil = new THREE.Mesh(new THREE.BoxGeometry(75, 1, 75), mazeFloorMat);
+        mCeil.position.set(MAZE_OFFSET_X + 32.5, 8.5, 32.5); mazeGroup.add(mCeil);
+        mazeCompoundBody.addShape(new CANNON.Box(new CANNON.Vec3(37.5, 0.5, 37.5)), new CANNON.Vec3(MAZE_OFFSET_X + 32.5, 8.5, 32.5));
+
+        const exitMesh = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 3), new THREE.MeshBasicMaterial({ color: 0x00aaff, wireframe: true }));
+        exitMesh.position.set(MAZE_OFFSET_X + 13 * CELL_SIZE, 2, 13 * CELL_SIZE); mazeGroup.add(exitMesh);
+        const mazeExitBox = new THREE.Box3().setFromObject(exitMesh);
 
         // ==========================================
-        // 4. THE MONSTER (BACTERIA) & GAME LOGIC
+        // 5. POTWÓR BACTERIA & PRZEŁĄCZANIE STREF
         // ==========================================
         const monsterGroup = new THREE.Group();
-        const mMat = new THREE.MeshBasicMaterial({color: 0x000000}); // Czysta czerń
+        const mMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
         const limbs = [];
-        for(let i=0; i<15; i++) {
-            const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3+Math.random()*2), mMat);
-            limb.position.set((Math.random()-0.5), (Math.random()-0.5)*3, (Math.random()-0.5));
+        for (let i = 0; i < 12; i++) {
+            const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.8), mMat);
+            limb.position.set((Math.random() - 0.5) * 0.8, 1.4, (Math.random() - 0.5) * 0.8);
             monsterGroup.add(limb); limbs.push(limb);
         }
-        scene.add(monsterGroup);
-        monsterGroup.visible = false;
-        const monsterBox = new THREE.Box3();
+        scene.add(monsterGroup); monsterGroup.visible = false;
 
-        let gameState = 'lobby'; // 'lobby', 'maze_safe', 'maze_anim', 'maze_chase'
+        let gameState = 'lobby';
+        let activeObstacles = lobbyObstacles;
         let levelStartTime = 0;
-        let playerPathHistory = [];
+        const playerPathHistory = [];
         let monsterPathIndex = 0;
 
-        function teleportPlayer(x, y, z) {
-            playerBody.position.set(x, y, z); playerBody.velocity.set(0,0,0);
-            playerPathHistory = []; // Reset śladów
+        function switchZone(toZone) {
+            playerPathHistory.length = 0;
+            if (toZone === 'maze') {
+                world.removeBody(lobbyCompoundBody);
+                world.addBody(mazeCompoundBody);
+                lobbyGroup.visible = false;
+                mazeGroup.visible = true;
+                activeObstacles = mazeObstacles;
+                playerBody.position.set(MAZE_OFFSET_X, 2, 0);
+                playerBody.velocity.set(0, 0, 0);
+                gameState = 'maze_safe';
+                levelStartTime = clock.getElapsedTime();
+            } else {
+                world.removeBody(mazeCompoundBody);
+                world.addBody(lobbyCompoundBody);
+                mazeGroup.visible = false;
+                lobbyGroup.visible = true;
+                monsterGroup.visible = false;
+                activeObstacles = lobbyObstacles;
+                playerBody.position.set(0, 2, 0);
+                playerBody.velocity.set(0, 0, 0);
+                gameState = 'lobby';
+            }
         }
 
         function triggerJumpscare() {
             jumpscareMesh.material.opacity = 1; playScarySound('jumpscare');
-            setTimeout(() => { jumpscareMesh.material.opacity = 0; teleportPlayer(0, 2, 0); gameState = 'lobby'; monsterGroup.visible = false; }, 1000);
+            setTimeout(() => { jumpscareMesh.material.opacity = 0; switchZone('lobby'); }, 900);
         }
 
         // ==========================================
-        // 5. AVATAR & MULTIPLAYER
+        // 6. AWATARY I MULTIPLAYER (STAŁY TICK 20Hz)
         // ==========================================
-        function createAvatar(isLocal) {
+        function createAvatar(color, name, isLocal) {
             const g = new THREE.Group();
-            const hMat = new THREE.MeshStandardMaterial({color: isLocal ? myProfile.color : 0x555555});
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.35), hMat); g.add(torso);
+            const hMat = new THREE.MeshLambertMaterial({ color: color });
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.55, 0.3), hMat); g.add(torso);
+            const head = new THREE.Group();
+            if (!isLocal) {
+                const face = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.28), hMat); head.add(face);
+                const lbl = createLabelSprite(name || "Player"); lbl.position.set(0, 0.35, 0); head.add(lbl);
+                g.add(head);
+            }
             const handL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.14), hMat);
             const handR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.14), hMat);
-            if(!isLocal) g.add(handL, handR);
-            return { group: g, torso, handL, handR };
+            if (!isLocal) g.add(handL, handR);
+            return { group: g, torso, head, handL, handR };
         }
 
         const controller1 = renderer.xr.getController(0); const controller2 = renderer.xr.getController(1);
         playerRig.add(controller1); playerRig.add(controller2);
-        const localAvatar = createAvatar(true); scene.add(localAvatar.group);
-        const armExt = new THREE.Vector3(0, -0.45, -0.05);
+        const localAvatar = createAvatar(myProfile.color, myProfile.name, true); scene.add(localAvatar.group);
+        const armExt = new THREE.Vector3(0, -0.42, -0.05);
         localAvatar.handL.position.copy(armExt); localAvatar.handR.position.copy(armExt);
         controller1.add(localAvatar.handL); controller2.add(localAvatar.handR);
 
-        let peer = null; let hostConn = null; let clients = []; let isHost = false; let peersData = {};
-        
+        let peer = null; let hostConn = null; let clients = []; let isHost = false; let myPeerId = null;
+        const playersState = {}; const remoteVisuals = {};
+
+        function updateRemoteVisuals(id, st) {
+            if (!remoteVisuals[id]) {
+                remoteVisuals[id] = createAvatar(st.c, st.n, false);
+                scene.add(remoteVisuals[id].group);
+            }
+            const v = remoteVisuals[id];
+            v.head.position.fromArray(st.h);
+            v.torso.position.set(st.h[0], st.h[1] - 0.35, st.h[2]);
+            v.handL.position.fromArray(st.l);
+            v.handR.position.fromArray(st.r);
+        }
+
+        function playAudioStream(stream) {
+            const audio = document.createElement('audio'); audio.srcObject = stream; audio.autoplay = true;
+            document.getElementById('audio-container').appendChild(audio);
+        }
+
+        function startNetworkLoop() {
+            document.body.classList.add('connected');
+            document.getElementById('lobby').style.display = 'none';
+            document.getElementById('info').style.display = 'block';
+            localAvatar.torso.material.color.set(myProfile.color);
+            localAvatar.handL.material.color.set(myProfile.color);
+            localAvatar.handR.material.color.set(myProfile.color);
+
+            // Sieć odświeżana 20 razy na sekundę (zamiast w pętli renderowania!)
+            setInterval(() => {
+                if (!myPeerId) return;
+                const hp = new THREE.Vector3(); const lp = new THREE.Vector3(); const rp = new THREE.Vector3();
+                camera.getWorldPosition(hp); localAvatar.handL.getWorldPosition(lp); localAvatar.handR.getWorldPosition(rp);
+                const mySt = { n: myProfile.name, c: myProfile.color, h: hp.toArray(), l: lp.toArray(), r: rp.toArray() };
+
+                if (isHost) {
+                    playersState[myPeerId] = mySt;
+                    clients.forEach(conn => { if (conn.open) conn.send({ type: 'state', players: playersState }); });
+                } else if (hostConn && hostConn.open) {
+                    hostConn.send({ type: 'update', state: mySt });
+                }
+            }, 50);
+        }
+
         document.getElementById('btnHost').onclick = () => {
-            const code = document.getElementById('roomCode').value.trim(); if(!code) return;
-            document.body.classList.add('connected'); document.getElementById('lobby').style.display='none'; document.getElementById('info').style.display='block';
-            isHost = true; peer = new Peer("vr-maze-" + code);
-            peer.on('connection', c => { clients.push(c); c.on('data', d => peersData[c.peer]=d.p); });
+            const code = document.getElementById('roomCode').value.trim(); if (!code) return alert("Enter Room Code!");
+            myProfile.name = document.getElementById('playerName').value || "Host";
+            myProfile.color = document.getElementById('playerColor').value;
+            isHost = true; peer = new Peer("vr-opt-maze-" + code);
+            peer.on('open', id => { myPeerId = id; startNetworkLoop(); });
+            peer.on('connection', conn => {
+                clients.push(conn);
+                conn.on('data', d => {
+                    if (d.type === 'update') { playersState[conn.peer] = d.state; updateRemoteVisuals(conn.peer, d.state); }
+                });
+            });
+            peer.on('call', call => { if (myStream) call.answer(myStream); call.on('stream', s => playAudioStream(s)); });
         };
+
         document.getElementById('btnJoin').onclick = () => {
-            const code = document.getElementById('roomCode').value.trim(); if(!code) return;
-            document.body.classList.add('connected'); document.getElementById('lobby').style.display='none'; document.getElementById('info').style.display='block';
-            peer = new Peer(); peer.on('open', () => { hostConn = peer.connect("vr-maze-" + code); hostConn.on('data', d => peersData=d); });
+            const code = document.getElementById('roomCode').value.trim(); if (!code) return alert("Enter Room Code!");
+            myProfile.name = document.getElementById('playerName').value || "Guest";
+            myProfile.color = document.getElementById('playerColor').value;
+            isHost = false; peer = new Peer();
+            peer.on('open', id => {
+                myPeerId = id; hostConn = peer.connect("vr-opt-maze-" + code);
+                hostConn.on('open', () => startNetworkLoop());
+                hostConn.on('data', d => {
+                    if (d.type === 'state') {
+                        for (let pid in d.players) { if (pid !== myPeerId) updateRemoteVisuals(pid, d.players[pid]); }
+                    }
+                });
+                if (myStream) { const call = peer.call("vr-opt-maze-" + code, myStream); call.on('stream', s => playAudioStream(s)); }
+            });
         };
 
         // ==========================================
-        // 6. MAIN LOOP (MOVEMENT & LOGIC)
+        // 7. PĘTLA GŁÓWNA (ZERO ALOKACJI PAMIĘCI = ZERO LAGÓW)
         // ==========================================
-        let prevLocal1 = new THREE.Vector3(); let prevLocal2 = new THREE.Vector3();
-        const clock = new THREE.Clock(); const raycaster = new THREE.Raycaster(); const downVec = new THREE.Vector3(0, -1, 0);
+        const prevLocal1 = new THREE.Vector3(); const prevLocal2 = new THREE.Vector3();
+        const tmpDelta = new THREE.Vector3(); const tmpHandWorld = new THREE.Vector3();
+        const tmpCamWorld = new THREE.Vector3(); const tmpCamQuat = new THREE.Quaternion();
+        const tmpEuler = new THREE.Euler();
+        const clock = new THREE.Clock();
 
         function handleMovement(ctrl, hand, prev) {
-            const curr = ctrl.position.clone();
             if (prev.lengthSq() > 0) {
-                const delta = new THREE.Vector3().subVectors(curr, prev);
-                const wPos = new THREE.Vector3(); hand.getWorldPosition(wPos);
-                let touch = false;
-                
-                // Optymalna kolizja: sprawdzamy tylko bliskie Box3
-                for(let obs of obstacles) {
-                    if (obs.box3.distanceToPoint(wPos) < 0.5) { // Szybki dystans
-                        if(obs.box3.clone().expandByScalar(0.12).containsPoint(wPos)) { touch = true; break; }
+                tmpDelta.subVectors(ctrl.position, prev);
+                if (tmpDelta.lengthSq() > 0.000001) {
+                    hand.getWorldPosition(tmpHandWorld);
+
+                    // Sprawdzenie trampolin w Lobby
+                    if (gameState === 'lobby') {
+                        for (let i = 0; i < lobbyTrampolines.length; i++) {
+                            if (lobbyTrampolines[i].distanceToPoint(tmpHandWorld) < 0.25) {
+                                playerBody.velocity.y = 14.5;
+                                prev.copy(ctrl.position);
+                                return;
+                            }
+                        }
+                    }
+
+                    // Bardzo szybki test dotyku bez klonowania Box3!
+                    let touch = (tmpHandWorld.y <= 0.22);
+                    if (!touch) {
+                        for (let i = 0; i < activeObstacles.length; i++) {
+                            if (activeObstacles[i].distanceToPoint(tmpHandWorld) <= 0.14) {
+                                touch = true; break;
+                            }
+                        }
+                    }
+
+                    if (touch) {
+                        tmpDelta.applyQuaternion(playerRig.quaternion);
+                        const push = -1350;
+                        playerBody.applyImpulse(new CANNON.Vec3(tmpDelta.x * push, tmpDelta.y * push, tmpDelta.z * push), playerBody.position);
                     }
                 }
-                
-                if (touch && delta.lengthSq() > 0) {
-                    const force = delta.applyQuaternion(playerRig.quaternion).multiplyScalar(-1400);
-                    playerBody.applyImpulse(new CANNON.Vec3(force.x, force.y, force.z), playerBody.position);
-                }
             }
-            prev.copy(curr);
+            prev.copy(ctrl.position);
         }
 
         renderer.setAnimationLoop(() => {
-            const dt = Math.min(clock.getDelta(), 0.1); const time = clock.getElapsedTime();
-            world.step(1/60, dt, 3);
-            
+            const dt = Math.min(clock.getDelta(), 0.05);
+            const time = clock.getElapsedTime();
+            world.step(1 / 60, dt, 2);
+
             if (renderer.xr.isPresenting) {
-                handleMovement(controller1, localAvatar.handL, prevLocal1); handleMovement(controller2, localAvatar.handR, prevLocal2);
+                handleMovement(controller1, localAvatar.handL, prevLocal1);
+                handleMovement(controller2, localAvatar.handR, prevLocal2);
             }
 
-            // Sync Rigs
-            const camLoc = camera.position.clone();
-            playerRig.position.set(playerBody.position.x - camLoc.x, playerBody.position.y - radius - 0.6, playerBody.position.z - camLoc.z);
-            const wPos = new THREE.Vector3(); camera.getWorldPosition(wPos);
-            localAvatar.torso.position.copy(wPos).add(new THREE.Vector3(0, -0.35, 0));
-            localAvatar.torso.rotation.y = new THREE.Euler().setFromQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()), "YXZ").y;
+            // Synchronizacja pozycji gracza bez tworzenia nowych wektorów
+            playerRig.position.set(
+                playerBody.position.x - camera.position.x,
+                playerBody.position.y - radius - 0.6,
+                playerBody.position.z - camera.position.z
+            );
 
-            // --- GAME LOGIC ---
-            const pHead = wPos;
-            
+            camera.getWorldPosition(tmpCamWorld);
+            camera.getWorldQuaternion(tmpCamQuat);
+            tmpEuler.setFromQuaternion(tmpCamQuat, "YXZ");
+            localAvatar.torso.position.set(tmpCamWorld.x, tmpCamWorld.y - 0.35, tmpCamWorld.z);
+            localAvatar.torso.rotation.set(0, tmpEuler.y, 0);
+
+            // Logika stref i potwora
             if (gameState === 'lobby') {
-                // Sprawdzanie wejścia do portalu nr 1
-                if (portals[0].box3.containsPoint(pHead)) {
-                    teleportPlayer(MAZE_OFFSET_X, 2, 0); // Start labiryntu (x=0, y=0 w siatce)
-                    gameState = 'maze_safe'; levelStartTime = time;
+                if (portals[0].box3.distanceToPoint(tmpCamWorld) < 0.6) {
+                    switchZone('maze');
                 }
-            } 
-            else if (gameState.startsWith('maze')) {
-                // Wyjście z labiryntu
-                if (mazeExitBox.containsPoint(pHead)) { teleportPlayer(0, 2, 0); gameState = 'lobby'; monsterGroup.visible = false; }
-                
-                // Zapisywanie historii ruchów gracza co klatkę do kolejki (Breadcrumbs)
-                playerPathHistory.push({ p: pHead.clone(), t: time });
-                
-                // Mini Jumpscary w labiryncie (Losowe błyski jak zepsuta kamera)
-                if (Math.random() < 0.001) { jumpscareMesh.material.opacity = 0.3; setTimeout(()=>jumpscareMesh.material.opacity=0, 100); }
-                
-                // Sekwencja Potwora
+            } else {
+                // Sprawdzenie wyjścia z Labiryntu
+                if (mazeExitBox.distanceToPoint(tmpCamWorld) < 0.8) {
+                    switchZone('lobby');
+                }
+
+                // Zapisywanie ścieżki gracza tylko gdy się przesunął o min. 0.4m (oszczędność RAM!)
+                if (playerPathHistory.length === 0 || playerPathHistory[playerPathHistory.length - 1].distanceToSquared(tmpCamWorld) > 0.16) {
+                    playerPathHistory.push(tmpCamWorld.clone());
+                }
+
                 const timeInMaze = time - levelStartTime;
-                
+
                 if (gameState === 'maze_safe' && timeInMaze > 20) {
-                    gameState = 'maze_anim'; monsterGroup.visible = true;
-                    // Spawn potwora kilkanaście metrów za nami (bierzemy starą pozycję z historii)
-                    const spawnData = playerPathHistory.find(h => h.t > levelStartTime + 5) || playerPathHistory[0];
-                    monsterGroup.position.copy(spawnData.p); monsterPathIndex = playerPathHistory.indexOf(spawnData);
+                    gameState = 'maze_anim';
+                    monsterGroup.visible = true;
+                    const spawnIdx = Math.max(0, playerPathHistory.length - 15);
+                    monsterGroup.position.copy(playerPathHistory[spawnIdx] || tmpCamWorld);
+                    monsterGroup.position.y = 0;
+                    monsterPathIndex = spawnIdx;
                     playScarySound('spawn');
-                }
-                
-                if (gameState === 'maze_anim') {
-                    // Animacja wrzasku (chaos)
-                    limbs.forEach(l => { l.rotation.x += Math.random(); l.rotation.y += Math.random(); });
+                } else if (gameState === 'maze_anim') {
+                    for (let i = 0; i < limbs.length; i++) {
+                        limbs[i].rotation.x = Math.sin(time * 25 + i);
+                        limbs[i].rotation.z = Math.cos(time * 25 + i);
+                    }
                     if (timeInMaze > 25) gameState = 'maze_chase';
-                }
-                
-                if (gameState === 'maze_chase') {
-                    // Pościg po śladach. Potwór pożera indeksy szybciej (krok 1.5) by dogonić gracza
-                    monsterPathIndex = Math.min(monsterPathIndex + 1.2, playerPathHistory.length - 1);
-                    const targetPos = playerPathHistory[Math.floor(monsterPathIndex)].p;
-                    monsterGroup.position.lerp(targetPos, 0.2); // Płynne podążanie do węzła
-                    
-                    // Odgłosy kroku/drgania potwora
-                    limbs.forEach((l, i) => { l.rotation.x = Math.sin(time * 10 + i); l.rotation.y = Math.cos(time * 12 + i); });
-
-                    // Kolizja potwora z graczem
-                    monsterBox.setFromObject(monsterGroup).expandByScalar(0.5);
-                    if (monsterBox.containsPoint(pHead)) triggerJumpscare();
+                } else if (gameState === 'maze_chase') {
+                    monsterPathIndex = Math.min(monsterPathIndex + 12 * dt, playerPathHistory.length - 1);
+                    const targetPt = playerPathHistory[Math.floor(monsterPathIndex)];
+                    if (targetPt) {
+                        monsterGroup.position.lerp(targetPt, 0.15);
+                        monsterGroup.position.y = 0;
+                    }
+                    for (let i = 0; i < limbs.length; i++) {
+                        limbs[i].rotation.x = Math.sin(time * 15 + i) * 0.6;
+                    }
+                    if (monsterGroup.position.distanceToSquared(tmpCamWorld) < 1.8) {
+                        triggerJumpscare();
+                    }
                 }
             }
 
-            // Ochrona przed wypadnięciem pod mapę
-            if (playerBody.position.y < -5) teleportPlayer(0, 2, 0);
-
-            // Sieć
-            if(peer) {
-                const hl1 = new THREE.Vector3(); localAvatar.handL.getWorldPosition(hl1);
-                const hr1 = new THREE.Vector3(); localAvatar.handR.getWorldPosition(hr1);
-                const state = { h: wPos.toArray(), l: hl1.toArray(), r: hr1.toArray() };
-                if(isHost) {
-                    peersData['host'] = state; clients.forEach(c => c.send(peersData));
-                } else if(hostConn) { hostConn.send({p: state}); }
-            }
+            if (playerBody.position.y < -5) switchZone('lobby');
 
             renderer.render(scene, camera);
         });
