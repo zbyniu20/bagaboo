@@ -32,7 +32,7 @@
 <body>
     <div id="menu">
         <h1>BagaBoo VR</h1>
-        <p class="subtitle">[ Upright Stance & Movement Audio ]</p>
+        <p class="subtitle">[ Upright 170cm Hands-Only Mode ]</p>
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" value="Survivor" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#8B4513" /></div>
         <button id="btnStart">Enter Nightmare</button>
@@ -88,7 +88,6 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
 
-            // Sub-bass drone tła
             const subOsc = audioCtx.createOscillator();
             const subGain = audioCtx.createGain();
             const subFilter = audioCtx.createBiquadFilter();
@@ -104,7 +103,6 @@
             subGain.connect(audioCtx.destination);
             subOsc.start();
 
-            // Detuned pad
             const padOsc1 = audioCtx.createOscillator();
             const padOsc2 = audioCtx.createOscillator();
             const padGain = audioCtx.createGain();
@@ -125,7 +123,6 @@
             padOsc1.start();
             padOsc2.start();
 
-            // Losowe industrialne uderzenia
             setInterval(() => {
                 if (!audioCtx || audioCtx.state !== 'running') return;
                 if (Math.random() < 0.35) {
@@ -147,7 +144,6 @@
             }, 6000);
         }
 
-        // Proceduralny dźwięk uderzenia dłoni / ruchu (Footstep / Slap sound)
         function playFootstepSound() {
             if (!audioCtx || audioCtx.state !== 'running') return;
             const osc = audioCtx.createOscillator();
@@ -219,50 +215,33 @@
         addBlock(-6, 4, 4, 2, 8, 2, mats.obstacle);
 
         // ==========================================
-        // 4. FULL BODY + LEGS AVATAR
+        // 4. HANDS-ONLY AVATAR (Tylko ręce widoczne dla gracza)
         // ==========================================
-        const avatarGroup = new THREE.Group();
-        const avatarMaterial = new THREE.MeshLambertMaterial({ color: myColor });
-        
-        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.3), avatarMaterial);
-        torso.position.set(0, 0.35, 0);
-        avatarGroup.add(torso);
-
-        const legGeo = new THREE.CylinderGeometry(0.08, 0.06, 0.7);
-        const leftLeg = new THREE.Mesh(legGeo, avatarMaterial); leftLeg.position.set(-0.12, -0.15, 0);
-        const rightLeg = new THREE.Mesh(legGeo, avatarMaterial); rightLeg.position.set(0.12, -0.15, 0);
-        avatarGroup.add(leftLeg, rightLeg);
-
-        const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 1.0);
-        armGeo.rotateX(Math.PI / 2);
-        const leftArm = new THREE.Mesh(armGeo, avatarMaterial);
-        const rightArm = new THREE.Mesh(armGeo, avatarMaterial);
-        avatarGroup.add(leftArm, rightArm);
-
-        const handGeo = new THREE.BoxGeometry(0.12, 0.06, 0.14);
-        const leftHand = new THREE.Mesh(handGeo, avatarMaterial);
-        const rightHand = new THREE.Mesh(handGeo, avatarMaterial);
-        avatarGroup.add(leftHand, rightHand);
-
-        playerRig.add(avatarGroup);
-
         const controller1 = renderer.xr.getController(0); 
         const controller2 = renderer.xr.getController(1);
         playerRig.add(controller1, controller2);
+
+        const handGeo = new THREE.BoxGeometry(0.12, 0.06, 0.14);
+        const handMat = new THREE.MeshLambertMaterial({ color: myColor });
+
+        const leftHand = new THREE.Mesh(handGeo, handMat);
+        const rightHand = new THREE.Mesh(handGeo, handMat);
+        controller1.add(leftHand);
+        controller2.add(rightHand);
 
         // ==========================================
         // 5. UI & START FLOW
         // ==========================================
         document.getElementById('btnStart').onclick = () => {
             myColor = document.getElementById('playerColor').value;
-            avatarMaterial.color.set(myColor);
+            handMat.color.set(myColor);
             document.body.classList.add('started');
             document.getElementById('menu').style.display = 'none';
             initHorrorSoundtrack();
         };
 
         // ==========================================
-        // 6. UPRIGHT MOVEMENT & AUDIO LOOP
+        // 6. UPRIGHT HANDS-ONLY MOVEMENT LOOP
         // ==========================================
         const prevLocal1 = new THREE.Vector3(); 
         const prevLocal2 = new THREE.Vector3();
@@ -277,10 +256,8 @@
                     const handWorld = new THREE.Vector3();
                     ctrl.getWorldPosition(handWorld);
 
-                    const isUpright = camera.position.y >= 1.1;
-                    if (!isUpright) return;
-
-                    let touch = (handWorld.y <= 0.40);
+                    // Automatyczna detekcja dla gracza 170cm (prosta sylwetka, próg rąk na wysokości do 0.85m od podłogi)
+                    let touch = (handWorld.y <= 0.85);
                     if (!touch) {
                         for (let i = 0; i < obstacles.length; i++) {
                             if (obstacles[i].distanceToPoint(handWorld) <= 0.25) {
@@ -291,9 +268,8 @@
 
                     if (touch) {
                         const deltaWorld = deltaLocal.clone().applyQuaternion(playerRig.quaternion);
-                        playerVel.addScaledVector(deltaWorld, -35.0);
+                        playerVel.addScaledVector(deltaWorld, -40.0); // Dynamiczny impuls Gorilla Tag
 
-                        // Odtwórz dźwięk uderzenia dłoni/kroku z limitem częstotliwości (co najmniej 150ms odstępu)
                         const now = clock.getElapsedTime();
                         if (now - lastStepTime > 0.15) {
                             playFootstepSound();
@@ -323,34 +299,12 @@
                 if (playerVel.y < 0) playerVel.y = 0;
             }
 
+            // Pozycjonowanie rig'a dla osoby stojącej w pełni wyprostowanej (170 cm)
             playerRig.position.set(
-                playerPos.x - camera.position.x * 0.2,
+                playerPos.x - camera.position.x,
                 playerPos.y - playerRadius,
-                playerPos.z - camera.position.z * 0.2
+                playerPos.z - camera.position.z
             );
-
-            leftHand.position.copy(controller1.position);
-            leftHand.quaternion.copy(controller1.quaternion);
-            rightHand.position.copy(controller2.position);
-            rightHand.quaternion.copy(controller2.quaternion);
-
-            const torsoWorldPos = new THREE.Vector3(playerPos.x, (playerPos.y - playerRadius) + 0.35, playerPos.z);
-            
-            if (controller1.position.lengthSq() > 0.01) {
-                leftArm.position.copy(torsoWorldPos).add(controller1.position).multiplyScalar(0.5);
-                leftArm.lookAt(controller1.position);
-                leftArm.scale.set(1, 1, torsoWorldPos.distanceTo(controller1.position));
-            }
-            if (controller2.position.lengthSq() > 0.01) {
-                rightArm.position.copy(torsoWorldPos).add(controller2.position).multiplyScalar(0.5);
-                rightArm.lookAt(controller2.position);
-                rightArm.scale.set(1, 1, torsoWorldPos.distanceTo(controller2.position));
-            }
-
-            const camEuler = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
-            torso.rotation.y = camEuler.y;
-            leftLeg.rotation.y = camEuler.y;
-            rightLeg.rotation.y = camEuler.y;
 
             renderer.render(scene, camera);
         });
