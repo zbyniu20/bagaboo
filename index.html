@@ -32,7 +32,7 @@
 <body>
     <div id="menu">
         <h1>BagaBoo VR</h1>
-        <p class="subtitle">[ Corrected Floor Spawn ]</p>
+        <p class="subtitle">[ Upright Stance & Movement Audio ]</p>
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" value="Survivor" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#8B4513" /></div>
         <button id="btnStart">Enter Nightmare</button>
@@ -76,12 +76,11 @@
         flashlight.target = flashTarget;
 
         const playerRadius = 0.35;
-        // POPRAWKA: Startujemy dokładnie na wysokości promienia, dzięki czemu stopy i dno sfery stoją na Y=0 (podłoga)
         const playerPos = new THREE.Vector3(0, playerRadius, 0);
         const playerVel = new THREE.Vector3(0, 0, 0);
 
         // ==========================================
-        // 2. ADVANCED DARK HORROR AUDIO SYSTEM
+        // 2. HORROR AUDIO & MOVEMENT SOUNDS SYSTEM
         // ==========================================
         let audioCtx = null;
 
@@ -89,6 +88,7 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
 
+            // Sub-bass drone tła
             const subOsc = audioCtx.createOscillator();
             const subGain = audioCtx.createGain();
             const subFilter = audioCtx.createBiquadFilter();
@@ -104,6 +104,7 @@
             subGain.connect(audioCtx.destination);
             subOsc.start();
 
+            // Detuned pad
             const padOsc1 = audioCtx.createOscillator();
             const padOsc2 = audioCtx.createOscillator();
             const padGain = audioCtx.createGain();
@@ -124,6 +125,7 @@
             padOsc1.start();
             padOsc2.start();
 
+            // Losowe industrialne uderzenia
             setInterval(() => {
                 if (!audioCtx || audioCtx.state !== 'running') return;
                 if (Math.random() < 0.35) {
@@ -143,6 +145,31 @@
                     hitOsc.stop(audioCtx.currentTime + 0.8);
                 }
             }, 6000);
+        }
+
+        // Proceduralny dźwięk uderzenia dłoni / ruchu (Footstep / Slap sound)
+        function playFootstepSound() {
+            if (!audioCtx || audioCtx.state !== 'running') return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(35, audioCtx.currentTime + 0.12);
+
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(250, audioCtx.currentTime);
+
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.12);
         }
 
         // ==========================================
@@ -235,10 +262,11 @@
         };
 
         // ==========================================
-        // 6. MOVEMENT LOOP
+        // 6. UPRIGHT MOVEMENT & AUDIO LOOP
         // ==========================================
         const prevLocal1 = new THREE.Vector3(); 
         const prevLocal2 = new THREE.Vector3();
+        let lastStepTime = 0;
         const clock = new THREE.Clock();
 
         function processMovement(ctrl, prevPos) {
@@ -249,10 +277,13 @@
                     const handWorld = new THREE.Vector3();
                     ctrl.getWorldPosition(handWorld);
 
-                    let touch = (handWorld.y <= 0.35);
+                    const isUpright = camera.position.y >= 1.1;
+                    if (!isUpright) return;
+
+                    let touch = (handWorld.y <= 0.40);
                     if (!touch) {
                         for (let i = 0; i < obstacles.length; i++) {
-                            if (obstacles[i].distanceToPoint(handWorld) <= 0.2) {
+                            if (obstacles[i].distanceToPoint(handWorld) <= 0.25) {
                                 touch = true; break;
                             }
                         }
@@ -261,6 +292,13 @@
                     if (touch) {
                         const deltaWorld = deltaLocal.clone().applyQuaternion(playerRig.quaternion);
                         playerVel.addScaledVector(deltaWorld, -35.0);
+
+                        // Odtwórz dźwięk uderzenia dłoni/kroku z limitem częstotliwości (co najmniej 150ms odstępu)
+                        const now = clock.getElapsedTime();
+                        if (now - lastStepTime > 0.15) {
+                            playFootstepSound();
+                            lastStepTime = now;
+                        }
                     }
                 }
             }
@@ -286,9 +324,9 @@
             }
 
             playerRig.position.set(
-                playerPos.x - camera.position.x,
+                playerPos.x - camera.position.x * 0.2,
                 playerPos.y - playerRadius,
-                playerPos.z - camera.position.z
+                playerPos.z - camera.position.z * 0.2
             );
 
             leftHand.position.copy(controller1.position);
@@ -296,7 +334,7 @@
             rightHand.position.copy(controller2.position);
             rightHand.quaternion.copy(controller2.quaternion);
 
-            const torsoWorldPos = new THREE.Vector3(playerPos.x, playerPos.y + 0.35, playerPos.z);
+            const torsoWorldPos = new THREE.Vector3(playerPos.x, (playerPos.y - playerRadius) + 0.35, playerPos.z);
             
             if (controller1.position.lengthSq() > 0.01) {
                 leftArm.position.copy(torsoWorldPos).add(controller1.position).multiplyScalar(0.5);
