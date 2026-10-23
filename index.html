@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebVR Gorilla Tag - High Contrast FullBody</title>
+    <title>WebVR Gorilla Tag - Ultimate Playability Edition</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Courier New', Courier, monospace; }
         #lobby {
@@ -30,31 +30,29 @@
 <body>
     <div id="lobby">
         <h1>Gorilla Tag: The Maze</h1>
-        <p class="subtitle">High Contrast | Full Body VR | Fixed Movement</p>
+        <p class="subtitle">Direct Momentum Engine | Full Body VR</p>
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" value="Survivor" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#8B4513" /></div>
-        <div class="form-group"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. tag1" /></div>
+        <div class="form-group"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. play1" /></div>
         <div class="btn-group">
             <button id="btnHost">Host Game</button>
             <button id="btnJoin">Join Game</button>
         </div>
         <div id="status">Initializing...</div>
     </div>
-    <div id="info">Connected! Click "ENTER VR". Push off the grid floor to move. Look down to see your body.</div>
+    <div id="info">Connected! Click "ENTER VR". Push off the grid floor to move instantly.</div>
     <div id="audio-container" style="display:none;"></div>
 
     <script type="importmap">
         { "imports": {
             "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-            "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
         }}
     </script>
 
     <script type="module">
         import * as THREE from 'three';
         import { VRButton } from 'three/addons/webxr/VRButton.js';
-        import * as CANNON from 'cannon-es';
 
         let myProfile = { name: "Survivor", color: "#8B4513", id: null };
         let myStream = null;
@@ -89,25 +87,16 @@
         const flashTarget = new THREE.Object3D(); flashTarget.position.set(0, 0, -1); camera.add(flashTarget);
         flashlight.target = flashTarget;
 
-        const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12.0, 0) });
-        world.broadphase = new CANNON.SAPBroadphase(world);
-        world.allowSleep = true;
-        const physicsMat = new CANNON.Material();
-        world.addContactMaterial(new CANNON.ContactMaterial(physicsMat, physicsMat, { friction: 0.8, restitution: 0.0 }));
-
-        const radius = 0.35;
-        const playerBody = new CANNON.Body({
-            mass: 50, shape: new CANNON.Sphere(radius), material: physicsMat,
-            position: new CANNON.Vec3(0, radius, 0), linearDamping: 0.15, fixedRotation: true, allowSleep: false
-        });
-        world.addBody(playerBody);
+        // Player Physics State (Direct Momentum)
+        const playerPos = new THREE.Vector3(0, 0, 0);
+        const playerVel = new THREE.Vector3(0, 0, 0);
+        const playerRadius = 0.35;
 
         // ==========================================
         // 2. PROCEDURAL HIGH-CONTRAST TEXTURES
         // ==========================================
         function createGridTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 512; canvas.height = 512;
+            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#1e293b'; ctx.fillRect(0, 0, 512, 512);
             ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 12;
@@ -123,7 +112,6 @@
         }
         const floorGridTex = createGridTexture();
 
-        // Audio & Jumpscare
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playScarySound(type) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -161,12 +149,10 @@
         }
 
         // ==========================================
-        // 3. HIGH-CONTRAST WORLD (LOBBY + MAZE)
+        // 3. WORLD BUILD (LOBBY & MAZE)
         // ==========================================
         const lobbyGroup = new THREE.Group(); scene.add(lobbyGroup);
-        const lobbyObstacles = []; const lobbyTrampolines = []; const portals = []; const lobbyRopes = [];
-        const lobbyCompoundBody = new CANNON.Body({ mass: 0, material: physicsMat });
-        world.addBody(lobbyCompoundBody);
+        const lobbyBoxes = []; const lobbyTrampolines = []; const portals = []; const lobbyRopes = [];
 
         const mats = {
             wall: new THREE.MeshLambertMaterial({ color: 0x334155 }),
@@ -182,10 +168,9 @@
         function addLobbyBlock(x, y, z, w, h, d, mat, isTrampoline = false) {
             const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
             mesh.position.set(x, y, z); lobbyGroup.add(mesh);
-            lobbyCompoundBody.addShape(new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)), new CANNON.Vec3(x, y, z));
             const box3 = new THREE.Box3(new THREE.Vector3(x - w / 2, y - h / 2, z - d / 2), new THREE.Vector3(x + w / 2, y + h / 2, z + d / 2));
             if (isTrampoline) lobbyTrampolines.push(box3);
-            else lobbyObstacles.push(box3);
+            else lobbyBoxes.push(box3);
         }
 
         addLobbyBlock(0, -0.5, 0, 20, 1, 20, mats.floor);
@@ -227,10 +212,8 @@
 
         for (let i = 1; i <= 10; i++) {
             const isActive = (i === 1);
-            const row = i <= 5 ? 0 : 1;
-            const col = (i - 1) % 5;
-            const px = -6 + col * 3;
-            const pz = row === 0 ? 9.2 : -9.2;
+            const row = i <= 5 ? 0 : 1; const col = (i - 1) % 5;
+            const px = -6 + col * 3; const pz = row === 0 ? 9.2 : -9.2;
             const pMesh = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.2, 0.6), new THREE.MeshBasicMaterial({ color: isActive ? 0x00ffcc : 0xaa2255, wireframe: !isActive }));
             pMesh.position.set(px, 15.2, pz); lobbyGroup.add(pMesh);
             portals.push({ level: i, active: isActive, box3: new THREE.Box3().setFromObject(pMesh) });
@@ -238,9 +221,7 @@
 
         // --- MAZE (Level 1) ---
         const mazeGroup = new THREE.Group(); scene.add(mazeGroup); mazeGroup.visible = false;
-        const mazeObstacles = [];
-        const mazeCompoundBody = new CANNON.Body({ mass: 0, material: physicsMat });
-
+        const mazeBoxes = [];
         const MAZE_OFFSET_X = 500;
         const GRID_SIZE = 14; const CELL_SIZE = 5;
         let seed = 12345;
@@ -271,8 +252,7 @@
             wallInst.setMatrixAt(wCount++, dummy.matrix);
             const halfW = rotY ? 0.3 : (CELL_SIZE + 0.6) / 2;
             const halfD = rotY ? (CELL_SIZE + 0.6) / 2 : 0.3;
-            mazeCompoundBody.addShape(new CANNON.Box(new CANNON.Vec3(halfW, 4, halfD)), new CANNON.Vec3(x, 4, z));
-            mazeObstacles.push(new THREE.Box3(new THREE.Vector3(x - halfW, 0, z - halfD), new THREE.Vector3(x + halfW, 8, z + halfD)));
+            mazeBoxes.push(new THREE.Box3(new THREE.Vector3(x - halfW, 0, z - halfD), new THREE.Vector3(x + halfW, 8, z + halfD)));
         }
 
         for (let i = 0; i < GRID_SIZE; i++) {
@@ -299,12 +279,7 @@
 
         const mFloor = new THREE.Mesh(new THREE.BoxGeometry(75, 1, 75), new THREE.MeshLambertMaterial({ map: floorGridTex }));
         mFloor.position.set(MAZE_OFFSET_X + 32.5, -0.5, 32.5); mazeGroup.add(mFloor);
-        mazeCompoundBody.addShape(new CANNON.Box(new CANNON.Vec3(37.5, 0.5, 37.5)), new CANNON.Vec3(MAZE_OFFSET_X + 32.5, -0.5, 32.5));
-        mazeObstacles.push(new THREE.Box3(new THREE.Vector3(MAZE_OFFSET_X - 5, -1, -5), new THREE.Vector3(MAZE_OFFSET_X + 70, 0, 70)));
-
-        const mCeil = new THREE.Mesh(new THREE.BoxGeometry(75, 1, 75), new THREE.MeshLambertMaterial({ color: 0x333322 }));
-        mCeil.position.set(MAZE_OFFSET_X + 32.5, 8.5, 32.5); mazeGroup.add(mCeil);
-        mazeCompoundBody.addShape(new CANNON.Box(new CANNON.Vec3(37.5, 0.5, 37.5)), new CANNON.Vec3(MAZE_OFFSET_X + 32.5, 8.5, 32.5));
+        mazeBoxes.push(new THREE.Box3(new THREE.Vector3(MAZE_OFFSET_X - 5, -1, -5), new THREE.Vector3(MAZE_OFFSET_X + 70, 0, 70)));
 
         const exitMesh = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 3), new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true }));
         exitMesh.position.set(MAZE_OFFSET_X + 13 * CELL_SIZE, 2, 13 * CELL_SIZE); mazeGroup.add(exitMesh);
@@ -322,7 +297,7 @@
         scene.add(monsterGroup); monsterGroup.visible = false;
 
         let currentZone = 'lobby';
-        let activeObstacles = lobbyObstacles;
+        let activeBoxes = lobbyBoxes;
         let levelStartTime = 0;
         const playerPathHistory = [];
         let monsterPathIndex = 0;
@@ -331,26 +306,17 @@
         function switchZone(toZone) {
             playerPathHistory.length = 0; isGrabbingRope = false;
             if (toZone === 'maze') {
-                world.removeBody(lobbyCompoundBody);
-                world.addBody(mazeCompoundBody);
-                lobbyGroup.visible = false;
-                mazeGroup.visible = true;
-                activeObstacles = mazeObstacles;
-                currentZone = 'maze';
-                playerBody.position.set(MAZE_OFFSET_X, radius, 0);
-                playerBody.velocity.set(0, 0, 0);
-                gameStateMaze = 'maze_safe';
-                levelStartTime = clock.getElapsedTime();
+                lobbyGroup.visible = false; mazeGroup.visible = true;
+                activeBoxes = mazeBoxes; currentZone = 'maze';
+                playerPos.set(MAZE_OFFSET_X, playerRadius, 0);
+                playerVel.set(0, 0, 0);
+                gameStateMaze = 'maze_safe'; levelStartTime = clock.getElapsedTime();
             } else {
-                world.removeBody(mazeCompoundBody);
-                world.addBody(lobbyCompoundBody);
-                mazeGroup.visible = false;
-                lobbyGroup.visible = true;
-                monsterGroup.visible = false;
-                activeObstacles = lobbyObstacles;
+                mazeGroup.visible = false; lobbyGroup.visible = true;
+                monsterGroup.visible = false; activeBoxes = lobbyBoxes;
                 currentZone = 'lobby';
-                playerBody.position.set(0, radius, 0);
-                playerBody.velocity.set(0, 0, 0);
+                playerPos.set(0, playerRadius, 0);
+                playerVel.set(0, 0, 0);
             }
         }
 
@@ -366,7 +332,6 @@
             const g = new THREE.Group();
             const hMat = new THREE.MeshLambertMaterial({ color: color });
             
-            // Torso (Widoczne po spojrzeniu w dół)
             const torso = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.55, 0.3), hMat);
             torso.position.set(0, -0.3, -0.1);
             g.add(torso);
@@ -389,14 +354,14 @@
         playerRig.add(controller1); playerRig.add(controller2);
         
         const localAvatar = createAvatar(myProfile.color, myProfile.name, true);
-        camera.add(localAvatar.group); // Przypięcie do kamery, aby ciało zawsze było pod Tobą w polu widzenia!
+        camera.add(localAvatar.group); // Torso i cała sylwetka widoczna przy patrzeniu w dół
 
         let isGrabbingRope = false;
         function onSqueezeStart(e) {
             const ctrl = e.target; const pos = new THREE.Vector3(); ctrl.getWorldPosition(pos);
             for (let rope of lobbyRopes) {
                 if (rope.position.distanceTo(pos) < 2.0 && currentZone === 'lobby') {
-                    isGrabbingRope = true; playerBody.velocity.set(0, 0, 0); break;
+                    isGrabbingRope = true; playerVel.set(0, 0, 0); break;
                 }
             }
         }
@@ -451,7 +416,7 @@
             const code = document.getElementById('roomCode').value.trim(); if (!code) return alert("Enter Room Code!");
             myProfile.name = document.getElementById('playerName').value || "Host";
             myProfile.color = document.getElementById('playerColor').value;
-            isHost = true; peer = new Peer("vr-fullbody-" + code);
+            isHost = true; peer = new Peer("vr-play-" + code);
             peer.on('open', id => { myProfile.id = id; startNetworkLoop(); });
             peer.on('connection', conn => {
                 clients.push(conn);
@@ -466,19 +431,17 @@
             myProfile.color = document.getElementById('playerColor').value;
             isHost = false; peer = new Peer();
             peer.on('open', id => {
-                myProfile.id = id; hostConn = peer.connect("vr-fullbody-" + code);
+                myProfile.id = id; hostConn = peer.connect("vr-play-" + code);
                 hostConn.on('open', () => startNetworkLoop());
                 hostConn.on('data', d => { if (d.type === 'state') { for (let pid in d.players) { if (pid !== myProfile.id) updateRemoteVisuals(pid, d.players[pid]); } } });
-                if (myStream) { const call = peer.call("vr-fullbody-" + code, myStream); call.on('stream', s => playAudioStream(s)); }
+                if (myStream) { const call = peer.call("vr-play-" + code, myStream); call.on('stream', s => playAudioStream(s)); }
             });
         };
 
         // ==========================================
-        // 5. MAIN LOOP
+        // 5. DIRECT GORILLA TAG MOMENTUM LOOP
         // ==========================================
         const prevLocal1 = new THREE.Vector3(); const prevLocal2 = new THREE.Vector3();
-        const tmpDelta1 = new THREE.Vector3(); const tmpDelta2 = new THREE.Vector3();
-        const tmpHandWorld1 = new THREE.Vector3(); const tmpHandWorld2 = new THREE.Vector3();
         const clock = new THREE.Clock();
 
         function processMovement(ctrl, handMesh, prevPos) {
@@ -486,21 +449,22 @@
             if (prevPos.lengthSq() > 0 && !isGrabbingRope) {
                 const deltaLocal = new THREE.Vector3().subVectors(currPos, prevPos);
                 if (deltaLocal.lengthSq() > 0.000001) {
-                    handMesh.getWorldPosition(tmpHandWorld1);
+                    const handWorld = new THREE.Vector3();
+                    handMesh.getWorldPosition(handWorld);
 
                     if (currentZone === 'lobby') {
                         for (let i = 0; i < lobbyTrampolines.length; i++) {
-                            if (lobbyTrampolines[i].distanceToPoint(tmpHandWorld1) < 0.3) {
-                                playerBody.velocity.y = 16.0; prevPos.copy(currPos); return;
+                            if (lobbyTrampolines[i].distanceToPoint(handWorld) < 0.3) {
+                                playerVel.y = 12.0; prevPos.copy(currPos); return;
                             }
                         }
                     }
 
-                    // Czuła detekcja podłoża (Y <= 0.45)
-                    let touch = (tmpHandWorld1.y <= 0.45);
+                    // Dotknięcie podłoża (Y <= 0.35) lub przeszkody
+                    let touch = (handWorld.y <= 0.35);
                     if (!touch) {
-                        for (let i = 0; i < activeObstacles.length; i++) {
-                            if (activeObstacles[i].distanceToPoint(tmpHandWorld1) <= 0.25) {
+                        for (let i = 0; i < activeBoxes.length; i++) {
+                            if (activeBoxes[i].distanceToPoint(handWorld) <= 0.2) {
                                 touch = true; break;
                             }
                         }
@@ -508,11 +472,8 @@
 
                     if (touch) {
                         const deltaWorld = deltaLocal.clone().applyQuaternion(playerRig.quaternion);
-                        const push = -1800; // Siła impulsu Gorilla Tag
-                        playerBody.applyImpulse(
-                            new CANNON.Vec3(deltaWorld.x * push, deltaWorld.y * push, deltaWorld.z * push),
-                            playerBody.position
-                        );
+                        // Bezpośredni impuls pędu Gorilla Tag
+                        playerVel.addScaledVector(deltaWorld, -25.0);
                     }
                 }
             }
@@ -522,21 +483,37 @@
         renderer.setAnimationLoop(() => {
             const dt = Math.min(clock.getDelta(), 0.05);
             const time = clock.getElapsedTime();
-            world.step(1 / 60, dt, 2);
 
             if (renderer.xr.isPresenting) {
                 processMovement(controller1, localAvatar.handL, prevLocal1);
                 processMovement(controller2, localAvatar.handR, prevLocal2);
             }
-            if (isGrabbingRope) playerBody.velocity.y = -1.5;
 
-            // Synchronizacja fizyki sfery z rigiem VR
+            // Grawitacja i opór powietrza
+            if (isGrabbingRope) {
+                playerVel.set(0, -1.0, 0);
+            } else {
+                playerVel.y -= 12.0 * dt; // Grawitacja
+                playerVel.multiplyScalar(Math.pow(0.85, dt * 60)); // Tłumienie pędu
+            }
+
+            // Integracja pozycji
+            playerPos.addScaledVector(playerVel, dt);
+
+            // Kolizja z podłogą
+            if (playerPos.y < playerRadius) {
+                playerPos.y = playerRadius;
+                if (playerVel.y < 0) playerVel.y = 0;
+            }
+
+            // Aplikowanie pozycji do rig'a VR
             playerRig.position.set(
-                playerBody.position.x,
-                playerBody.position.y - radius,
-                playerBody.position.z
+                playerPos.x - camera.position.x,
+                playerPos.y - playerRadius,
+                playerPos.z - camera.position.z
             );
 
+            // Strefy i potwór
             if (currentZone === 'lobby') {
                 if (portals[0].box3.containsPoint(camera.getWorldPosition(new THREE.Vector3()))) switchZone('maze');
             } else {
@@ -578,7 +555,7 @@
                 }
             }
 
-            if (playerBody.position.y < -5) switchZone('lobby');
+            if (playerPos.y < -5) switchZone('lobby');
 
             renderer.render(scene, camera);
         });
