@@ -32,7 +32,7 @@
 <body>
     <div id="menu">
         <h1>BagaBoo VR</h1>
-        <p class="subtitle">[ 20x40x20m Rectangular Arena ]</p>
+        <p class="subtitle">[ Rock-Solid Fixed Physics Arena ]</p>
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" value="Survivor" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#8B4513" /></div>
         <button id="btnStart">Enter Nightmare</button>
@@ -183,7 +183,7 @@
             }
             const tex = new THREE.CanvasTexture(canvas);
             tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-            tex.repeat.set(8, 16); // Skalowanie siatki dla wymiarów 20x40
+            tex.repeat.set(8, 16);
             return tex;
         }
 
@@ -202,20 +202,18 @@
             obstacles.push(new THREE.Box3(new THREE.Vector3(x - w/2, y - h/2, z - d/2), new THREE.Vector3(x + w/2, y + h/2, z + d/2)));
         }
 
-        // Wymiary: Szerokość X = 20, Długość Z = 40, Wysokość Y = 20
-        addBlock(0, -0.5, 0, 20, 1, 40, mats.floor); // Podłoga 20x40
-        addBlock(0, 20.5, 0, 20, 1, 40, mats.wall);  // Sufit na wys. 20m
-        addBlock(0, 10, -20.5, 22, 20, 1, mats.wall); // Ściana Północna
-        addBlock(0, 10, 20.5, 22, 20, 1, mats.wall);  // Ściana Południowa
-        addBlock(-10.5, 10, 0, 1, 20, 42, mats.wall); // Ściana Zachodnia
-        addBlock(10.5, 10, 0, 1, 20, 42, mats.wall); // Ściana Wschodnia
+        addBlock(0, -0.5, 0, 20, 1, 40, mats.floor);
+        addBlock(0, 20.5, 0, 20, 1, 40, mats.wall);
+        addBlock(0, 10, -20.5, 22, 20, 1, mats.wall);
+        addBlock(0, 10, 20.5, 22, 20, 1, mats.wall);
+        addBlock(-10.5, 10, 0, 1, 20, 42, mats.wall);
+        addBlock(10.5, 10, 0, 1, 20, 42, mats.wall);
 
-        // Przeszkody wewnątrz dużej hali
-        addBlock(0, 10, 0, 2, 20, 2, mats.pillar);   // Centralny filar (wys. 20m)
-        addBlock(-5, 1.5, -10, 4, 3, 4, mats.obstacle); // Skrzynia 1
-        addBlock(6, 2.5, 10, 5, 5, 3, mats.obstacle);  // Przeszkoda 2
-        addBlock(-6, 4, 12, 2, 8, 2, mats.obstacle);   // Słup 3
-        addBlock(5, 3, -12, 3, 6, 3, mats.obstacle);   // Słup 4
+        addBlock(0, 10, 0, 2, 20, 2, mats.pillar);
+        addBlock(-5, 1.5, -10, 4, 3, 4, mats.obstacle);
+        addBlock(6, 2.5, 10, 5, 5, 3, mats.obstacle);
+        addBlock(-6, 4, 12, 2, 8, 2, mats.obstacle);
+        addBlock(5, 3, -12, 3, 6, 3, mats.obstacle);
 
         // ==========================================
         // 4. HANDS-ONLY AVATAR
@@ -244,12 +242,15 @@
         };
 
         // ==========================================
-        // 6. SOLID COLLISION & MOVEMENT LOOP
+        // 6. ROCK-SOLID FIXED TIMESTEP PHYSICS LOOP
         // ==========================================
         const prevLocal1 = new THREE.Vector3(); 
         const prevLocal2 = new THREE.Vector3();
         let lastStepTime = 0;
         const clock = new THREE.Clock();
+
+        const FIXED_DT = 1 / 90; // Stały krok fizyki dla płynnych 90Hz w goglach VR
+        let accumulator = 0;
 
         function resolveCollisions() {
             for (let i = 0; i < obstacles.length; i++) {
@@ -325,7 +326,7 @@
 
                     if (touch) {
                         const deltaWorld = deltaLocal.clone().applyQuaternion(playerRig.quaternion);
-                        playerVel.addScaledVector(deltaWorld, -40.0);
+                        playerVel.addScaledVector(deltaWorld, -45.0); // Szybki, responsywny impuls
 
                         const now = clock.getElapsedTime();
                         if (now - lastStepTime > 0.15) {
@@ -338,16 +339,16 @@
             prevPos.copy(currPos);
         }
 
-        renderer.setAnimationLoop(() => {
-            const dt = Math.min(clock.getDelta(), 0.05);
-
+        // Stała pętla fizyczna (niezależna od spadków klatek w goglach)
+        function physicsStep(dt) {
             if (renderer.xr.isPresenting) {
                 processMovement(controller1, prevLocal1);
                 processMovement(controller2, prevLocal2);
             }
 
-            playerVel.y -= 22.0 * dt; 
-            playerVel.multiplyScalar(0.97);
+            // Normalna, stała grawitacja
+            playerVel.y -= 25.0 * dt; 
+            playerVel.multiplyScalar(0.96); // Stabilne tarcie
 
             playerPos.addScaledVector(playerVel, dt);
 
@@ -356,6 +357,17 @@
             if (playerPos.y < playerRadius) {
                 playerPos.y = playerRadius;
                 if (playerVel.y < 0) playerVel.y = 0;
+            }
+        }
+
+        renderer.setAnimationLoop(() => {
+            const frameDelta = clock.getDelta();
+            accumulator += Math.min(frameDelta, 0.1);
+
+            // Wykonaj fizykę w stałych odstępach czasu
+            while (accumulator >= FIXED_DT) {
+                physicsStep(FIXED_DT);
+                accumulator -= FIXED_DT;
             }
 
             playerRig.position.set(
