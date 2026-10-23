@@ -32,7 +32,7 @@
 <body>
     <div id="menu">
         <h1>BagaBoo VR</h1>
-        <p class="subtitle">[ Upright 170cm Hands-Only Mode ]</p>
+        <p class="subtitle">[ 20x40x20m Rectangular Arena ]</p>
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" value="Survivor" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#8B4513" /></div>
         <button id="btnStart">Enter Nightmare</button>
@@ -56,7 +56,7 @@
         // ==========================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a0c10);
-        scene.fog = new THREE.FogExp2(0x0a0c10, 0.025);
+        scene.fog = new THREE.FogExp2(0x0a0c10, 0.02);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 150);
         const playerRig = new THREE.Group(); playerRig.add(camera); scene.add(playerRig);
@@ -70,7 +70,7 @@
 
         scene.add(new THREE.HemisphereLight(0x334466, 0x111122, 0.8));
 
-        const flashlight = new THREE.SpotLight(0xfff5b6, 80, 25, Math.PI / 4, 0.6, 1.5);
+        const flashlight = new THREE.SpotLight(0xfff5b6, 90, 30, Math.PI / 4, 0.6, 1.5);
         camera.add(flashlight);
         const flashTarget = new THREE.Object3D(); flashTarget.position.set(0, 0, -1); camera.add(flashTarget);
         flashlight.target = flashTarget;
@@ -80,7 +80,7 @@
         const playerVel = new THREE.Vector3(0, 0, 0);
 
         // ==========================================
-        // 2. HORROR AUDIO & MOVEMENT SOUNDS SYSTEM
+        // 2. HORROR AUDIO SYSTEM
         // ==========================================
         let audioCtx = null;
 
@@ -169,7 +169,7 @@
         }
 
         // ==========================================
-        // 3. HIGH-CONTRAST ENVIRONMENT
+        // 3. RECTANGULAR ENVIRONMENT (20x40x20m)
         // ==========================================
         function createGridTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
@@ -183,7 +183,7 @@
             }
             const tex = new THREE.CanvasTexture(canvas);
             tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-            tex.repeat.set(8, 8);
+            tex.repeat.set(8, 16); // Skalowanie siatki dla wymiarów 20x40
             return tex;
         }
 
@@ -202,20 +202,23 @@
             obstacles.push(new THREE.Box3(new THREE.Vector3(x - w/2, y - h/2, z - d/2), new THREE.Vector3(x + w/2, y + h/2, z + d/2)));
         }
 
-        addBlock(0, -0.5, 0, 20, 1, 20, mats.floor);
-        addBlock(0, 15.5, 0, 20, 1, 20, mats.wall);
-        addBlock(0, 7.5, -10.5, 21, 15, 1, mats.wall);
-        addBlock(0, 7.5, 10.5, 21, 15, 1, mats.wall);
-        addBlock(-10.5, 7.5, 0, 1, 15, 21, mats.wall);
-        addBlock(10.5, 7.5, 0, 1, 15, 21, mats.wall);
+        // Wymiary: Szerokość X = 20, Długość Z = 40, Wysokość Y = 20
+        addBlock(0, -0.5, 0, 20, 1, 40, mats.floor); // Podłoga 20x40
+        addBlock(0, 20.5, 0, 20, 1, 40, mats.wall);  // Sufit na wys. 20m
+        addBlock(0, 10, -20.5, 22, 20, 1, mats.wall); // Ściana Północna
+        addBlock(0, 10, 20.5, 22, 20, 1, mats.wall);  // Ściana Południowa
+        addBlock(-10.5, 10, 0, 1, 20, 42, mats.wall); // Ściana Zachodnia
+        addBlock(10.5, 10, 0, 1, 20, 42, mats.wall); // Ściana Wschodnia
 
-        addBlock(0, 7.5, 0, 2, 15, 2, mats.pillar);
-        addBlock(-5, 1.5, -5, 3, 3, 3, mats.obstacle);
-        addBlock(5, 2.5, 5, 4, 5, 2, mats.obstacle);
-        addBlock(-6, 4, 4, 2, 8, 2, mats.obstacle);
+        // Przeszkody wewnątrz dużej hali
+        addBlock(0, 10, 0, 2, 20, 2, mats.pillar);   // Centralny filar (wys. 20m)
+        addBlock(-5, 1.5, -10, 4, 3, 4, mats.obstacle); // Skrzynia 1
+        addBlock(6, 2.5, 10, 5, 5, 3, mats.obstacle);  // Przeszkoda 2
+        addBlock(-6, 4, 12, 2, 8, 2, mats.obstacle);   // Słup 3
+        addBlock(5, 3, -12, 3, 6, 3, mats.obstacle);   // Słup 4
 
         // ==========================================
-        // 4. HANDS-ONLY AVATAR (Tylko ręce widoczne dla gracza)
+        // 4. HANDS-ONLY AVATAR
         // ==========================================
         const controller1 = renderer.xr.getController(0); 
         const controller2 = renderer.xr.getController(1);
@@ -241,12 +244,67 @@
         };
 
         // ==========================================
-        // 6. UPRIGHT HANDS-ONLY MOVEMENT LOOP
+        // 6. SOLID COLLISION & MOVEMENT LOOP
         // ==========================================
         const prevLocal1 = new THREE.Vector3(); 
         const prevLocal2 = new THREE.Vector3();
         let lastStepTime = 0;
         const clock = new THREE.Clock();
+
+        function resolveCollisions() {
+            for (let i = 0; i < obstacles.length; i++) {
+                const box = obstacles[i];
+                
+                if (playerPos.x >= box.min.x && playerPos.x <= box.max.x &&
+                    playerPos.y >= box.min.y && playerPos.y <= box.max.y &&
+                    playerPos.z >= box.min.z && playerPos.z <= box.max.z) {
+                    
+                    const pX1 = playerPos.x - box.min.x;
+                    const pX2 = box.max.x - playerPos.x;
+                    const pY1 = playerPos.y - box.min.y;
+                    const pY2 = box.max.y - playerPos.y;
+                    const pZ1 = playerPos.z - box.min.z;
+                    const pZ2 = box.max.z - playerPos.z;
+
+                    let minPen = Math.min(pX1, pX2, pY1, pY2, pZ1, pZ2);
+                    if (minPen === pX1) playerPos.x = box.min.x - playerRadius;
+                    else if (minPen === pX2) playerPos.x = box.max.x + playerRadius;
+                    else if (minPen === pY1) { playerPos.y = box.min.y - playerRadius; playerVel.y = 0; }
+                    else if (minPen === pY2) { playerPos.y = box.max.y + playerRadius; playerVel.y = 0; }
+                    else if (minPen === pZ1) playerPos.z = box.min.z - playerRadius;
+                    else if (minPen === pZ2) playerPos.z = box.max.z + playerRadius;
+                    
+                } else {
+                    const cx = Math.max(box.min.x, Math.min(playerPos.x, box.max.x));
+                    const cy = Math.max(box.min.y, Math.min(playerPos.y, box.max.y));
+                    const cz = Math.max(box.min.z, Math.min(playerPos.z, box.max.z));
+
+                    const dx = playerPos.x - cx;
+                    const dy = playerPos.y - cy;
+                    const dz = playerPos.z - cz;
+                    const distSq = dx * dx + dy * dy + dz * dz;
+
+                    if (distSq < playerRadius * playerRadius && distSq > 0) {
+                        const dist = Math.sqrt(distSq);
+                        const overlap = playerRadius - dist;
+                        const nx = dx / dist;
+                        const ny = dy / dist;
+                        const nz = dz / dist;
+
+                        playerPos.x += nx * overlap;
+                        playerPos.y += ny * overlap;
+                        playerPos.z += nz * overlap;
+
+                        const dot = playerVel.x * nx + playerVel.y * ny + playerVel.z * nz;
+                        if (dot < 0) {
+                            playerVel.x -= nx * dot;
+                            playerVel.y -= ny * dot;
+                            playerVel.z -= nz * dot;
+                        }
+                    }
+                }
+            }
+        }
 
         function processMovement(ctrl, prevPos) {
             const currPos = ctrl.position.clone();
@@ -256,7 +314,6 @@
                     const handWorld = new THREE.Vector3();
                     ctrl.getWorldPosition(handWorld);
 
-                    // Automatyczna detekcja dla gracza 170cm (prosta sylwetka, próg rąk na wysokości do 0.85m od podłogi)
                     let touch = (handWorld.y <= 0.85);
                     if (!touch) {
                         for (let i = 0; i < obstacles.length; i++) {
@@ -268,7 +325,7 @@
 
                     if (touch) {
                         const deltaWorld = deltaLocal.clone().applyQuaternion(playerRig.quaternion);
-                        playerVel.addScaledVector(deltaWorld, -40.0); // Dynamiczny impuls Gorilla Tag
+                        playerVel.addScaledVector(deltaWorld, -40.0);
 
                         const now = clock.getElapsedTime();
                         if (now - lastStepTime > 0.15) {
@@ -289,17 +346,18 @@
                 processMovement(controller2, prevLocal2);
             }
 
-            playerVel.y -= 12.0 * dt; 
+            playerVel.y -= 22.0 * dt; 
             playerVel.multiplyScalar(0.97);
 
             playerPos.addScaledVector(playerVel, dt);
+
+            resolveCollisions();
 
             if (playerPos.y < playerRadius) {
                 playerPos.y = playerRadius;
                 if (playerVel.y < 0) playerVel.y = 0;
             }
 
-            // Pozycjonowanie rig'a dla osoby stojącej w pełni wyprostowanej (170 cm)
             playerRig.position.set(
                 playerPos.x - camera.position.x,
                 playerPos.y - playerRadius,
