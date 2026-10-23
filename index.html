@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebVR Gorilla Tag - Overcast Daylight Edition</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #78909c; font-family: 'Courier New', Courier, monospace; }
+        
+        #lobby {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, #37474f, #111111); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 1000; color: #ff5252;
+        }
+        #lobby h1 { margin-bottom: 5px; font-size: 40px; text-shadow: 0 0 10px #ff0000; text-transform: uppercase; letter-spacing: 3px; }
+        #lobby p.subtitle { margin-bottom: 25px; color: #cfd8dc; font-size: 14px; }
+        
+        .form-group { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; width: 340px; justify-content: space-between; color: white;}
+        .form-group label { font-weight: bold; }
+        input, select { padding: 10px; font-size: 16px; border-radius: 2px; border: 1px solid #ff5252; background: #222; color: white; width: 180px; }
+        input[type="color"] { padding: 0; height: 40px; cursor: pointer; border: 1px solid #ff5252; }
+        
+        .btn-group { display: flex; gap: 15px; margin-top: 20px; }
+        button { padding: 15px 25px; font-size: 16px; font-weight: bold; border: 1px solid #ff5252; border-radius: 2px; cursor: pointer; transition: 0.3s; background: #111; color: #ff5252; text-transform: uppercase; }
+        button:hover { background: #330000; box-shadow: 0 0 15px #ff5252; }
+        button:disabled { background: #222; color: #555; border-color: #555; cursor: not-allowed; box-shadow: none; }
+        
+        #status { margin-top: 20px; font-weight: bold; font-size: 16px; color: #ff8a80; text-align: center; max-width: 400px; }
+        #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #ffffff; font-weight: bold; z-index: 100; text-shadow: 2px 2px 5px black; display: none; }
+        
+        #VRButton { display: none !important; }
+        .connected #VRButton { display: block !important; border: 1px solid #ff5252 !important; background: #222 !important; color: white !important; }
+    </style>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <div id="lobby">
+        <h1>Gorilla Tag: Foggy Day</h1>
+        <p class="subtitle">Overcast Forest Survival</p>
+        
+        <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Victim1" value="Survivor" /></div>
+        <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
+        <div class="form-group">
+            <label>Hat:</label>
+            <select id="playerHat">
+                <option value="none">None</option>
+                <option value="tophat">Top Hat</option>
+                <option value="cap">Baseball Cap</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Glasses:</label>
+            <select id="playerGlasses">
+                <option value="none">None</option>
+                <option value="sunglasses">Black Shades</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-top: 15px;"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. fog" /></div>
+        
+        <div class="btn-group">
+            <button id="btnHost">Host Overcast Game</button>
+            <button id="btnJoin">Join Overcast Game</button>
+        </div>
+        <div id="status">Initializing...</div>
+    </div>
+
+    <div id="info">Connected. Click "ENTER VR".</div>
+    <div id="audio-container" style="display:none;"></div>
+
+    <script type="importmap">
+        { "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+            "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+        }}
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
+        import * as CANNON from 'cannon-es';
+
+        // --- GLOBAL VARIABLES ---
+        let myProfile = { name: "Survivor", color: "#3d2314", hat: "none", glasses: "none" };
+        let myStream = null;
+
+        const statusDiv = document.getElementById('status');
+        async function initMic() {
+            try {
+                myStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                statusDiv.innerText = "Mic access granted. Enter Room Code.";
+            } catch (err) {
+                statusDiv.innerText = "Mic access denied. Voice chat disabled.";
+            }
+        }
+        initMic();
+
+        function createNoiseTexture(size, intensity) {
+            const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d'); const imgData = ctx.createImageData(size, size);
+            for (let i = 0; i < imgData.data.length; i += 4) {
+                const val = 255 - Math.random() * intensity;
+                imgData.data[i] = val; imgData.data[i+1] = val; imgData.data[i+2] = val; imgData.data[i+3] = 255;
+            }
+            ctx.putImageData(imgData, 0, 0);
+            const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
+        }
+        const dirtBumpMap = createNoiseTexture(512, 180);
+        const barkBumpMap = createNoiseTexture(256, 120);
+
+        // ==========================================
+        // 1. ENGINE, PHYSICS & OVERCAST DAYLIGHT
+        // ==========================================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x78909c); // Jasno-szaroniebieskie pochmurne niebo
+        scene.fog = new THREE.FogExp2(0x78909c, 0.005); // Delikatna, rozproszona dzienna mgła
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 400);
+        const playerRig = new THREE.Group(); playerRig.add(camera); scene.add(playerRig);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.xr.enabled = true; 
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; 
+        renderer.toneMappingExposure = 1.2; // Jasny, dzienny balans ekspozycji
+        renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement); 
+        const vrBtn = VRButton.createButton(renderer); document.body.appendChild(vrBtn);
+
+        // Jasne, miękkie oświetlenie otoczenia (cień z zachmurzonego nieba)
+        const ambientLight = new THREE.AmbientLight(0xddeeff, 1.4); 
+        scene.add(ambientLight);
+
+        // Słońce ukryte za chmurami (daje rozproszone, miękkie światło z góry)
+        const overcastSun = new THREE.DirectionalLight(0xffffff, 1.8); 
+        overcastSun.position.set(50, 200, 50); 
+        overcastSun.castShadow = true;
+        overcastSun.shadow.camera.top = 100; overcastSun.shadow.camera.bottom = -100;
+        overcastSun.shadow.camera.left = -100; overcastSun.shadow.camera.right = 100;
+        overcastSun.shadow.camera.near = 0.5; overcastSun.shadow.camera.far = 400; 
+        overcastSun.shadow.mapSize.width = 2048; overcastSun.shadow.mapSize.height = 2048;
+        overcastSun.shadow.bias = -0.0005;
+        scene.add(overcastSun);
+
+        const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12.0, 0) });
+        world.broadphase = new CANNON.SAPBroadphase(world);
+        
+        const physicsMat = new CANNON.Material();
+        const contactMat = new CANNON.ContactMaterial(physicsMat, physicsMat, { friction: 0.8, restitution: 0.0 });
+        world.addContactMaterial(contactMat);
+
+        const radius = 0.35; 
+        const playerBody = new CANNON.Body({
+            mass: 50, shape: new CANNON.Sphere(radius), material: physicsMat,
+            position: new CANNON.Vec3(0, 2, 0), linearDamping: 0.1, fixedRotation: true
+        });
+        world.addBody(playerBody);
+
+        // ==========================================
+        // 2. WORLD BUILDING (200x200m)
+        // ==========================================
+        const obstacles = []; const trampolines = []; const ropes = []; const throwables = [];
+
+        function addBlock(x, y, z, w, h, d, color, type="normal") {
+            const material = new THREE.MeshStandardMaterial({ color: color, roughness: 0.8 });
+            if(type === "dirt") { material.bumpMap = dirtBumpMap; material.bumpScale = 0.05; material.bumpMap.repeat.set(w/5, d/5); }
+            if(type === "trampoline") { material.roughness = 0.2; material.metalness = 0.3; }
+
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+            mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = (type !== "dirt"); scene.add(mesh); 
+            
+            const shape = new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2));
+            const body = new CANNON.Body({ mass: 0, shape: shape, material: physicsMat });
+            body.position.set(x, y, z); world.addBody(body);
+            
+            if(["normal", "stone", "wood", "dirt"].includes(type)) { 
+                obstacles.push({ mesh, body, box3: new THREE.Box3().setFromObject(mesh) }); 
+            }
+            else if(type === "trampoline") { trampolines.push({box3: new THREE.Box3().setFromObject(mesh)}); }
+            else if(type === "rope") { ropes.push(mesh); }
+        }
+
+        const mapSize = 200;
+        const halfMap = mapSize / 2;
+        const wallThickness = 40;
+
+        addBlock(0, -0.5, 0, mapSize, 1, mapSize, 0x4e5d4c, "dirt"); 
+        
+        addBlock(0, 20, -halfMap - wallThickness/2, mapSize + wallThickness*2, 40, wallThickness, 0x546e7a, "stone");
+        addBlock(0, 20, halfMap + wallThickness/2, mapSize + wallThickness*2, 40, wallThickness, 0x546e7a, "stone");
+        addBlock(-halfMap - wallThickness/2, 20, 0, wallThickness, 40, mapSize, 0x546e7a, "stone");
+        addBlock(halfMap + wallThickness/2, 20, 0, wallThickness, 40, mapSize, 0x546e7a, "stone");
+
+        addBlock(0, 7.5, 5, 4, 15, 4, 0x3e2723, "wood"); 
+        addBlock(10, 0.5, 5, 4, 0.5, 4, 0x880e4f, "trampoline"); 
+        addBlock(6, 6, 5, 0.2, 8, 0.2, 0x2e7d32, "rope");
+
+        const treeCount = 350;
+        const trunkGeo = new THREE.CylinderGeometry(0.6, 1.2, 12, 6);
+        const leafGeo = new THREE.BoxGeometry(3, 4, 3);
+        const trunkMat = new THREE.MeshStandardMaterial({color: 0x2e1c14, roughness: 0.9, bumpMap: barkBumpMap, bumpScale: 0.1});
+        const leafMat = new THREE.MeshStandardMaterial({color: 0x37474f, roughness: 0.8}); 
+        
+        const instancedTrunks = new THREE.InstancedMesh(trunkGeo, trunkMat, treeCount);
+        const instancedLeaves = new THREE.InstancedMesh(leafGeo, leafMat, treeCount);
+        instancedTrunks.castShadow = true; instancedTrunks.receiveShadow = true;
+        instancedLeaves.castShadow = true; instancedLeaves.receiveShadow = true;
+        
+        const dummy = new THREE.Object3D();
+        const treeShape = new CANNON.Cylinder(0.6, 1.2, 12, 6); 
+
+        for (let i = 0; i < treeCount; i++) {
+            let tx = (Math.random() - 0.5) * 180;
+            let tz = (Math.random() - 0.5) * 180;
+            if (Math.abs(tx) < 10 && Math.abs(tz) < 10) continue; 
+            
+            dummy.position.set(tx, 6, tz); 
+            dummy.rotation.x = (Math.random() - 0.5) * 0.1; dummy.rotation.z = (Math.random() - 0.5) * 0.1;
+            dummy.updateMatrix(); instancedTrunks.setMatrixAt(i, dummy.matrix);
+            
+            dummy.position.set(tx, 12 + Math.random()*2, tz);
+            dummy.rotation.y = Math.random() * Math.PI; dummy.scale.set(1 + Math.random()*0.5, 1, 1 + Math.random()*0.5);
+            dummy.updateMatrix(); instancedLeaves.setMatrixAt(i, dummy.matrix);
+
+            const treeBody = new CANNON.Body({ mass: 0, shape: treeShape, material: physicsMat });
+            treeBody.position.set(tx, 6, tz); world.addBody(treeBody);
+
+            const box3 = new THREE.Box3(new THREE.Vector3(tx-1, 0, tz-1), new THREE.Vector3(tx+1, 12, tz+1));
+            obstacles.push({ body: treeBody, box3: box3 });
+        }
+        scene.add(instancedTrunks); scene.add(instancedLeaves);
+
+        function createBall(id, x, y, z) {
+            const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), new THREE.MeshStandardMaterial({color: 0xb71c1c, roughness: 0.3}));
+            mesh.castShadow = true; scene.add(mesh);
+            const body = new CANNON.Body({ mass: 1, shape: new CANNON.Sphere(0.2), position: new CANNON.Vec3(x,y,z), material: physicsMat });
+            world.addBody(body); mesh.userData = { id: id, body: body }; throwables.push(mesh);
+        }
+        createBall('ball1', 2, 1, -2); createBall('ball2', -2, 1, -2);
+
+        // ==========================================
+        // 3. MULTIPLAYER (HOST & GUEST LOGIC)
+        // ==========================================
+        let peer = null; let hostConnection = null; let clientConnections = [];
+        let isHost = false; let myPeerId = null; const GAME_PREFIX = "vr-gtag-cloudy-";
+        let playersState = {}; const remotePlayersVisuals = {}; let sharedObjectsState = {};
+
+        function onConnectionSuccess() {
+            document.getElementById('lobby').style.display = 'none';
+            document.getElementById('info').style.display = 'block';
+            document.body.classList.add('connected');
+            setInterval(networkTick, 1000 / 30);
+        }
+        function playAudioStream(stream, peerId) {
+            const audio = document.createElement('audio'); audio.srcObject = stream; audio.autoplay = true;
+            document.getElementById('audio-container').appendChild(audio);
+        }
+        function updateProfileData() {
+            myProfile.name = document.getElementById('playerName').value || "Survivor";
+            myProfile.color = document.getElementById('playerColor').value;
+            myProfile.hat = document.getElementById('playerHat').value;
+            myProfile.glasses = document.getElementById('playerGlasses').value;
+        }
+
+        document.getElementById('btnHost').onclick = () => {
+            const code = document.getElementById('roomCode').value.trim(); 
+            if(!code) { alert("Enter a Room Code."); return; }
+            updateProfileData();
+            document.getElementById('btnHost').disabled = true; document.getElementById('btnJoin').disabled = true;
+            statusDiv.innerText = "Creating room...";
+            isHost = true; peer = new Peer(GAME_PREFIX + code);
+            peer.on('open', (id) => { myPeerId = id; statusDiv.innerText = "Room Created!"; onConnectionSuccess(); });
+            peer.on('error', (err) => { statusDiv.innerText = "Error: " + err.message; document.getElementById('btnHost').disabled = false; document.getElementById('btnJoin').disabled = false; });
+            peer.on('connection', (conn) => {
+                clientConnections.push(conn);
+                conn.on('data', (data) => { if (data.type === 'playerUpdate') playersState[conn.peer] = data.payload; if (data.type === 'objectMove') sharedObjectsState[data.id] = data.payload; });
+                conn.on('close', () => { clientConnections = clientConnections.filter(c => c !== conn); delete playersState[conn.peer]; removeRemotePlayerVisual(conn.peer); });
+            });
+            peer.on('call', (call) => { if(myStream) call.answer(myStream); call.on('stream', (remoteStream) => { playAudioStream(remoteStream, call.peer); }); });
+        };
+
+        document.getElementById('btnJoin').onclick = () => {
+            const code = document.getElementById('roomCode').value.trim(); 
+            if(!code) { alert("Enter a Room Code."); return; }
+            updateProfileData();
+            document.getElementById('btnHost').disabled = true; document.getElementById('btnJoin').disabled = true;
+            statusDiv.innerText = "Joining room...";
+            isHost = false; peer = new Peer();
+            peer.on('open', (id) => {
+                myPeerId = id; hostConnection = peer.connect(GAME_PREFIX + code);
+                hostConnection.on('open', () => { statusDiv.innerText = "Connected!"; onConnectionSuccess(); });
+                hostConnection.on('data', (data) => {
+                    if (data.type === 'gameState') {
+                        for (let pId in data.payload.players) { if (pId === myPeerId) continue; playersState[pId] = data.payload.players[pId]; updateRemotePlayerVisual(pId, data.payload.players[pId]); }
+                        for (let pId in remotePlayersVisuals) { if (!data.payload.players[pId]) removeRemotePlayerVisual(pId); }
+                        for(let objId in data.payload.objects) { if(!grabbedObject || grabbedObject.userData.id !== objId) syncObject(objId, data.payload.objects[objId]); }
+                    }
+                });
+                hostConnection.on('close', () => { alert("Host disconnected."); window.location.reload(); });
+                if(myStream) { const call = peer.call(GAME_PREFIX + code, myStream); call.on('stream', (remoteStream) => { playAudioStream(remoteStream, call.peer); }); }
+            });
+            peer.on('error', (err) => { statusDiv.innerText = "Error: Room not found."; document.getElementById('btnHost').disabled = false; document.getElementById('btnJoin').disabled = false; });
+        };
+
+        // ==========================================
+        // 4. AVATARS & MECHANICS
+        // ==========================================
+        function createNameSprite(message) {
+            const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); canvas.width = 512; canvas.height = 128;
+            ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.roundRect(0,0,512,128,20); ctx.fill();
+            ctx.font = "bold 60px Courier New"; ctx.fillStyle = "#ff5252"; ctx.textAlign = "center"; ctx.fillText(message, 256, 85);
+            return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
+        }
+
+        function createAvatar(profile, isLocal) {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ color: profile.color, roughness: 0.8 });
+            
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.35), mat); torso.castShadow = true; group.add(torso);
+            let head = new THREE.Group();
+            
+            if (!isLocal) {
+                const pSnout = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.15), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7 }));
+                pSnout.position.set(0, -0.1, -0.15); head.add(pSnout);
+                const pBrow = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.08), mat); pBrow.position.set(0, 0.02, -0.12); head.add(pBrow);
+                
+                if(profile.hat === 'tophat') {
+                    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2), new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}));
+                    hat.position.set(0, 0.15, -0.05); head.add(hat);
+                } else if (profile.hat === 'cap') {
+                    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), new THREE.MeshStandardMaterial({color: 0xb71c1c}));
+                    const brim = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.15), new THREE.MeshStandardMaterial({color: 0xb71c1c}));
+                    cap.position.set(0, 0.1, -0.05); brim.position.set(0, 0.05, -0.2); head.add(cap, brim);
+                }
+                if(profile.glasses === 'sunglasses') {
+                    const gl = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), new THREE.MeshStandardMaterial({color: 0x050505}));
+                    gl.position.set(0, 0.02, -0.17); head.add(gl);
+                }
+                const nameTag = createNameSprite(profile.name); nameTag.position.set(0, 0.4, 0); nameTag.scale.set(2, 0.5, 1); head.add(nameTag);
+                group.add(head);
+            }
+            const createHand = () => { const h = new THREE.Group(); const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.14), mat); p.castShadow = true; h.add(p); return h; };
+            
+            let handL = createHand(); let handR = createHand(); 
+            if (!isLocal) group.add(handL, handR);
+            return { group, torso, head, handL, handR };
+        }
+
+        const controller1 = renderer.xr.getController(0); const controller2 = renderer.xr.getController(1);
+        playerRig.add(controller1); playerRig.add(controller2);
+        const localAvatar = createAvatar(myProfile, true);
+        scene.add(localAvatar.group); 
+
+        const armExtensionOffset = new THREE.Vector3(0, -0.45, -0.05); 
+        localAvatar.handL.position.copy(armExtensionOffset);
+        localAvatar.handR.position.copy(armExtensionOffset);
+        controller1.add(localAvatar.handL); controller2.add(localAvatar.handR);
+
+        let grabbedObject = null; let grabbingController = null; let isGrabbingRope = false;
+        function onSqueezeStart(event) {
+            const ctrl = event.target; const pos = new THREE.Vector3(); ctrl.getWorldPosition(pos);
+            for(let ball of throwables) { if(ball.position.distanceTo(pos) < 0.3) { grabbedObject = ball; grabbingController = ctrl; grabbedObject.userData.body.type = CANNON.Body.KINEMATIC; return; } }
+            for(let rope of ropes) { if(new THREE.Box3().setFromObject(rope).expandByScalar(0.5).containsPoint(pos)) { isGrabbingRope = true; playerBody.velocity.set(0,0,0); return; } }
+        }
+        function onSqueezeEnd(event) {
+            isGrabbingRope = false;
+            if(grabbedObject && grabbingController === event.target) {
+                grabbedObject.userData.body.type = CANNON.Body.DYNAMIC;
+                const throwDir = new THREE.Vector3(0,0,-1).applyQuaternion(event.target.quaternion).multiplyScalar(15);
+                grabbedObject.userData.body.velocity.copy(new CANNON.Vec3(throwDir.x, throwDir.y + 5, throwDir.z));
+                if(!isHost && hostConnection) hostConnection.send({ type: 'objectMove', id: grabbedObject.userData.id, payload: { p: grabbedObject.position.toArray(), q: grabbedObject.quaternion.toArray(), v: [throwDir.x, throwDir.y+5, throwDir.z] }});
+                grabbedObject = null; grabbingController = null;
+            }
+        }
+        controller1.addEventListener('squeezestart', onSqueezeStart); controller1.addEventListener('squeezeend', onSqueezeEnd);
+        controller2.addEventListener('squeezestart', onSqueezeStart); controller2.addEventListener('squeezeend', onSqueezeEnd);
+
+        function updateRemotePlayerVisual(id, state) {
+            if (!remotePlayersVisuals[id]) { const newAvatar = createAvatar(state.profile, false); scene.add(newAvatar.group); remotePlayersVisuals[id] = newAvatar; }
+            const p = remotePlayersVisuals[id];
+            p.head.position.fromArray(state.head.p); p.head.quaternion.fromArray(state.head.q);
+            p.handL.position.fromArray(state.h1.p); p.handL.quaternion.fromArray(state.h1.q);
+            p.handR.position.fromArray(state.h2.p); p.handR.quaternion.fromArray(state.h2.q);
+            const euler = new THREE.Euler().setFromQuaternion(p.head.quaternion, "YXZ");
+            p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -0.35, 0)); p.torso.rotation.set(0, euler.y, 0);
+        }
+        function removeRemotePlayerVisual(id) { if (remotePlayersVisuals[id]) { scene.remove(remotePlayersVisuals[id].group); delete remotePlayersVisuals[id]; } }
+        function syncObject(id, data) {
+            const ball = throwables.find(b => b.userData.id === id);
+            if(ball && ball.userData.body.type === CANNON.Body.DYNAMIC) {
+                ball.userData.body.position.set(data.p[0], data.p[1], data.p[2]); ball.userData.body.quaternion.set(data.q[0], data.q[1], data.q[2], data.q[3]); ball.userData.body.velocity.set(data.v[0], data.v[1], data.v[2]);
+            }
+        }
+        
+        function networkTick() {
+            if (!myPeerId) return;
+            const hp = new THREE.Vector3(); const hq = new THREE.Quaternion(); camera.getWorldPosition(hp); camera.getWorldQuaternion(hq);
+            const l1p = new THREE.Vector3(); const l1q = new THREE.Quaternion(); localAvatar.handL.getWorldPosition(l1p); localAvatar.handL.getWorldQuaternion(l1q);
+            const l2p = new THREE.Vector3(); const l2q = new THREE.Quaternion(); localAvatar.handR.getWorldPosition(l2p); localAvatar.handR.getWorldQuaternion(l2q);
+            const myState = { profile: myProfile, head: { p: hp.toArray(), q: hq.toArray() }, h1: { p: l1p.toArray(), q: l1q.toArray() }, h2: { p: l2p.toArray(), q: l2q.toArray() } };
+            
+            if(isHost) {
+                for(let ball of throwables) { sharedObjectsState[ball.userData.id] = { p: ball.userData.body.position.toArray(), q: ball.userData.body.quaternion.toArray(), v: ball.userData.body.velocity.toArray() }; }
+                playersState[myPeerId] = myState;
+                clientConnections.forEach(c => { if(c.open) c.send({ type: 'gameState', payload: { players: playersState, objects: sharedObjectsState } }); });
+            } else if (hostConnection && hostConnection.open) { hostConnection.send({ type: 'playerUpdate', payload: myState }); }
+        }
+
+        let prevLocalPos1 = new THREE.Vector3(); let prevLocalPos2 = new THREE.Vector3();
+        const clock = new THREE.Clock();
+
+        function handleMovement(controller, handMesh, prevLocalPos) {
+            const currentLocalPos = controller.position.clone();
+            if (prevLocalPos.lengthSq() > 0 && !isGrabbingRope) {
+                const deltaLocalPos = new THREE.Vector3().subVectors(currentLocalPos, prevLocalPos);
+                
+                const handWorldPos = new THREE.Vector3(); 
+                handMesh.getWorldPosition(handWorldPos);
+
+                let isTouchingEnvironment = false;
+                
+                if (handWorldPos.y <= 0.25) {
+                    isTouchingEnvironment = true;
+                } else {
+                    for(let obs of obstacles) {
+                        if (obs.box3.getCenter(new THREE.Vector3()).distanceToSquared(handWorldPos) < 25) {
+                            if(obs.box3.clone().expandByScalar(0.12).containsPoint(handWorldPos)) { 
+                                isTouchingEnvironment = true; break; 
+                            }
+                        }
+                    }
+                }
+
+                for(let t of trampolines) {
+                    if (t.box3.clone().expandByScalar(0.2).containsPoint(handWorldPos)) {
+                        playerBody.velocity.y = 15; isTouchingEnvironment = false; break;
+                    }
+                }
+
+                if (isTouchingEnvironment && deltaLocalPos.lengthSq() > 0) {
+                    const deltaWorld = deltaLocalPos.clone().applyQuaternion(playerRig.quaternion);
+                    const pushForce = -1300; 
+                    playerBody.applyImpulse(new CANNON.Vec3(deltaWorld.x * pushForce, deltaWorld.y * pushForce, deltaWorld.z * pushForce), playerBody.position);
+                }
+            }
+            prevLocalPos.copy(currentLocalPos);
+        }
+
+        renderer.setAnimationLoop(() => {
+            const dt = Math.min(clock.getDelta(), 0.1); world.step(1/60, dt, 3);
+            
+            if (playerBody.position.y < -5 || Math.abs(playerBody.position.x) > 105 || Math.abs(playerBody.position.z) > 105) {
+                playerBody.position.set(0, 5, 0); playerBody.velocity.set(0, 0, 0);
+            }
+
+            if (renderer.xr.isPresenting) {
+                handleMovement(controller1, localAvatar.handL, prevLocalPos1); handleMovement(controller2, localAvatar.handR, prevLocalPos2);
+            }
+            if(isGrabbingRope) playerBody.velocity.y = -2;
+            
+            if(grabbedObject && grabbingController) {
+                const ctrlPos = new THREE.Vector3(); grabbingController.getWorldPosition(ctrlPos); grabbedObject.userData.body.position.copy(ctrlPos);
+            }
+            for(let ball of throwables) { ball.position.copy(ball.userData.body.position); ball.quaternion.copy(ball.userData.body.quaternion); }
+
+            const camLocalPos = camera.position.clone();
+            const gorillaStanceOffset = 0.6;
+
+            playerRig.position.set(
+                playerBody.position.x - camLocalPos.x,
+                playerBody.position.y - radius - gorillaStanceOffset,
+                playerBody.position.z - camLocalPos.z
+            );
+
+            const camWorldPos = new THREE.Vector3(); camera.getWorldPosition(camWorldPos);
+            const camWorldQuat = new THREE.Quaternion(); camera.getWorldQuaternion(camWorldQuat);
+            const euler = new THREE.Euler().setFromQuaternion(camWorldQuat, "YXZ");
+            
+            localAvatar.torso.position.copy(camWorldPos).add(new THREE.Vector3(0, -0.35, 0));
+            localAvatar.torso.rotation.set(0, euler.y, 0);
+
+            renderer.render(scene, camera);
+        });
+    </script>
+</body>
+</html>
