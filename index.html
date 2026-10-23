@@ -12,12 +12,12 @@
             justify-content: center; align-items: center; z-index: 1000; color: #d4d4aa;
         }
         #menu h1 { margin-bottom: 5px; font-size: 38px; text-shadow: 0 0 10px #ffffaa; text-transform: uppercase; letter-spacing: 3px; }
-        #menu p.subtitle { margin-bottom: 25px; color: #aaa; font-size: 14px; }
+        #menu p.subtitle { margin-bottom: 25px; color: #ff3333; font-size: 14px; text-shadow: 0 0 5px #ff0000; }
         .form-group { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; width: 300px; justify-content: space-between; color: white;}
         input { padding: 10px; font-size: 16px; border-radius: 2px; border: 1px solid #aa8822; background: #111; color: white; width: 150px; }
         input[type="color"] { padding: 0; height: 40px; cursor: pointer; }
-        button#btnStart { padding: 15px 30px; font-size: 18px; font-weight: bold; border: 1px solid #aa8822; border-radius: 2px; cursor: pointer; background: #111; color: #aa8822; text-transform: uppercase; margin-top: 20px; }
-        button#btnStart:hover { background: #332200; box-shadow: 0 0 15px #aa8822; }
+        button#btnStart { padding: 15px 30px; font-size: 18px; font-weight: bold; border: 1px solid #ff3333; border-radius: 2px; cursor: pointer; background: #111; color: #ff3333; text-transform: uppercase; margin-top: 20px; box-shadow: 0 0 10px rgba(255,0,0,0.3); }
+        button#btnStart:hover { background: #330000; box-shadow: 0 0 20px #ff0000; }
         
         #VRButton {
             position: absolute !important; bottom: 20px !important; left: 50% !important;
@@ -32,10 +32,10 @@
 <body>
     <div id="menu">
         <h1>BagaBoo VR</h1>
-        <p class="subtitle">Gorilla Tag Style Prototype</p>
+        <p class="subtitle">[ Atmospheric Horror Edition ]</p>
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" value="Survivor" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#8B4513" /></div>
-        <button id="btnStart">Start Game</button>
+        <button id="btnStart">Enter Nightmare</button>
     </div>
 
     <script type="importmap">
@@ -55,8 +55,8 @@
         // 1. ENGINE & RENDERER SETUP
         // ==========================================
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x11161c);
-        scene.fog = new THREE.FogExp2(0x11161c, 0.015);
+        scene.background = new THREE.Color(0x0a0c10);
+        scene.fog = new THREE.FogExp2(0x0a0c10, 0.025);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 150);
         const playerRig = new THREE.Group(); playerRig.add(camera); scene.add(playerRig);
@@ -68,20 +68,94 @@
         document.body.appendChild(renderer.domElement);
         document.body.appendChild(VRButton.createButton(renderer));
 
-        scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 1.8));
+        scene.add(new THREE.HemisphereLight(0x334466, 0x111122, 0.8));
 
-        // Physics State (Smooth Momentum)
+        // Ciasna latarka dla mrocznego klimatu
+        const flashlight = new THREE.SpotLight(0xfff5b6, 80, 25, Math.PI / 4, 0.6, 1.5);
+        camera.add(flashlight);
+        const flashTarget = new THREE.Object3D(); flashTarget.position.set(0, 0, -1); camera.add(flashTarget);
+        flashlight.target = flashTarget;
+
         const playerPos = new THREE.Vector3(0, 0, 0);
         const playerVel = new THREE.Vector3(0, 0, 0);
         const playerRadius = 0.35;
 
         // ==========================================
-        // 2. HIGH-CONTRAST ENVIRONMENT
+        // 2. ADVANCED DARK HORROR AUDIO SYSTEM
+        // ==========================================
+        let audioCtx = null;
+
+        function initHorrorSoundtrack() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            // 1. Głęboki, złowrogi basowy szum tła (Sub-Bass Drone)
+            const subOsc = audioCtx.createOscillator();
+            const subGain = audioCtx.createGain();
+            const subFilter = audioCtx.createBiquadFilter();
+
+            subOsc.type = 'sawtooth';
+            subOsc.frequency.setValueAtTime(36.7, audioCtx.currentTime); // Niskie F (ciężki klimat)
+            subFilter.type = 'lowpass';
+            subFilter.frequency.setValueAtTime(120, audioCtx.currentTime);
+            subGain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+
+            subOsc.connect(subFilter);
+            subFilter.connect(subGain);
+            subGain.connect(audioCtx.destination);
+            subOsc.start();
+
+            // 2. Płynny, nawiedzony syntezator w tle (Eerie Detuned Pad)
+            const padOsc1 = audioCtx.createOscillator();
+            const padOsc2 = audioCtx.createOscillator();
+            const padGain = audioCtx.createGain();
+            const padFilter = audioCtx.createBiquadFilter();
+
+            padOsc1.type = 'sine'; padOsc1.frequency.setValueAtTime(110, audioCtx.currentTime);
+            padOsc2.type = 'triangle'; padOsc2.frequency.setValueAtTime(113, audioCtx.currentTime); // Dysonans wywołujący niepokój
+
+            padFilter.type = 'bandpass';
+            padFilter.frequency.setValueAtTime(300, audioCtx.currentTime);
+            padFilter.Q.setValueAtTime(5, audioCtx.currentTime);
+
+            padGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+
+            padOsc1.connect(padFilter);
+            padOsc2.connect(padFilter);
+            padFilter.connect(padGain);
+            padGain.connect(audioCtx.destination);
+            padOsc1.start();
+            padOsc2.start();
+
+            // 3. Losowe, metaliczne metal-pipe / industrialne uderzenia w horrorze
+            setInterval(() => {
+                if (!audioCtx || audioCtx.state !== 'running') return;
+                if (Math.random() < 0.35) { // 35% szansy co 6 sekund na metaliczny dźwięk
+                    const hitOsc = audioCtx.createOscillator();
+                    const hitGain = audioCtx.createGain();
+                    
+                    hitOsc.type = 'square';
+                    hitOsc.frequency.setValueAtTime(80 + Math.random() * 150, audioCtx.currentTime);
+                    hitOsc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.8);
+
+                    hitGain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                    hitGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+
+                    hitOsc.connect(hitGain);
+                    hitGain.connect(audioCtx.destination);
+                    hitOsc.start();
+                    hitOsc.stop(audioCtx.currentTime + 0.8);
+                }
+            }, 6000);
+        }
+
+        // ==========================================
+        // 3. HIGH-CONTRAST ENVIRONMENT
         // ==========================================
         function createGridTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#1e293b'; ctx.fillRect(0, 0, 512, 512);
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, 512, 512);
             ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 12;
             ctx.strokeRect(0, 0, 512, 512);
             for (let i = 0; i <= 512; i += 64) {
@@ -96,9 +170,9 @@
 
         const mats = {
             floor: new THREE.MeshLambertMaterial({ map: createGridTexture() }),
-            wall: new THREE.MeshLambertMaterial({ color: 0x334155 }),
-            obstacle: new THREE.MeshLambertMaterial({ color: 0xd97706 }),
-            pillar: new THREE.MeshLambertMaterial({ color: 0x475569 })
+            wall: new THREE.MeshLambertMaterial({ color: 0x1e293b }),
+            obstacle: new THREE.MeshLambertMaterial({ color: 0xb45309 }),
+            pillar: new THREE.MeshLambertMaterial({ color: 0x334155 })
         };
 
         const obstacles = [];
@@ -122,7 +196,7 @@
         addBlock(-6, 4, 4, 2, 8, 2, mats.obstacle);
 
         // ==========================================
-        // 3. FULL BODY + LEGS AVATAR HIERARCHY
+        // 4. FULL BODY + LEGS AVATAR
         // ==========================================
         const avatarGroup = new THREE.Group();
         const avatarMaterial = new THREE.MeshLambertMaterial({ color: myColor });
@@ -132,10 +206,8 @@
         avatarGroup.add(torso);
 
         const legGeo = new THREE.CylinderGeometry(0.08, 0.06, 0.7);
-        const leftLeg = new THREE.Mesh(legGeo, avatarMaterial);
-        leftLeg.position.set(-0.12, -0.15, 0);
-        const rightLeg = new THREE.Mesh(legGeo, avatarMaterial);
-        rightLeg.position.set(0.12, -0.15, 0);
+        const leftLeg = new THREE.Mesh(legGeo, avatarMaterial); leftLeg.position.set(-0.12, -0.15, 0);
+        const rightLeg = new THREE.Mesh(legGeo, avatarMaterial); rightLeg.position.set(0.12, -0.15, 0);
         avatarGroup.add(leftLeg, rightLeg);
 
         const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 1.0);
@@ -156,17 +228,18 @@
         playerRig.add(controller1, controller2);
 
         // ==========================================
-        // 4. UI & START FLOW
+        // 5. UI & START FLOW
         // ==========================================
         document.getElementById('btnStart').onclick = () => {
             myColor = document.getElementById('playerColor').value;
             avatarMaterial.color.set(myColor);
             document.body.classList.add('started');
             document.getElementById('menu').style.display = 'none';
+            initHorrorSoundtrack();
         };
 
         // ==========================================
-        // 5. MOVEMENT & FULL BODY LOOP
+        // 6. MOVEMENT LOOP
         // ==========================================
         const prevLocal1 = new THREE.Vector3(); 
         const prevLocal2 = new THREE.Vector3();
@@ -183,7 +256,7 @@
                     let touch = (handWorld.y <= 0.35);
                     if (!touch) {
                         for (let i = 0; i < obstacles.length; i++) {
-                            if (obstacles[i].containsPoint(handWorld)) {
+                            if (obstacles[i].distanceToPoint(handWorld) <= 0.2) {
                                 touch = true; break;
                             }
                         }
