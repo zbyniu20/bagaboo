@@ -3,40 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebVR Gorilla Tag - Overcast Daylight Edition</title>
+    <title>WebVR Gorilla Tag - Twilight Edition</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #78909c; font-family: 'Courier New', Courier, monospace; }
+        body { margin: 0; overflow: hidden; background-color: #1a1c23; font-family: 'Courier New', Courier, monospace; }
         
         #lobby {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, #37474f, #111111); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 1000; color: #ff5252;
+            background: radial-gradient(circle, #2d1b36, #0d0e15); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 1000; color: #ff7b54;
         }
-        #lobby h1 { margin-bottom: 5px; font-size: 40px; text-shadow: 0 0 10px #ff0000; text-transform: uppercase; letter-spacing: 3px; }
-        #lobby p.subtitle { margin-bottom: 25px; color: #cfd8dc; font-size: 14px; }
+        #lobby h1 { margin-bottom: 5px; font-size: 40px; text-shadow: 0 0 10px #ff5722; text-transform: uppercase; letter-spacing: 3px; }
+        #lobby p.subtitle { margin-bottom: 25px; color: #b0bec5; font-size: 14px; }
         
         .form-group { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; width: 340px; justify-content: space-between; color: white;}
         .form-group label { font-weight: bold; }
-        input, select { padding: 10px; font-size: 16px; border-radius: 2px; border: 1px solid #ff5252; background: #222; color: white; width: 180px; }
-        input[type="color"] { padding: 0; height: 40px; cursor: pointer; border: 1px solid #ff5252; }
+        input, select { padding: 10px; font-size: 16px; border-radius: 2px; border: 1px solid #ff7b54; background: #181a20; color: white; width: 180px; }
+        input[type="color"] { padding: 0; height: 40px; cursor: pointer; border: 1px solid #ff7b54; }
         
         .btn-group { display: flex; gap: 15px; margin-top: 20px; }
-        button { padding: 15px 25px; font-size: 16px; font-weight: bold; border: 1px solid #ff5252; border-radius: 2px; cursor: pointer; transition: 0.3s; background: #111; color: #ff5252; text-transform: uppercase; }
-        button:hover { background: #330000; box-shadow: 0 0 15px #ff5252; }
-        button:disabled { background: #222; color: #555; border-color: #555; cursor: not-allowed; box-shadow: none; }
+        button { padding: 15px 25px; font-size: 16px; font-weight: bold; border: 1px solid #ff5722; border-radius: 2px; cursor: pointer; transition: 0.3s; background: #111; color: #ff5722; text-transform: uppercase; }
+        button:hover { background: #3e1b12; box-shadow: 0 0 15px #ff5722; }
+        button:disabled { background: #111; color: #555; border-color: #555; cursor: not-allowed; box-shadow: none; }
         
-        #status { margin-top: 20px; font-weight: bold; font-size: 16px; color: #ff8a80; text-align: center; max-width: 400px; }
-        #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #ffffff; font-weight: bold; z-index: 100; text-shadow: 2px 2px 5px black; display: none; }
+        #status { margin-top: 20px; font-weight: bold; font-size: 16px; color: #ffab91; text-align: center; max-width: 400px; }
+        #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #ffab91; font-weight: bold; z-index: 100; text-shadow: 2px 2px 5px black; display: none; }
         
         #VRButton { display: none !important; }
-        .connected #VRButton { display: block !important; border: 1px solid #ff5252 !important; background: #222 !important; color: white !important; }
+        .connected #VRButton { display: block !important; border: 1px solid #ff5722 !important; background: #1a1c20 !important; color: white !important; }
     </style>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
     <div id="lobby">
-        <h1>Gorilla Tag: Foggy Day</h1>
-        <p class="subtitle">Overcast Forest Survival</p>
+        <h1>Gorilla Tag: Twilight</h1>
+        <p class="subtitle">Dusk Survival</p>
         
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Victim1" value="Survivor" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
@@ -55,11 +55,11 @@
                 <option value="sunglasses">Black Shades</option>
             </select>
         </div>
-        <div class="form-group" style="margin-top: 15px;"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. fog" /></div>
+        <div class="form-group" style="margin-top: 15px;"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. dusk" /></div>
         
         <div class="btn-group">
-            <button id="btnHost">Host Overcast Game</button>
-            <button id="btnJoin">Join Overcast Game</button>
+            <button id="btnHost">Host Dusk Game</button>
+            <button id="btnJoin">Join Dusk Game</button>
         </div>
         <div id="status">Initializing...</div>
     </div>
@@ -109,11 +109,11 @@
         const barkBumpMap = createNoiseTexture(256, 120);
 
         // ==========================================
-        // 1. ENGINE, PHYSICS & OVERCAST DAYLIGHT
+        // 1. ENGINE, PHYSICS & TWILIGHT LIGHTING
         // ==========================================
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x78909c); // Jasno-szaroniebieskie pochmurne niebo
-        scene.fog = new THREE.FogExp2(0x78909c, 0.005); // Delikatna, rozproszona dzienna mgła
+        scene.background = new THREE.Color(0x1f2430); // Zmierzchowe, fioletowo-szare niebo
+        scene.fog = new THREE.FogExp2(0x1f2430, 0.015); // Umiarkowana mgła, ~30% czystej widoczności
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 400);
         const playerRig = new THREE.Group(); playerRig.add(camera); scene.add(playerRig);
@@ -123,25 +123,25 @@
         renderer.xr.enabled = true; 
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping; 
-        renderer.toneMappingExposure = 1.2; // Jasny, dzienny balans ekspozycji
+        renderer.toneMappingExposure = 0.95; // Klimatyczna ekspozycja zmierzchu
         renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement); 
         const vrBtn = VRButton.createButton(renderer); document.body.appendChild(vrBtn);
 
-        // Jasne, miękkie oświetlenie otoczenia (cień z zachmurzonego nieba)
-        const ambientLight = new THREE.AmbientLight(0xddeeff, 1.4); 
+        // Nastrojowe światło otoczenia (fioletowawy cień)
+        const ambientLight = new THREE.AmbientLight(0x38324a, 0.6); 
         scene.add(ambientLight);
 
-        // Słońce ukryte za chmurami (daje rozproszone, miękkie światło z góry)
-        const overcastSun = new THREE.DirectionalLight(0xffffff, 1.8); 
-        overcastSun.position.set(50, 200, 50); 
-        overcastSun.castShadow = true;
-        overcastSun.shadow.camera.top = 100; overcastSun.shadow.camera.bottom = -100;
-        overcastSun.shadow.camera.left = -100; overcastSun.shadow.camera.right = 100;
-        overcastSun.shadow.camera.near = 0.5; overcastSun.shadow.camera.far = 400; 
-        overcastSun.shadow.mapSize.width = 2048; overcastSun.shadow.mapSize.height = 2048;
-        overcastSun.shadow.bias = -0.0005;
-        scene.add(overcastSun);
+        // Zachodzące słońce pod niskim kątem (daje długie cienie i oświetla wybrane fragmenty mapy)
+        const sunsetLight = new THREE.DirectionalLight(0xff7b54, 1.4); 
+        sunsetLight.position.set(120, 60, 80); 
+        sunsetLight.castShadow = true;
+        sunsetLight.shadow.camera.top = 100; sunsetLight.shadow.camera.bottom = -100;
+        sunsetLight.shadow.camera.left = -100; sunsetLight.shadow.camera.right = 100;
+        sunsetLight.shadow.camera.near = 0.5; sunsetLight.shadow.camera.far = 400; 
+        sunsetLight.shadow.mapSize.width = 2048; sunsetLight.shadow.mapSize.height = 2048;
+        sunsetLight.shadow.bias = -0.0005;
+        scene.add(sunsetLight);
 
         const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12.0, 0) });
         world.broadphase = new CANNON.SAPBroadphase(world);
@@ -185,22 +185,22 @@
         const halfMap = mapSize / 2;
         const wallThickness = 40;
 
-        addBlock(0, -0.5, 0, mapSize, 1, mapSize, 0x4e5d4c, "dirt"); 
+        addBlock(0, -0.5, 0, mapSize, 1, mapSize, 0x2b332a, "dirt"); 
         
-        addBlock(0, 20, -halfMap - wallThickness/2, mapSize + wallThickness*2, 40, wallThickness, 0x546e7a, "stone");
-        addBlock(0, 20, halfMap + wallThickness/2, mapSize + wallThickness*2, 40, wallThickness, 0x546e7a, "stone");
-        addBlock(-halfMap - wallThickness/2, 20, 0, wallThickness, 40, mapSize, 0x546e7a, "stone");
-        addBlock(halfMap + wallThickness/2, 20, 0, wallThickness, 40, mapSize, 0x546e7a, "stone");
+        addBlock(0, 20, -halfMap - wallThickness/2, mapSize + wallThickness*2, 40, wallThickness, 0x2c2d38, "stone");
+        addBlock(0, 20, halfMap + wallThickness/2, mapSize + wallThickness*2, 40, wallThickness, 0x2c2d38, "stone");
+        addBlock(-halfMap - wallThickness/2, 20, 0, wallThickness, 40, mapSize, 0x2c2d38, "stone");
+        addBlock(halfMap + wallThickness/2, 20, 0, wallThickness, 40, mapSize, 0x2c2d38, "stone");
 
-        addBlock(0, 7.5, 5, 4, 15, 4, 0x3e2723, "wood"); 
+        addBlock(0, 7.5, 5, 4, 15, 4, 0x271c14, "wood"); 
         addBlock(10, 0.5, 5, 4, 0.5, 4, 0x880e4f, "trampoline"); 
-        addBlock(6, 6, 5, 0.2, 8, 0.2, 0x2e7d32, "rope");
+        addBlock(6, 6, 5, 0.2, 8, 0.2, 0x1b3822, "rope");
 
         const treeCount = 350;
         const trunkGeo = new THREE.CylinderGeometry(0.6, 1.2, 12, 6);
         const leafGeo = new THREE.BoxGeometry(3, 4, 3);
-        const trunkMat = new THREE.MeshStandardMaterial({color: 0x2e1c14, roughness: 0.9, bumpMap: barkBumpMap, bumpScale: 0.1});
-        const leafMat = new THREE.MeshStandardMaterial({color: 0x37474f, roughness: 0.8}); 
+        const trunkMat = new THREE.MeshStandardMaterial({color: 0x1c1412, roughness: 0.9, bumpMap: barkBumpMap, bumpScale: 0.1});
+        const leafMat = new THREE.MeshStandardMaterial({color: 0x242d33, roughness: 0.8}); 
         
         const instancedTrunks = new THREE.InstancedMesh(trunkGeo, trunkMat, treeCount);
         const instancedLeaves = new THREE.InstancedMesh(leafGeo, leafMat, treeCount);
@@ -243,7 +243,7 @@
         // 3. MULTIPLAYER (HOST & GUEST LOGIC)
         // ==========================================
         let peer = null; let hostConnection = null; let clientConnections = [];
-        let isHost = false; let myPeerId = null; const GAME_PREFIX = "vr-gtag-cloudy-";
+        let isHost = false; let myPeerId = null; const GAME_PREFIX = "vr-gtag-twilight-";
         let playersState = {}; const remotePlayersVisuals = {}; let sharedObjectsState = {};
 
         function onConnectionSuccess() {
@@ -274,7 +274,13 @@
             peer.on('error', (err) => { statusDiv.innerText = "Error: " + err.message; document.getElementById('btnHost').disabled = false; document.getElementById('btnJoin').disabled = false; });
             peer.on('connection', (conn) => {
                 clientConnections.push(conn);
-                conn.on('data', (data) => { if (data.type === 'playerUpdate') playersState[conn.peer] = data.payload; if (data.type === 'objectMove') sharedObjectsState[data.id] = data.payload; });
+                conn.on('data', (data) => { 
+                    if (data.type === 'playerUpdate') {
+                        playersState[conn.peer] = data.payload;
+                        updateRemotePlayerVisual(conn.peer, data.payload); // FIX: Host teraz renderuje Guesta!
+                    }
+                    if (data.type === 'objectMove') sharedObjectsState[data.id] = data.payload; 
+                });
                 conn.on('close', () => { clientConnections = clientConnections.filter(c => c !== conn); delete playersState[conn.peer]; removeRemotePlayerVisual(conn.peer); });
             });
             peer.on('call', (call) => { if(myStream) call.answer(myStream); call.on('stream', (remoteStream) => { playAudioStream(remoteStream, call.peer); }); });
@@ -309,7 +315,7 @@
         function createNameSprite(message) {
             const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); canvas.width = 512; canvas.height = 128;
             ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.roundRect(0,0,512,128,20); ctx.fill();
-            ctx.font = "bold 60px Courier New"; ctx.fillStyle = "#ff5252"; ctx.textAlign = "center"; ctx.fillText(message, 256, 85);
+            ctx.font = "bold 60px Courier New"; ctx.fillStyle = "#ff7b54"; ctx.textAlign = "center"; ctx.fillText(message, 256, 85);
             return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true }));
         }
 
