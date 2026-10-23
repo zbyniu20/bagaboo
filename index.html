@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gorilla Tag - Simple Lobby Prototype</title>
+    <title>Gorilla Tag - Quest 3S Prototype</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Courier New', Courier, monospace; }
         #menu {
@@ -16,23 +16,37 @@
         .form-group { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; width: 300px; justify-content: space-between; color: white;}
         input { padding: 10px; font-size: 16px; border-radius: 2px; border: 1px solid #aa8822; background: #111; color: white; width: 150px; }
         input[type="color"] { padding: 0; height: 40px; cursor: pointer; }
-        button { padding: 15px 30px; font-size: 18px; font-weight: bold; border: 1px solid #aa8822; border-radius: 2px; cursor: pointer; background: #111; color: #aa8822; text-transform: uppercase; margin-top: 20px; }
-        button:hover { background: #332200; box-shadow: 0 0 15px #aa8822; }
-        #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #fff; font-weight: bold; z-index: 100; display: none; text-shadow: 1px 1px 3px #000; }
-        #VRButton { display: none !important; }
-        .started #VRButton { display: block !important; border: 1px solid #aa8822 !important; background: #111 !important; color: white !important; }
+        button#btnStart { padding: 15px 30px; font-size: 18px; font-weight: bold; border: 1px solid #aa8822; border-radius: 2px; cursor: pointer; background: #111; color: #aa8822; text-transform: uppercase; margin-top: 20px; }
+        button#btnStart:hover { background: #332200; box-shadow: 0 0 15px #aa8822; }
+        
+        /* Styl dla przycisku ENTER VR generowanego przez Three.js */
+        #VRButton {
+            position: absolute !important;
+            bottom: 20px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            padding: 15px 30px !important;
+            font-size: 20px !important;
+            font-weight: bold !important;
+            background: #222 !important;
+            color: #00ffcc !important;
+            border: 2px solid #00ffcc !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            z-index: 9999 !important;
+            display: none;
+        }
+        .started #VRButton { display: block !important; }
     </style>
 </head>
 <body>
     <div id="menu">
         <h1>Gorilla Tag: Lobby</h1>
-        <p class="subtitle">20x20m Arena Prototype</p>
+        <p class="subtitle">Meta Quest 3S VR Ready</p>
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" value="Survivor" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#8B4513" /></div>
         <button id="btnStart">Start Prototype</button>
     </div>
-    
-    <div id="info">Click "ENTER VR" below. Push off the grid floor to move around!</div>
 
     <script type="importmap">
         { "imports": {
@@ -62,12 +76,15 @@
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         renderer.xr.enabled = true;
         document.body.appendChild(renderer.domElement);
-        document.body.appendChild(VRButton.createButton(renderer));
+        
+        // Dodanie oficjalnego przycisku VR
+        const vrButtonElement = VRButton.createButton(renderer);
+        document.body.appendChild(vrButtonElement);
 
         scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 1.8));
 
         // Physics State (Direct Momentum)
-        const playerPos = new THREE.Vector3(0, 0, 0); // Spawn w środku
+        const playerPos = new THREE.Vector3(0, 0, 0);
         const playerVel = new THREE.Vector3(0, 0, 0);
         const playerRadius = 0.35;
 
@@ -113,10 +130,10 @@
         addBlock(-10.5, 7.5, 0, 1, 15, 21, mats.wall); // Ściana Zachodnia
         addBlock(10.5, 7.5, 0, 1, 15, 21, mats.wall); // Ściana Wschodnia
 
-        // Proste przeszkody w środku do wspinaczki i odbijania się
+        // Przeszkody
         addBlock(0, 7.5, 0, 2, 15, 2, mats.pillar);   // Centralny filar
         addBlock(-5, 1.5, -5, 3, 3, 3, mats.obstacle); // Skrzynia 1
-        addBlock(5, 2.5, 5, 4, 5, 2, mats.obstacle);  و// Ściana przeszkoda 2
+        addBlock(5, 2.5, 5, 4, 5, 2, mats.obstacle);  // Ściana przeszkoda 2
         addBlock(-6, 4, 4, 2, 8, 2, mats.obstacle);   // Słup przeszkoda 3
 
         // ==========================================
@@ -125,8 +142,6 @@
         function createAvatar(color) {
             const g = new THREE.Group();
             const hMat = new THREE.MeshLambertMaterial({ color: color });
-            
-            // Torso widoczne po spojrzeniu w dół
             const torso = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.55, 0.3), hMat);
             torso.position.set(0, -0.3, -0.1);
             g.add(torso);
@@ -138,17 +153,16 @@
         playerRig.add(controller1, controller2);
         
         const localAvatar = createAvatar(myColor);
-        camera.add(localAvatar.group); // Przypięte do kamery
+        camera.add(localAvatar.group);
 
         // ==========================================
-        // 4. UI & START
+        // 4. UI & START FLOW
         // ==========================================
         document.getElementById('btnStart').onclick = () => {
             myColor = document.getElementById('playerColor').value;
             localAvatar.children[0].material.color.set(myColor);
             document.body.classList.add('started');
             document.getElementById('menu').style.display = 'none';
-            document.getElementById('info').style.display = 'block';
         };
 
         // ==========================================
@@ -166,11 +180,10 @@
                     const handWorld = new THREE.Vector3();
                     ctrl.getWorldPosition(handWorld);
 
-                    // Detekcja dotyku podłogi (Y <= 0.35) lub przeszkód
                     let touch = (handWorld.y <= 0.35);
                     if (!touch) {
                         for (let i = 0; i < obstacles.length; i++) {
-                            if (obstacles[i].distanceToPoint(handWorld) <= 0.2) {
+                            if (obstacles[i].containsPoint(handWorld)) {
                                 touch = true; break;
                             }
                         }
@@ -178,7 +191,7 @@
 
                     if (touch) {
                         const deltaWorld = deltaLocal.clone().applyQuaternion(playerRig.quaternion);
-                        playerVel.addScaledVector(deltaWorld, -25.0); // Odepchnięcie w stylu Gorilla Tag
+                        playerVel.addScaledVector(deltaWorld, -30.0);
                     }
                 }
             }
@@ -197,16 +210,14 @@
             playerVel.y -= 12.0 * dt; 
             playerVel.multiplyScalar(Math.pow(0.85, dt * 60));
 
-            // Aktualizacja pozycji
+            // Pozycja
             playerPos.addScaledVector(playerVel, dt);
 
-            // Kolizja z podłogą
             if (playerPos.y < playerRadius) {
                 playerPos.y = playerRadius;
                 if (playerVel.y < 0) playerVel.y = 0;
             }
 
-            // Pozycja zestawu VR w scenie
             playerRig.position.set(
                 playerPos.x - camera.position.x,
                 playerPos.y - playerRadius,
