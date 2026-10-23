@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebVR Gorilla Tag - Optimized & Expanded Lobby</title>
+    <title>WebVR Gorilla Tag - Massive Expanded Lobby</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Courier New', Courier, monospace; }
         #lobby {
@@ -30,17 +30,17 @@
 <body>
     <div id="lobby">
         <h1>Gorilla Tag: The Maze</h1>
-        <p class="subtitle">Ultra-Optimized Edition | Expanded Parkour Lobby</p>
+        <p class="subtitle">Massive Lobby & Corrected Floor Height</p>
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" value="Survivor" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
-        <div class="form-group"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. fast1" /></div>
+        <div class="form-group"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. lobby2" /></div>
         <div class="btn-group">
             <button id="btnHost">Host Game</button>
             <button id="btnJoin">Join Game</button>
         </div>
         <div id="status">Initializing...</div>
     </div>
-    <div id="info">Connected! Click "ENTER VR". Climb to the top mezzanine to enter Level 1.</div>
+    <div id="info">Connected! Click "ENTER VR". Use Grip to grab ropes. Climb to Level 1 portal.</div>
     <div id="audio-container" style="display:none;"></div>
 
     <script type="importmap">
@@ -65,24 +65,23 @@
         }).catch(() => { statusDiv.innerText = "Mic denied. Enter Room Code."; });
 
         // ==========================================
-        // 1. ENGINE & HIGH-PERFORMANCE RENDERER
+        // 1. ENGINE & RENDERER
         // ==========================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x181a1b);
-        scene.fog = new THREE.FogExp2(0x181a1b, 0.025);
+        scene.fog = new THREE.FogExp2(0x181a1b, 0.02);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 120);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 150);
         const playerRig = new THREE.Group(); playerRig.add(camera); scene.add(playerRig);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Zapobiega przeładowaniu GPU
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
         renderer.xr.enabled = true;
-        renderer.shadowMap.enabled = false; // Wyłączenie cieni daje ogromny skok FPS w VR!
+        renderer.shadowMap.enabled = false;
         document.body.appendChild(renderer.domElement);
         document.body.appendChild(VRButton.createButton(renderer));
 
-        // Oświetlenie niewymagające ciężkich cieni (Hemisphere + Point/Spot)
         const hemiLight = new THREE.HemisphereLight(0xffffff, 0x333344, 1.5);
         scene.add(hemiLight);
 
@@ -91,7 +90,6 @@
         const flashTarget = new THREE.Object3D(); flashTarget.position.set(0, 0, -1); camera.add(flashTarget);
         flashlight.target = flashTarget;
 
-        // Fizyka zoptymalizowana
         const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12.0, 0) });
         world.broadphase = new CANNON.SAPBroadphase(world);
         world.allowSleep = true;
@@ -146,10 +144,10 @@
         }
 
         // ==========================================
-        // 3. ROZBUDOWANE LOBBY (16x16m, wys. 14m)
+        // 3. ROZBUDOWANE, OGROMNE LOBBY (20x20m, wys. 16m)
         // ==========================================
         const lobbyGroup = new THREE.Group(); scene.add(lobbyGroup);
-        const lobbyObstacles = []; const lobbyTrampolines = []; const portals = [];
+        const lobbyObstacles = []; const lobbyTrampolines = []; const portals = []; const lobbyRopes = [];
         const lobbyCompoundBody = new CANNON.Body({ mass: 0, material: physicsMat });
         world.addBody(lobbyCompoundBody);
 
@@ -157,95 +155,92 @@
             wall: new THREE.MeshLambertMaterial({ color: 0x2c3539 }),
             floor: new THREE.MeshLambertMaterial({ color: 0x1f262a }),
             wood: new THREE.MeshLambertMaterial({ color: 0x6e472b }),
-             grip: new THREE.MeshLambertMaterial({ color: 0x3b7a57 }),
+            grip: new THREE.MeshLambertMaterial({ color: 0x3b7a57 }),
             pillar: new THREE.MeshLambertMaterial({ color: 0x3d484d }),
             trampoline: new THREE.MeshBasicMaterial({ color: 0xffeb3b }),
-            mezzanine: new THREE.MeshLambertMaterial({ color: 0x4a5568 })
+            mezzanine: new THREE.MeshLambertMaterial({ color: 0x4a5568 }),
+            rope: new THREE.MeshLambertMaterial({ color: 0x2e7d32 })
         };
 
         function addLobbyBlock(x, y, z, w, h, d, mat, isTrampoline = false) {
             const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
             mesh.position.set(x, y, z); lobbyGroup.add(mesh);
-            
             lobbyCompoundBody.addShape(new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)), new CANNON.Vec3(x, y, z));
             const box3 = new THREE.Box3(new THREE.Vector3(x - w / 2, y - h / 2, z - d / 2), new THREE.Vector3(x + w / 2, y + h / 2, z + d / 2));
-            
             if (isTrampoline) lobbyTrampolines.push(box3);
             else lobbyObstacles.push(box3);
         }
 
-        // Konstrukcja pokoju Lobby (16x16x14)
-        addLobbyBlock(0, -0.5, 0, 16, 1, 16, mats.floor); // Podłoga
-        addLobbyBlock(0, 14.5, 0, 16, 1, 16, mats.wall); // Sufit
-        addLobbyBlock(0, 7, -8.5, 17, 14, 1, mats.wall); // Północ
-        addLobbyBlock(0, 7, 8.5, 17, 14, 1, mats.wall);  // Południe
-        addLobbyBlock(-8.5, 7, 0, 1, 14, 17, mats.wall); // Zachód
-        addLobbyBlock(8.5, 7, 0, 1, 14, 17, mats.wall);  // Wschód
+        // Pokój 20x20x16 m
+        addLobbyBlock(0, -0.5, 0, 20, 1, 20, mats.floor);
+        addLobbyBlock(0, 16.5, 0, 20, 1, 20, mats.wall);
+        addLobbyBlock(0, 8, -10.5, 21, 16, 1, mats.wall);
+        addLobbyBlock(0, 8, 10.5, 21, 16, 1, mats.wall);
+        addLobbyBlock(-10.5, 8, 0, 1, 16, 21, mats.wall);
+        addLobbyBlock(10.5, 8, 0, 1, 16, 21, mats.wall);
 
-        // 1. Centralna Wieża Wspinaczkowa z uchwytami (wys. 11.5m)
-        addLobbyBlock(0, 5.75, 0, 1.8, 11.5, 1.8, mats.pillar);
-        for (let i = 0; i < 16; i++) {
+        // Centralna Wieża Wspinaczkowa (wys. 13.5m)
+        addLobbyBlock(0, 6.75, 0, 2.2, 13.5, 2.2, mats.pillar);
+        for (let i = 0; i < 20; i++) {
             const angle = (i * Math.PI) / 2;
-            const hx = Math.cos(angle) * 1.4; const hz = Math.sin(angle) * 1.4;
-            addLobbyBlock(hx, 0.8 + i * 0.68, hz, 0.9, 0.3, 0.9, mats.grip);
+            const hx = Math.cos(angle) * 1.6; const hz = Math.sin(angle) * 1.6;
+            addLobbyBlock(hx, 0.8 + i * 0.65, hz, 1.0, 0.3, 1.0, mats.grip);
         }
 
-        // 2. Trampoliny na dole (szybkie wybicie na średnie piętro)
-        addLobbyBlock(-5.5, 0.2, -5.5, 2.2, 0.4, 2.2, mats.trampoline, true);
-        addLobbyBlock(5.5, 0.2, 5.5, 2.2, 0.4, 2.2, mats.trampoline, true);
+        // Trampoliny
+        addLobbyBlock(-7, 0.2, -7, 2.5, 0.4, 2.5, mats.trampoline, true);
+        addLobbyBlock(7, 0.2, 7, 2.5, 0.4, 2.5, mats.trampoline, true);
+        addLobbyBlock(-7, 0.2, 7, 2.5, 0.4, 2.5, mats.trampoline, true);
+        addLobbyBlock(7, 0.2, -7, 2.5, 0.4, 2.5, mats.trampoline, true);
 
-        // 3. Ścieżka Parkour A (Zachodnia i Północna ściana - kaskadowe półki)
-        const pathA = [
-            [-7, 1.2, 5], [-7, 2.4, 2], [-7, 3.6, -1], [-7, 4.8, -4],
-            [-4.5, 6.0, -7], [-1.5, 7.2, -7], [1.5, 8.4, -7], [4.5, 9.6, -7], [6.5, 10.8, -4.5]
+        // Trasy Parkour (Wieloetapowe półki wokół ścian)
+        const parkourPath = [
+            [-9, 1.5, 7], [-9, 3.0, 3], [-9, 4.5, -1], [-9, 6.0, -5],
+            [-6, 7.5, -9], [-2, 9.0, -9], [2, 10.5, -9], [6, 12.0, -9],
+            [9, 13.0, -6], [9, 13.5, -2], [9, 14.0, 2]
         ];
-        pathA.forEach(([x, y, z]) => addLobbyBlock(x, y, z, 1.8, 0.4, 1.8, mats.wood));
+        parkourPath.forEach(([x, y, z]) => addLobbyBlock(x, y, z, 2.0, 0.4, 2.0, mats.wood));
 
-        // 4. Ścieżka Parkour B (Wschodnia i Południowa ściana - wyzwanie z kolumnami i belkami)
-        const pathB = [
-            [7, 1.5, -5], [7, 3.0, -1.5], [7, 4.5, 2], [4.5, 6.0, 4.5],
-            [1.5, 7.5, 7], [-2, 9.0, 7], [-5.5, 10.5, 6]
-        ];
-        pathB.forEach(([x, y, z]) => addLobbyBlock(x, y, z, 1.6, 0.4, 1.6, mats.grip));
+        // Wiszące Liany w Lobby (Graby Gripem)
+        function addLobbyRope(x, z) {
+            const rMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 12), mats.rope);
+            rMesh.position.set(x, 10, z); lobbyGroup.add(rMesh);
+            lobbyRopes.push(rMesh);
+        }
+        addLobbyRope(-4, -4); addLobbyRope(4, 4); addLobbyRope(-4, 4);
 
-        // 5. Mostki powietrzne łączące centralną wieżę z antresolą
-        addLobbyBlock(0, 6.0, -3.5, 1.2, 0.3, 3.5, mats.wood);
-        addLobbyBlock(3.5, 9.0, 0, 3.5, 0.3, 1.2, mats.wood);
-        addLobbyBlock(-3.5, 11.5, 0, 4.5, 0.4, 1.5, mats.mezzanine);
+        // Górna Antresola (Mezzanine na wys. 14m) dookoła pokoju
+        addLobbyBlock(0, 14, 8.5, 20, 0.5, 3, mats.mezzanine);
+        addLobbyBlock(0, 14, -8.5, 20, 0.5, 3, mats.mezzanine);
+        addLobbyBlock(-8.5, 14, 0, 3, 0.5, 14, mats.mezzanine);
+        addLobbyBlock(8.5, 14, 0, 3, 0.5, 14, mats.mezzanine);
 
-        // 6. Górna Antresola (Mezzanine) na wysokości 11.5m dookoła pokoju
-        addLobbyBlock(0, 11.5, 6.5, 16, 0.5, 3, mats.mezzanine);  // Południowy taras (Główny)
-        addLobbyBlock(0, 11.5, -6.5, 16, 0.5, 3, mats.mezzanine); // Północny taras
-        addLobbyBlock(-6.5, 11.5, 0, 3, 0.5, 10, mats.mezzanine); // Zachodni pomost
-        addLobbyBlock(6.5, 11.5, 0, 3, 0.5, 10, mats.mezzanine);  // Wschodni pomost
-
-        // 7. 10 Portali na górnej antresoli (5 na Południu, 5 na Północy)
+        // 10 Portali na antresoli (Południe i Północ)
         for (let i = 1; i <= 10; i++) {
             const isActive = (i === 1);
             const row = i <= 5 ? 0 : 1;
             const col = (i - 1) % 5;
             const px = -6 + col * 3;
-            const pz = row === 0 ? 7.2 : -7.2;
+            const pz = row === 0 ? 9.2 : -9.2;
 
             const pMat = new THREE.MeshBasicMaterial({ color: isActive ? 0x00ff88 : 0x552222, wireframe: !isActive });
-            const pMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.0, 0.6), pMat);
-            pMesh.position.set(px, 12.8, pz);
+            const pMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 0.6), pMat);
+            pMesh.position.set(px, 15.2, pz);
             lobbyGroup.add(pMesh);
 
             const label = createLabelSprite(isActive ? "LVL 1: MAZE" : "LVL " + i + " (LOCKED)", isActive ? "#004422" : "#331111");
-            label.position.set(px, 14.1, pz);
+            label.position.set(px, 16.5, pz);
             lobbyGroup.add(label);
 
             portals.push({ level: i, active: isActive, box3: new THREE.Box3().setFromObject(pMesh) });
         }
 
         // ==========================================
-        // 4. ZOPTYMALIZOWANY LABIRYNT (70x70m) - 1 COMPOUND BODY!
+        // 4. LABIRYNT (70x70m)
         // ==========================================
         const mazeGroup = new THREE.Group(); scene.add(mazeGroup); mazeGroup.visible = false;
         const mazeObstacles = [];
         const mazeCompoundBody = new CANNON.Body({ mass: 0, material: physicsMat });
-        // Dodajemy do świata dopiero po wejściu do labiryntu!
 
         const MAZE_OFFSET_X = 500;
         const GRID_SIZE = 14; const CELL_SIZE = 5;
@@ -308,7 +303,6 @@
         wallInst.count = wCount;
         mazeGroup.add(wallInst);
 
-        // Podłoga i sufit Labiryntu
         const mazeFloorMat = new THREE.MeshLambertMaterial({ color: 0x4a4532 });
         const mFloor = new THREE.Mesh(new THREE.BoxGeometry(75, 1, 75), mazeFloorMat);
         mFloor.position.set(MAZE_OFFSET_X + 32.5, -0.5, 32.5); mazeGroup.add(mFloor);
@@ -324,7 +318,7 @@
         const mazeExitBox = new THREE.Box3().setFromObject(exitMesh);
 
         // ==========================================
-        // 5. POTWÓR BACTERIA & PRZEŁĄCZANIE STREF
+        // 5. POTWÓR BACTERIA & STAN GRY
         // ==========================================
         const monsterGroup = new THREE.Group();
         const mMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
@@ -341,9 +335,10 @@
         let levelStartTime = 0;
         const playerPathHistory = [];
         let monsterPathIndex = 0;
+        let isGrabbingRope = false;
 
         function switchZone(toZone) {
-            playerPathHistory.length = 0;
+            playerPathHistory.length = 0; isGrabbingRope = false;
             if (toZone === 'maze') {
                 world.removeBody(lobbyCompoundBody);
                 world.addBody(mazeCompoundBody);
@@ -373,7 +368,7 @@
         }
 
         // ==========================================
-        // 6. AWATARY I MULTIPLAYER (STAŁY TICK 20Hz)
+        // 6. AWATARY I MULTIPLAYER
         // ==========================================
         function createAvatar(color, name, isLocal) {
             const g = new THREE.Group();
@@ -398,7 +393,21 @@
         localAvatar.handL.position.copy(armExt); localAvatar.handR.position.copy(armExt);
         controller1.add(localAvatar.handL); controller2.add(localAvatar.handR);
 
-        let peer = null; let hostConn = null; let clients = []; let isHost = false; let myPeerId = null;
+        // Obsługa chwytania lian (Grip)
+        function onSqueezeStart(e) {
+            const ctrl = e.target; const pos = new THREE.Vector3(); ctrl.getWorldPosition(pos);
+            for (let rope of lobbyRopes) {
+                if (rope.position.distanceTo(pos) < 2.0 && gameState === 'lobby') {
+                    isGrabbingRope = true; playerBody.velocity.set(0, 0, 0);
+                    break;
+                }
+            }
+        }
+        function onSqueezeEnd() { isGrabbingRope = false; }
+        controller1.addEventListener('squeezestart', onSqueezeStart); controller1.addEventListener('squeezeend', onSqueezeEnd);
+        controller2.addEventListener('squeezestart', onSqueezeStart); controller2.addEventListener('squeezeend', onSqueezeEnd);
+
+        let peer = null; let hostConn = null; let clients = []; let isHost = false; myProfile.id = null;
         const playersState = {}; const remoteVisuals = {};
 
         function updateRemoteVisuals(id, st) {
@@ -426,15 +435,14 @@
             localAvatar.handL.material.color.set(myProfile.color);
             localAvatar.handR.material.color.set(myProfile.color);
 
-            // Sieć odświeżana 20 razy na sekundę (zamiast w pętli renderowania!)
             setInterval(() => {
-                if (!myPeerId) return;
+                if (!myProfile.id) return;
                 const hp = new THREE.Vector3(); const lp = new THREE.Vector3(); const rp = new THREE.Vector3();
                 camera.getWorldPosition(hp); localAvatar.handL.getWorldPosition(lp); localAvatar.handR.getWorldPosition(rp);
                 const mySt = { n: myProfile.name, c: myProfile.color, h: hp.toArray(), l: lp.toArray(), r: rp.toArray() };
 
                 if (isHost) {
-                    playersState[myPeerId] = mySt;
+                    playersState[myProfile.id] = mySt;
                     clients.forEach(conn => { if (conn.open) conn.send({ type: 'state', players: playersState }); });
                 } else if (hostConn && hostConn.open) {
                     hostConn.send({ type: 'update', state: mySt });
@@ -446,8 +454,8 @@
             const code = document.getElementById('roomCode').value.trim(); if (!code) return alert("Enter Room Code!");
             myProfile.name = document.getElementById('playerName').value || "Host";
             myProfile.color = document.getElementById('playerColor').value;
-            isHost = true; peer = new Peer("vr-opt-maze-" + code);
-            peer.on('open', id => { myPeerId = id; startNetworkLoop(); });
+            isHost = true; peer = new Peer("vr-huge-lobby-" + code);
+            peer.on('open', id => { myProfile.id = id; startNetworkLoop(); });
             peer.on('connection', conn => {
                 clients.push(conn);
                 conn.on('data', d => {
@@ -463,19 +471,19 @@
             myProfile.color = document.getElementById('playerColor').value;
             isHost = false; peer = new Peer();
             peer.on('open', id => {
-                myPeerId = id; hostConn = peer.connect("vr-opt-maze-" + code);
+                myProfile.id = id; hostConn = peer.connect("vr-huge-lobby-" + code);
                 hostConn.on('open', () => startNetworkLoop());
                 hostConn.on('data', d => {
                     if (d.type === 'state') {
-                        for (let pid in d.players) { if (pid !== myPeerId) updateRemoteVisuals(pid, d.players[pid]); }
+                        for (let pid in d.players) { if (pid !== myProfile.id) updateRemoteVisuals(pid, d.players[pid]); }
                     }
                 });
-                if (myStream) { const call = peer.call("vr-opt-maze-" + code, myStream); call.on('stream', s => playAudioStream(s)); }
+                if (myStream) { const call = peer.call("vr-huge-lobby-" + code, myStream); call.on('stream', s => playAudioStream(s)); }
             });
         };
 
         // ==========================================
-        // 7. PĘTLA GŁÓWNA (ZERO ALOKACJI PAMIĘCI = ZERO LAGÓW)
+        // 7. PĘTLA GŁÓWNA
         // ==========================================
         const prevLocal1 = new THREE.Vector3(); const prevLocal2 = new THREE.Vector3();
         const tmpDelta = new THREE.Vector3(); const tmpHandWorld = new THREE.Vector3();
@@ -484,23 +492,21 @@
         const clock = new THREE.Clock();
 
         function handleMovement(ctrl, hand, prev) {
-            if (prev.lengthSq() > 0) {
+            if (prev.lengthSq() > 0 && !isGrabbingRope) {
                 tmpDelta.subVectors(ctrl.position, prev);
                 if (tmpDelta.lengthSq() > 0.000001) {
                     hand.getWorldPosition(tmpHandWorld);
 
-                    // Sprawdzenie trampolin w Lobby
                     if (gameState === 'lobby') {
                         for (let i = 0; i < lobbyTrampolines.length; i++) {
                             if (lobbyTrampolines[i].distanceToPoint(tmpHandWorld) < 0.25) {
-                                playerBody.velocity.y = 14.5;
+                                playerBody.velocity.y = 15.0;
                                 prev.copy(ctrl.position);
                                 return;
                             }
                         }
                     }
 
-                    // Bardzo szybki test dotyku bez klonowania Box3!
                     let touch = (tmpHandWorld.y <= 0.22);
                     if (!touch) {
                         for (let i = 0; i < activeObstacles.length; i++) {
@@ -530,10 +536,14 @@
                 handleMovement(controller2, localAvatar.handR, prevLocal2);
             }
 
-            // Synchronizacja pozycji gracza bez tworzenia nowych wektorów
+            if (isGrabbingRope) {
+                playerBody.velocity.y = -1.5;
+            }
+
+            // POPRAWKA WYSOKOŚCI: playerRig.y bazuje bezpośrednio na playerBody.y - radius (bez sztucznego zaniżania!)
             playerRig.position.set(
                 playerBody.position.x - camera.position.x,
-                playerBody.position.y - radius - 0.6,
+                playerBody.position.y - radius,
                 playerBody.position.z - camera.position.z
             );
 
@@ -543,18 +553,15 @@
             localAvatar.torso.position.set(tmpCamWorld.x, tmpCamWorld.y - 0.35, tmpCamWorld.z);
             localAvatar.torso.rotation.set(0, tmpEuler.y, 0);
 
-            // Logika stref i potwora
             if (gameState === 'lobby') {
                 if (portals[0].box3.distanceToPoint(tmpCamWorld) < 0.6) {
                     switchZone('maze');
                 }
             } else {
-                // Sprawdzenie wyjścia z Labiryntu
                 if (mazeExitBox.distanceToPoint(tmpCamWorld) < 0.8) {
                     switchZone('lobby');
                 }
 
-                // Zapisywanie ścieżki gracza tylko gdy się przesunął o min. 0.4m (oszczędność RAM!)
                 if (playerPathHistory.length === 0 || playerPathHistory[playerPathHistory.length - 1].distanceToSquared(tmpCamWorld) > 0.16) {
                     playerPathHistory.push(tmpCamWorld.clone());
                 }
