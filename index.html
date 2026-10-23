@@ -32,7 +32,7 @@
 <body>
     <div id="menu">
         <h1>BagaBoo VR</h1>
-        <p class="subtitle">[ Rock-Solid Fixed Physics Arena ]</p>
+        <p class="subtitle">[ Perfected Fall Dynamics & 20x40x20m Arena ]</p>
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" value="Survivor" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#8B4513" /></div>
         <button id="btnStart">Enter Nightmare</button>
@@ -75,6 +75,7 @@
         const flashTarget = new THREE.Object3D(); flashTarget.position.set(0, 0, -1); camera.add(flashTarget);
         flashlight.target = flashTarget;
 
+        const roomSize = { w: 20, d: 40, h: 20 };
         const playerRadius = 0.35;
         const playerPos = new THREE.Vector3(0, playerRadius, 0);
         const playerVel = new THREE.Vector3(0, 0, 0);
@@ -169,7 +170,7 @@
         }
 
         // ==========================================
-        // 3. RECTANGULAR ENVIRONMENT (20x40x20m)
+        // 3. ENVIRONMENT & OBSTACLES (20x40x20m)
         // ==========================================
         function createGridTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
@@ -194,26 +195,23 @@
             pillar: new THREE.MeshLambertMaterial({ color: 0x334155 })
         };
 
-        const obstacles = [];
+        const internalObstacles = [];
 
-        function addBlock(x, y, z, w, h, d, mat) {
+        function addVisualBlock(x, y, z, w, h, d, mat) {
             const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
             mesh.position.set(x, y, z); scene.add(mesh);
-            obstacles.push(new THREE.Box3(new THREE.Vector3(x - w/2, y - h/2, z - d/2), new THREE.Vector3(x + w/2, y + h/2, z + d/2)));
+            internalObstacles.push({
+                min: new THREE.Vector3(x - w/2, y - h/2, z - d/2),
+                max: new THREE.Vector3(x + w/2, y + h/2, z + d/2)
+            });
         }
 
-        addBlock(0, -0.5, 0, 20, 1, 40, mats.floor);
-        addBlock(0, 20.5, 0, 20, 1, 40, mats.wall);
-        addBlock(0, 10, -20.5, 22, 20, 1, mats.wall);
-        addBlock(0, 10, 20.5, 22, 20, 1, mats.wall);
-        addBlock(-10.5, 10, 0, 1, 20, 42, mats.wall);
-        addBlock(10.5, 10, 0, 1, 20, 42, mats.wall);
-
-        addBlock(0, 10, 0, 2, 20, 2, mats.pillar);
-        addBlock(-5, 1.5, -10, 4, 3, 4, mats.obstacle);
-        addBlock(6, 2.5, 10, 5, 5, 3, mats.obstacle);
-        addBlock(-6, 4, 12, 2, 8, 2, mats.obstacle);
-        addBlock(5, 3, -12, 3, 6, 3, mats.obstacle);
+        // Przeszkody wewnętrzne w hali 20x40x20m
+        addVisualBlock(0, 10, 0, 2, 20, 2, mats.pillar);
+        addVisualBlock(-5, 1.5, -10, 4, 3, 4, mats.obstacle);
+        addVisualBlock(6, 2.5, 10, 5, 5, 3, mats.obstacle);
+        addVisualBlock(-6, 4, 12, 2, 8, 2, mats.obstacle);
+        addVisualBlock(5, 3, -12, 3, 6, 3, mats.obstacle);
 
         // ==========================================
         // 4. HANDS-ONLY AVATAR
@@ -242,66 +240,61 @@
         };
 
         // ==========================================
-        // 6. ROCK-SOLID FIXED TIMESTEP PHYSICS LOOP
+        // 6. ROBUST PHYSICS & CLEAN FALL DYNAMICS
         // ==========================================
         const prevLocal1 = new THREE.Vector3(); 
         const prevLocal2 = new THREE.Vector3();
         let lastStepTime = 0;
         const clock = new THREE.Clock();
 
-        const FIXED_DT = 1 / 90; // Stały krok fizyki dla płynnych 90Hz w goglach VR
+        const FIXED_DT = 1 / 90;
         let accumulator = 0;
 
         function resolveCollisions() {
-            for (let i = 0; i < obstacles.length; i++) {
-                const box = obstacles[i];
-                
-                if (playerPos.x >= box.min.x && playerPos.x <= box.max.x &&
-                    playerPos.y >= box.min.y && playerPos.y <= box.max.y &&
-                    playerPos.z >= box.min.z && playerPos.z <= box.max.z) {
-                    
-                    const pX1 = playerPos.x - box.min.x;
-                    const pX2 = box.max.x - playerPos.x;
-                    const pY1 = playerPos.y - box.min.y;
-                    const pY2 = box.max.y - playerPos.y;
-                    const pZ1 = playerPos.z - box.min.z;
-                    const pZ2 = box.max.z - playerPos.z;
+            // 1. Zewnętrzne granice pokoju (20x40x20m)
+            const halfW = roomSize.w / 2;
+            const halfD = roomSize.d / 2;
 
-                    let minPen = Math.min(pX1, pX2, pY1, pY2, pZ1, pZ2);
-                    if (minPen === pX1) playerPos.x = box.min.x - playerRadius;
-                    else if (minPen === pX2) playerPos.x = box.max.x + playerRadius;
-                    else if (minPen === pY1) { playerPos.y = box.min.y - playerRadius; playerVel.y = 0; }
-                    else if (minPen === pY2) { playerPos.y = box.max.y + playerRadius; playerVel.y = 0; }
-                    else if (minPen === pZ1) playerPos.z = box.min.z - playerRadius;
-                    else if (minPen === pZ2) playerPos.z = box.max.z + playerRadius;
-                    
-                } else {
-                    const cx = Math.max(box.min.x, Math.min(playerPos.x, box.max.x));
-                    const cy = Math.max(box.min.y, Math.min(playerPos.y, box.max.y));
-                    const cz = Math.max(box.min.z, Math.min(playerPos.z, box.max.z));
+            if (playerPos.x < -halfW + playerRadius) { playerPos.x = -halfW + playerRadius; playerVel.x = 0; }
+            if (playerPos.x > halfW - playerRadius) { playerPos.x = halfW - playerRadius; playerVel.x = 0; }
 
-                    const dx = playerPos.x - cx;
-                    const dy = playerPos.y - cy;
-                    const dz = playerPos.z - cz;
-                    const distSq = dx * dx + dy * dy + dz * dz;
+            if (playerPos.z < -halfD + playerRadius) { playerPos.z = -halfD + playerRadius; playerVel.z = 0; }
+            if (playerPos.z > halfD - playerRadius) { playerPos.z = halfD - playerRadius; playerVel.z = 0; }
 
-                    if (distSq < playerRadius * playerRadius && distSq > 0) {
-                        const dist = Math.sqrt(distSq);
-                        const overlap = playerRadius - dist;
-                        const nx = dx / dist;
-                        const ny = dy / dist;
-                        const nz = dz / dist;
+            if (playerPos.y < playerRadius) {
+                playerPos.y = playerRadius;
+                if (playerVel.y < 0) playerVel.y = 0;
+            }
+            if (playerPos.y > roomSize.h - playerRadius) {
+                playerPos.y = roomSize.h - playerRadius;
+                if (playerVel.y > 0) playerVel.y = 0;
+            }
 
-                        playerPos.x += nx * overlap;
-                        playerPos.y += ny * overlap;
-                        playerPos.z += nz * overlap;
+            // 2. Precyzyjne kolizje z przeszkodami wewnętrznymi (brak klejenia krawędzi)
+            for (let i = 0; i < internalObstacles.length; i++) {
+                const box = internalObstacles[i];
 
-                        const dot = playerVel.x * nx + playerVel.y * ny + playerVel.z * nz;
-                        if (dot < 0) {
-                            playerVel.x -= nx * dot;
-                            playerVel.y -= ny * dot;
-                            playerVel.z -= nz * dot;
-                        }
+                const inX = playerPos.x >= box.min.x - playerRadius && playerPos.x <= box.max.x + playerRadius;
+                const inZ = playerPos.z >= box.min.z - playerRadius && playerPos.z <= box.max.z + playerRadius;
+                const inY = playerPos.y >= box.min.y - playerRadius && playerPos.y <= box.max.y + playerRadius;
+
+                if (inX && inZ && inY) {
+                    // Lądowanie na górze skrzyni/przeszkody
+                    if (playerPos.y >= box.max.y - 0.3 && playerPos.y <= box.max.y + playerRadius + 0.3 && playerVel.y <= 0) {
+                        playerPos.y = box.max.y + playerRadius;
+                        playerVel.y = 0;
+                    } else {
+                        // Wypchnięcie poziome ze ścianek przeszkody
+                        const penX1 = playerPos.x - (box.min.x - playerRadius);
+                        const penX2 = (box.max.x + playerRadius) - playerPos.x;
+                        const penZ1 = playerPos.z - (box.min.z - playerRadius);
+                        const penZ2 = (box.max.z + playerRadius) - playerPos.z;
+
+                        const minPen = Math.min(penX1, penX2, penZ1, penZ2);
+                        if (minPen === penX1) { playerPos.x = box.min.x - playerRadius; playerVel.x = 0; }
+                        else if (minPen === penX2) { playerPos.x = box.max.x + playerRadius; playerVel.x = 0; }
+                        else if (minPen === penZ1) { playerPos.z = box.min.z - playerRadius; playerVel.z = 0; }
+                        else if (minPen === penZ2) { playerPos.z = box.max.z + playerRadius; playerVel.z = 0; }
                     }
                 }
             }
@@ -317,8 +310,11 @@
 
                     let touch = (handWorld.y <= 0.85);
                     if (!touch) {
-                        for (let i = 0; i < obstacles.length; i++) {
-                            if (obstacles[i].distanceToPoint(handWorld) <= 0.25) {
+                        for (let i = 0; i < internalObstacles.length; i++) {
+                            const b = internalObstacles[i];
+                            if (handWorld.x >= b.min.x - 0.2 && handWorld.x <= b.max.x + 0.2 &&
+                                handWorld.y >= b.min.y - 0.2 && handWorld.y <= b.max.y + 0.2 &&
+                                handWorld.z >= b.min.z - 0.2 && handWorld.z <= b.max.z + 0.2) {
                                 touch = true; break;
                             }
                         }
@@ -326,7 +322,7 @@
 
                     if (touch) {
                         const deltaWorld = deltaLocal.clone().applyQuaternion(playerRig.quaternion);
-                        playerVel.addScaledVector(deltaWorld, -45.0); // Szybki, responsywny impuls
+                        playerVel.addScaledVector(deltaWorld, -45.0);
 
                         const now = clock.getElapsedTime();
                         if (now - lastStepTime > 0.15) {
@@ -339,32 +335,25 @@
             prevPos.copy(currPos);
         }
 
-        // Stała pętla fizyczna (niezależna od spadków klatek w goglach)
         function physicsStep(dt) {
             if (renderer.xr.isPresenting) {
                 processMovement(controller1, prevLocal1);
                 processMovement(controller2, prevLocal2);
             }
 
-            // Normalna, stała grawitacja
+            // Stabilna grawitacja bez zakłóceń w locie
             playerVel.y -= 25.0 * dt; 
-            playerVel.multiplyScalar(0.96); // Stabilne tarcie
+            playerVel.multiplyScalar(0.96);
 
             playerPos.addScaledVector(playerVel, dt);
 
             resolveCollisions();
-
-            if (playerPos.y < playerRadius) {
-                playerPos.y = playerRadius;
-                if (playerVel.y < 0) playerVel.y = 0;
-            }
         }
 
         renderer.setAnimationLoop(() => {
             const frameDelta = clock.getDelta();
             accumulator += Math.min(frameDelta, 0.1);
 
-            // Wykonaj fizykę w stałych odstępach czasu
             while (accumulator >= FIXED_DT) {
                 physicsStep(FIXED_DT);
                 accumulator -= FIXED_DT;
