@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BagaBoo VR - Detailed Geometry Parkour</title>
+    <title>BagaBoo VR - Pro Parkour (Fix)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
         
@@ -31,12 +31,17 @@
         input, select { padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #7799aa; background: #e0e8f0; color: #111; width: 180px; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1); }
         input[type="color"] { padding: 0; height: 40px; cursor: pointer; border: none; }
         
-        .btn-group { display: flex; gap: 15px; margin-top: 25px; }
-        button { padding: 15px 30px; font-size: 18px; font-weight: bold; border: 1px solid #00aaaa; border-radius: 8px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-transform: uppercase; }
+        .btn-group { display: flex; gap: 10px; margin-top: 25px; flex-wrap: wrap; justify-content: center; max-width: 500px;}
+        button { padding: 15px 20px; font-size: 16px; font-weight: bold; border: 1px solid #00aaaa; border-radius: 8px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-transform: uppercase; }
+        
         #btnHost { background: #008888; color: #ffffff; }
         #btnJoin { background: #00aaaa; color: white; }
-        button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,150,150,0.3); background: #009999; }
-        button:disabled { background: #8899aa; color: #ddeeff; border-color: #778899; cursor: not-allowed; transform: none; box-shadow: none; }
+        #btnSolo { background: #4a5c6a; color: white; border-color: #3b4d5b; }
+        
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,150,150,0.3); }
+        #btnSolo:hover { background: #5a6e7e; box-shadow: 0 6px 12px rgba(0,0,0,0.3); }
+        
+        button:disabled { background: #8899aa !important; color: #ddeeff !important; border-color: #778899 !important; cursor: not-allowed; transform: none; box-shadow: none; }
         
         #status { margin-top: 25px; font-weight: bold; font-size: 16px; color: #004444; text-align: center; max-width: 400px; }
         #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #ffffff; font-weight: bold; font-size: 18px; z-index: 100; text-shadow: 2px 2px 4px black; display: none; }
@@ -49,7 +54,7 @@
 <body>
     <div id="lobby">
         <h1 class="logo">BagaBoo VR</h1>
-        <p class="subtitle">Highly Detailed Geometric Parkour</p>
+        <p class="subtitle">Multiplayer Parkour & Solo Mode</p>
         
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Player1" value="Acrobat" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
@@ -68,16 +73,17 @@
                 <option value="sunglasses">Sunglasses</option>
             </select>
         </div>
-        <div class="form-group" style="margin-top: 15px;"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. detailed" /></div>
+        <div class="form-group" style="margin-top: 15px;"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. parkour" /></div>
         
         <div class="btn-group">
             <button id="btnHost">Host Game</button>
             <button id="btnJoin">Join Game</button>
+            <button id="btnSolo">Play Solo</button>
         </div>
-        <div id="status">Initializing Mic...</div>
+        <div id="status">Checking microphone...</div>
     </div>
 
-    <div id="info">Connected! Master the Sci-Fi Generators and Hex-Stairs!</div>
+    <div id="info">Connected! Master the stairs, monkey bars, and wall runs!</div>
     <div id="audio-container" style="display:none;"></div>
 
     <script type="importmap">
@@ -100,10 +106,16 @@
         let audioCtx = null;
 
         const statusDiv = document.getElementById('status');
+        
+        // BEZPIECZNA INICJALIZACJA MIKROFONU (Odporna na HTTP i lokalne pliki)
         async function initMic() {
             try {
-                myStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                statusDiv.innerText = "Mic access granted. Enter Room Code to play.";
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    myStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    statusDiv.innerText = "Mic access granted. Ready to play.";
+                } else {
+                    statusDiv.innerText = "Mic not supported (HTTPS required). Voice disabled.";
+                }
             } catch (err) {
                 statusDiv.innerText = "Mic access denied. Voice chat disabled.";
             }
@@ -112,6 +124,7 @@
 
         // --- DARK HORROR SOUNDTRACK ---
         function initHorrorSoundtrack() {
+            if(audioCtx) return; // Zapobieganie podwójnej inicjalizacji
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
 
@@ -140,7 +153,7 @@
         }
 
         // ==========================================
-        // 1. ENGINE & CRISP GRAPHICS
+        // 1. ENGINE & CRISP GRAPHICS 
         // ==========================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x9db2c2); 
@@ -153,9 +166,11 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.xr.enabled = true; 
         renderer.outputColorSpace = THREE.SRGBColorSpace;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1; 
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; 
+        renderer.toneMappingExposure = 1.1; 
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0)); 
-        renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+        renderer.shadowMap.enabled = true; 
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
         document.body.appendChild(renderer.domElement); 
         const vrBtn = VRButton.createButton(renderer); document.body.appendChild(vrBtn);
 
@@ -185,7 +200,9 @@
         const contactMat = new CANNON.ContactMaterial(physicsMat, physicsMat, { friction: 2.0, restitution: 0.0 });
         world.addContactMaterial(contactMat);
 
-        const GROUP_ENV = 1; const GROUP_PLAYER = 2; const GROUP_BALL = 4;
+        const GROUP_ENV = 1;
+        const GROUP_PLAYER = 2;
+        const GROUP_BALL = 4;
 
         const radius = 0.35; 
         const playerBody = new CANNON.Body({
@@ -196,188 +213,72 @@
         world.addBody(playerBody);
 
         // ==========================================
-        // 3. HIGHLY DETAILED COMPLEX GEOMETRY 
+        // 3. PARKOUR LOBBY BUILDING 
         // ==========================================
         const obstacles = []; const trampolines = []; const ropes = []; const throwables = [];
 
-        // Universal function for adding custom groups to physics and obstacles
-        function addComplexStaticBody(x, y, z, boundingBoxSize, visualGroup, isTrampoline = false) {
-            visualGroup.position.set(x, y, z);
-            scene.add(visualGroup);
-            
-            const shape = new CANNON.Box(new CANNON.Vec3(boundingBoxSize.x/2, boundingBoxSize.y/2, boundingBoxSize.z/2));
+        function addStaticBody(x, y, z, shape, meshOrGroup, isTrampoline = false) {
             const body = new CANNON.Body({ mass: 0, shape: shape, material: physicsMat, collisionFilterGroup: GROUP_ENV, collisionFilterMask: -1 });
-            body.position.set(x, y, z); 
-            world.addBody(body);
-            
-            // Recompute exact Box3 for accurate wall-run detection
-            const box3 = new THREE.Box3().setFromObject(visualGroup);
+            body.position.set(x, y, z); world.addBody(body);
+            const box3 = new THREE.Box3().setFromObject(meshOrGroup);
             if (isTrampoline) trampolines.push({ box3 });
-            obstacles.push({ meshOrGroup: visualGroup, body, box3 });
+            obstacles.push({ meshOrGroup, body, box3 });
         }
 
-        // --- 3.1: SCI-FI POWER GENERATORS (Complex Crates) ---
-        function addSciFiGenerator(x, y, z, scale) {
-            const group = new THREE.Group();
-            const coreMat = new THREE.MeshPhysicalMaterial({ color: 0x3a4a5a, metalness: 0.8, roughness: 0.3, clearcoat: 0.5 });
-            const neonMat = new THREE.MeshPhysicalMaterial({ color: 0x00ffff, emissive: 0x008888, emissiveIntensity: 0.6 });
-
-            // Base platform
-            const baseGeo = new THREE.BoxGeometry(scale, scale*0.2, scale);
-            const base = new THREE.Mesh(baseGeo, coreMat);
-            base.position.y = -(scale/2) + (scale*0.1);
-            base.castShadow = true; base.receiveShadow = true;
-            group.add(base);
-
-            // Octagonal core
-            const coreGeo = new THREE.CylinderGeometry(scale*0.4, scale*0.4, scale*0.8, 8);
-            const core = new THREE.Mesh(coreGeo, coreMat);
-            core.castShadow = true; core.receiveShadow = true;
-            group.add(core);
-
-            // Glowing Energy Rings
-            const ringGeo = new THREE.TorusGeometry(scale*0.42, scale*0.05, 8, 16);
-            const ring1 = new THREE.Mesh(ringGeo, neonMat); ring1.rotation.x = Math.PI/2; ring1.position.y = scale*0.2; group.add(ring1);
-            const ring2 = new THREE.Mesh(ringGeo, neonMat); ring2.rotation.x = Math.PI/2; ring2.position.y = -scale*0.2; group.add(ring2);
-
-            // Crisp Edges
-            group.traverse(child => {
-                if (child.isMesh && child.material === coreMat) {
-                    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(child.geometry), new THREE.LineBasicMaterial({color: 0x00ffff, opacity: 0.3, transparent: true}));
-                    child.add(edges);
-                }
-            });
-
-            addComplexStaticBody(x, y, z, new THREE.Vector3(scale, scale, scale), group);
-        }
-
-        // --- 3.2: HEXAGONAL FLOATING STAIRS ---
-        function addHexStep(x, y, z, radius) {
-            const group = new THREE.Group();
-            const hexMat = new THREE.MeshPhysicalMaterial({ color: 0x445566, metalness: 0.6, roughness: 0.4 });
-            const hexGeo = new THREE.CylinderGeometry(radius, radius, 0.4, 6); // 6-sided cylinder = Hexagon
-            
-            const mesh = new THREE.Mesh(hexGeo, hexMat);
-            mesh.castShadow = true; mesh.receiveShadow = true;
-            
-            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(hexGeo), new THREE.LineBasicMaterial({color: 0xffaa00, linewidth: 2}));
-            mesh.add(edges);
-            group.add(mesh);
-
-            // Physics Box encompassing the hex (radius * 1.732 approx width)
-            addComplexStaticBody(x, y, z, new THREE.Vector3(radius*1.7, 0.4, radius*1.7), group);
-        }
-
-        // --- 3.3: INDUSTRIAL TRUSS PILLAR ---
-        function addTrussPillar(x, y, z, height) {
-            const group = new THREE.Group();
-            const metalMat = new THREE.MeshPhysicalMaterial({ color: 0x223344, metalness: 0.9, roughness: 0.5 });
-            
-            // Central core
-            const core = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, height, 16), metalMat);
-            core.castShadow = true; core.receiveShadow = true; group.add(core);
-
-            // 4 Support struts
-            for(let i=0; i<4; i++) {
-                const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, height, 8), metalMat);
-                const angle = (i/4) * Math.PI * 2;
-                strut.position.set(Math.cos(angle)*1.2, 0, Math.sin(angle)*1.2);
-                strut.castShadow = true; group.add(strut);
-            }
-
-            // Horizontal connector rings
-            const ringMat = new THREE.MeshPhysicalMaterial({ color: 0x111111, emissive: 0x004444 });
-            for(let hy = -height/2 + 2; hy < height/2; hy += 3) {
-                const ring = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.15, 8, 16), ringMat);
-                ring.rotation.x = Math.PI/2; ring.position.y = hy; ring.castShadow = true; group.add(ring);
-            }
-
-            group.traverse(child => {
-                if (child.isMesh && child.material === metalMat) {
-                    child.add(new THREE.LineSegments(new THREE.EdgesGeometry(child.geometry), new THREE.LineBasicMaterial({color: 0x00ffff, opacity: 0.2, transparent: true})));
-                }
-            });
-
-            addComplexStaticBody(x, y, z, new THREE.Vector3(2.6, height, 2.6), group);
-        }
-
-        // --- 3.4: JAGGED WALL GRIPS ---
-        const gripGeo = new THREE.DodecahedronGeometry(0.3);
-        const gripMat = new THREE.MeshPhysicalMaterial({ color: 0x112233, metalness: 0.6, roughness: 0.2, clearcoat: 1.0 });
-        function addJaggedGrip(x, y, z) {
-            const mesh = new THREE.Mesh(gripGeo, gripMat); 
-            mesh.position.set(x, y, z); 
-            mesh.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
-            // Zróżnicowane, "postrzępione" proporcje skały/odłamka
-            mesh.scale.set(0.6 + Math.random(), 0.3 + Math.random()*0.5, 0.6 + Math.random());
-            mesh.castShadow = true; mesh.receiveShadow = true; 
-            
-            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(gripGeo), new THREE.LineBasicMaterial({color: 0x00ffff}));
-            mesh.add(edges);
-            scene.add(mesh);
-            
-            // Collision box scaled to match visually
-            addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(0.3*mesh.scale.x, 0.3*mesh.scale.y, 0.3*mesh.scale.z)), mesh);
-        }
-
-        // --- GENERATING THE WORLD ---
-
-        // Basic Walls
         function addCrispBlock(x, y, z, w, h, d, color, edgeColor, isTrampoline = false) {
-            const mat = new THREE.MeshPhysicalMaterial({ color: color, roughness: 0.3, metalness: 0.5 });
+            const mat = new THREE.MeshPhysicalMaterial({ color: color, roughness: 0.3, metalness: 0.5, clearcoat: 0.8 });
             if(isTrampoline) { mat.emissive = new THREE.Color(color); mat.emissiveIntensity = 0.4; }
             const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
             mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true;
-            mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({ color: edgeColor, linewidth: 2 })));
-            scene.add(mesh);
+            
+            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({ color: edgeColor, linewidth: 2 }));
+            mesh.add(edges); scene.add(mesh);
             addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2)), mesh, isTrampoline);
         }
 
-        addCrispBlock(0, -5, 0, 40, 10, 40, 0x8895a5, 0xffffff); // Floor
-        addCrispBlock(0, 25, 0, 40, 10, 40, 0x8895a5, 0xffffff); // Ceiling
-        addCrispBlock(0, 10, -15, 40, 20, 10, 0x738293, 0x00ffff); // North
-        addCrispBlock(0, 10, 15, 40, 20, 10, 0x738293, 0x00ffff);  // South
-        addCrispBlock(-15, 10, 0, 10, 20, 40, 0x617081, 0x00ffff); // West
-        addCrispBlock(15, 10, 0, 10, 20, 40, 0x617081, 0x00ffff);  // East
-
-        // Sci-Fi Generators
-        addSciFiGenerator(-5, 1.5, -5, 3);
-        addSciFiGenerator(5, 3.0, 5, 4);
-        
-        // Complex Truss Pillar
-        addTrussPillar(-6, 5.0, 5, 10);
-
-        // Hexagonal Floating Stairs
-        for(let i = 0; i < 8; i++) {
-            addHexStep(-10 + (i*1.5), 1.0 + (i*1.2), -5, 1.0);
+        const gripGeo = new THREE.DodecahedronGeometry(0.25);
+        const gripMat = new THREE.MeshPhysicalMaterial({ color: 0x00aaaa, emissive: 0x002222, metalness: 0.7, roughness: 0.1, clearcoat: 1.0 });
+        function addGrip(x, y, z) {
+            const mesh = new THREE.Mesh(gripGeo, gripMat); mesh.position.set(x, y, z); mesh.rotation.set(Math.random(), Math.random(), Math.random());
+            mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh);
+            addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(0.25, 0.25, 0.25)), mesh);
         }
-        // End Platform
-        addCrispBlock(2, 10.6, -5, 4, 0.4, 4, 0x445566, 0xffaa00);
+
+        addCrispBlock(0, -5, 0, 40, 10, 40, 0x8895a5, 0xffffff); // Podłoga
+        addCrispBlock(0, 25, 0, 40, 10, 40, 0x8895a5, 0xffffff); // Sufit
+        addCrispBlock(0, 10, -15, 40, 20, 10, 0x738293, 0x00ffff); // Północ
+        addCrispBlock(0, 10, 15, 40, 20, 10, 0x738293, 0x00ffff);  // Południe
+        addCrispBlock(-15, 10, 0, 10, 20, 40, 0x617081, 0x00ffff); // Zachód
+        addCrispBlock(15, 10, 0, 10, 20, 40, 0x617081, 0x00ffff);  // Wschód
+
+        addCrispBlock(0, 0.2, 5, 3, 0.4, 3, 0x00ffcc, 0xffffff, true); // Trampolina
+
+        // Schody
+        for(let i = 0; i < 8; i++) { addCrispBlock(-10 + (i*1.5), 1.0 + (i*1.2), -5, 1.2, 0.4, 1.2, 0x445566, 0xffaa00); }
+        addCrispBlock(2, 10.6, -5, 4, 0.4, 4, 0x445566, 0xffaa00); 
 
         // Monkey Bars
         addCrispBlock(8, 6, 8, 0.5, 12, 0.5, 0x334455, 0x00ffff);  
         addCrispBlock(8, 6, -2, 0.5, 12, 0.5, 0x334455, 0x00ffff); 
         addCrispBlock(8, 12, 3, 0.5, 0.5, 10.5, 0x334455, 0x00ffff); 
-        for(let i = 0; i < 5; i++) {
-            // Rurki monkey bars
-            const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 3, 8), new THREE.MeshPhysicalMaterial({color: 0x111111, metalness: 0.9}));
-            tube.rotation.z = Math.PI/2;
-            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(tube.geometry), new THREE.LineBasicMaterial({color: 0x00ffaa}));
-            tube.add(edges);
-            addComplexStaticBody(7, 11.5, -1 + (i*2), new THREE.Vector3(3, 0.3, 0.3), tube);
+        for(let i = 0; i < 5; i++) { addCrispBlock(7, 11.5, -1 + (i*2), 3, 0.2, 0.2, 0x111111, 0x00ffaa); }
+
+        // Filar wspinaczkowy
+        addCrispBlock(-8, 8, 8, 2, 16, 2, 0x334455, 0xff00ff);
+        for(let y = 1.5; y < 15; y += 1.2) {
+            let angle = y * 1.5;
+            addGrip(-8 + Math.cos(angle)*1.2, y, 8 + Math.sin(angle)*1.2);
         }
 
-        // Trampoline
-        addCrispBlock(0, 0.2, 5, 3, 0.4, 3, 0x00ffcc, 0xffffff, true);
-
-        // Jagged Grips on Walls
-        for(let i = 0; i < 20; i++) {
-            addJaggedGrip(-8 + (i * 1.0) + (Math.random() * 0.4 - 0.2), 2 + (i * 0.8) + (Math.random() * 0.5), -10);
-            addJaggedGrip(8 - (i * 1.2) + (Math.random() * 0.5), 4 + (i * 1.0) + (Math.random() * 0.5), 10);
+        // Ściany wspinaczkowe
+        for(let i = 0; i < 18; i++) {
+            let px = -6 + (i * 1.0) + (Math.random() * 0.4 - 0.2);
+            let py = 2 + (i * 0.8) + (Math.random() * 0.5);
+            addGrip(px, py, -10);
         }
 
         // ==========================================
-        // 4. REAL SWINGING ROPES
+        // 4. REAL SWINGING ROPES & BALLS
         // ==========================================
         function addSwingingRope(x, y, z) {
             const height = 12; const ropeGroup = new THREE.Group();
@@ -400,7 +301,6 @@
         }
         addSwingingRope(4, 20, -4); addSwingingRope(-4, 20, 4);
 
-        // Balls
         function createBall(id, x, y, z) {
             const mat = new THREE.MeshPhysicalMaterial({color: 0x00ccff, roughness: 0.1, metalness: 0.8, clearcoat: 1.0, emissive: 0x003366 });
             const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), mat); mesh.castShadow = true; scene.add(mesh);
@@ -410,7 +310,7 @@
         createBall('ball1', 2, 1, -2); createBall('ball2', -2, 1, -2);
 
         // ==========================================
-        // 5. MULTIPLAYER
+        // 5. BULLETPROOF MULTIPLAYER & SOLO MODE
         // ==========================================
         let peer = null; let hostConnection = null; let clientConnections = [];
         let isHost = false; let myPeerId = null; const GAME_PREFIX = "vr-gtag-fix2-";
@@ -423,10 +323,12 @@
             document.body.classList.add('connected');
             setInterval(networkTick, 1000 / 30);
         }
+        
         function playAudioStream(stream, peerId) {
             const audio = document.createElement('audio'); audio.srcObject = stream; audio.autoplay = true;
             document.getElementById('audio-container').appendChild(audio);
         }
+        
         function updateProfileData() {
             myProfile.name = document.getElementById('playerName').value || "Acrobat";
             myProfile.color = document.getElementById('playerColor').value;
@@ -434,59 +336,126 @@
             myProfile.glasses = document.getElementById('playerGlasses').value;
         }
 
+        // TRYB OFFLINE / SOLO (Działa zawsze)
+        document.getElementById('btnSolo').onclick = () => {
+            updateProfileData();
+            initHorrorSoundtrack(); // Wywołane bezpośrednio w onclick
+            isHost = true; 
+            myPeerId = "solo-player";
+            onConnectionSuccess();
+        };
+
+        // TRYB HOST
         document.getElementById('btnHost').onclick = () => {
             const code = document.getElementById('roomCode').value.trim(); 
             if(!code) { alert("Please enter a Room Code."); return; }
-            updateProfileData();
-            document.getElementById('btnHost').disabled = true; document.getElementById('btnJoin').disabled = true;
-            statusDiv.innerText = "Creating room...";
-            isHost = true; peer = new Peer(GAME_PREFIX + code);
             
-            peer.on('open', (id) => { 
-                myPeerId = id; statusDiv.innerText = "Room Created! Waiting for players..."; 
-                initHorrorSoundtrack(); onConnectionSuccess(); 
-            });
-            peer.on('error', (err) => { statusDiv.innerText = "Error: " + err.message; document.getElementById('btnHost').disabled = false; document.getElementById('btnJoin').disabled = false; });
-            peer.on('connection', (conn) => {
-                if (clientConnections.length >= MAX_GUESTS) {
-                    conn.on('open', () => { conn.send({ type: 'serverFull', message: 'Room full!' }); setTimeout(() => conn.close(), 1000); }); return;
-                }
-                clientConnections.push(conn);
-                conn.on('data', (data) => { 
-                    if (data.type === 'playerUpdate') playersState[conn.peer] = data.payload; 
-                    if (data.type === 'objectMove') sharedObjectsState[data.id] = data.payload; 
+            updateProfileData();
+            initHorrorSoundtrack(); // Zapewnia działanie dźwięku
+            
+            document.getElementById('btnHost').disabled = true; document.getElementById('btnJoin').disabled = true; document.getElementById('btnSolo').disabled = true;
+            statusDiv.innerText = "Connecting to server...";
+            
+            try {
+                isHost = true; 
+                peer = new Peer(GAME_PREFIX + code);
+                
+                // Timeout w razie awarii chmury PeerJS
+                const cTimeout = setTimeout(() => {
+                    if(statusDiv.innerText === "Connecting to server...") {
+                        statusDiv.innerText = "Server timeout. Use Solo Mode.";
+                        document.getElementById('btnHost').disabled = false; document.getElementById('btnJoin').disabled = false; document.getElementById('btnSolo').disabled = false;
+                        peer.destroy();
+                    }
+                }, 8000);
+
+                peer.on('open', (id) => { 
+                    clearTimeout(cTimeout);
+                    myPeerId = id; statusDiv.innerText = "Room Created! Waiting for players..."; 
+                    onConnectionSuccess(); 
                 });
-                conn.on('close', () => { clientConnections = clientConnections.filter(c => c !== conn); delete playersState[conn.peer]; removeRemotePlayerVisual(conn.peer); });
-            });
-            peer.on('call', (call) => { if(myStream) call.answer(myStream); call.on('stream', (remoteStream) => { playAudioStream(remoteStream, call.peer); }); });
+                
+                peer.on('error', (err) => { 
+                    clearTimeout(cTimeout);
+                    if (err.type === 'unavailable-id') statusDiv.innerText = "Error: Room name taken!";
+                    else statusDiv.innerText = "Error: " + err.message; 
+                    document.getElementById('btnHost').disabled = false; document.getElementById('btnJoin').disabled = false; document.getElementById('btnSolo').disabled = false;
+                });
+                
+                peer.on('connection', (conn) => {
+                    if (clientConnections.length >= MAX_GUESTS) {
+                        conn.on('open', () => { conn.send({ type: 'serverFull', message: 'Room full!' }); setTimeout(() => conn.close(), 1000); }); return;
+                    }
+                    clientConnections.push(conn);
+                    conn.on('data', (data) => { 
+                        if (data.type === 'playerUpdate') playersState[conn.peer] = data.payload; 
+                        if (data.type === 'objectMove') sharedObjectsState[data.id] = data.payload; 
+                    });
+                    conn.on('close', () => { 
+                        clientConnections = clientConnections.filter(c => c !== conn); delete playersState[conn.peer]; removeRemotePlayerVisual(conn.peer); 
+                    });
+                });
+                peer.on('call', (call) => { if(myStream) call.answer(myStream); call.on('stream', (remoteStream) => { playAudioStream(remoteStream, call.peer); }); });
+            } catch (e) {
+                statusDiv.innerText = "Critical Error: " + e.message;
+            }
         };
 
+        // TRYB JOIN
         document.getElementById('btnJoin').onclick = () => {
             const code = document.getElementById('roomCode').value.trim(); 
             if(!code) { alert("Please enter a Room Code."); return; }
-            updateProfileData();
-            document.getElementById('btnHost').disabled = true; document.getElementById('btnJoin').disabled = true;
-            statusDiv.innerText = "Joining...";
-            isHost = false; peer = new Peer();
             
-            peer.on('open', (id) => {
-                myPeerId = id; hostConnection = peer.connect(GAME_PREFIX + code);
-                hostConnection.on('open', () => { statusDiv.innerText = "Connected!"; initHorrorSoundtrack(); onConnectionSuccess(); });
-                hostConnection.on('data', (data) => {
-                    if (data.type === 'serverFull') { alert(data.message); window.location.reload(); return; }
-                    if (data.type === 'gameState') {
-                        for (let pId in data.payload.players) { 
-                            if (pId === myPeerId) continue; 
-                            playersState[pId] = data.payload.players[pId]; updateRemotePlayerVisual(pId, data.payload.players[pId]); 
-                        }
-                        for (let pId in remotePlayersVisuals) { if (!data.payload.players[pId]) removeRemotePlayerVisual(pId); }
-                        for(let objId in data.payload.objects) { if(!grabbedObject || grabbedObject.userData.id !== objId) syncObject(objId, data.payload.objects[objId]); }
+            updateProfileData();
+            initHorrorSoundtrack();
+            
+            document.getElementById('btnHost').disabled = true; document.getElementById('btnJoin').disabled = true; document.getElementById('btnSolo').disabled = true;
+            statusDiv.innerText = "Joining...";
+            
+            try {
+                isHost = false; 
+                peer = new Peer();
+                
+                const cTimeout = setTimeout(() => {
+                    if(statusDiv.innerText === "Joining...") {
+                        statusDiv.innerText = "Connection timeout. Host may be offline.";
+                        document.getElementById('btnHost').disabled = false; document.getElementById('btnJoin').disabled = false; document.getElementById('btnSolo').disabled = false;
+                        peer.destroy();
                     }
+                }, 8000);
+
+                peer.on('open', (id) => {
+                    myPeerId = id; 
+                    hostConnection = peer.connect(GAME_PREFIX + code);
+                    
+                    hostConnection.on('open', () => { 
+                        clearTimeout(cTimeout);
+                        statusDiv.innerText = "Connected!"; 
+                        onConnectionSuccess(); 
+                    });
+                    
+                    hostConnection.on('data', (data) => {
+                        if (data.type === 'serverFull') { alert(data.message); window.location.reload(); return; }
+                        if (data.type === 'gameState') {
+                            for (let pId in data.payload.players) { 
+                                if (pId === myPeerId) continue; 
+                                playersState[pId] = data.payload.players[pId]; updateRemotePlayerVisual(pId, data.payload.players[pId]); 
+                            }
+                            for (let pId in remotePlayersVisuals) { if (!data.payload.players[pId]) removeRemotePlayerVisual(pId); }
+                            for(let objId in data.payload.objects) { if(!grabbedObject || grabbedObject.userData.id !== objId) syncObject(objId, data.payload.objects[objId]); }
+                        }
+                    });
+                    hostConnection.on('close', () => { alert("Connection lost."); window.location.reload(); });
+                    if(myStream) { const call = peer.call(GAME_PREFIX + code, myStream); call.on('stream', (remoteStream) => { playAudioStream(remoteStream, call.peer); }); }
                 });
-                hostConnection.on('close', () => { alert("Connection lost."); window.location.reload(); });
-                if(myStream) { const call = peer.call(GAME_PREFIX + code, myStream); call.on('stream', (remoteStream) => { playAudioStream(remoteStream, call.peer); }); }
-            });
-            peer.on('error', (err) => { statusDiv.innerText = "Error: Room not found."; document.getElementById('btnHost').disabled = false; document.getElementById('btnJoin').disabled = false; });
+                peer.on('error', (err) => { 
+                    clearTimeout(cTimeout);
+                    statusDiv.innerText = "Error: Room not found."; 
+                    document.getElementById('btnHost').disabled = false; document.getElementById('btnJoin').disabled = false; document.getElementById('btnSolo').disabled = false;
+                });
+            } catch (e) {
+                statusDiv.innerText = "Critical Error: " + e.message;
+            }
         };
 
         // ==========================================
@@ -595,7 +564,7 @@
         }
         
         function networkTick() {
-            if (!myPeerId) return;
+            if (!myPeerId || myPeerId === "solo-player") return;
             const hp = new THREE.Vector3(); const hq = new THREE.Quaternion(); camera.getWorldPosition(hp); camera.getWorldQuaternion(hq);
             const l1p = new THREE.Vector3(); const l1q = new THREE.Quaternion(); localAvatar.handL.getWorldPosition(l1p); localAvatar.handL.getWorldQuaternion(l1q);
             const l2p = new THREE.Vector3(); const l2q = new THREE.Quaternion(); localAvatar.handR.getWorldPosition(l2p); localAvatar.handR.getWorldQuaternion(l2q);
@@ -650,7 +619,7 @@
                     let pushForceY = -1400;
 
                     if (isTouchingWall) {
-                        if (playerBody.velocity.y < 0) playerBody.velocity.y = 0; // Wall slide fix
+                        if (playerBody.velocity.y < 0) playerBody.velocity.y = 0; 
                         pushForceY = -1700; pushForceXZ = -1600;
                     }
 
@@ -667,7 +636,6 @@
             const dt = Math.min(clock.getDelta(), 0.1); 
             world.step(1/90, dt, 10); 
             
-            // ANTI-SLIP PHYSICS: Stop sliding on objects and ground
             if (Math.abs(playerBody.velocity.y) < 0.1 && !activeRopeConstraint) {
                 playerBody.velocity.x *= 0.6; 
                 playerBody.velocity.z *= 0.6;
