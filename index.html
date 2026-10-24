@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BagaBoo VR - Cloudy Day & Pro Models</title>
+    <title>BagaBoo VR - Pro Physics & Crisp Graphics</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
         
-        body { margin: 0; overflow: hidden; background-color: #7b8b9a; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #9db2c2; font-family: sans-serif; }
         
         #lobby {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, #8fa3b3, #4a5c6a); display: flex; flex-direction: column;
+            background: radial-gradient(circle, #b1c6d6, #5a6e7e); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 1000; color: #111;
         }
         
@@ -49,7 +49,7 @@
 <body>
     <div id="lobby">
         <h1 class="logo">BagaBoo VR</h1>
-        <p class="subtitle">Cloudy Day | Pro Models & Physics Fix</p>
+        <p class="subtitle">Crisp Visuals & Real Swinging Ropes</p>
         
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Player1" value="Acrobat" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
@@ -68,7 +68,7 @@
                 <option value="sunglasses">Sunglasses</option>
             </select>
         </div>
-        <div class="form-group" style="margin-top: 15px;"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. cloudcity" /></div>
+        <div class="form-group" style="margin-top: 15px;"><label>Room Code:</label><input type="text" id="roomCode" placeholder="e.g. clearroom" /></div>
         
         <div class="btn-group">
             <button id="btnHost">Host Game</button>
@@ -77,7 +77,7 @@
         <div id="status">Initializing Mic...</div>
     </div>
 
-    <div id="info">Connected! Click "ENTER VR". Grab balls, wall-run, and jump!</div>
+    <div id="info">Connected! Grab the swinging ropes and try the Wall-Run!</div>
     <div id="audio-container" style="display:none;"></div>
 
     <script type="importmap">
@@ -108,56 +108,12 @@
         }
         initMic();
 
-        // --- PROCEDURAL TEXTURES ---
-        function createSciFiGridTexture() {
-            const c = document.createElement('canvas'); c.width = 1024; c.height = 1024;
-            const ctx = c.getContext('2d');
-            ctx.fillStyle = '#94a0ab'; ctx.fillRect(0, 0, 1024, 1024);
-            for(let i=0; i<30000; i++) {
-                ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-                ctx.fillRect(Math.random()*1024, Math.random()*1024, 2, 2);
-            }
-            ctx.strokeStyle = 'rgba(0, 150, 150, 0.4)'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, 1024, 1024);
-            ctx.lineWidth = 2;
-            for(let i=0; i<=1024; i+=128) {
-                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1024); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1024, i); ctx.stroke();
-            }
-            const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
-        }
-
-        function createWoodTexture() {
-            const c = document.createElement('canvas'); c.width = 512; c.height = 512;
-            const ctx = c.getContext('2d');
-            ctx.fillStyle = '#6b4423'; ctx.fillRect(0,0,512,512);
-            for(let i=0; i<300; i++) {
-                ctx.fillStyle = Math.random()>0.5 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
-                ctx.fillRect(0, Math.random()*512, 512, Math.random()*10 + 2);
-            }
-            const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
-        }
-
-        function createCautionTexture() {
-            const c = document.createElement('canvas'); c.width = 512; c.height = 512;
-            const ctx = c.getContext('2d');
-            ctx.fillStyle = '#ffcc00'; ctx.fillRect(0,0,512,512);
-            ctx.fillStyle = '#222';
-            for(let i=-512; i<1024; i+=64) {
-                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i+32, 0); ctx.lineTo(i+512+32, 512); ctx.lineTo(i+512, 512); ctx.fill();
-            }
-            const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
-        }
-
-        const scifiTex = createSciFiGridTexture();
-        const woodTex = createWoodTexture();
-        const cautionTex = createCautionTexture();
-
         // ==========================================
-        // 1. ENGINE & PHYSICS (Cloudy Day)
+        // 1. ENGINE & CRISP GRAPHICS (No Pixelation)
         // ==========================================
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x8fa3b3); 
-        scene.fog = new THREE.FogExp2(0x8fa3b3, 0.012); 
+        scene.background = new THREE.Color(0x9db2c2); 
+        scene.fog = new THREE.FogExp2(0x9db2c2, 0.010); 
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 400);
         const playerRig = new THREE.Group(); playerRig.add(camera); scene.add(playerRig);
@@ -166,31 +122,39 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.xr.enabled = true; 
         renderer.outputColorSpace = THREE.SRGBColorSpace;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0; 
-        renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; 
+        renderer.toneMappingExposure = 1.1; 
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0)); // Maksymalna ostrość
+        renderer.shadowMap.enabled = true; 
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
         document.body.appendChild(renderer.domElement); 
         const vrBtn = VRButton.createButton(renderer); document.body.appendChild(vrBtn);
 
         const hemiLight = new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.9); scene.add(hemiLight);
         
-        const dirLight = new THREE.DirectionalLight(0xfff5ed, 0.7);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
         dirLight.position.set(15, 30, 15); dirLight.castShadow = true;
         dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
         dirLight.shadow.camera.near = 0.5; dirLight.shadow.camera.far = 100;
         dirLight.shadow.camera.top = 25; dirLight.shadow.camera.bottom = -25;
         dirLight.shadow.camera.left = -25; dirLight.shadow.camera.right = 25;
-        dirLight.shadow.bias = -0.0005; 
+        dirLight.shadow.bias = -0.0002; 
         scene.add(dirLight);
 
-        // --- CANNON PHYSICS SETUP WITH COLLISION GROUPS ---
+        // ==========================================
+        // 2. PHYSICS SETUP (Anti-Phasing)
+        // ==========================================
         const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12.0, 0) });
         world.broadphase = new CANNON.SAPBroadphase(world);
         
+        // Zwiększamy sztywność i relaksację, by uniknąć wchodzenia w ściany
+        world.defaultContactMaterial.contactEquationStiffness = 1e9;
+        world.defaultContactMaterial.contactEquationRelaxation = 4;
+
         const physicsMat = new CANNON.Material();
         const contactMat = new CANNON.ContactMaterial(physicsMat, physicsMat, { friction: 0.8, restitution: 0.0 });
         world.addContactMaterial(contactMat);
 
-        // MASKI KOLIZJI (Rozwiązanie problemu z odlatywaniem)
         const GROUP_ENV = 1;
         const GROUP_PLAYER = 2;
         const GROUP_BALL = 4;
@@ -200,13 +164,12 @@
             mass: 50, shape: new CANNON.Sphere(radius), material: physicsMat,
             position: new CANNON.Vec3(0, 2, 0), linearDamping: 0.1, fixedRotation: true,
             collisionFilterGroup: GROUP_PLAYER,
-            // Gracz koliduje TYLKO ze środowiskiem (ściany, podłoga, przeszkody), IGNORUJE piłki!
             collisionFilterMask: GROUP_ENV 
         });
         world.addBody(playerBody);
 
         // ==========================================
-        // 2. LOBBY BUILDING (Advanced Models)
+        // 3. SHARP, HIGH-DETAIL LOBBY BUILDING
         // ==========================================
         const obstacles = []; const trampolines = []; const ropes = []; const throwables = [];
 
@@ -214,135 +177,104 @@
             const body = new CANNON.Body({ 
                 mass: 0, shape: shape, material: physicsMat,
                 collisionFilterGroup: GROUP_ENV,
-                collisionFilterMask: -1 // Środowisko koliduje ze wszystkim
+                collisionFilterMask: -1 
             });
             body.position.set(x, y, z); world.addBody(body);
             
             const box3 = new THREE.Box3().setFromObject(meshOrGroup);
-            if (isTrampoline) {
-                trampolines.push({ box3 });
-                obstacles.push({ meshOrGroup, body, box3 });
-            } else {
-                obstacles.push({ meshOrGroup, body, box3 });
-            }
+            if (isTrampoline) { trampolines.push({ box3 }); }
+            obstacles.push({ meshOrGroup, body, box3 });
+        }
+
+        // Krystalicznie czyste obiekty dzięki krawędziom (EdgesGeometry)
+        function addCrispBlock(x, y, z, w, h, d, color, edgeColor, isTrampoline = false) {
+            const mat = new THREE.MeshPhysicalMaterial({ color: color, roughness: 0.3, metalness: 0.5, clearcoat: 0.8 });
+            if(isTrampoline) { mat.emissive = new THREE.Color(color); mat.emissiveIntensity = 0.4; }
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+            mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true;
+            
+            // Nakładanie ostrych, wektorowych linii (0 pikselozy)
+            const edges = new THREE.LineSegments(
+                new THREE.EdgesGeometry(mesh.geometry), 
+                new THREE.LineBasicMaterial({ color: edgeColor, linewidth: 2 })
+            );
+            mesh.add(edges);
+            scene.add(mesh);
+            addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2)), mesh, isTrampoline);
         }
 
         // Grube ściany areny
-        function addWall(x, y, z, w, h, d) {
-            const material = new THREE.MeshStandardMaterial({ map: scifiTex, roughness: 0.6, metalness: 0.2 });
-            scifiTex.repeat.set(Math.max(w, h)/5, Math.max(d, h)/5);
-            const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
-            mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true; scene.add(mesh); 
-            addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2)), mesh);
-        }
+        addCrispBlock(0, -5, 0, 40, 10, 40, 0x8895a5, 0xffffff); // Podłoga
+        addCrispBlock(0, 25, 0, 40, 10, 40, 0x8895a5, 0xffffff); // Sufit
+        addCrispBlock(0, 10, -15, 40, 20, 10, 0x738293, 0x00ffff); // Północ
+        addCrispBlock(0, 10, 15, 40, 20, 10, 0x738293, 0x00ffff);  // Południe
+        addCrispBlock(-15, 10, 0, 10, 20, 40, 0x617081, 0x00ffff); // Zachód
+        addCrispBlock(15, 10, 0, 10, 20, 40, 0x617081, 0x00ffff);  // Wschód
 
-        addWall(0, -5, 0, 40, 10, 40); // Podłoga
-        addWall(0, 25, 0, 40, 10, 40); // Sufit
-        addWall(0, 10, -15, 40, 20, 10); // Ściana Północna
-        addWall(0, 10, 15, 40, 20, 10);  // Ściana Południowa
-        addWall(-15, 10, 0, 10, 20, 40); // Ściana Zachodnia
-        addWall(15, 10, 0, 10, 20, 40);  // Ściana Wschodnia
-
-        // ADVANCED MODEL: Drewniana Skrzynia (Crate)
-        function addCrate(x, y, z, size) {
-            const group = new THREE.Group(); group.position.set(x, y, z);
-            const bodyMat = new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.9 });
-            const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), bodyMat);
-            bodyMesh.castShadow = true; bodyMesh.receiveShadow = true; group.add(bodyMesh);
-
-            const edgeMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.4 });
-            const t = size * 0.08; const l = size + 0.01;
-            const edges = [
-                [0, size/2, size/2, l, t, t], [0, size/2, -size/2, l, t, t], [0, -size/2, size/2, l, t, t], [0, -size/2, -size/2, l, t, t],
-                [size/2, 0, size/2, t, l, t], [-size/2, 0, size/2, t, l, t], [size/2, 0, -size/2, t, l, t], [-size/2, 0, -size/2, t, l, t],
-                [size/2, size/2, 0, t, t, l], [-size/2, size/2, 0, t, t, l], [size/2, -size/2, 0, t, t, l], [-size/2, -size/2, 0, t, t, l]
-            ];
-            edges.forEach(e => { const edge = new THREE.Mesh(new THREE.BoxGeometry(e[3], e[4], e[5]), edgeMat); edge.position.set(e[0], e[1], e[2]); edge.castShadow = true; group.add(edge); });
-            scene.add(group);
-            addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(size/2, size/2, size/2)), group);
-        }
-
-        // ADVANCED MODEL: Trampolina
-        function addTrampoline(x, y, z, rad) {
-            const group = new THREE.Group(); group.position.set(x, y, z);
-            const padMat = new THREE.MeshStandardMaterial({ color: 0x00ccaa, emissive: 0x005544, roughness: 0.1, metalness: 0.2 });
-            const padMesh = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, 0.2, 32), padMat);
-            padMesh.castShadow = true; padMesh.receiveShadow = true; group.add(padMesh);
-            
-            const rimMat = new THREE.MeshStandardMaterial({ map: cautionTex, roughness: 0.5 });
-            const rimMesh = new THREE.Mesh(new THREE.TorusGeometry(rad + 0.1, 0.15, 16, 32), rimMat);
-            rimMesh.rotation.x = Math.PI / 2; rimMesh.position.y = 0.1; rimMesh.castShadow = true; group.add(rimMesh);
-            
-            const legMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 });
-            for(let i=0; i<4; i++) {
-                const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5), legMat);
-                const angle = (i/4) * Math.PI * 2; leg.position.set(Math.cos(angle)*(rad-0.1), -0.25, Math.sin(angle)*(rad-0.1)); leg.castShadow = true; group.add(leg);
-            }
-            scene.add(group);
-            addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(rad+0.1, 0.3, rad+0.1)), group, true);
-        }
-
-        // ADVANCED MODEL: Uchwyty (Grips)
-        const gripGeo = new THREE.DodecahedronGeometry(0.25);
-        const gripMat = new THREE.MeshStandardMaterial({ color: 0x00aaaa, emissive: 0x003333, metalness: 0.5, roughness: 0.2 });
-        function addGrip(x, y, z) {
-            const mesh = new THREE.Mesh(gripGeo, gripMat); mesh.position.set(x, y, z); mesh.rotation.set(Math.random(), Math.random(), Math.random());
-            mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh);
-            addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(0.25, 0.25, 0.25)), mesh);
-        }
-
-        // ADVANCED MODEL: Wysoki Filar z Obręczami
-        function addPillar(x, z, height) {
-            const group = new THREE.Group(); group.position.set(x, height/2, z);
-            const cylGeo = new THREE.CylinderGeometry(1, 1, height, 16);
-            const cylMat = new THREE.MeshStandardMaterial({ map: scifiTex, roughness: 0.5 });
-            const mesh = new THREE.Mesh(cylGeo, cylMat); mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh);
-            
-            const ringMat = new THREE.MeshStandardMaterial({ map: cautionTex, metalness: 0.6 });
-            for(let y = -height/2 + 2; y < height/2; y += 3) {
-                const ring = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.1, 8, 24), ringMat);
-                ring.rotation.x = Math.PI / 2; ring.position.y = y; ring.castShadow = true; group.add(ring);
-            }
-            scene.add(group);
-            addStaticBody(x, height/2, z, new CANNON.Box(new CANNON.Vec3(1, height/2, 1)), group);
-        }
-
-        // Rozmieszczenie zaawansowanych przeszkód
-        addCrate(-5, 1.5, -5, 3); 
-        addCrate(5, 3.0, 5, 4);   
-        addPillar(-6, 5, 10); 
+        // Przeszkody
+        addCrispBlock(-5, 1.5, -5, 3, 3, 3, 0x445566, 0xffaa00); 
+        addCrispBlock(5, 3.0, 5, 4, 6, 4, 0x445566, 0xffaa00);   
+        addCrispBlock(-6, 5.0, 5, 2, 10, 2, 0x223344, 0x00ffaa); 
         
-        addTrampoline(0, 0.4, 5, 2.5); 
+        addCrispBlock(0, 0.2, 5, 3, 0.4, 3, 0x00ffcc, 0xffffff, true); // Trampolina
 
-        // Liny
-        const ropeMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
-        const ropeMesh1 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 16), ropeMat);
-        ropeMesh1.position.set(4, 10, -4); ropeMesh1.castShadow = true; scene.add(ropeMesh1); ropes.push(ropeMesh1);
-        const ropeMesh2 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 16), ropeMat);
-        ropeMesh2.position.set(-4, 10, 4); ropeMesh2.castShadow = true; scene.add(ropeMesh2); ropes.push(ropeMesh2);
-
-        // Uchwyty na ścianach
+        // Ścieżki wspinaczkowe
         for(let i = 0; i < 15; i++) {
             let px = -8 + (i * 1.1) + (Math.random() * 0.4 - 0.2);
             let py = 2 + (i * 0.9) + (Math.random() * 0.5);
-            addGrip(px, py, -10);
+            addCrispBlock(px, py, -10, 0.6, 0.3, 0.6, 0x111111, 0x00ffff);
         }
         for(let i = 0; i < 12; i++) {
             let px = 8 - (i * 1.3) + (Math.random() * 0.5);
             let py = 4 + (i * 1.1) + (Math.random() * 0.5);
-            addGrip(px, py, 10);
+            addCrispBlock(px, py, 10, 0.4, 0.2, 0.4, 0x111111, 0x00ffff);
         }
 
-        // Fizyka piłek ze zmienionymi Maskami
+        // ==========================================
+        // 4. REAL SWINGING ROPES (Liny do bujania)
+        // ==========================================
+        function addSwingingRope(x, y, z) {
+            const height = 12;
+            const ropeGroup = new THREE.Group();
+            
+            // Ostra grafika liny
+            const mat = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.9, metalness: 0.1 });
+            const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, height, 16), mat);
+            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({color: 0x00ffff, opacity: 0.5, transparent: true}));
+            mesh.add(edges);
+            mesh.castShadow = true; ropeGroup.add(mesh); scene.add(ropeGroup);
+            
+            // Fizyka liny (Swinging Body)
+            const shape = new CANNON.Box(new CANNON.Vec3(0.2, height/2, 0.2));
+            const body = new CANNON.Body({ 
+                mass: 15, shape: shape, material: physicsMat, 
+                position: new CANNON.Vec3(x, y - height/2, z),
+                linearDamping: 0.4, angularDamping: 0.4,
+                collisionFilterGroup: GROUP_ENV, collisionFilterMask: -1 
+            });
+            world.addBody(body);
+            
+            // Zawias u sufitu
+            const ceilingBody = new CANNON.Body({ mass: 0, position: new CANNON.Vec3(x, y, z) });
+            world.addBody(ceilingBody);
+            const hinge = new CANNON.PointToPointConstraint(body, new CANNON.Vec3(0, height/2, 0), ceilingBody, new CANNON.Vec3(0,0,0));
+            world.addConstraint(hinge);
+
+            ropes.push({ mesh: ropeGroup, body: body, halfHeight: height/2 });
+        }
+
+        addSwingingRope(4, 20, -4);
+        addSwingingRope(-4, 20, 4);
+
+        // Piłki
         function createBall(id, x, y, z) {
-            const mat = new THREE.MeshStandardMaterial({color: 0x00ccff, roughness: 0.2, metalness: 0.5});
+            const mat = new THREE.MeshPhysicalMaterial({color: 0x00ccff, roughness: 0.1, metalness: 0.8, clearcoat: 1.0, emissive: 0x003366 });
             const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), mat);
             mesh.castShadow = true; scene.add(mesh);
             
             const body = new CANNON.Body({ 
                 mass: 1, shape: new CANNON.Sphere(0.2), position: new CANNON.Vec3(x,y,z), material: physicsMat,
                 collisionFilterGroup: GROUP_BALL,
-                // Piłki odbijają się od środowiska i innych piłek, ale PRZENIKAJĄ gracza
                 collisionFilterMask: GROUP_ENV | GROUP_BALL
             });
             world.addBody(body); mesh.userData = { id: id, body: body }; throwables.push(mesh);
@@ -350,7 +282,7 @@
         createBall('ball1', 2, 1, -2); createBall('ball2', -2, 1, -2);
 
         // ==========================================
-        // 3. MULTIPLAYER (1 HOST + 10 GUESTS)
+        // 5. MULTIPLAYER
         // ==========================================
         let peer = null; let hostConnection = null; let clientConnections = [];
         let isHost = false; let myPeerId = null; const GAME_PREFIX = "vr-gtag-fix2-";
@@ -383,9 +315,7 @@
             isHost = true; peer = new Peer(GAME_PREFIX + code);
             
             peer.on('open', (id) => { 
-                myPeerId = id; 
-                statusDiv.innerText = "Room Created! Waiting for players..."; 
-                onConnectionSuccess(); 
+                myPeerId = id; statusDiv.innerText = "Room Created! Waiting for players..."; onConnectionSuccess(); 
             });
             peer.on('error', (err) => { 
                 statusDiv.innerText = "Error: " + err.message; 
@@ -394,10 +324,7 @@
             
             peer.on('connection', (conn) => {
                 if (clientConnections.length >= MAX_GUESTS) {
-                    conn.on('open', () => {
-                        conn.send({ type: 'serverFull', message: 'The room is full! Maximum 10 guests allowed.' });
-                        setTimeout(() => conn.close(), 1000);
-                    });
+                    conn.on('open', () => { conn.send({ type: 'serverFull', message: 'Room full!' }); setTimeout(() => conn.close(), 1000); });
                     return;
                 }
                 clientConnections.push(conn);
@@ -406,9 +333,7 @@
                     if (data.type === 'objectMove') sharedObjectsState[data.id] = data.payload; 
                 });
                 conn.on('close', () => { 
-                    clientConnections = clientConnections.filter(c => c !== conn); 
-                    delete playersState[conn.peer]; 
-                    removeRemotePlayerVisual(conn.peer); 
+                    clientConnections = clientConnections.filter(c => c !== conn); delete playersState[conn.peer]; removeRemotePlayerVisual(conn.peer); 
                 });
             });
             peer.on('call', (call) => { if(myStream) call.answer(myStream); call.on('stream', (remoteStream) => { playAudioStream(remoteStream, call.peer); }); });
@@ -430,21 +355,20 @@
                     if (data.type === 'gameState') {
                         for (let pId in data.payload.players) { 
                             if (pId === myPeerId) continue; 
-                            playersState[pId] = data.payload.players[pId]; 
-                            updateRemotePlayerVisual(pId, data.payload.players[pId]); 
+                            playersState[pId] = data.payload.players[pId]; updateRemotePlayerVisual(pId, data.payload.players[pId]); 
                         }
                         for (let pId in remotePlayersVisuals) { if (!data.payload.players[pId]) removeRemotePlayerVisual(pId); }
                         for(let objId in data.payload.objects) { if(!grabbedObject || grabbedObject.userData.id !== objId) syncObject(objId, data.payload.objects[objId]); }
                     }
                 });
-                hostConnection.on('close', () => { alert("Connection lost / Host left."); window.location.reload(); });
+                hostConnection.on('close', () => { alert("Connection lost."); window.location.reload(); });
                 if(myStream) { const call = peer.call(GAME_PREFIX + code, myStream); call.on('stream', (remoteStream) => { playAudioStream(remoteStream, call.peer); }); }
             });
             peer.on('error', (err) => { statusDiv.innerText = "Error: Room not found."; document.getElementById('btnHost').disabled = false; document.getElementById('btnJoin').disabled = false; });
         };
 
         // ==========================================
-        // 4. AVATARS
+        // 6. AVATARS
         // ==========================================
         function createNameSprite(message) {
             const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); canvas.width = 512; canvas.height = 128;
@@ -456,26 +380,26 @@
 
         function createAvatar(profile, isLocal) {
             const group = new THREE.Group();
-            const mat = new THREE.MeshStandardMaterial({ color: profile.color, roughness: 0.8 });
+            const mat = new THREE.MeshPhysicalMaterial({ color: profile.color, roughness: 0.8, clearcoat: 0.2 });
             
             const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.35), mat); torso.castShadow = true; group.add(torso);
             let head = new THREE.Group();
             
             if (!isLocal) {
-                const pSnout = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.15), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7 }));
+                const pSnout = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.15), new THREE.MeshPhysicalMaterial({ color: 0x222222, roughness: 0.7 }));
                 pSnout.position.set(0, -0.1, -0.15); head.add(pSnout);
                 const pBrow = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.08), mat); pBrow.position.set(0, 0.02, -0.12); head.add(pBrow);
                 
                 if(profile.hat === 'tophat') {
-                    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2), new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}));
+                    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x111111, roughness: 0.9}));
                     hat.position.set(0, 0.15, -0.05); head.add(hat);
                 } else if (profile.hat === 'cap') {
-                    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), new THREE.MeshStandardMaterial({color: 0x0055aa}));
-                    const brim = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.15), new THREE.MeshStandardMaterial({color: 0x0055aa}));
+                    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x0055aa}));
+                    const brim = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.15), new THREE.MeshPhysicalMaterial({color: 0x0055aa}));
                     cap.position.set(0, 0.1, -0.05); brim.position.set(0, 0.05, -0.2); head.add(cap, brim);
                 }
                 if(profile.glasses === 'sunglasses') {
-                    const gl = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), new THREE.MeshStandardMaterial({color: 0x050505}));
+                    const gl = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), new THREE.MeshPhysicalMaterial({color: 0x050505, metalness:0.9, roughness:0.1}));
                     gl.position.set(0, 0.02, -0.17); head.add(gl);
                 }
                 const nameTag = createNameSprite(profile.name); nameTag.position.set(0, 0.4, 0); nameTag.scale.set(2, 0.5, 1); head.add(nameTag);
@@ -492,12 +416,16 @@
         playerRig.add(controller1); playerRig.add(controller2);
         const localAvatar = createAvatar(myProfile, true);
         scene.add(localAvatar.group); 
-
         controller1.add(localAvatar.handL); controller2.add(localAvatar.handR);
 
-        let grabbedObject = null; let grabbingController = null; let isGrabbingRope = false;
+        // --- GRABBING MECHANICS (Balls & Ropes) ---
+        let grabbedObject = null; let grabbingController = null; 
+        let activeRopeConstraint = null;
+
         function onSqueezeStart(event) {
             const ctrl = event.target; const pos = new THREE.Vector3(); ctrl.getWorldPosition(pos);
+            
+            // Szukanie piłki
             for(let ball of throwables) { 
                 if(ball.position.distanceTo(pos) < 0.3) { 
                     grabbedObject = ball; grabbingController = ctrl; 
@@ -507,10 +435,36 @@
                     return; 
                 } 
             }
-            for(let rope of ropes) { if(new THREE.Box3().setFromObject(rope).expandByScalar(0.5).containsPoint(pos)) { isGrabbingRope = true; playerBody.velocity.set(0,0,0); return; } }
+            
+            // Szukanie LINY DO BUJANIA
+            if(!activeRopeConstraint) {
+                for(let rope of ropes) {
+                    const localY = pos.y - rope.body.position.y;
+                    if(localY < rope.halfHeight && localY > -rope.halfHeight) {
+                        const hDist = Math.sqrt(Math.pow(pos.x - rope.body.position.x, 2) + Math.pow(pos.z - rope.body.position.z, 2));
+                        if(hDist < 0.8) {
+                            // Gracz łapie linę - dodajemy powiązanie!
+                            const localPlayerOffset = new CANNON.Vec3(playerBody.position.x - pos.x, playerBody.position.y - pos.y, playerBody.position.z - pos.z);
+                            activeRopeConstraint = new CANNON.PointToPointConstraint(
+                                playerBody, localPlayerOffset,
+                                rope.body, new CANNON.Vec3(0, localY, 0)
+                            );
+                            world.addConstraint(activeRopeConstraint);
+                            return;
+                        }
+                    }
+                }
+            }
         }
+
         function onSqueezeEnd(event) {
-            isGrabbingRope = false;
+            // Puszczenie liny
+            if(activeRopeConstraint && event.target === controller1 || event.target === controller2) { // uproszczenie
+                world.removeConstraint(activeRopeConstraint);
+                activeRopeConstraint = null;
+            }
+
+            // Puszczenie piłki
             if(grabbedObject && grabbingController === event.target) {
                 grabbedObject.userData.body.type = CANNON.Body.DYNAMIC;
                 const throwDir = new THREE.Vector3(0,0,-1).applyQuaternion(event.target.quaternion).multiplyScalar(15);
@@ -554,16 +508,17 @@
         }
 
         // ==========================================
-        // 5. ADVANCED MOVEMENT (WALL JUMP / WALL RUN)
+        // 7. MOVEMENT & ROBUST PHYSICS LOOP
         // ==========================================
         let prevLocalPos1 = new THREE.Vector3(); let prevLocalPos2 = new THREE.Vector3();
         const clock = new THREE.Clock();
 
         function handleMovement(controller, handMesh, prevLocalPos) {
             const currentLocalPos = controller.position.clone();
-            if (prevLocalPos.lengthSq() > 0 && !isGrabbingRope) {
+            
+            // Jeśli trzymamy linę, ignorujemy odpychanie rąk od otoczenia, żeby płynnie się bujać
+            if (prevLocalPos.lengthSq() > 0 && !activeRopeConstraint) {
                 const deltaLocalPos = new THREE.Vector3().subVectors(currentLocalPos, prevLocalPos);
-                
                 const handWorldPos = new THREE.Vector3(); 
                 handMesh.getWorldPosition(handWorldPos);
 
@@ -587,26 +542,21 @@
 
                 for(let t of trampolines) {
                     if (t.box3.distanceToPoint(handWorldPos) <= 0.25) {
-                        playerBody.velocity.y = 15; 
-                        isTouchingGround = false; isTouchingWall = false; 
-                        break;
+                        playerBody.velocity.y = 15; isTouchingGround = false; isTouchingWall = false; break;
                     }
                 }
 
                 if ((isTouchingGround || isTouchingWall) && deltaLocalPos.lengthSq() > 0) {
                     const deltaWorld = deltaLocalPos.clone().applyQuaternion(playerRig.quaternion);
                     
-                    if(deltaWorld.length() > 0.5) deltaWorld.normalize().multiplyScalar(0.5);
+                    if(deltaWorld.length() > 0.4) deltaWorld.normalize().multiplyScalar(0.4);
 
                     let pushForceXZ = -1300; 
                     let pushForceY = -1300;
 
                     if (isTouchingWall) {
-                        if (playerBody.velocity.y < 0) {
-                            playerBody.velocity.y = 0;
-                        }
-                        pushForceY = -1600;
-                        pushForceXZ = -1500;
+                        if (playerBody.velocity.y < 0) playerBody.velocity.y = 0;
+                        pushForceY = -1600; pushForceXZ = -1500;
                     }
 
                     playerBody.applyImpulse(
@@ -619,16 +569,29 @@
         }
 
         renderer.setAnimationLoop(() => {
-            const dt = Math.min(clock.getDelta(), 0.1); world.step(1/60, dt, 3);
+            const dt = Math.min(clock.getDelta(), 0.1); 
+            // 10 sub-kroków dla perfekcyjnej fizyki (zapobiega przenikaniu i bugom)
+            world.step(1/90, dt, 10); 
+            
+            // Ogranicznik maksymalnej prędkości (Anti-Phasing / Anti-Launch)
+            const speedSq = playerBody.velocity.lengthSquared();
+            if(speedSq > 625) { // max speed = 25
+                playerBody.velocity.scale(25 / Math.sqrt(speedSq), playerBody.velocity);
+            }
+
             if (renderer.xr.isPresenting) {
                 handleMovement(controller1, localAvatar.handL, prevLocalPos1); handleMovement(controller2, localAvatar.handR, prevLocalPos2);
             }
-            if(isGrabbingRope) playerBody.velocity.y = -2;
             
             if(grabbedObject && grabbingController) {
                 const ctrlPos = new THREE.Vector3(); grabbingController.getWorldPosition(ctrlPos); grabbedObject.userData.body.position.copy(ctrlPos);
             }
             for(let ball of throwables) { ball.position.copy(ball.userData.body.position); ball.quaternion.copy(ball.userData.body.quaternion); }
+            
+            for(let rope of ropes) {
+                rope.mesh.position.copy(rope.body.position);
+                rope.mesh.quaternion.copy(rope.body.quaternion);
+            }
 
             const camLocalPos = camera.position.clone();
             const gorillaStanceOffset = 0.6;
