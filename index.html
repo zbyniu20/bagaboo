@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BagaBoo VR - Gorilla Arms & Zero Slip</title>
+    <title>BagaBoo VR - Ultimate Arms & Zero Slip</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
         
@@ -54,7 +54,7 @@
 <body>
     <div id="lobby">
         <h1 class="logo">BagaBoo VR</h1>
-        <p class="subtitle">Auto-Scaling Arms & Zero Slip Physics</p>
+        <p class="subtitle">Extended Arms & Zero Slip Entity</p>
         
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Player1" value="Bagaboo" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
@@ -83,7 +83,7 @@
         <div id="status">Checking microphone...</div>
     </div>
 
-    <div id="info">Connected! Just stand straight, arms scale automatically!</div>
+    <div id="info">Connected! Play upright. No more slipping!</div>
     <div id="audio-container" style="display:none;"></div>
 
     <script type="importmap">
@@ -100,14 +100,9 @@
         import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
         import * as CANNON from 'cannon-es';
 
-        // --- GLOBAL VARIABLES ---
         let myProfile = { name: "Bagaboo", color: "#3d2314", hat: "none", glasses: "none" };
         let myStream = null;
         let audioCtx = null;
-        
-        // GORILLA ARMS: Zmienne do śledzenia zasięgu rąk
-        window.minHandY = 1.0; 
-        let currentArmScale = 1.5;
 
         const statusDiv = document.getElementById('status');
         
@@ -130,18 +125,26 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
 
-            const subOsc = audioCtx.createOscillator(); const subGain = audioCtx.createGain(); const subFilter = audioCtx.createBiquadFilter();
+            const subOsc = audioCtx.createOscillator();
+            const subGain = audioCtx.createGain();
+            const subFilter = audioCtx.createBiquadFilter();
+
             subOsc.type = 'sawtooth'; subOsc.frequency.setValueAtTime(35.0, audioCtx.currentTime);
             subFilter.type = 'lowpass'; subFilter.frequency.setValueAtTime(100, audioCtx.currentTime);
             subGain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            subOsc.connect(subFilter); subFilter.connect(subGain); subGain.connect(audioCtx.destination); subOsc.start();
+
+            subOsc.connect(subFilter); subFilter.connect(subGain); subGain.connect(audioCtx.destination);
+            subOsc.start();
 
             const padOsc1 = audioCtx.createOscillator(); const padOsc2 = audioCtx.createOscillator();
             const padGain = audioCtx.createGain(); const padFilter = audioCtx.createBiquadFilter();
+
             padOsc1.type = 'sine'; padOsc1.frequency.setValueAtTime(110, audioCtx.currentTime);
             padOsc2.type = 'triangle'; padOsc2.frequency.setValueAtTime(113, audioCtx.currentTime);
+
             padFilter.type = 'bandpass'; padFilter.frequency.setValueAtTime(350, audioCtx.currentTime); padFilter.Q.setValueAtTime(5, audioCtx.currentTime);
             padGain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+
             padOsc1.connect(padFilter); padOsc2.connect(padFilter); padFilter.connect(padGain); padGain.connect(audioCtx.destination);
             padOsc1.start(); padOsc2.start();
         }
@@ -151,10 +154,12 @@
             const c = document.createElement('canvas'); c.width = 1024; c.height = 1024;
             const ctx = c.getContext('2d');
             ctx.fillStyle = '#8a96a3'; ctx.fillRect(0, 0, 1024, 1024); 
+            
             for(let i=0; i<35000; i++) {
                 ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.1)' : 'rgba(30,40,30,0.08)';
                 ctx.fillRect(Math.random()*1024, Math.random()*1024, 2, 2);
             }
+
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, 1024, 1024);
             ctx.lineWidth = 2;
             for(let i=0; i<=1024; i+=128) {
@@ -220,15 +225,17 @@
         scene.add(dirLight);
 
         // ==========================================
-        // 2. PHYSICS SETUP
+        // 2. PHYSICS SETUP (EXTREME FRICTION)
         // ==========================================
         const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12.0, 0) });
         world.broadphase = new CANNON.SAPBroadphase(world);
+        
         world.defaultContactMaterial.contactEquationStiffness = 1e9;
         world.defaultContactMaterial.contactEquationRelaxation = 4;
+        world.defaultContactMaterial.frictionEquationStiffness = 1e9;
 
         const physicsMat = new CANNON.Material();
-        const contactMat = new CANNON.ContactMaterial(physicsMat, physicsMat, { friction: 1.0, restitution: 0.0 });
+        const contactMat = new CANNON.ContactMaterial(physicsMat, physicsMat, { friction: 100.0, restitution: 0.0 });
         world.addContactMaterial(contactMat);
 
         const GROUP_ENV = 1; const GROUP_PLAYER = 2; const GROUP_BALL = 4;
@@ -241,7 +248,7 @@
         world.addBody(playerBody);
 
         // ==========================================
-        // 3. COMPLEX MULTI-MESH BUILDING SYSTEM
+        // 3. MULTI-MESH BUILDING SYSTEM
         // ==========================================
         const obstacles = []; const trampolines = []; const ropes = []; const throwables = [];
 
@@ -291,6 +298,7 @@
         addPhysicalPart(-17.5, 10, 0, 5, 20, 40, matWall, 0x111111); 
         addPhysicalPart(17.5, 10, 0, 5, 20, 40, matWall, 0x111111);  
 
+        // BACTERIA DECALS
         const decalGeo = new THREE.PlaneGeometry(25, 25);
         const decalMat = new THREE.MeshBasicMaterial({ map: bacteriaDecalTex, transparent: true, depthWrite: false });
         const decal1 = new THREE.Mesh(decalGeo, decalMat); decal1.position.set(0, 10, -14.9); scene.add(decal1);
@@ -312,7 +320,7 @@
         addPhysicalPart(-12, 7, 2, 2, 0.3, 2, matPillar, 0x000000);
         addPhysicalPart(-10, 9, -2, 2, 0.3, 2, matPillar, 0x000000);
 
-        // Klatka / Drabinki
+        // Drabinki
         addPhysicalPart(5, 4, -8, 0.4, 8, 0.4, matPillar, 0x333333); addPhysicalPart(11, 4, -8, 0.4, 8, 0.4, matPillar, 0x333333);
         addPhysicalPart(5, 4, -12, 0.4, 8, 0.4, matPillar, 0x333333); addPhysicalPart(11, 4, -12, 0.4, 8, 0.4, matPillar, 0x333333);
         addPhysicalPart(8, 8, -8, 6.4, 0.2, 0.2, matPillar, 0x333333); addPhysicalPart(8, 8, -12, 6.4, 0.2, 0.2, matPillar, 0x333333);
@@ -339,7 +347,7 @@
         }
         addPhysicalPart(-7, 1 + 12*1.2, -7, 4, 0.3, 4, matStructure, 0x000000); 
 
-        // ODTANOWIENIA / UCHWYTY
+        // UCHWYTY
         const gripGeo = new THREE.DodecahedronGeometry(0.3);
         function addBoneGrip(x, y, z) {
             const mesh = new THREE.Mesh(gripGeo, matBone); mesh.position.set(x, y, z); 
@@ -358,7 +366,7 @@
         }
 
         // ==========================================
-        // 4. REAL SWINGING ROPES & VOID BALLS
+        // 4. VOID BALLS & ROPES
         // ==========================================
         function addOldCableRope(x, y, z, height) {
             const ropeGroup = new THREE.Group();
@@ -477,7 +485,7 @@
         };
 
         // ==========================================
-        // 6. AVATARS (Odłączone od kontrolerów, sterowane w kodzie)
+        // 6. AVATARS
         // ==========================================
         function createNameSprite(message) {
             const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); canvas.width = 512; canvas.height = 128;
@@ -521,15 +529,11 @@
         
         const localAvatar = createAvatar(myProfile, true);
         scene.add(localAvatar.group); 
-        
-        // ZMIANA: Ręce są teraz w PlayerRig, a nie w Controller. Pozwala to na ich matematyczne wydłużenie.
-        playerRig.add(localAvatar.handL); 
-        playerRig.add(localAvatar.handR);
+        playerRig.add(localAvatar.handL); playerRig.add(localAvatar.handR);
 
         let grabbedObject = null; let grabbingController = null; let activeRopeConstraint = null;
 
         function onSqueezeStart(event) {
-            // Używamy VIRTUALNEJ dłoni do łapania
             const isLeft = (event.target === controller1);
             const handMesh = isLeft ? localAvatar.handL : localAvatar.handR;
             const pos = new THREE.Vector3(); handMesh.getWorldPosition(pos);
@@ -602,13 +606,13 @@
         }
 
         // ==========================================
-        // 7. GORILLA ARMS (Auto-scaling) & PHYSICS
+        // 7. GORILLA ARMS (Extended physics reach)
         // ==========================================
         let prevLocalPos1 = new THREE.Vector3(); let prevLocalPos2 = new THREE.Vector3();
         const clock = new THREE.Clock();
+        const ARM_MULTIPLIER = 2.4; 
 
         function handleMovement(handMesh, prevLocalPos) {
-            // Delta jest pobierana bezpośrednio ze WSKALOWANEJ WIRTUALNEJ RĘKI
             const currentLocalPos = handMesh.position.clone();
             
             if (prevLocalPos.lengthSq() > 0 && !activeRopeConstraint) {
@@ -619,11 +623,15 @@
                 let isTouchingGround = false;
                 let isTouchingWall = false;
                 
-                // Dokładne sprawdzanie kolizji rąk z obiektami na mapie
-                for(let obs of obstacles) {
-                    if (obs.box3.clone().expandByScalar(0.15).containsPoint(handWorldPos)) { 
-                        if (handWorldPos.y > obs.box3.min.y + 0.15) { isTouchingWall = true; } else { isTouchingGround = true; }
-                        break; 
+                // Hojny próg detekcji podłoża z racji wydłużonych wirtualnie rąk
+                if (handWorldPos.y <= 0.3) {
+                    isTouchingGround = true;
+                } else {
+                    for(let obs of obstacles) {
+                        if (obs.box3.clone().expandByScalar(0.3).containsPoint(handWorldPos)) { 
+                            if (handWorldPos.y > obs.box3.min.y + 0.2) { isTouchingWall = true; } else { isTouchingGround = true; }
+                            break; 
+                        }
                     }
                 }
 
@@ -637,20 +645,20 @@
                     const deltaWorld = deltaLocalPos.clone().applyQuaternion(playerRig.quaternion);
                     if(deltaWorld.length() > 0.4) deltaWorld.normalize().multiplyScalar(0.4);
 
-                    // Ponieważ wirtualne ręce poruszają się szybciej/szerzej z powodu skalowania,
-                    // Zmniejszamy bazową siłę pchnięcia, aby była naturalna.
-                    let pushForceXZ = -250; 
-                    let pushForceY = -250;
+                    let pushForceXZ = -450; 
+                    let pushForceY = -450;
 
                     if (isTouchingWall) {
-                        pushForceY = -350; pushForceXZ = -250;
+                        pushForceY = -550; pushForceXZ = -450;
                     }
 
-                    // Wymuś delikatne wybicie w górę przy każdym odepchnięciu od ziemi, by wyjść ze stanu Groudned
-                    if (isTouchingGround && deltaWorld.y > -0.05) { deltaWorld.y = -0.1; }
+                    let impulseY = deltaWorld.y * pushForceY;
+                    if (isTouchingGround && impulseY < 12) {
+                        impulseY = 12; // Gwarantowany Auto-Lift
+                    }
 
                     playerBody.applyImpulse(
-                        new CANNON.Vec3(deltaWorld.x * pushForceXZ, deltaWorld.y * pushForceY, deltaWorld.z * pushForceXZ), 
+                        new CANNON.Vec3(deltaWorld.x * pushForceXZ, impulseY, deltaWorld.z * pushForceXZ), 
                         playerBody.position
                     );
                 }
@@ -662,7 +670,7 @@
             const dt = Math.min(clock.getDelta(), 0.1); 
             world.step(1/90, dt, 10); 
 
-            // ANTI-PHASING
+            // ANTI-PHASING 
             if(playerBody.position.x < -14.6) { playerBody.position.x = -14.6; playerBody.velocity.x = 0; }
             if(playerBody.position.x > 14.6) { playerBody.position.x = 14.6; playerBody.velocity.x = 0; }
             if(playerBody.position.z < -14.6) { playerBody.position.z = -14.6; playerBody.velocity.z = 0; }
@@ -670,59 +678,42 @@
             if(playerBody.position.y < radius) { playerBody.position.y = radius; if(playerBody.velocity.y < 0) playerBody.velocity.y = 0; }
             if(playerBody.position.y > 19.6) { playerBody.position.y = 19.6; if(playerBody.velocity.y > 0) playerBody.velocity.y = 0; }
             
-            // ANTI-SLIP (TWARDE ZATRZYMANIE NA ZIEMI)
+            // ANTI-SLIP (Hard Kinematic Brake)
             let isGrounded = false;
             for (let i = 0; i < world.contacts.length; i++) {
                 const c = world.contacts[i];
                 if (c.bi === playerBody || c.bj === playerBody) {
                     let ni = c.ni; 
-                    if (c.bi === playerBody && ni.y < -0.6) isGrounded = true; 
-                    else if (c.bj === playerBody && ni.y > 0.6) isGrounded = true;
+                    if (c.bi === playerBody && ni.y < -0.3) isGrounded = true; 
+                    else if (c.bj === playerBody && ni.y > 0.3) isGrounded = true;
                 }
             }
-            // Zatrzymuje pęd XZ natychmiastowo, dopóki nie zaczniesz opadać/wznosić się
-            if (isGrounded && !activeRopeConstraint && playerBody.velocity.y <= 0) {
+            // Bezwzględne zerowanie pędu przyziemnego
+            if (isGrounded && !activeRopeConstraint) {
                 playerBody.velocity.x = 0; 
                 playerBody.velocity.z = 0;
             }
 
             const speedSq = playerBody.velocity.lengthSquared();
-            if(speedSq > 64) { playerBody.velocity.scale(8 / Math.sqrt(speedSq), playerBody.velocity); }
+            if(speedSq > 49) { playerBody.velocity.scale(7 / Math.sqrt(speedSq), playerBody.velocity); }
 
             if (renderer.xr.isPresenting) {
-                // GORILLA ARMS (Automatyczne skalowanie rąk by dotykały podłogi)
-                const headY = camera.position.y;
-                const currentMin = Math.min(controller1.position.y, controller2.position.y);
-                
-                // Uczenie się najniższego punktu gracza
-                if (currentMin < window.minHandY) { window.minHandY = currentMin; }
-
-                let armReach = headY - window.minHandY;
-                if(armReach < 0.3) armReach = 0.3; // Limit by nie wywalać gry gdy kontrolery są przy głowie
-                
-                // Skaluj ręce tak, by przy maksymalnym wyproście fizycznym uderzyły w lekko pod podłogę (-0.2m dla lepszego łapania kolizji)
-                currentArmScale = (headY + 0.2) / armReach;
-                currentArmScale = Math.max(1.0, Math.min(currentArmScale, 2.5)); // Zabezpieczenie przed gumowymi rękami mr. fantastic
-
-                // Aplikacja skali do Lewej Ręki
+                // VIRTUAL ARM SCALING (x2.4) 
                 let vecL = new THREE.Vector3().subVectors(controller1.position, camera.position);
-                vecL.multiplyScalar(currentArmScale);
+                vecL.multiplyScalar(ARM_MULTIPLIER);
                 localAvatar.handL.position.copy(camera.position).add(vecL);
                 localAvatar.handL.quaternion.copy(controller1.quaternion);
 
-                // Aplikacja skali do Prawej Ręki
                 let vecR = new THREE.Vector3().subVectors(controller2.position, camera.position);
-                vecR.multiplyScalar(currentArmScale);
+                vecR.multiplyScalar(ARM_MULTIPLIER);
                 localAvatar.handR.position.copy(camera.position).add(vecR);
                 localAvatar.handR.quaternion.copy(controller2.quaternion);
 
-                // Movement operuje teraz na wirtualnych dłoniach, a nie kontrolerach!
                 handleMovement(localAvatar.handL, prevLocalPos1); 
                 handleMovement(localAvatar.handR, prevLocalPos2);
             }
             
             if(grabbedObject && grabbingController) {
-                // Kula jest przypięta do wirtualnej dłoni (odpowiednik grabbingController'a)
                 const isLeft = (grabbingController === controller1);
                 const handMesh = isLeft ? localAvatar.handL : localAvatar.handR;
                 const handPos = new THREE.Vector3(); handMesh.getWorldPosition(handPos);
@@ -732,11 +723,9 @@
             for(let rope of ropes) { rope.mesh.position.copy(rope.body.position); rope.mesh.quaternion.copy(rope.body.quaternion); }
 
             const camLocalPos = camera.position.clone();
-            const gorillaStanceOffset = 0.0; // 1:1 floor
-
             playerRig.position.set(
                 playerBody.position.x - camLocalPos.x,
-                playerBody.position.y - radius - gorillaStanceOffset,
+                playerBody.position.y - radius,
                 playerBody.position.z - camLocalPos.z
             );
 
