@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BagaBoo VR - Anti-Slip & Boosted Jumps</title>
+    <title>BagaBoo VR - Daylight Horror Parkour</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
         
@@ -54,9 +54,9 @@
 <body>
     <div id="lobby">
         <h1 class="logo">BagaBoo VR</h1>
-        <p class="subtitle">Horror Parkour | Zero Slip & +20% Jump</p>
+        <p class="subtitle">Horror Parkour | Solid Walls Edition</p>
         
-        <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Player1" value="Bagaboo" /></div>
+        <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Player1" value="Acrobat" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
         <div class="form-group">
             <label>Hat:</label>
@@ -83,7 +83,7 @@
         <div id="status">Checking microphone...</div>
     </div>
 
-    <div id="info">Connected! 20% higher jumps. Zero Sliding!</div>
+    <div id="info">Connected! Climb the bleeding walls...</div>
     <div id="audio-container" style="display:none;"></div>
 
     <script type="importmap">
@@ -101,7 +101,7 @@
         import * as CANNON from 'cannon-es';
 
         // --- GLOBAL VARIABLES ---
-        let myProfile = { name: "Bagaboo", color: "#3d2314", hat: "none", glasses: "none" };
+        let myProfile = { name: "Acrobat", color: "#3d2314", hat: "none", glasses: "none" };
         let myStream = null;
         let audioCtx = null;
 
@@ -155,7 +155,7 @@
         function createBloodyGridTexture() {
             const c = document.createElement('canvas'); c.width = 1024; c.height = 1024;
             const ctx = c.getContext('2d');
-            ctx.fillStyle = '#7a8894'; ctx.fillRect(0, 0, 1024, 1024); 
+            ctx.fillStyle = '#7a8894'; ctx.fillRect(0, 0, 1024, 1024); // Concrete base
             
             for(let i=0; i<30000; i++) {
                 ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.1)' : 'rgba(50,0,0,0.1)';
@@ -205,7 +205,7 @@
         const eyeTex = createEyeballTexture();
 
         // ==========================================
-        // 1. ENGINE & GRAPHICS
+        // 1. ENGINE & GRAPHICS 
         // ==========================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x9db2c2); 
@@ -240,23 +240,27 @@
         scene.add(dirLight);
 
         // ==========================================
-        // 2. EXTREME PHYSICS SETUP (Zero Slip)
+        // 2. PERFECT GRIP PHYSICS SETUP
         // ==========================================
         const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12.0, 0) });
         world.broadphase = new CANNON.SAPBroadphase(world);
-        
-        world.defaultContactMaterial.contactEquationStiffness = 1e9;
-        world.defaultContactMaterial.contactEquationRelaxation = 4;
 
-        const physicsMat = new CANNON.Material();
-        // EKSTREMALNE TARCIE FIZYCZNE
-        const contactMat = new CANNON.ContactMaterial(physicsMat, physicsMat, { friction: 1000.0, restitution: 0.0 });
-        world.addContactMaterial(contactMat);
+        const physicsMat = new CANNON.Material('env');
+        const playerMat = new CANNON.Material('player');
+        // Środowisko <-> środowisko / obiekty
+        world.addContactMaterial(new CANNON.ContactMaterial(physicsMat, physicsMat, {
+            friction: 1.0, restitution: 0.0, contactEquationStiffness: 1e9, contactEquationRelaxation: 4
+        }));
+        // Gracz <-> środowisko: tarcie 0, bo hamowanie robimy sami w postStep (patrz sekcja 7)
+        world.addContactMaterial(new CANNON.ContactMaterial(playerMat, physicsMat, {
+            friction: 0.0, restitution: 0.0, contactEquationStiffness: 1e9, contactEquationRelaxation: 4
+        }));
 
         const GROUP_ENV = 1; const GROUP_PLAYER = 2; const GROUP_BALL = 4;
         const radius = 0.35; 
+        const gorillaStanceOffset = 0.6;
         const playerBody = new CANNON.Body({
-            mass: 50, shape: new CANNON.Sphere(radius), material: physicsMat,
+            mass: 50, shape: new CANNON.Sphere(radius), material: playerMat,
             position: new CANNON.Vec3(0, 2, 0), fixedRotation: true,
             collisionFilterGroup: GROUP_PLAYER, collisionFilterMask: GROUP_ENV 
         });
@@ -267,10 +271,15 @@
         // ==========================================
         const obstacles = []; const trampolines = []; const ropes = []; const throwables = [];
 
+        // box3 liczony z KSZTAŁTU FIZYCZNEGO (nie z siatki wizualnej), dzięki temu kolizje zgadzają się z fizyką
         function addStaticBody(x, y, z, shape, meshOrGroup, isTrampoline = false) {
             const body = new CANNON.Body({ mass: 0, shape: shape, material: physicsMat, collisionFilterGroup: GROUP_ENV, collisionFilterMask: -1 });
             body.position.set(x, y, z); world.addBody(body);
-            const box3 = new THREE.Box3().setFromObject(meshOrGroup);
+            const h = shape.halfExtents;
+            const box3 = new THREE.Box3(
+                new THREE.Vector3(x - h.x, y - h.y, z - h.z),
+                new THREE.Vector3(x + h.x, y + h.y, z + h.z)
+            );
             if (isTrampoline) trampolines.push({ box3 });
             obstacles.push({ meshOrGroup, body, box3 });
         }
@@ -320,7 +329,7 @@
             group.add(spike);
 
             group.position.set(x, y, z); scene.add(group);
-            addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(size*0.8, 0.15, size*0.8)), group);
+            addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(size*0.9, 0.15, size*0.9)), group);
         }
 
         for(let i=0; i<12; i++) {
@@ -408,7 +417,7 @@
         }
         
         function updateProfileData() {
-            myProfile.name = document.getElementById('playerName').value || "Bagaboo";
+            myProfile.name = document.getElementById('playerName').value || "Acrobat";
             myProfile.color = document.getElementById('playerColor').value;
             myProfile.hat = document.getElementById('playerHat').value;
             myProfile.glasses = document.getElementById('playerGlasses').value;
@@ -485,7 +494,7 @@
         };
 
         // ==========================================
-        // 6. AVATARS
+        // 6. AVATARS (Odłączone dłonie)
         // ==========================================
         function createNameSprite(message) {
             const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); canvas.width = 512; canvas.height = 128;
@@ -506,14 +515,16 @@
                 pSnout.position.set(0, -0.1, -0.15); head.add(pSnout);
                 const pBrow = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.08), mat); pBrow.position.set(0, 0.02, -0.12); head.add(pBrow);
                 if(profile.hat === 'tophat') {
-                    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x111111, roughness: 0.9})); hat.position.set(0, 0.15, -0.05); head.add(hat);
+                    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x111111, roughness: 0.9}));
+                    hat.position.set(0, 0.15, -0.05); head.add(hat);
                 } else if (profile.hat === 'cap') {
                     const cap = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x0055aa}));
                     const brim = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.15), new THREE.MeshPhysicalMaterial({color: 0x0055aa}));
                     cap.position.set(0, 0.1, -0.05); brim.position.set(0, 0.05, -0.2); head.add(cap, brim);
                 }
                 if(profile.glasses === 'sunglasses') {
-                    const gl = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), new THREE.MeshPhysicalMaterial({color: 0x050505, metalness:0.9, roughness:0.1})); gl.position.set(0, 0.02, -0.17); head.add(gl);
+                    const gl = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), new THREE.MeshPhysicalMaterial({color: 0x050505, metalness:0.9, roughness:0.1}));
+                    gl.position.set(0, 0.02, -0.17); head.add(gl);
                 }
                 const nameTag = createNameSprite(profile.name); nameTag.position.set(0, 0.4, 0); nameTag.scale.set(2, 0.5, 1); head.add(nameTag);
                 group.add(head);
@@ -526,10 +537,10 @@
 
         const controller1 = renderer.xr.getController(0); const controller2 = renderer.xr.getController(1);
         playerRig.add(controller1); playerRig.add(controller2);
-        
         const localAvatar = createAvatar(myProfile, true);
         scene.add(localAvatar.group); 
         
+        // Dłonie zostają w Scenie, abyśmy mogli sztucznie je blokować o ściany
         scene.add(localAvatar.handL); 
         scene.add(localAvatar.handR);
 
@@ -609,11 +620,95 @@
         }
 
         // ==========================================
-        // 7. MOVEMENT, ANTI-PHASING & HAND CLAMP
+        // 7. MOVEMENT, SOLID COLLISION & ANTI-SLIP
         // ==========================================
         let prevLocalPos1 = new THREE.Vector3(); let prevLocalPos2 = new THREE.Vector3();
         const clock = new THREE.Clock();
 
+        const HEAD_RADIUS = 0.18;     // kolizja głowy (żeby nie wchodzić głową w sufit/platformy)
+        const FRICTION_IDLE = 0.5;    // mnożnik prędkości poziomej na pod-krok, gdy stoisz (mniej = mocniejszy hamulec)
+        const FRICTION_PUSH = 0.9;    // gdy odpychasz się rękami (mniej tłumienia, żeby dało się ruszyć)
+        let grounded = false;
+        let handPushing = false;
+        let stepped = false;
+        const hit = { nx: 0, ny: 0, nz: 0, depth: 0 };
+
+        // Dokładny test kula–AABB. Wynik (normalna + głębokość) trafia do `hit`.
+        function sphereVsBox(px, py, pz, r, b) {
+            const cx = Math.max(b.min.x, Math.min(px, b.max.x));
+            const cy = Math.max(b.min.y, Math.min(py, b.max.y));
+            const cz = Math.max(b.min.z, Math.min(pz, b.max.z));
+            const dx = px - cx, dy = py - cy, dz = pz - cz;
+            const d2 = dx*dx + dy*dy + dz*dz;
+            if (d2 >= r*r) return false;
+            if (d2 > 1e-12) {
+                const d = Math.sqrt(d2);
+                hit.nx = dx/d; hit.ny = dy/d; hit.nz = dz/d; hit.depth = r - d;
+            } else {
+                // środek kuli wewnątrz pudełka: wypchnij najkrótszą osią
+                const c = [px - b.min.x, b.max.x - px, py - b.min.y, b.max.y - py, pz - b.min.z, b.max.z - pz];
+                let i = 0; for (let k = 1; k < 6; k++) if (c[k] < c[i]) i = k;
+                hit.nx = hit.ny = hit.nz = 0;
+                if (i === 0) hit.nx = -1; else if (i === 1) hit.nx = 1;
+                else if (i === 2) hit.ny = -1; else if (i === 3) hit.ny = 1;
+                else if (i === 4) hit.nz = -1; else hit.nz = 1;
+                hit.depth = c[i] + r;
+            }
+            return true;
+        }
+
+        // Wypchnij ciało gracza wzdłuż normalnej i usuń składową prędkości wchodzącą w przeszkodę
+        function pushOut(p, v) {
+            p.x += hit.nx * hit.depth; p.y += hit.ny * hit.depth; p.z += hit.nz * hit.depth;
+            const vn = v.x*hit.nx + v.y*hit.ny + v.z*hit.nz;
+            if (vn < 0) { v.x -= vn*hit.nx; v.y -= vn*hit.ny; v.z -= vn*hit.nz; }
+        }
+
+        // Wywoływane po KAŻDYM pod-kroku fizyki, a nie raz na klatkę.
+        // Dzięki temu nic nie zdąży głęboko wejść w ścianę, a hamowanie działa stabilnie.
+        world.addEventListener('postStep', () => {
+            stepped = true;
+            const p = playerBody.position, v = playerBody.velocity;
+
+            // 1) Kolizja ciała (kula)
+            for (let pass = 0; pass < 3; pass++) {
+                let any = false;
+                for (const o of obstacles) {
+                    if (sphereVsBox(p.x, p.y, p.z, radius, o.box3)) { pushOut(p, v); any = true; }
+                }
+                if (!any) break;
+            }
+
+            // 2) Kolizja głowy (tylko w VR, gdzie znamy pozycję kamery)
+            if (renderer.xr.isPresenting) {
+                const headY = camera.position.y - radius - gorillaStanceOffset;
+                if (headY > 0.1) {
+                    for (const o of obstacles) {
+                        if (sphereVsBox(p.x, p.y + headY, p.z, HEAD_RADIUS, o.box3)) pushOut(p, v);
+                    }
+                }
+            }
+
+            // 3) Czy stoimy na czymś (tolerancja 3 cm)
+            grounded = false;
+            for (const o of obstacles) {
+                if (sphereVsBox(p.x, p.y, p.z, radius + 0.03, o.box3) && hit.ny > 0.7) { grounded = true; break; }
+            }
+
+            // 4) Anty-ślizg: hamuj poziomo, gdy stoisz i nie wisisz na linie
+            if (grounded && !activeRopeConstraint) {
+                const k = handPushing ? FRICTION_PUSH : FRICTION_IDLE;
+                v.x *= k; v.z *= k;
+                if (Math.abs(v.x) < 0.02) v.x = 0;
+                if (Math.abs(v.z) < 0.02) v.z = 0;
+            }
+
+            // 5) Limit prędkości
+            const s2 = v.lengthSquared();
+            if (s2 > 144) v.scale(12 / Math.sqrt(s2), v);
+        });
+
+        // System zatrzymywania rąk na przeszkodach (nie wejdą do środka)
         function clampHandVisual(controller, handMesh) {
             const pos = new THREE.Vector3(); controller.getWorldPosition(pos);
             const quat = new THREE.Quaternion(); controller.getWorldQuaternion(quat);
@@ -670,34 +765,26 @@
 
                 for(let t of trampolines) {
                     if (t.box3.distanceToPoint(handWorldPos) <= 0.25) {
-                        playerBody.velocity.y = 15; // Zwiększona moc trampoliny
-                        isTouchingGround = false; isTouchingWall = false; break;
+                        playerBody.velocity.y = 12; isTouchingGround = false; isTouchingWall = false; break;
                     }
                 }
 
-                if ((isTouchingGround || isTouchingWall) && deltaLocalPos.lengthSq() > 0.0001) {
+                if ((isTouchingGround || isTouchingWall) && deltaLocalPos.lengthSq() > 0) {
                     const deltaWorld = deltaLocalPos.clone().applyQuaternion(playerRig.quaternion);
                     if(deltaWorld.length() > 0.4) deltaWorld.normalize().multiplyScalar(0.4);
 
-                    // --- ZWIĘKSZONA SIŁA O 20% ---
-                    let pushForceXZ = -940; 
-                    let pushForceY = -940;
+                    let pushForceXZ = -650; 
+                    let pushForceY = -650;
 
                     if (isTouchingWall) {
-                        pushForceY = -1150; 
-                        pushForceXZ = -1000;
-                    }
-
-                    // Gwarantowane małe wybicie do góry (aby przerwać kontakt z podłożem przy ruchu w przód)
-                    let impulseY = deltaWorld.y * pushForceY;
-                    if (isTouchingGround && impulseY < 200) {
-                        impulseY = 200; 
+                        pushForceY = -800; pushForceXZ = -700;
                     }
 
                     playerBody.applyImpulse(
-                        new CANNON.Vec3(deltaWorld.x * pushForceXZ, impulseY, deltaWorld.z * pushForceXZ), 
+                        new CANNON.Vec3(deltaWorld.x * pushForceXZ, deltaWorld.y * pushForceY, deltaWorld.z * pushForceXZ), 
                         playerBody.position
                     );
+                    handPushing = true; // odpychasz się: postStep słabiej hamuje w następnym kroku
                 }
             }
             prevLocalPos.copy(currentLocalPos);
@@ -706,68 +793,18 @@
         renderer.setAnimationLoop(() => {
             const dt = Math.min(clock.getDelta(), 0.1); 
             world.step(1/90, dt, 10); 
+            if (stepped) { handPushing = false; stepped = false; }
 
-            // --- ANTI-PHASING (BLOKADA PRZENIKANIA CIAŁA) ---
-            const pVec = playerBody.position;
-            for(let obs of obstacles) {
-                const box = obs.box3;
-                if (pVec.x > box.min.x - radius && pVec.x < box.max.x + radius &&
-                    pVec.y > box.min.y - radius && pVec.y < box.max.y + radius &&
-                    pVec.z > box.min.z - radius && pVec.z < box.max.z + radius) {
-                    
-                    const px1 = pVec.x - (box.min.x - radius);
-                    const px2 = (box.max.x + radius) - pVec.x;
-                    const py1 = pVec.y - (box.min.y - radius);
-                    const py2 = (box.max.y + radius) - pVec.y;
-                    const pz1 = pVec.z - (box.min.z - radius);
-                    const pz2 = (box.max.z + radius) - pVec.z;
-                    
-                    const min = Math.min(px1, px2, py1, py2, pz1, pz2);
-                    if (min === px1) { playerBody.position.x = box.min.x - radius; playerBody.velocity.x = 0; }
-                    else if (min === px2) { playerBody.position.x = box.max.x + radius; playerBody.velocity.x = 0; }
-                    else if (min === py1) { playerBody.position.y = box.min.y - radius; playerBody.velocity.y = 0; }
-                    else if (min === py2) { playerBody.position.y = box.max.y + radius; playerBody.velocity.y = 0; }
-                    else if (min === pz1) { playerBody.position.z = box.min.z - radius; playerBody.velocity.z = 0; }
-                    else if (min === pz2) { playerBody.position.z = box.max.z + radius; playerBody.velocity.z = 0; }
-                    
-                    pVec.set(playerBody.position.x, playerBody.position.y, playerBody.position.z);
-                }
-            }
-            
+            // Twarda granica pokoju (zabezpieczenie awaryjne)
             if(playerBody.position.x < -14.6) { playerBody.position.x = -14.6; playerBody.velocity.x = 0; }
             if(playerBody.position.x > 14.6) { playerBody.position.x = 14.6; playerBody.velocity.x = 0; }
             if(playerBody.position.z < -14.6) { playerBody.position.z = -14.6; playerBody.velocity.z = 0; }
             if(playerBody.position.z > 14.6) { playerBody.position.z = 14.6; playerBody.velocity.z = 0; }
             if(playerBody.position.y < radius) { playerBody.position.y = radius; if(playerBody.velocity.y < 0) playerBody.velocity.y = 0; }
             if(playerBody.position.y > 19.6) { playerBody.position.y = 19.6; if(playerBody.velocity.y > 0) playerBody.velocity.y = 0; }
-            
-            // --- KINEMATIC GROUND LOCK (Bezwzględny brak ślizgania) ---
-            let isGrounded = false;
-            for (let i = 0; i < world.contacts.length; i++) {
-                const c = world.contacts[i];
-                if (c.bi === playerBody || c.bj === playerBody) {
-                    let ni = c.ni; 
-                    if (c.bi === playerBody && ni.y < -0.4) isGrounded = true; 
-                    else if (c.bj === playerBody && ni.y > 0.4) isGrounded = true;
-                }
-            }
-            // Jeżeli jesteśmy na ziemi i wektor lotu nie ucieka aktywnie w górę, ZERUJEMY pęd płaski
-            if (isGrounded && !activeRopeConstraint) {
-                if (playerBody.velocity.y <= 0.1) {
-                    playerBody.velocity.x = 0; 
-                    playerBody.velocity.z = 0;
-                    playerBody.angularVelocity.set(0,0,0);
-                }
-            }
-
-            // OGRANICZENIE PREDKOSCI (Podwyższone na poczet +20% siły, z 49 do 324)
-            const speedSq = playerBody.velocity.lengthSquared();
-            if(speedSq > 324) { playerBody.velocity.scale(18 / Math.sqrt(speedSq), playerBody.velocity); }
 
             if (renderer.xr.isPresenting) {
-                // SYSTEM GORILLA ARMS (Wydłużone ręce by dotykać ziemi w pozycji prostej)
-                // Usunąłem system auto-skalowania dla stabilności, wprowadziłem za to wyższy próg detekcji 
-                // i powiązanie kolizji rąk z kontrolerami tak jak w poprawnym buildzie.
+                // BLOKADA PRZENIKANIA DŁONI PRZEZ ŚCIANY
                 clampHandVisual(controller1, localAvatar.handL);
                 clampHandVisual(controller2, localAvatar.handR);
 
@@ -779,10 +816,12 @@
                 const ctrlPos = new THREE.Vector3(); grabbingController.getWorldPosition(ctrlPos); grabbedObject.userData.body.position.copy(ctrlPos);
             }
             for(let ball of throwables) { ball.position.copy(ball.userData.body.position); ball.quaternion.copy(ball.userData.body.quaternion); }
-            for(let rope of ropes) { rope.mesh.position.copy(rope.body.position); rope.mesh.quaternion.copy(rope.body.quaternion); }
+            
+            for(let rope of ropes) {
+                rope.mesh.position.copy(rope.body.position); rope.mesh.quaternion.copy(rope.body.quaternion);
+            }
 
             const camLocalPos = camera.position.clone();
-            const gorillaStanceOffset = 0.0;
 
             playerRig.position.set(
                 playerBody.position.x - camLocalPos.x,
