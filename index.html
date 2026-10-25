@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BagaBoo VR - Daylight Horror Parkour</title>
+    <title>BagaBoo VR - Solid Walls & Anti-Glitch</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
         
@@ -54,7 +54,7 @@
 <body>
     <div id="lobby">
         <h1 class="logo">BagaBoo VR</h1>
-        <p class="subtitle">Horror Parkour | Don't Look Down</p>
+        <p class="subtitle">Anti-Phasing Solid Walls Enabled</p>
         
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Player1" value="Acrobat" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
@@ -83,7 +83,7 @@
         <div id="status">Checking microphone...</div>
     </div>
 
-    <div id="info">Connected! Climb the bleeding walls...</div>
+    <div id="info">Connected! Physics locked. Walls are now solid.</div>
     <div id="audio-container" style="display:none;"></div>
 
     <script type="importmap">
@@ -155,7 +155,7 @@
         function createBloodyGridTexture() {
             const c = document.createElement('canvas'); c.width = 1024; c.height = 1024;
             const ctx = c.getContext('2d');
-            ctx.fillStyle = '#7a8894'; ctx.fillRect(0, 0, 1024, 1024); // Concrete base
+            ctx.fillStyle = '#7a8894'; ctx.fillRect(0, 0, 1024, 1024); 
             
             for(let i=0; i<30000; i++) {
                 ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.1)' : 'rgba(50,0,0,0.1)';
@@ -205,7 +205,7 @@
         const eyeTex = createEyeballTexture();
 
         // ==========================================
-        // 1. ENGINE & GRAPHICS (Daylight Brightness)
+        // 1. ENGINE & GRAPHICS
         // ==========================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x9db2c2); 
@@ -240,7 +240,7 @@
         scene.add(dirLight);
 
         // ==========================================
-        // 2. PERFECT GRIP PHYSICS SETUP
+        // 2. PHYSICS SETUP
         // ==========================================
         const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12.0, 0) });
         world.broadphase = new CANNON.SAPBroadphase(world);
@@ -262,7 +262,7 @@
         world.addBody(playerBody);
 
         // ==========================================
-        // 3. PARKOUR LOBBY BUILDING (Horror Theme)
+        // 3. PARKOUR LOBBY BUILDING
         // ==========================================
         const obstacles = []; const trampolines = []; const ropes = []; const throwables = [];
 
@@ -279,40 +279,35 @@
             if(isTrampoline) { mat.emissive = new THREE.Color(color); mat.emissiveIntensity = 0.5; }
             const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
             mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true;
-            
             const edges = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({ color: edgeColor, linewidth: 2 }));
             mesh.add(edges); scene.add(mesh);
             addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2)), mesh, isTrampoline);
         }
 
-        // Walls - Light Concrete with Dark Red Edges
-        addCrispBlock(0, -2.5, 0, 40, 5, 40, 0xaaaaaa, 0x880000); // Podłoga
-        addCrispBlock(0, 22.5, 0, 40, 5, 40, 0xaaaaaa, 0x880000); // Sufit
-        addCrispBlock(0, 10, -17.5, 40, 20, 5, 0x999999, 0x880000); // Północ
-        addCrispBlock(0, 10, 17.5, 40, 20, 5, 0x999999, 0x880000);  // Południe
-        addCrispBlock(-17.5, 10, 0, 5, 20, 40, 0x888888, 0x880000); // Zachód
-        addCrispBlock(17.5, 10, 0, 5, 20, 40, 0x888888, 0x880000);  // Wschód
+        // Klatka Pokoju
+        addCrispBlock(0, -2.5, 0, 40, 5, 40, 0xaaaaaa, 0x880000); 
+        addCrispBlock(0, 22.5, 0, 40, 5, 40, 0xaaaaaa, 0x880000); 
+        addCrispBlock(0, 10, -17.5, 40, 20, 5, 0x999999, 0x880000); 
+        addCrispBlock(0, 10, 17.5, 40, 20, 5, 0x999999, 0x880000);  
+        addCrispBlock(-17.5, 10, 0, 5, 20, 40, 0x888888, 0x880000); 
+        addCrispBlock(17.5, 10, 0, 5, 20, 40, 0x888888, 0x880000);  
 
-        // HORROR DECALS ON WALLS
         const decalGeo = new THREE.PlaneGeometry(25, 25);
         const decalMat = new THREE.MeshBasicMaterial({ map: bloodDecalTex, transparent: true, depthWrite: false });
         const decal1 = new THREE.Mesh(decalGeo, decalMat); decal1.position.set(0, 10, -14.9); scene.add(decal1);
         const decal2 = new THREE.Mesh(decalGeo, decalMat); decal2.position.set(0, 10, 14.9); decal2.rotation.y = Math.PI; scene.add(decal2);
 
-        // Trampolina - Bloody Pentagram style
         addCrispBlock(0, 0.2, 5, 3, 0.4, 3, 0xff0000, 0xffffff, true); 
 
-        // MACABRE STAIRS (Hexagonal with spikes)
         function addScaryStep(x, y, z, size, sides) {
             const group = new THREE.Group();
-            const mat = new THREE.MeshPhysicalMaterial({ color: 0x2a1111, metalness: 0.8, roughness: 0.4 }); // Zardzewiała krew
+            const mat = new THREE.MeshPhysicalMaterial({ color: 0x2a1111, metalness: 0.8, roughness: 0.4 }); 
             const geo = new THREE.CylinderGeometry(size, size, 0.3, sides);
             const mesh = new THREE.Mesh(geo, mat);
             mesh.castShadow = true; mesh.receiveShadow = true;
             mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 })));
             group.add(mesh);
 
-            // Dolny Kolec
             const spikeGeo = new THREE.ConeGeometry(size*0.6, 1.5, sides);
             const spike = new THREE.Mesh(spikeGeo, mat);
             spike.rotation.x = Math.PI; spike.position.y = -0.9;
@@ -330,15 +325,13 @@
         }
         addCrispBlock(-7, 1 + 12*1.2, -7, 4, 0.3, 4, 0x2a1111, 0xff0000); 
 
-        // Rusted Monkey Bars
         addCrispBlock(8, 6, 8, 0.5, 12, 0.5, 0x1a0a0a, 0xff0000);  
         addCrispBlock(8, 6, -2, 0.5, 12, 0.5, 0x1a0a0a, 0xff0000); 
         addCrispBlock(8, 12, 3, 0.5, 0.5, 10.5, 0x1a0a0a, 0xff0000); 
         for(let i = 0; i < 5; i++) { addCrispBlock(7, 11.5, -1 + (i*2), 3, 0.2, 0.2, 0x050101, 0xff0000); }
 
-        // BONE GRIPS (Zęby/kości w ścianach)
         const gripGeo = new THREE.DodecahedronGeometry(0.3);
-        const gripMat = new THREE.MeshPhysicalMaterial({ color: 0xddccbb, emissive: 0x220000, metalness: 0.2, roughness: 0.8 }); // Kolor kości
+        const gripMat = new THREE.MeshPhysicalMaterial({ color: 0xddccbb, emissive: 0x220000, metalness: 0.2, roughness: 0.8 }); 
         function addBoneGrip(x, y, z) {
             const mesh = new THREE.Mesh(gripGeo, gripMat); mesh.position.set(x, y, z); 
             mesh.rotation.set(Math.random(), Math.random(), Math.random());
@@ -354,11 +347,11 @@
         }
 
         // ==========================================
-        // 4. REAL SWINGING ROPES (Bloody Guts) & EYEBALLS
+        // 4. REAL SWINGING ROPES & EYEBALLS
         // ==========================================
         function addGutsRope(x, y, z, height) {
             const ropeGroup = new THREE.Group();
-            const mat = new THREE.MeshPhysicalMaterial({ color: 0x440000, roughness: 0.3, metalness: 0.1, clearcoat: 0.8 }); // Ociekające krwią
+            const mat = new THREE.MeshPhysicalMaterial({ color: 0x440000, roughness: 0.3, metalness: 0.1, clearcoat: 0.8 }); 
             const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, height, 16), mat);
             const edges = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({color: 0xff0000, opacity: 0.5, transparent: true}));
             mesh.add(edges); mesh.castShadow = true; ropeGroup.add(mesh); scene.add(ropeGroup);
@@ -388,7 +381,7 @@
         createEyeball('ball1', 2, 1, -2); createEyeball('ball2', -2, 1, -2);
 
         // ==========================================
-        // 5. BULLETPROOF MULTIPLAYER & SOLO MODE
+        // 5. MULTIPLAYER
         // ==========================================
         let peer = null; let hostConnection = null; let clientConnections = [];
         let isHost = false; let myPeerId = null; const GAME_PREFIX = "vr-gtag-fix2-";
@@ -401,12 +394,10 @@
             document.body.classList.add('connected');
             setInterval(networkTick, 1000 / 30);
         }
-        
         function playAudioStream(stream, peerId) {
             const audio = document.createElement('audio'); audio.srcObject = stream; audio.autoplay = true;
             document.getElementById('audio-container').appendChild(audio);
         }
-        
         function updateProfileData() {
             myProfile.name = document.getElementById('playerName').value || "Acrobat";
             myProfile.color = document.getElementById('playerColor').value;
@@ -414,19 +405,13 @@
             myProfile.glasses = document.getElementById('playerGlasses').value;
         }
 
-        document.getElementById('btnSolo').onclick = () => {
-            updateProfileData(); initHorrorSoundtrack();
-            isHost = true; myPeerId = "solo-player";
-            onConnectionSuccess();
-        };
-
+        document.getElementById('btnSolo').onclick = () => { updateProfileData(); initHorrorSoundtrack(); isHost = true; myPeerId = "solo-player"; onConnectionSuccess(); };
         document.getElementById('btnHost').onclick = () => {
             const code = document.getElementById('roomCode').value.trim(); 
             if(!code) { alert("Please enter a Room Code."); return; }
             updateProfileData(); initHorrorSoundtrack(); 
             document.getElementById('btnHost').disabled = true; document.getElementById('btnJoin').disabled = true; document.getElementById('btnSolo').disabled = true;
             statusDiv.innerText = "Connecting to server...";
-            
             try {
                 isHost = true; peer = new Peer(GAME_PREFIX + code);
                 const cTimeout = setTimeout(() => {
@@ -436,7 +421,6 @@
                         peer.destroy();
                     }
                 }, 8000);
-
                 peer.on('open', (id) => { clearTimeout(cTimeout); myPeerId = id; statusDiv.innerText = "Room Created! Waiting for players..."; onConnectionSuccess(); });
                 peer.on('error', (err) => { clearTimeout(cTimeout); statusDiv.innerText = "Error: Room name taken or unavailable."; document.getElementById('btnHost').disabled = false; document.getElementById('btnJoin').disabled = false; document.getElementById('btnSolo').disabled = false; });
                 peer.on('connection', (conn) => {
@@ -448,14 +432,12 @@
                 peer.on('call', (call) => { if(myStream) call.answer(myStream); call.on('stream', (remoteStream) => { playAudioStream(remoteStream, call.peer); }); });
             } catch (e) { statusDiv.innerText = "Critical Error: " + e.message; }
         };
-
         document.getElementById('btnJoin').onclick = () => {
             const code = document.getElementById('roomCode').value.trim(); 
             if(!code) { alert("Please enter a Room Code."); return; }
             updateProfileData(); initHorrorSoundtrack();
             document.getElementById('btnHost').disabled = true; document.getElementById('btnJoin').disabled = true; document.getElementById('btnSolo').disabled = true;
             statusDiv.innerText = "Joining...";
-            
             try {
                 isHost = false; peer = new Peer();
                 const cTimeout = setTimeout(() => {
@@ -465,7 +447,6 @@
                         peer.destroy();
                     }
                 }, 8000);
-
                 peer.on('open', (id) => {
                     myPeerId = id; hostConnection = peer.connect(GAME_PREFIX + code);
                     hostConnection.on('open', () => { clearTimeout(cTimeout); statusDiv.innerText = "Connected!"; onConnectionSuccess(); });
@@ -506,16 +487,14 @@
                 pSnout.position.set(0, -0.1, -0.15); head.add(pSnout);
                 const pBrow = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.08), mat); pBrow.position.set(0, 0.02, -0.12); head.add(pBrow);
                 if(profile.hat === 'tophat') {
-                    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x111111, roughness: 0.9}));
-                    hat.position.set(0, 0.15, -0.05); head.add(hat);
+                    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x111111, roughness: 0.9})); hat.position.set(0, 0.15, -0.05); head.add(hat);
                 } else if (profile.hat === 'cap') {
                     const cap = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x0055aa}));
                     const brim = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.15), new THREE.MeshPhysicalMaterial({color: 0x0055aa}));
                     cap.position.set(0, 0.1, -0.05); brim.position.set(0, 0.05, -0.2); head.add(cap, brim);
                 }
                 if(profile.glasses === 'sunglasses') {
-                    const gl = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), new THREE.MeshPhysicalMaterial({color: 0x050505, metalness:0.9, roughness:0.1}));
-                    gl.position.set(0, 0.02, -0.17); head.add(gl);
+                    const gl = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), new THREE.MeshPhysicalMaterial({color: 0x050505, metalness:0.9, roughness:0.1})); gl.position.set(0, 0.02, -0.17); head.add(gl);
                 }
                 const nameTag = createNameSprite(profile.name); nameTag.position.set(0, 0.4, 0); nameTag.scale.set(2, 0.5, 1); head.add(nameTag);
                 group.add(head);
@@ -604,7 +583,7 @@
         }
 
         // ==========================================
-        // 7. MOVEMENT & ROBUST PHYSICS LOOP
+        // 7. MOVEMENT & ANTI-PHASING PHYSICS LOOP
         // ==========================================
         let prevLocalPos1 = new THREE.Vector3(); let prevLocalPos2 = new THREE.Vector3();
         const clock = new THREE.Clock();
@@ -641,7 +620,6 @@
                     const deltaWorld = deltaLocalPos.clone().applyQuaternion(playerRig.quaternion);
                     if(deltaWorld.length() > 0.4) deltaWorld.normalize().multiplyScalar(0.4);
 
-                    // Zmniejszona prędkość gracza o połowę
                     let pushForceXZ = -650; 
                     let pushForceY = -650;
 
@@ -661,8 +639,45 @@
         renderer.setAnimationLoop(() => {
             const dt = Math.min(clock.getDelta(), 0.1); 
             world.step(1/90, dt, 10); 
+
+            // ==========================================
+            // SYSTEM ANTI-PHASING (Sztywna klatka i wyrzucanie z Box3)
+            // ==========================================
+            const pVec = new THREE.Vector3(playerBody.position.x, playerBody.position.y, playerBody.position.z);
+            for(let obs of obstacles) {
+                const box = obs.box3;
+                if (pVec.x > box.min.x - radius && pVec.x < box.max.x + radius &&
+                    pVec.y > box.min.y - radius && pVec.y < box.max.y + radius &&
+                    pVec.z > box.min.z - radius && pVec.z < box.max.z + radius) {
+                    
+                    const px1 = pVec.x - (box.min.x - radius);
+                    const px2 = (box.max.x + radius) - pVec.x;
+                    const py1 = pVec.y - (box.min.y - radius);
+                    const py2 = (box.max.y + radius) - pVec.y;
+                    const pz1 = pVec.z - (box.min.z - radius);
+                    const pz2 = (box.max.z + radius) - pVec.z;
+                    
+                    const min = Math.min(px1, px2, py1, py2, pz1, pz2);
+                    if (min === px1) { playerBody.position.x = box.min.x - radius; playerBody.velocity.x = 0; }
+                    else if (min === px2) { playerBody.position.x = box.max.x + radius; playerBody.velocity.x = 0; }
+                    else if (min === py1) { playerBody.position.y = box.min.y - radius; playerBody.velocity.y = 0; }
+                    else if (min === py2) { playerBody.position.y = box.max.y + radius; playerBody.velocity.y = 0; }
+                    else if (min === pz1) { playerBody.position.z = box.min.z - radius; playerBody.velocity.z = 0; }
+                    else if (min === pz2) { playerBody.position.z = box.max.z + radius; playerBody.velocity.z = 0; }
+                    
+                    pVec.set(playerBody.position.x, playerBody.position.y, playerBody.position.z);
+                }
+            }
             
-            // ANTI-SLIP PHYSICS: Hard brake based on actual physics contacts
+            // Sztywna granica pokoju (wewnętrzne ściany na 15m)
+            if(playerBody.position.x < -14.6) { playerBody.position.x = -14.6; playerBody.velocity.x = 0; }
+            if(playerBody.position.x > 14.6) { playerBody.position.x = 14.6; playerBody.velocity.x = 0; }
+            if(playerBody.position.z < -14.6) { playerBody.position.z = -14.6; playerBody.velocity.z = 0; }
+            if(playerBody.position.z > 14.6) { playerBody.position.z = 14.6; playerBody.velocity.z = 0; }
+            if(playerBody.position.y < radius) { playerBody.position.y = radius; if(playerBody.velocity.y < 0) playerBody.velocity.y = 0; }
+            if(playerBody.position.y > 19.6) { playerBody.position.y = 19.6; if(playerBody.velocity.y > 0) playerBody.velocity.y = 0; }
+
+            // ANTI-SLIP PHYSICS
             let isGrounded = false;
             for (let i = 0; i < world.contacts.length; i++) {
                 const c = world.contacts[i];
@@ -673,11 +688,10 @@
                 }
             }
             if (isGrounded && !activeRopeConstraint) {
-                playerBody.velocity.x *= 0.3; // Bardzo mocne wytracanie prędkości przy kontakcie z podłożem
+                playerBody.velocity.x *= 0.3; 
                 playerBody.velocity.z *= 0.3;
             }
 
-            // Ogranicznik prędkości max dopasowany do zmniejszonej siły
             const speedSq = playerBody.velocity.lengthSquared();
             if(speedSq > 144) { playerBody.velocity.scale(12 / Math.sqrt(speedSq), playerBody.velocity); }
 
