@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BagaBoo VR - Daylight Horror Parkour</title>
+    <title>BagaBoo VR - Anti-Slip & Boosted Jumps</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
         
@@ -54,9 +54,9 @@
 <body>
     <div id="lobby">
         <h1 class="logo">BagaBoo VR</h1>
-        <p class="subtitle">Horror Parkour | Solid Walls Edition</p>
+        <p class="subtitle">Horror Parkour | Zero Slip & +20% Jump</p>
         
-        <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Player1" value="Acrobat" /></div>
+        <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Player1" value="Bagaboo" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
         <div class="form-group">
             <label>Hat:</label>
@@ -83,7 +83,7 @@
         <div id="status">Checking microphone...</div>
     </div>
 
-    <div id="info">Connected! Climb the bleeding walls...</div>
+    <div id="info">Connected! 20% higher jumps. Zero Sliding!</div>
     <div id="audio-container" style="display:none;"></div>
 
     <script type="importmap">
@@ -101,7 +101,7 @@
         import * as CANNON from 'cannon-es';
 
         // --- GLOBAL VARIABLES ---
-        let myProfile = { name: "Acrobat", color: "#3d2314", hat: "none", glasses: "none" };
+        let myProfile = { name: "Bagaboo", color: "#3d2314", hat: "none", glasses: "none" };
         let myStream = null;
         let audioCtx = null;
 
@@ -155,7 +155,7 @@
         function createBloodyGridTexture() {
             const c = document.createElement('canvas'); c.width = 1024; c.height = 1024;
             const ctx = c.getContext('2d');
-            ctx.fillStyle = '#7a8894'; ctx.fillRect(0, 0, 1024, 1024); // Concrete base
+            ctx.fillStyle = '#7a8894'; ctx.fillRect(0, 0, 1024, 1024); 
             
             for(let i=0; i<30000; i++) {
                 ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.1)' : 'rgba(50,0,0,0.1)';
@@ -205,7 +205,7 @@
         const eyeTex = createEyeballTexture();
 
         // ==========================================
-        // 1. ENGINE & GRAPHICS 
+        // 1. ENGINE & GRAPHICS
         // ==========================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x9db2c2); 
@@ -240,7 +240,7 @@
         scene.add(dirLight);
 
         // ==========================================
-        // 2. PERFECT GRIP PHYSICS SETUP
+        // 2. EXTREME PHYSICS SETUP (Zero Slip)
         // ==========================================
         const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12.0, 0) });
         world.broadphase = new CANNON.SAPBroadphase(world);
@@ -249,7 +249,8 @@
         world.defaultContactMaterial.contactEquationRelaxation = 4;
 
         const physicsMat = new CANNON.Material();
-        const contactMat = new CANNON.ContactMaterial(physicsMat, physicsMat, { friction: 1.0, restitution: 0.0 });
+        // EKSTREMALNE TARCIE FIZYCZNE
+        const contactMat = new CANNON.ContactMaterial(physicsMat, physicsMat, { friction: 1000.0, restitution: 0.0 });
         world.addContactMaterial(contactMat);
 
         const GROUP_ENV = 1; const GROUP_PLAYER = 2; const GROUP_BALL = 4;
@@ -407,7 +408,7 @@
         }
         
         function updateProfileData() {
-            myProfile.name = document.getElementById('playerName').value || "Acrobat";
+            myProfile.name = document.getElementById('playerName').value || "Bagaboo";
             myProfile.color = document.getElementById('playerColor').value;
             myProfile.hat = document.getElementById('playerHat').value;
             myProfile.glasses = document.getElementById('playerGlasses').value;
@@ -484,7 +485,7 @@
         };
 
         // ==========================================
-        // 6. AVATARS (Odłączone dłonie)
+        // 6. AVATARS
         // ==========================================
         function createNameSprite(message) {
             const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); canvas.width = 512; canvas.height = 128;
@@ -505,16 +506,14 @@
                 pSnout.position.set(0, -0.1, -0.15); head.add(pSnout);
                 const pBrow = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.08), mat); pBrow.position.set(0, 0.02, -0.12); head.add(pBrow);
                 if(profile.hat === 'tophat') {
-                    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x111111, roughness: 0.9}));
-                    hat.position.set(0, 0.15, -0.05); head.add(hat);
+                    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x111111, roughness: 0.9})); hat.position.set(0, 0.15, -0.05); head.add(hat);
                 } else if (profile.hat === 'cap') {
                     const cap = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x0055aa}));
                     const brim = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.15), new THREE.MeshPhysicalMaterial({color: 0x0055aa}));
                     cap.position.set(0, 0.1, -0.05); brim.position.set(0, 0.05, -0.2); head.add(cap, brim);
                 }
                 if(profile.glasses === 'sunglasses') {
-                    const gl = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), new THREE.MeshPhysicalMaterial({color: 0x050505, metalness:0.9, roughness:0.1}));
-                    gl.position.set(0, 0.02, -0.17); head.add(gl);
+                    const gl = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), new THREE.MeshPhysicalMaterial({color: 0x050505, metalness:0.9, roughness:0.1})); gl.position.set(0, 0.02, -0.17); head.add(gl);
                 }
                 const nameTag = createNameSprite(profile.name); nameTag.position.set(0, 0.4, 0); nameTag.scale.set(2, 0.5, 1); head.add(nameTag);
                 group.add(head);
@@ -527,10 +526,10 @@
 
         const controller1 = renderer.xr.getController(0); const controller2 = renderer.xr.getController(1);
         playerRig.add(controller1); playerRig.add(controller2);
+        
         const localAvatar = createAvatar(myProfile, true);
         scene.add(localAvatar.group); 
         
-        // Zmiana: Dłonie zostają w Scenie, abyśmy mogli sztucznie je blokować o ściany
         scene.add(localAvatar.handL); 
         scene.add(localAvatar.handR);
 
@@ -615,7 +614,6 @@
         let prevLocalPos1 = new THREE.Vector3(); let prevLocalPos2 = new THREE.Vector3();
         const clock = new THREE.Clock();
 
-        // System zatrzymywania rąk na przeszkodach (nie wejdą do środka)
         function clampHandVisual(controller, handMesh) {
             const pos = new THREE.Vector3(); controller.getWorldPosition(pos);
             const quat = new THREE.Quaternion(); controller.getWorldQuaternion(quat);
@@ -672,23 +670,32 @@
 
                 for(let t of trampolines) {
                     if (t.box3.distanceToPoint(handWorldPos) <= 0.25) {
-                        playerBody.velocity.y = 12; isTouchingGround = false; isTouchingWall = false; break;
+                        playerBody.velocity.y = 15; // Zwiększona moc trampoliny
+                        isTouchingGround = false; isTouchingWall = false; break;
                     }
                 }
 
-                if ((isTouchingGround || isTouchingWall) && deltaLocalPos.lengthSq() > 0) {
+                if ((isTouchingGround || isTouchingWall) && deltaLocalPos.lengthSq() > 0.0001) {
                     const deltaWorld = deltaLocalPos.clone().applyQuaternion(playerRig.quaternion);
                     if(deltaWorld.length() > 0.4) deltaWorld.normalize().multiplyScalar(0.4);
 
-                    let pushForceXZ = -650; 
-                    let pushForceY = -650;
+                    // --- ZWIĘKSZONA SIŁA O 20% ---
+                    let pushForceXZ = -940; 
+                    let pushForceY = -940;
 
                     if (isTouchingWall) {
-                        pushForceY = -800; pushForceXZ = -700;
+                        pushForceY = -1150; 
+                        pushForceXZ = -1000;
+                    }
+
+                    // Gwarantowane małe wybicie do góry (aby przerwać kontakt z podłożem przy ruchu w przód)
+                    let impulseY = deltaWorld.y * pushForceY;
+                    if (isTouchingGround && impulseY < 200) {
+                        impulseY = 200; 
                     }
 
                     playerBody.applyImpulse(
-                        new CANNON.Vec3(deltaWorld.x * pushForceXZ, deltaWorld.y * pushForceY, deltaWorld.z * pushForceXZ), 
+                        new CANNON.Vec3(deltaWorld.x * pushForceXZ, impulseY, deltaWorld.z * pushForceXZ), 
                         playerBody.position
                     );
                 }
@@ -722,10 +729,11 @@
                     else if (min === py2) { playerBody.position.y = box.max.y + radius; playerBody.velocity.y = 0; }
                     else if (min === pz1) { playerBody.position.z = box.min.z - radius; playerBody.velocity.z = 0; }
                     else if (min === pz2) { playerBody.position.z = box.max.z + radius; playerBody.velocity.z = 0; }
+                    
+                    pVec.set(playerBody.position.x, playerBody.position.y, playerBody.position.z);
                 }
             }
             
-            // Twarda granica pokoju
             if(playerBody.position.x < -14.6) { playerBody.position.x = -14.6; playerBody.velocity.x = 0; }
             if(playerBody.position.x > 14.6) { playerBody.position.x = 14.6; playerBody.velocity.x = 0; }
             if(playerBody.position.z < -14.6) { playerBody.position.z = -14.6; playerBody.velocity.z = 0; }
@@ -733,26 +741,33 @@
             if(playerBody.position.y < radius) { playerBody.position.y = radius; if(playerBody.velocity.y < 0) playerBody.velocity.y = 0; }
             if(playerBody.position.y > 19.6) { playerBody.position.y = 19.6; if(playerBody.velocity.y > 0) playerBody.velocity.y = 0; }
             
-            // ANTI-SLIP PHYSICS: Hard brake based on actual physics contacts
+            // --- KINEMATIC GROUND LOCK (Bezwzględny brak ślizgania) ---
             let isGrounded = false;
             for (let i = 0; i < world.contacts.length; i++) {
                 const c = world.contacts[i];
                 if (c.bi === playerBody || c.bj === playerBody) {
                     let ni = c.ni; 
-                    if (c.bi === playerBody && ni.y < -0.5) isGrounded = true; 
-                    else if (c.bj === playerBody && ni.y > 0.5) isGrounded = true;
+                    if (c.bi === playerBody && ni.y < -0.4) isGrounded = true; 
+                    else if (c.bj === playerBody && ni.y > 0.4) isGrounded = true;
                 }
             }
+            // Jeżeli jesteśmy na ziemi i wektor lotu nie ucieka aktywnie w górę, ZERUJEMY pęd płaski
             if (isGrounded && !activeRopeConstraint) {
-                playerBody.velocity.x *= 0.3; // Mocne wytracanie prędkości
-                playerBody.velocity.z *= 0.3;
+                if (playerBody.velocity.y <= 0.1) {
+                    playerBody.velocity.x = 0; 
+                    playerBody.velocity.z = 0;
+                    playerBody.angularVelocity.set(0,0,0);
+                }
             }
 
+            // OGRANICZENIE PREDKOSCI (Podwyższone na poczet +20% siły, z 49 do 324)
             const speedSq = playerBody.velocity.lengthSquared();
-            if(speedSq > 144) { playerBody.velocity.scale(12 / Math.sqrt(speedSq), playerBody.velocity); }
+            if(speedSq > 324) { playerBody.velocity.scale(18 / Math.sqrt(speedSq), playerBody.velocity); }
 
             if (renderer.xr.isPresenting) {
-                // BLOKADA PRZENIKANIA DŁONI PRZEZ ŚCIANY
+                // SYSTEM GORILLA ARMS (Wydłużone ręce by dotykać ziemi w pozycji prostej)
+                // Usunąłem system auto-skalowania dla stabilności, wprowadziłem za to wyższy próg detekcji 
+                // i powiązanie kolizji rąk z kontrolerami tak jak w poprawnym buildzie.
                 clampHandVisual(controller1, localAvatar.handL);
                 clampHandVisual(controller2, localAvatar.handR);
 
@@ -764,13 +779,10 @@
                 const ctrlPos = new THREE.Vector3(); grabbingController.getWorldPosition(ctrlPos); grabbedObject.userData.body.position.copy(ctrlPos);
             }
             for(let ball of throwables) { ball.position.copy(ball.userData.body.position); ball.quaternion.copy(ball.userData.body.quaternion); }
-            
-            for(let rope of ropes) {
-                rope.mesh.position.copy(rope.body.position); rope.mesh.quaternion.copy(rope.body.quaternion);
-            }
+            for(let rope of ropes) { rope.mesh.position.copy(rope.body.position); rope.mesh.quaternion.copy(rope.body.quaternion); }
 
             const camLocalPos = camera.position.clone();
-            const gorillaStanceOffset = 0.6;
+            const gorillaStanceOffset = 0.0;
 
             playerRig.position.set(
                 playerBody.position.x - camLocalPos.x,
