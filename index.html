@@ -3,61 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BagaBoo VR - Overcast Nightmare Parkour</title>
+    <title>BagaBoo VR - Dusk Nightmare Parkour</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
         
-        body { margin: 0; overflow: hidden; background-color: #aab4bb; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #2a2833; font-family: sans-serif; }
         
         #lobby {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, #c9d1d6, #6f7a82 85%); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 1000; color: #111;
+            background: radial-gradient(circle at 28% 30%, #c98563 0%, #6e5468 38%, #2b2b3d 72%, #15151f 100%);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 1000; color: #f0e6e0;
         }
         
         #lobby h1.logo { 
             font-family: 'Creepster', cursive; 
             font-size: 85px; 
-            color: #8a0000; 
+            color: #b00000; 
             margin-bottom: 5px;
             letter-spacing: 4px;
-            text-shadow: 2px 2px 0 #fff, 0 0 14px rgba(255, 0, 0, 0.45);
+            text-shadow: 0 0 22px rgba(255, 80, 0, 0.55), 3px 3px 0 #1a0505;
         }
 
-        #lobby p.subtitle { margin-bottom: 30px; color: #3a2020; font-size: 16px; font-weight: bold; letter-spacing: 1px; }
+        #lobby p.subtitle { margin-bottom: 30px; color: #f2c8a8; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-shadow: 1px 1px 3px #000; }
         
         .form-group { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; width: 340px; justify-content: space-between; }
-        .form-group label { font-weight: bold; color: #222; }
-        input, select { padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #8a6a6a; background: #eef0f2; color: #111; width: 180px; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.12); }
+        .form-group label { font-weight: bold; color: #f0e0d6; text-shadow: 1px 1px 2px #000; }
+        input, select { padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #8a5a4a; background: rgba(25,20,30,0.75); color: #f5ece6; width: 180px; box-shadow: inset 2px 2px 6px rgba(0,0,0,0.5); }
         input[type="color"] { padding: 0; height: 40px; cursor: pointer; border: none; }
         
         .btn-group { display: flex; gap: 10px; margin-top: 25px; flex-wrap: wrap; justify-content: center; max-width: 500px;}
-        button { padding: 15px 20px; font-size: 16px; font-weight: bold; border: 1px solid #aa0000; border-radius: 8px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 8px rgba(0,0,0,0.25); text-transform: uppercase; }
+        button { padding: 15px 20px; font-size: 16px; font-weight: bold; border: 1px solid #aa3300; border-radius: 8px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.45); text-transform: uppercase; }
         
-        #btnHost { background: #880000; color: #ffffff; }
-        #btnJoin { background: #aa0000; color: white; }
-        #btnSolo { background: #4a5c6a; color: white; border-color: #3b4d5b; }
+        #btnHost { background: #8a1a0a; color: #ffffff; }
+        #btnJoin { background: #a8360f; color: white; }
+        #btnSolo { background: #3a4058; color: white; border-color: #4b5270; }
         
-        button:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(150,0,0,0.35); }
-        #btnSolo:hover { background: #5a6e7e; box-shadow: 0 6px 12px rgba(0,0,0,0.3); }
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(255,110,40,0.4); }
+        #btnSolo:hover { background: #4a5170; }
         
-        button:disabled { background: #aa8888 !important; color: #ffdddd !important; border-color: #997777 !important; cursor: not-allowed; transform: none; box-shadow: none; }
+        button:disabled { background: #5a4848 !important; color: #b8a0a0 !important; border-color: #4a3838 !important; cursor: not-allowed; transform: none; box-shadow: none; }
         
-        #status { margin-top: 25px; font-weight: bold; font-size: 16px; color: #3a1a1a; text-align: center; max-width: 400px; }
+        #status { margin-top: 25px; font-weight: bold; font-size: 16px; color: #f2c8a8; text-align: center; max-width: 400px; text-shadow: 1px 1px 3px #000; }
         #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #ffffff; font-weight: bold; font-size: 18px; z-index: 100; text-shadow: 2px 2px 4px black; display: none; }
         
         #VRButton { display: none !important; }
-        .connected #VRButton { display: block !important; border-color: #ff0000 !important; color: #ff0000 !important; background: rgba(50,10,10,0.8) !important; }
+        .connected #VRButton { display: block !important; border-color: #ff6a20 !important; color: #ff8a40 !important; background: rgba(40,20,20,0.85) !important; }
     </style>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
     <div id="lobby">
         <h1 class="logo">BagaBoo VR</h1>
-        <p class="subtitle">Overcast Nightmare Parkour | Don't Look Away</p>
+        <p class="subtitle">Dusk Nightmare Parkour | Don't Look Away</p>
         
         <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Player1" value="Acrobat" /></div>
-        <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
+        <div class="form-group"><label>Sleeve Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
+        <div class="form-group">
+            <label>Skin:</label>
+            <select id="playerSkin">
+                <option value="#f1c8a8">Light</option>
+                <option value="#d9a07a" selected>Medium</option>
+                <option value="#b97a52">Tan</option>
+                <option value="#7a4a30">Dark</option>
+            </select>
+        </div>
         <div class="form-group">
             <label>Hat:</label>
             <select id="playerHat">
@@ -83,7 +93,7 @@
         <div id="status">Checking microphone...</div>
     </div>
 
-    <div id="info">Connected! Climb the bleeding walls... and don't look away.</div>
+    <div id="info">Connected! The sun is setting... don't look away.</div>
     <div id="audio-container" style="display:none;"></div>
 
     <script type="importmap">
@@ -98,6 +108,7 @@
         import * as THREE from 'three';
         import { VRButton } from 'three/addons/webxr/VRButton.js';
         import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+        import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
         import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
         import * as CANNON from 'cannon-es';
 
@@ -105,22 +116,45 @@
         // USTAWIENIA GRAFIKI (tu stroisz jakość i wydajność)
         // ==========================================
         const GFX = {
-            muralRes: 2048,     // rozdzielczość muralowych potworów (1024 = lżej, 2048 = ostrzej)
-            shadowMap: 2048,    // rozdzielczość cieni słońca (1024 = lżej)
+            muralRes: 2048,     // rozdzielczość muralowych potworów (1024 = lżej)
+            surfaceRes: 2048,   // rozdzielczość tekstur ścian i podłogi (1024 = lżej)
+            shadowMap: 4096,    // rozdzielczość cieni słońca (2048 albo 1024 = lżej)
             mannequins: 10,     // liczba manekinów
-            dust: 500,          // liczba drobinek pyłu
+            dust: 600,          // liczba drobinek pyłu
             chains: 16,         // liczba łańcuchów pod sufitem
-            xrScale: 1.1,       // ostrość obrazu w goglach (1.0 = lżej, 1.2 = ostrzej, ale wolniej)
-            foveation: 0.4      // 0 = pełna jakość na całym obrazie, 1 = mocne rozmycie na brzegach (szybciej)
+            xrScale: 1.15,      // ostrość obrazu w goglach (1.0 = lżej)
+            foveation: 0.3      // 0 = pełna jakość na całym obrazie, 1 = mocne rozmycie na brzegach (szybciej)
         };
 
         // ==========================================
         // PRESETY OŚWIETLENIA
-        // Zmień LIGHT_MODE na 'night', żeby wrócić do nocnego horroru.
-        // Preset 'night' to zapisane ustawienia z poprzedniej wersji gry,
-        // do wykorzystania przy rozbudowie (np. nocny poziom albo cykl dnia i nocy).
+        // LIGHT_MODE: 'dusk' (zachód słońca / szarówka), 'overcast' (pochmurny dzień), 'night' (nocny horror).
+        // Wszystkie presety zostają w kodzie do wykorzystania przy rozbudowie gry.
         // ==========================================
         const LIGHT_PRESETS = {
+            dusk: {
+                label: 'Zachód słońca / szarówka',
+                background: 0x3a3c4c, fogColor: 0x5a5466, fogDensity: 0.02,
+                exposure: 0.95,
+                hemiSky: 0x7f8bb0, hemiGround: 0x3a2a26, hemiIntensity: 1.6,
+                sunColor: 0xff9550, sunIntensity: 3.2, sunPos: [-48, 31, -17],
+                envIntensity: 0.35,
+                flashlight: null,
+                flickers: [],
+                bulbs: [[-11, 13, 4, 0xffa860, 26, 15], [10, 12.5, -9, 0xffa860, 24, 15], [-2, 13.5, 11, 0xff9a50, 22, 14]],
+                muralBase: 0.35, muralPulse: 0.1,
+                trampBase: 0.55, trampPulse: 0.3,
+                edgeOpacity: 0.16,
+                dustColor: 0xffc49a, dustOpacity: 0.55,
+                wallTint: 0xe0dde0, floorTint: 0xd8d6d8,
+                ceiling: 'sky',
+                sky: {
+                    base: [[0, '#e08a52'], [0.18, '#c46e5a'], [0.45, '#7a5f7e'], [0.75, '#4a4f6e'], [1, '#2f3550']],
+                    sunGlow: true,
+                    clouds: [['40,32,48', 80, 90, 260, 0.22, 0.36], ['255,160,110', 70, 50, 170, 0.16, 0.3], ['120,90,120', 60, 30, 110, 0.1, 0.18]]
+                },
+                shafts: true, shaftColor: 0xffa070, shaftOpacity: 0.12
+            },
             overcast: {
                 label: 'Pochmurny dzień',
                 background: 0xaeb8bf, fogColor: 0xaeb8bf, fogDensity: 0.012,
@@ -130,16 +164,22 @@
                 envIntensity: 1.0,
                 flashlight: null,
                 flickers: [],
+                bulbs: [],
                 muralBase: 0.22, muralPulse: 0.05,
                 trampBase: 0.5, trampPulse: 0.25,
                 edgeOpacity: 0.12,
                 dustColor: 0xd8d2c8, dustOpacity: 0.6,
                 wallTint: 0xffffff, floorTint: 0xffffff,
                 ceiling: 'sky',
-                shafts: true
+                sky: {
+                    base: [[0, '#c3ccd2'], [0.5, '#d5dbdf'], [1, '#bcc6cc']],
+                    sunGlow: false,
+                    clouds: [['96,106,116', 70, 90, 310, 0.16, 0.28], ['250,252,255', 110, 60, 250, 0.2, 0.4], ['70,78,88', 60, 30, 120, 0.08, 0.16]]
+                },
+                shafts: true, shaftColor: 0xdfe8ee, shaftOpacity: 0.17
             },
             night: {
-                label: 'Nocny horror (zapisany preset)',
+                label: 'Nocny horror',
                 background: 0x020103, fogColor: 0x050204, fogDensity: 0.042,
                 exposure: 1.2,
                 hemiSky: 0x2a3350, hemiGround: 0x180808, hemiIntensity: 1.0,
@@ -153,6 +193,7 @@
                     [10, 16, 10, 0xff1a1a, 65, 24],
                     [-12, 2.5, -12, 0x30ff70, 22, 12]
                 ],
+                bulbs: [],
                 muralBase: 0.7, muralPulse: 0.25,
                 trampBase: 0.45, trampPulse: 0.3,
                 edgeOpacity: 0.35,
@@ -162,11 +203,11 @@
                 shafts: false
             }
         };
-        const LIGHT_MODE = 'overcast';
+        const LIGHT_MODE = 'dusk';
         const LP = LIGHT_PRESETS[LIGHT_MODE];
 
         // --- GLOBAL VARIABLES ---
-        let myProfile = { name: "Acrobat", color: "#3d2314", hat: "none", glasses: "none" };
+        let myProfile = { name: "Acrobat", color: "#3d2314", skin: "#d9a07a", hat: "none", glasses: "none" };
         let myStream = null;
         let audioCtx = null;
 
@@ -254,7 +295,8 @@
         }
 
         function createWallTexture() {
-            const S = 1024, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(1337);
+            const S = 1024, RES = GFX.surfaceRes, c = makeCanvas(RES, RES), ctx = c.getContext('2d'), R = mkRng(1337);
+            ctx.scale(RES / S, RES / S);
             ctx.fillStyle = '#5d6266'; ctx.fillRect(0, 0, S, S);
             for (let i = 0; i < 70000; i++) {
                 ctx.fillStyle = R() > 0.5 ? 'rgba(0,0,0,' + (R() * 0.18) + ')' : 'rgba(255,255,255,' + (R() * 0.05) + ')';
@@ -310,7 +352,8 @@
         }
 
         function createFloorTexture() {
-            const S = 1024, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(4242);
+            const S = 1024, RES = GFX.surfaceRes, c = makeCanvas(RES, RES), ctx = c.getContext('2d'), R = mkRng(4242);
+            ctx.scale(RES / S, RES / S);
             for (let ty = 0; ty < 4; ty++) for (let tx = 0; tx < 4; tx++) {
                 const v = (R() * 18) | 0;
                 ctx.fillStyle = 'rgb(' + (74 + v) + ',' + (72 + v) + ',' + (70 + v) + ')';
@@ -401,6 +444,25 @@
             return toTex(c, true);
         }
 
+        // Neutralna tekstura skóry (pory, zaczerwienienia, zmarszczki); kolor nadaje materiał
+        function createSkinTexture() {
+            const S = 256, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(4321);
+            ctx.fillStyle = '#f2e6dd'; ctx.fillRect(0, 0, S, S);
+            for (let i = 0; i < 9000; i++) {
+                ctx.fillStyle = R() > 0.5 ? 'rgba(120,60,50,' + (R() * 0.08) + ')' : 'rgba(255,240,230,' + (R() * 0.06) + ')';
+                ctx.fillRect(R() * S, R() * S, 1 + R() * 1.5, 1 + R() * 1.5);
+            }
+            for (let i = 0; i < 14; i++) {
+                const x = R() * S, y = R() * S, r = 12 + R() * 30;
+                const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+                g.addColorStop(0, 'rgba(200,90,80,0.12)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+            }
+            ctx.strokeStyle = 'rgba(90,40,35,0.14)'; ctx.lineWidth = 1;
+            for (let i = 0; i < 70; i++) { const x = R() * S, y = R() * S; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (R() - 0.5) * 20, y + (R() - 0.5) * 6); ctx.stroke(); }
+            return toTex(c, true);
+        }
+
         function createWoodTexture() {
             const S = 512, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(2718);
             ctx.fillStyle = '#6b4a2d'; ctx.fillRect(0, 0, S, S);
@@ -452,25 +514,36 @@
             return new THREE.CanvasTexture(c);
         }
 
-        // Chmury na świetliku w suficie (kafel poziomo bezszwowy, więc mogą dryfować)
-        function createCloudTexture() {
+        // Niebo nad świetlikiem: stały gradient (zachód po zachodniej stronie) + osobna warstwa chmur
+        function createSkyBaseTexture(sky) {
+            const W = 1024, H = 1024, c = makeCanvas(W, H), ctx = c.getContext('2d');
+            const g = ctx.createLinearGradient(0, 0, W, 0);
+            for (const s of sky.base) g.addColorStop(s[0], s[1]);
+            ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+            if (sky.sunGlow) {
+                const r = ctx.createRadialGradient(0, H * 0.65, 0, 0, H * 0.65, W * 0.7);
+                r.addColorStop(0, 'rgba(255,214,150,0.9)'); r.addColorStop(0.25, 'rgba(255,150,90,0.45)'); r.addColorStop(1, 'rgba(255,120,80,0)');
+                ctx.fillStyle = r; ctx.fillRect(0, 0, W, H);
+            }
+            return toTex(c, false);
+        }
+        function createCloudLayerTexture(spec) {
             const S = 1024, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(555);
-            const g = ctx.createLinearGradient(0, 0, 0, S); g.addColorStop(0, '#b3bec6'); g.addColorStop(1, '#dde3e7');
-            ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
-            function puff(x, y, r, rgb, a) {
-                for (const dx of [-S, 0, S]) {
-                    const gg = ctx.createRadialGradient(x + dx, y, 0, x + dx, y, r);
-                    gg.addColorStop(0, 'rgba(' + rgb + ',' + a + ')'); gg.addColorStop(1, 'rgba(' + rgb + ',0)');
-                    ctx.fillStyle = gg; ctx.fillRect(x + dx - r, y - r, r * 2, r * 2);
+            for (const L of spec) {
+                const rgb = L[0], count = L[1], rmin = L[2], rmax = L[3], amin = L[4], amax = L[5];
+                for (let i = 0; i < count; i++) {
+                    const x = R() * S, y = R() * S, r = rmin + R() * (rmax - rmin), a = amin + R() * (amax - amin);
+                    for (const dx of [-S, 0, S]) {
+                        const gg = ctx.createRadialGradient(x + dx, y, 0, x + dx, y, r);
+                        gg.addColorStop(0, 'rgba(' + rgb + ',' + a + ')'); gg.addColorStop(1, 'rgba(' + rgb + ',0)');
+                        ctx.fillStyle = gg; ctx.fillRect(x + dx - r, y - r, r * 2, r * 2);
+                    }
                 }
             }
-            for (let i = 0; i < 70; i++) puff(R() * S, R() * S, 90 + R() * 220, '96,106,116', 0.16 + R() * 0.12);
-            for (let i = 0; i < 110; i++) puff(R() * S, R() * S, 60 + R() * 190, '250,252,255', 0.2 + R() * 0.2);
-            for (let i = 0; i < 60; i++) puff(R() * S, R() * S, 30 + R() * 90, '70,78,88', 0.08 + R() * 0.08);
             return toTex(c, true);
         }
 
-        // Pionowy gradient do smug światła (jasno u góry, znika w dół)
+        // Pionowy gradient do smug światła (jasno u źródła, znika dalej)
         function createShaftTexture() {
             const c = makeCanvas(8, 256), ctx = c.getContext('2d');
             const g = ctx.createLinearGradient(0, 0, 0, 256);
@@ -848,6 +921,7 @@
         const floorTex = createFloorTexture();
         const floorRoughTex = createFloorRoughTexture();
         const plasterTex = createPlasterTexture();
+        const skinTex = createSkinTexture();
         const eyeTex = createEyeballTexture();
         const dotTex = createDotTexture();
 
@@ -858,7 +932,7 @@
         scene.background = new THREE.Color(LP.background);
         scene.fog = new THREE.FogExp2(LP.fogColor, LP.fogDensity);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 400);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.05, 400);
         const playerRig = new THREE.Group(); playerRig.add(camera); scene.add(playerRig);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -875,7 +949,6 @@
         document.body.appendChild(renderer.domElement); 
         const vrBtn = VRButton.createButton(renderer); document.body.appendChild(vrBtn);
 
-        // Oświetlenie otoczenia z nieba (IBL), daje miękkie odbicia na metalu i mokrej podłodze
         if (LP.envIntensity > 0) {
             const pmremGenerator = new THREE.PMREMGenerator(renderer);
             scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -883,20 +956,19 @@
 
         const hemiLight = new THREE.HemisphereLight(LP.hemiSky, LP.hemiGround, LP.hemiIntensity); scene.add(hemiLight);
 
-        // Słońce schowane za chmurami: miękkie cienie z góry
+        // Słońce: o zmierzchu nisko nad zachodnią ścianą, rzuca ciepłe światło na przeciwległe ściany
         if (LP.sunIntensity > 0) {
             const sun = new THREE.DirectionalLight(LP.sunColor, LP.sunIntensity);
             sun.position.set(LP.sunPos[0], LP.sunPos[1], LP.sunPos[2]);
             sun.castShadow = true;
             sun.shadow.mapSize.set(GFX.shadowMap, GFX.shadowMap);
-            sun.shadow.camera.near = 1; sun.shadow.camera.far = 120;
-            sun.shadow.camera.left = -22; sun.shadow.camera.right = 22;
-            sun.shadow.camera.top = 22; sun.shadow.camera.bottom = -22;
+            sun.shadow.camera.near = 1; sun.shadow.camera.far = 160;
+            sun.shadow.camera.left = -26; sun.shadow.camera.right = 26;
+            sun.shadow.camera.top = 26; sun.shadow.camera.bottom = -26;
             sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.04;
             scene.add(sun);
         }
 
-        // Latarka na głowie (tylko w presecie nocnym)
         let flashlight = null;
         if (LP.flashlight) {
             const F = LP.flashlight;
@@ -910,12 +982,11 @@
             camera.add(flashlight); camera.add(flashlight.target);
         }
 
-        // Migoczące kolorowe lampy (tylko w presecie nocnym)
         const flickerLights = [];
         for (const f of LP.flickers) {
             const l = new THREE.PointLight(f[3], f[4], f[5], 2);
             l.position.set(f[0], f[1], f[2]); scene.add(l);
-            flickerLights.push({ l: l, base: f[4], ph: Math.random() * 100 });
+            flickerLights.push({ l: l, base: f[4], ph: Math.random() * 100, subtle: false });
         }
 
         // ==========================================
@@ -946,10 +1017,10 @@
         // ==========================================
         const obstacles = []; const trampolines = []; const ropes = []; const throwables = [];
         const trampMats = []; const muralMats = []; const lampSprites = []; const shaftMats = [];
-        const reserved = [];   // miejsca zajęte przez dekoracje (manekiny tam się nie pojawią)
+        const reserved = [];
+        const bulbSpots = [];
         let cloudTex = null;
 
-        // Pomocnicze funkcje do budowy geometrii
         const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
         const UNIT_SPHERE = new THREE.SphereGeometry(1, 10, 8);
         const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
@@ -982,7 +1053,6 @@
             obstacles.push({ meshOrGroup, body, box3 });
         }
 
-        // Skalowanie UV pudełka do rozmiaru świata (m = ile metrów ma jeden kafel tekstury)
         function scaleBoxUVs(geo, w, h, d, m) {
             const uv = geo.attributes.uv;
             const dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
@@ -993,7 +1063,6 @@
             uv.needsUpdate = true;
         }
 
-        // opts: { rough: tekstura chropowatości, physical: lakier/mokry połysk, uvMeters: metry na kafel }
         function addCrispBlock(x, y, z, w, h, d, color, edgeColor, isTrampoline = false, texture = wallTex, opts = {}) {
             const params = { map: texture, bumpMap: texture, bumpScale: 1.4, color: color, roughness: 0.78, metalness: 0.15, envMapIntensity: LP.envIntensity };
             let mat;
@@ -1010,20 +1079,21 @@
             addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2)), mesh, isTrampoline);
         }
 
-        // Podłoga (mokra, z kałużami) i ściany
         addCrispBlock(0, -2.5, 0, 40, 5, 40, LP.floorTint, 0x440000, false, floorTex, { rough: floorRoughTex, physical: true });
-        addCrispBlock(0, 10, -17.5, 40, 20, 5, LP.wallTint, 0x550000); // Północ
-        addCrispBlock(0, 10, 17.5, 40, 20, 5, LP.wallTint, 0x550000);  // Południe
-        addCrispBlock(-17.5, 10, 0, 5, 20, 40, LP.wallTint, 0x550000); // Zachód
-        addCrispBlock(17.5, 10, 0, 5, 20, 40, LP.wallTint, 0x550000);  // Wschód
+        addCrispBlock(0, 10, -17.5, 40, 20, 5, LP.wallTint, 0x550000);
+        addCrispBlock(0, 10, 17.5, 40, 20, 5, LP.wallTint, 0x550000);
+        addCrispBlock(-17.5, 10, 0, 5, 20, 40, LP.wallTint, 0x550000);
+        addCrispBlock(17.5, 10, 0, 5, 20, 40, LP.wallTint, 0x550000);
 
-        // SUFIT: w dzień to ogromny świetlik z chmurami i stalowymi dźwigarami, w nocy betonowa płyta
+        // SUFIT: świetlik z niebem i chmurami (dzień/zmierzch) albo betonowa płyta (noc)
         (function buildCeiling() {
             if (LP.ceiling === 'concrete') { addCrispBlock(0, 22.5, 0, 40, 5, 40, LP.wallTint, 0x440000); return; }
             const group = new THREE.Group(); scene.add(group);
-            cloudTex = createCloudTexture();
-            const sky = new THREE.Mesh(new THREE.PlaneGeometry(31, 31), new THREE.MeshBasicMaterial({ map: cloudTex, fog: false }));
-            sky.rotation.x = Math.PI / 2; sky.position.set(0, 19.99, 0); group.add(sky);
+            const base = new THREE.Mesh(new THREE.PlaneGeometry(31, 31), new THREE.MeshBasicMaterial({ map: createSkyBaseTexture(LP.sky), fog: false }));
+            base.rotation.x = Math.PI / 2; base.position.set(0, 19.995, 0); group.add(base);
+            cloudTex = createCloudLayerTexture(LP.sky.clouds);
+            const clouds = new THREE.Mesh(new THREE.PlaneGeometry(31, 31), new THREE.MeshBasicMaterial({ map: cloudTex, transparent: true, depthWrite: false, fog: false }));
+            clouds.rotation.x = Math.PI / 2; clouds.position.set(0, 19.985, 0); group.add(clouds);
             const beams = [];
             for (const p of [-15, -7.5, 0, 7.5, 15]) {
                 beams.push(place(UNIT_BOX, p, 19.82, 0, 0, 0, 0, 0.42, 0.3, 30.4));
@@ -1031,11 +1101,10 @@
             }
             for (const px of [-7.5, 0, 7.5]) for (const pz of [-7.5, 0, 7.5]) beams.push(place(UNIT_BOX, px, 19.9, pz, 0, 0, 0, 0.7, 0.2, 0.7));
             const bm = new THREE.Mesh(mergeGeometries(beams), new THREE.MeshStandardMaterial({ color: 0x2b2e31, roughness: 0.5, metalness: 0.8, envMapIntensity: LP.envIntensity }));
-            bm.castShadow = false; bm.receiveShadow = true; group.add(bm);
+            bm.castShadow = true; bm.receiveShadow = true; group.add(bm);
             addStaticBody(0, 22.5, 0, new CANNON.Box(new CANNON.Vec3(20, 2.5, 20)), group);
         })();
 
-        // WEKTOROWE MURALE POTWORÓW NA ŚCIANACH
         function addMural(painter, seed, x, y, z, rotY) {
             const tex = createMural(painter, seed);
             const mat = new THREE.MeshStandardMaterial({
@@ -1044,7 +1113,7 @@
                 polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
             });
             const m = new THREE.Mesh(new THREE.PlaneGeometry(11, 11), mat);
-            m.position.set(x, y, z); m.rotation.y = rotY; scene.add(m);
+            m.position.set(x, y, z); m.rotation.y = rotY; m.receiveShadow = true; scene.add(m);
             muralMats.push(mat);
         }
         addMural(monsterScream, 101, -6.5, 10.5, -14.93, 0);
@@ -1054,10 +1123,8 @@
         addMural(monsterDemon, 505, -14.93, 10.5, 7, Math.PI / 2);
         addMural(monsterCrowd, 606, 14.93, 10.5, -6.5, -Math.PI / 2);
 
-        // Trampolina
         addCrispBlock(0, 0.2, 5, 3, 0.4, 3, 0xff0000, 0xffffff, true); 
 
-        // MACABRE STAIRS
         function addScaryStep(x, y, z, size, sides) {
             const group = new THREE.Group();
             const mat = new THREE.MeshStandardMaterial({ map: wallTex, bumpMap: wallTex, bumpScale: 1.2, color: 0x8a4040, metalness: 0.3, roughness: 0.55, envMapIntensity: LP.envIntensity }); 
@@ -1066,14 +1133,12 @@
             mesh.castShadow = true; mesh.receiveShadow = true;
             mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 })));
             group.add(mesh);
-
             const spikeGeo = new THREE.ConeGeometry(size*0.6, 1.5, sides);
             const spike = new THREE.Mesh(spikeGeo, mat);
             spike.castShadow = true;
             spike.rotation.x = Math.PI; spike.position.y = -0.9;
             spike.add(new THREE.LineSegments(new THREE.EdgesGeometry(spikeGeo), new THREE.LineBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.4 })));
             group.add(spike);
-
             group.position.set(x, y, z); scene.add(group);
             const inRadius = size * Math.cos(Math.PI / sides);
             const half = inRadius * 0.8;
@@ -1087,13 +1152,11 @@
         }
         addCrispBlock(-7, 1 + 12*1.2, -7, 4, 0.3, 4, 0x6a3030, 0xff0000); 
 
-        // Monkey Bars
         addCrispBlock(8, 6, 8, 0.5, 12, 0.5, 0x555555, 0xff0000);  
         addCrispBlock(8, 6, -2, 0.5, 12, 0.5, 0x555555, 0xff0000); 
         addCrispBlock(8, 12, 3, 0.5, 0.5, 10.5, 0x555555, 0xff0000); 
         for(let i = 0; i < 5; i++) { addCrispBlock(7, 11.5, -1 + (i*2), 3, 0.2, 0.2, 0x333333, 0xff0000); }
 
-        // BONE GRIPS
         const gripGeo = new THREE.DodecahedronGeometry(0.3);
         const gripMat = new THREE.MeshStandardMaterial({ color: 0xc8b8a0, emissive: 0x140000, roughness: 0.8, bumpMap: plasterTex, bumpScale: 0.8, envMapIntensity: LP.envIntensity }); 
         function addBoneGrip(x, y, z) {
@@ -1111,7 +1174,7 @@
         }
 
         // ==========================================
-        // 3b. WYSTRÓJ LOBBY: kałuże, rytuał, listwy, rury, pajęczyny, lampy, skrzynie
+        // 3b. WYSTRÓJ LOBBY
         // ==========================================
         (function addBloodPools() {
             const mat = new THREE.MeshStandardMaterial({
@@ -1131,7 +1194,6 @@
             }
         })();
 
-        // Rytualny krąg w centrum lobby
         (function addSigil() {
             const mat = new THREE.MeshStandardMaterial({
                 map: createSigilTexture(), transparent: true, roughness: 0.28, metalness: 0.0, depthWrite: false, envMapIntensity: LP.envIntensity,
@@ -1141,7 +1203,6 @@
             m.rotation.x = -Math.PI / 2; m.position.set(0, 0.009, 0); m.receiveShadow = true; scene.add(m);
         })();
 
-        // Miękkie cienie kontaktowe (fałszywe AO): przy ścianach i pod skrzyniami
         (function addContactAO() {
             const c = makeCanvas(4, 128), ctx = c.getContext('2d');
             const g = ctx.createLinearGradient(0, 0, 0, 128);
@@ -1164,7 +1225,6 @@
             m.rotation.x = -Math.PI / 2; m.position.set(x, 0.016, z); scene.add(m);
         }
 
-        // Listwy przypodłogowe i pas przy suficie
         (function addSkirting() {
             const parts = [];
             const mk = (cx, cy, cz, w, h, d) => parts.push(place(UNIT_BOX, cx, cy, cz, 0, 0, 0, w, h, d));
@@ -1173,10 +1233,9 @@
             mk(0, 19.55, -14.93, 30, 0.5, 0.14); mk(0, 19.55, 14.93, 30, 0.5, 0.14);
             mk(-14.93, 19.55, 0, 0.14, 0.5, 30); mk(14.93, 19.55, 0, 0.14, 0.5, 30);
             const m = new THREE.Mesh(mergeGeometries(parts), new THREE.MeshStandardMaterial({ map: wallTex, bumpMap: wallTex, bumpScale: 1.0, color: 0x555a5e, roughness: 0.8, envMapIntensity: LP.envIntensity }));
-            m.receiveShadow = true; scene.add(m);
+            m.receiveShadow = true; m.castShadow = true; scene.add(m);
         })();
 
-        // Zardzewiałe rury biegnące po ścianach północnej i południowej
         (function addPipes() {
             const pipes = [], flanges = [];
             for (const s of [-1, 1]) {
@@ -1196,7 +1255,6 @@
             m2.castShadow = true; scene.add(m2);
         })();
 
-        // Pajęczyny w rogach pod sufitem
         (function addCobwebs() {
             const mat = new THREE.MeshBasicMaterial({ map: createCobwebTexture(), transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: 0.85 });
             const geo = new THREE.PlaneGeometry(3.2, 3.2);
@@ -1208,7 +1266,6 @@
             }
         })();
 
-        // Awaryjne lampy alarmowe na ścianach
         function addLamp(x, y, z, rotY) {
             const g = new THREE.Group();
             const body = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.22), new THREE.MeshStandardMaterial({ color: 0x222426, metalness: 0.7, roughness: 0.5 }));
@@ -1224,7 +1281,28 @@
         addLamp(-14, 16, 14.89, Math.PI); addLamp(14, 16, 14.89, Math.PI);
         addLamp(14.89, 16, 13, -Math.PI / 2); addLamp(-14.89, 16, -13, Math.PI / 2);
 
-        // Skrzynie i beczki (mają kolizję, można na nie wchodzić i się odpychać)
+        // Gołe żarówki na kablach z ciepłym światłem (zmierzch)
+        (function addBulbs() {
+            const cordMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6 });
+            const socketMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, metalness: 0.7, roughness: 0.4 });
+            for (const b of (LP.bulbs || [])) {
+                const x = b[0], y = b[1], z = b[2], col = b[3], inten = b[4], dist = b[5];
+                const cordLen = 19.95 - y - 0.12;
+                const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, cordLen, 6), cordMat);
+                cord.position.set(x, y + 0.12 + cordLen / 2, z); scene.add(cord);
+                const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.08, 12), socketMat);
+                socket.position.set(x, y + 0.09, z); scene.add(socket);
+                const bulbMat = new THREE.MeshBasicMaterial({ color: col });
+                const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 12), bulbMat);
+                bulb.scale.y = 1.3; bulb.position.set(x, y, z); scene.add(bulb);
+                const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.8 }));
+                glow.scale.set(1.6, 1.6, 1); glow.position.set(x, y, z); scene.add(glow);
+                const l = new THREE.PointLight(col, inten, dist, 2); l.position.set(x, y - 0.05, z); scene.add(l);
+                flickerLights.push({ l: l, base: inten, ph: Math.random() * 100, subtle: true, glow: glow });
+                bulbSpots.push([x, z]);
+            }
+        })();
+
         (function addProps() {
             const woodTex = createWoodTexture();
             function crate(x, y, z, s) {
@@ -1252,23 +1330,30 @@
             reserved.push([-13.2, -13.2, 2.0], [13.2, 13.2, 2.0]);
         })();
 
-        // Smugi światła wpadające przez świetlik (tylko w dzień)
+        // Smugi światła wpadające przez świetlik pod kątem słońca
         if (LP.shafts) {
             const st = createShaftTexture();
-            const spots = [[-9, -8], [4, -10], [10, -2], [-3, 5], [8, 11], [-11, 10], [0, -1]];
-            spots.forEach((p, i) => {
-                const mat = new THREE.MeshBasicMaterial({ map: st, color: 0xdfe8ee, transparent: true, opacity: 0.17, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
-                const m = new THREE.Mesh(new THREE.CylinderGeometry(1.1 + (i % 3) * 0.35, 2.6 + (i % 2) * 0.6, 19.9, 20, 1, true), mat);
-                m.position.set(p[0], 9.95, p[1]);
-                m.rotation.z = (Math.random() - 0.5) * 0.12; m.rotation.x = (Math.random() - 0.5) * 0.12;
+            const sd = new THREE.Vector3(LP.sunPos[0], LP.sunPos[1], LP.sunPos[2]).normalize();
+            const down = sd.clone().negate();
+            const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), sd);
+            const len = Math.min(42, 19.9 / Math.max(0.2, sd.y));
+            const R = mkRng(77);
+            for (let i = 0; i < 8; i++) {
+                const sx = Math.max(-14.5, Math.min(14.5, -10 + R() * 20 - down.x * len * 0.45));
+                const sz = Math.max(-14.5, Math.min(14.5, -10 + R() * 20 - down.z * len * 0.45));
+                const start = new THREE.Vector3(sx, 19.9, sz);
+                const mat = new THREE.MeshBasicMaterial({ map: st, color: LP.shaftColor, transparent: true, opacity: LP.shaftOpacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+                mat.userData.base = LP.shaftOpacity;
+                const m = new THREE.Mesh(new THREE.CylinderGeometry(0.9 + R() * 0.6, 1.8 + R() * 0.8, len, 20, 1, true), mat);
+                m.quaternion.copy(q);
+                m.position.copy(start).addScaledVector(down, len / 2);
                 scene.add(m); shaftMats.push(mat);
-            });
+            }
         }
 
-        // Łańcuchy z hakami i kawałkami mięsa pod sufitem
         (function addHangingChains() {
             const metal = [], meat = [];
-            const taken = [[4, -4], [-4, 4], [0, 0], [6, 6], [-8, -2]];
+            const taken = [[4, -4], [-4, 4], [0, 0], [6, 6], [-8, -2]].concat(bulbSpots);
             const link = new THREE.TorusGeometry(0.035, 0.009, 5, 8);
             let n = 0, tries = 0;
             while (n < GFX.chains && tries < 300) {
@@ -1290,7 +1375,6 @@
             }
         })();
 
-        // Pył w powietrzu
         const dustN = GFX.dust;
         const dustPos = new Float32Array(dustN * 3), dustVy = new Float32Array(dustN), dustPh = new Float32Array(dustN);
         for (let i = 0; i < dustN; i++) {
@@ -1412,7 +1496,6 @@
             }
         })();
 
-        // Manekiny obracają się do gracza tylko wtedy, gdy na nie nie patrzy
         const _cp = new THREE.Vector3(), _cd = new THREE.Vector3(), _tm = new THREE.Vector3();
         function updateMannequins(dt) {
             camera.getWorldPosition(_cp); camera.getWorldDirection(_cd);
@@ -1421,7 +1504,7 @@
                 const dist = _tm.length();
                 if (dist < 0.001 || dist > 16) continue;
                 _tm.multiplyScalar(1 / dist);
-                if (_cd.dot(_tm) > 0.42) continue; // widzisz go: stoi nieruchomo
+                if (_cd.dot(_tm) > 0.42) continue;
                 const target = Math.atan2(_cp.x - m.group.position.x, _cp.z - m.group.position.z);
                 let d = target - m.group.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d));
                 const rate = (dist < 5 ? 1.6 : 0.7) * dt;
@@ -1448,7 +1531,6 @@
             geo.computeVertexNormals();
             const mesh = new THREE.Mesh(geo, mat);
             mesh.castShadow = true; ropeGroup.add(mesh); scene.add(ropeGroup);
-            
             const shape = new CANNON.Box(new CANNON.Vec3(0.12, height/2, 0.12));
             const body = new CANNON.Body({ 
                 mass: 10, shape: shape, material: physicsMat, position: new CANNON.Vec3(x, y - height/2, z),
@@ -1474,7 +1556,93 @@
         createEyeball('ball1', 2, 1, -2); createEyeball('ball2', -2, 1, -2);
 
         // ==========================================
-        // 5. BULLETPROOF MULTIPLAYER & SOLO MODE
+        // 5. REALISTYCZNE DŁONIE (szkielet palców, zginanie, paznokcie, rękaw)
+        // ==========================================
+        const NAIL_GEO = new THREE.SphereGeometry(1, 12, 8);
+        const nailMat = new THREE.MeshPhysicalMaterial({ color: 0xf2d6cc, roughness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.2, envMapIntensity: LP.envIntensity });
+        const FINGER_DEFS = [
+            { x: -0.030, len: [0.044, 0.026, 0.021], r: 0.0098, splay: 0.07 },   // wskazujący
+            { x: -0.010, len: [0.048, 0.029, 0.022], r: 0.0101, splay: 0.01 },   // środkowy
+            { x: 0.010, len: [0.045, 0.027, 0.021], r: 0.0095, splay: -0.05 },   // serdeczny
+            { x: 0.029, len: [0.035, 0.021, 0.019], r: 0.0085, splay: -0.13 }    // mały
+        ];
+        function fingerSeg(r, len) {
+            const g = new THREE.CapsuleGeometry(r, Math.max(0.002, len - r), 4, 12);
+            g.rotateX(Math.PI / 2); g.translate(0, 0, -len / 2);
+            return g;
+        }
+        function createRealHand(isLeft, skinHex, furHex) {
+            const side = isLeft ? -1 : 1;
+            const outer = new THREE.Group();
+            const model = new THREE.Group();
+            model.position.set(0, -0.015, 0.075);
+            model.rotation.set(-0.3, 0, -0.9 * side);
+            outer.add(model);
+            const skin = new THREE.MeshPhysicalMaterial({
+                map: skinTex, bumpMap: skinTex, bumpScale: 0.25, color: new THREE.Color(skinHex || '#d9a07a'),
+                roughness: 0.5, sheen: 0.6, sheenColor: new THREE.Color(0xff8f70), sheenRoughness: 0.45,
+                clearcoat: 0.06, clearcoatRoughness: 0.6, envMapIntensity: LP.envIntensity
+            });
+            const add = (geo, mat, parent) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+
+            add(new RoundedBoxGeometry(0.084, 0.026, 0.096, 3, 0.011), skin, model);
+            const thenar = add(new THREE.SphereGeometry(1, 14, 10), skin, model); thenar.scale.set(0.022, 0.013, 0.032); thenar.position.set(-0.03 * side, -0.007, 0.014);
+            const hypo = add(new THREE.SphereGeometry(1, 14, 10), skin, model); hypo.scale.set(0.016, 0.011, 0.03); hypo.position.set(0.032 * side, -0.006, 0.018);
+            const wrist = add(new THREE.CylinderGeometry(0.026, 0.024, 0.05, 16), skin, model);
+            wrist.rotation.x = Math.PI / 2; wrist.position.set(0, 0, 0.068); wrist.scale.set(1.25, 1, 0.75);
+            const cuffMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(furHex || '#3d2314'), roughness: 0.95, bumpMap: plasterTex, bumpScale: 1.5, side: THREE.DoubleSide, envMapIntensity: LP.envIntensity });
+            const cuff = add(new THREE.CylinderGeometry(0.036, 0.04, 0.05, 20, 1, true), cuffMat, model);
+            cuff.rotation.x = Math.PI / 2; cuff.position.set(0, 0, 0.11); cuff.scale.set(1.2, 1, 0.85);
+
+            const fingers = [];
+            for (const f of FINGER_DEFS) {
+                const knuckle = add(new THREE.SphereGeometry(f.r * 1.15, 10, 8), skin, model);
+                knuckle.position.set(f.x * side, 0.006, -0.044);
+                const base = new THREE.Group(); base.rotation.order = 'YXZ';
+                base.position.set(f.x * side, 0.003, -0.046); base.rotation.y = f.splay * side; model.add(base);
+                const joints = [base]; let parent = base, r = f.r;
+                for (let k = 0; k < 3; k++) {
+                    const j = k === 0 ? base : new THREE.Group();
+                    if (k > 0) { j.position.z = -f.len[k - 1]; parent.add(j); joints.push(j); }
+                    add(fingerSeg(r, f.len[k]), skin, j);
+                    if (k === 2) { const n = add(NAIL_GEO, nailMat, j); n.position.set(0, r * 0.62, -f.len[2] * 0.6); n.scale.set(r * 0.8, r * 0.25, f.len[2] * 0.33); }
+                    parent = j; r *= 0.87;
+                }
+                fingers.push(joints);
+            }
+
+            const tb = new THREE.Group(); tb.rotation.order = 'YXZ';
+            tb.position.set(-0.036 * side, -0.008, 0.008); tb.rotation.set(-0.35, 0.85 * side, 0);
+            model.add(tb);
+            const thumb = [tb]; const tl = [0.04, 0.032, 0.026]; let tp = tb, tr = 0.0125;
+            for (let k = 0; k < 3; k++) {
+                const j = k === 0 ? tb : new THREE.Group();
+                if (k > 0) { j.position.z = -tl[k - 1]; tp.add(j); thumb.push(j); }
+                add(fingerSeg(tr, tl[k]), skin, j);
+                if (k === 2) { const n = add(NAIL_GEO, nailMat, j); n.position.set(0, tr * 0.62, -tl[2] * 0.6); n.scale.set(tr * 0.8, tr * 0.25, tl[2] * 0.33); }
+                tp = j; tr *= 0.88;
+            }
+            outer.userData.rig = { fingers: fingers, thumb: thumb, grip: 0.22, target: 0.22 };
+            poseHand(outer.userData.rig, 1);
+            return outer;
+        }
+        function poseHand(rig, dt) {
+            rig.grip += (rig.target - rig.grip) * Math.min(1, dt * 14);
+            const g = rig.grip;
+            for (let f = 0; f < 4; f++) {
+                const J = rig.fingers[f], extra = f * 0.06;
+                J[0].rotation.x = -(0.12 + g * (1.35 + extra));
+                J[1].rotation.x = -(0.18 + g * 1.55);
+                J[2].rotation.x = -(0.1 + g * 0.95);
+            }
+            const T = rig.thumb;
+            T[0].rotation.x = -(0.35 + g * 0.4);
+            T[1].rotation.x = -(0.15 + g * 0.55);
+            T[2].rotation.x = -(0.15 + g * 0.75);
+        }
+
+        // ==========================================
+        // 6. BULLETPROOF MULTIPLAYER & SOLO MODE
         // ==========================================
         let peer = null; let hostConnection = null; let clientConnections = [];
         let isHost = false; let myPeerId = null; const GAME_PREFIX = "vr-gtag-fix2-";
@@ -1485,6 +1653,7 @@
             document.getElementById('lobby').style.display = 'none';
             document.getElementById('info').style.display = 'block';
             document.body.classList.add('connected');
+            rebuildLocalHands();
             setInterval(networkTick, 1000 / 30);
         }
         
@@ -1496,6 +1665,7 @@
         function updateProfileData() {
             myProfile.name = document.getElementById('playerName').value || "Acrobat";
             myProfile.color = document.getElementById('playerColor').value;
+            myProfile.skin = document.getElementById('playerSkin').value;
             myProfile.hat = document.getElementById('playerHat').value;
             myProfile.glasses = document.getElementById('playerGlasses').value;
         }
@@ -1512,7 +1682,6 @@
             updateProfileData(); initHorrorSoundtrack(); 
             document.getElementById('btnHost').disabled = true; document.getElementById('btnJoin').disabled = true; document.getElementById('btnSolo').disabled = true;
             statusDiv.innerText = "Connecting to server...";
-            
             try {
                 isHost = true; peer = new Peer(GAME_PREFIX + code);
                 const cTimeout = setTimeout(() => {
@@ -1522,13 +1691,15 @@
                         peer.destroy();
                     }
                 }, 8000);
-
                 peer.on('open', (id) => { clearTimeout(cTimeout); myPeerId = id; statusDiv.innerText = "Room Created! Waiting for players..."; onConnectionSuccess(); });
                 peer.on('error', (err) => { clearTimeout(cTimeout); statusDiv.innerText = "Error: Room name taken or unavailable."; document.getElementById('btnHost').disabled = false; document.getElementById('btnJoin').disabled = false; document.getElementById('btnSolo').disabled = false; });
                 peer.on('connection', (conn) => {
                     if (clientConnections.length >= MAX_GUESTS) { conn.on('open', () => { conn.send({ type: 'serverFull', message: 'Room full!' }); setTimeout(() => conn.close(), 1000); }); return; }
                     clientConnections.push(conn);
-                    conn.on('data', (data) => { if (data.type === 'playerUpdate') playersState[conn.peer] = data.payload; if (data.type === 'objectMove') sharedObjectsState[data.id] = data.payload; });
+                    conn.on('data', (data) => {
+                        if (data.type === 'playerUpdate') { playersState[conn.peer] = data.payload; updateRemotePlayerVisual(conn.peer, data.payload); }
+                        if (data.type === 'objectMove') sharedObjectsState[data.id] = data.payload;
+                    });
                     conn.on('close', () => { clientConnections = clientConnections.filter(c => c !== conn); delete playersState[conn.peer]; removeRemotePlayerVisual(conn.peer); });
                 });
                 peer.on('call', (call) => { if(myStream) call.answer(myStream); call.on('stream', (remoteStream) => { playAudioStream(remoteStream, call.peer); }); });
@@ -1541,7 +1712,6 @@
             updateProfileData(); initHorrorSoundtrack();
             document.getElementById('btnHost').disabled = true; document.getElementById('btnJoin').disabled = true; document.getElementById('btnSolo').disabled = true;
             statusDiv.innerText = "Joining...";
-            
             try {
                 isHost = false; peer = new Peer();
                 const cTimeout = setTimeout(() => {
@@ -1551,7 +1721,6 @@
                         peer.destroy();
                     }
                 }, 8000);
-
                 peer.on('open', (id) => {
                     myPeerId = id; hostConnection = peer.connect(GAME_PREFIX + code);
                     hostConnection.on('open', () => { clearTimeout(cTimeout); statusDiv.innerText = "Connected!"; onConnectionSuccess(); });
@@ -1571,7 +1740,7 @@
         };
 
         // ==========================================
-        // 6. AVATARS (Odłączone dłonie)
+        // 7. AVATARS
         // ==========================================
         function createNameSprite(message) {
             const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); canvas.width = 512; canvas.height = 128;
@@ -1586,7 +1755,6 @@
             const mat = new THREE.MeshPhysicalMaterial({ color: profile.color, roughness: 0.8, clearcoat: 0.2, envMapIntensity: LP.envIntensity });
             const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.35), mat); torso.castShadow = true; group.add(torso);
             let head = new THREE.Group();
-            
             if (!isLocal) {
                 const pSnout = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.15), new THREE.MeshPhysicalMaterial({ color: 0x222222, roughness: 0.7 }));
                 pSnout.position.set(0, -0.1, -0.15); head.add(pSnout);
@@ -1606,8 +1774,8 @@
                 const nameTag = createNameSprite(profile.name); nameTag.position.set(0, 0.4, 0); nameTag.scale.set(2, 0.5, 1); head.add(nameTag);
                 group.add(head);
             }
-            const createHand = () => { const h = new THREE.Group(); const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.14), mat); p.castShadow = true; h.add(p); return h; };
-            let handL = createHand(); let handR = createHand(); 
+            const handL = createRealHand(true, profile.skin, profile.color);
+            const handR = createRealHand(false, profile.skin, profile.color);
             if (!isLocal) group.add(handL, handR);
             return { group, torso, head, handL, handR };
         }
@@ -1616,10 +1784,25 @@
         playerRig.add(controller1); playerRig.add(controller2);
         const localAvatar = createAvatar(myProfile, true);
         scene.add(localAvatar.group); 
-        
-        // Dłonie zostają w Scenie, abyśmy mogli sztucznie je blokować o ściany
         scene.add(localAvatar.handL); 
         scene.add(localAvatar.handR);
+
+        // Dłonie budujemy ponownie po starcie gry, żeby miały wybrany kolor skóry i rękawa
+        function rebuildLocalHands() {
+            scene.remove(localAvatar.handL); scene.remove(localAvatar.handR);
+            localAvatar.handL = createRealHand(true, myProfile.skin, myProfile.color);
+            localAvatar.handR = createRealHand(false, myProfile.skin, myProfile.color);
+            scene.add(localAvatar.handL); scene.add(localAvatar.handR);
+        }
+
+        // Stan przycisków (do zginania palców)
+        const ctrlInput = [{ squeeze: false, select: false }, { squeeze: false, select: false }];
+        [controller1, controller2].forEach((c, i) => {
+            c.addEventListener('squeezestart', () => ctrlInput[i].squeeze = true);
+            c.addEventListener('squeezeend', () => ctrlInput[i].squeeze = false);
+            c.addEventListener('selectstart', () => ctrlInput[i].select = true);
+            c.addEventListener('selectend', () => ctrlInput[i].select = false);
+        });
 
         let grabbedObject = null; let grabbingController = null; let activeRopeConstraint = null;
 
@@ -1628,7 +1811,6 @@
             const isLeft = (ctrl === controller1);
             const handMesh = isLeft ? localAvatar.handL : localAvatar.handR;
             const pos = new THREE.Vector3(); handMesh.getWorldPosition(pos);
-            
             for(let ball of throwables) { 
                 if(ball.position.distanceTo(pos) < 0.3) { 
                     grabbedObject = ball; grabbingController = ctrl; 
@@ -1666,11 +1848,14 @@
         controller2.addEventListener('squeezestart', onSqueezeStart); controller2.addEventListener('squeezeend', onSqueezeEnd);
 
         function updateRemotePlayerVisual(id, state) {
+            if (!state || !state.head) return;
             if (!remotePlayersVisuals[id]) { const newAvatar = createAvatar(state.profile, false); scene.add(newAvatar.group); remotePlayersVisuals[id] = newAvatar; }
             const p = remotePlayersVisuals[id];
             p.head.position.fromArray(state.head.p); p.head.quaternion.fromArray(state.head.q);
             p.handL.position.fromArray(state.h1.p); p.handL.quaternion.fromArray(state.h1.q);
             p.handR.position.fromArray(state.h2.p); p.handR.quaternion.fromArray(state.h2.q);
+            if (state.h1.g !== undefined) p.handL.userData.rig.target = state.h1.g;
+            if (state.h2.g !== undefined) p.handR.userData.rig.target = state.h2.g;
             const euler = new THREE.Euler().setFromQuaternion(p.head.quaternion, "YXZ");
             p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -0.35, 0)); p.torso.rotation.set(0, euler.y, 0);
         }
@@ -1687,8 +1872,12 @@
             const hp = new THREE.Vector3(); const hq = new THREE.Quaternion(); camera.getWorldPosition(hp); camera.getWorldQuaternion(hq);
             const l1p = new THREE.Vector3(); const l1q = new THREE.Quaternion(); localAvatar.handL.getWorldPosition(l1p); localAvatar.handL.getWorldQuaternion(l1q);
             const l2p = new THREE.Vector3(); const l2q = new THREE.Quaternion(); localAvatar.handR.getWorldPosition(l2p); localAvatar.handR.getWorldQuaternion(l2q);
-            const myState = { profile: myProfile, head: { p: hp.toArray(), q: hq.toArray() }, h1: { p: l1p.toArray(), q: l1q.toArray() }, h2: { p: l2p.toArray(), q: l2q.toArray() } };
-            
+            const myState = {
+                profile: myProfile,
+                head: { p: hp.toArray(), q: hq.toArray() },
+                h1: { p: l1p.toArray(), q: l1q.toArray(), g: localAvatar.handL.userData.rig.grip },
+                h2: { p: l2p.toArray(), q: l2q.toArray(), g: localAvatar.handR.userData.rig.grip }
+            };
             if(isHost) {
                 for(let ball of throwables) { sharedObjectsState[ball.userData.id] = { p: ball.userData.body.position.toArray(), q: ball.userData.body.quaternion.toArray(), v: ball.userData.body.velocity.toArray() }; }
                 playersState[myPeerId] = myState;
@@ -1697,22 +1886,27 @@
         }
 
         // ==========================================
-        // 7. MOVEMENT, SOLID COLLISION & ANTI-SLIP
+        // 8. MOVEMENT, SOLID COLLISION & ANTI-SLIP
         // ==========================================
         let prevLocalPos1 = new THREE.Vector3(); let prevLocalPos2 = new THREE.Vector3();
         const clock = new THREE.Clock();
 
         const POWER = 1.2;            // siła odepchnięcia i skoku (1.0 = oryginał, 1.2 = +20%)
         const HEAD_RADIUS = 0.18;     // kolizja głowy
-        const FRICTION_IDLE = 0.2;    // hamowanie poziome na pod-krok, gdy stoisz (mniej = mocniej)
-        const FRICTION_PUSH = 0.93;   // hamowanie, gdy aktywnie odpychasz się rękami
-        const HAND_DEADZONE = 0.004;  // minimalny ruch ręki na klatkę (m), poniżej = drżenie, ignorujemy
+        const FRICTION_IDLE = 0.2;    // hamowanie, gdy stoisz i nie biegniesz (mniej = mocniej)
+        const FRICTION_PUSH = 0.97;   // hamowanie w trakcie odpychania się ręką
+        const FRICTION_RUN = 0.99;    // hamowanie między kolejnymi machnięciami rąk (rozpęd)
+        const MOMENTUM_TIME = 0.45;   // ile sekund po ostatnim odepchnięciu trzymamy rozpęd
+        const RUN_BOOST_RATE = 0.7;   // jak mocno szybkie machanie rękami dodaje siły
+        const RUN_BOOST_MAX = 1.0;    // maksymalny dodatek (1.0 = do 2x mocniej przy szybkim biegu)
+        const HAND_DEADZONE = 0.004;  // minimalny ruch ręki na klatkę (m), poniżej = drżenie
         let grounded = false;
         let handPushing = false;
         let stepped = false;
+        let simTime = 0;
+        let lastPushTime = -10;
         const hit = { nx: 0, ny: 0, nz: 0, depth: 0 };
 
-        // Dokładny test kula–AABB. Wynik (normalna + głębokość) trafia do `hit`.
         function sphereVsBox(px, py, pz, r, b) {
             const cx = Math.max(b.min.x, Math.min(px, b.max.x));
             const cy = Math.max(b.min.y, Math.min(py, b.max.y));
@@ -1741,7 +1935,6 @@
             if (vn < 0) { v.x -= vn*hit.nx; v.y -= vn*hit.ny; v.z -= vn*hit.nz; }
         }
 
-        // Wywoływane po KAŻDYM pod-kroku fizyki. To jedyne miejsce, w którym gracz zderza się ze światem.
         world.addEventListener('postStep', () => {
             stepped = true;
             const p = playerBody.position, v = playerBody.velocity;
@@ -1768,10 +1961,15 @@
                 if (sphereVsBox(p.x, p.y, p.z, radius + 0.03, o.box3) && hit.ny > 0.5) { grounded = true; break; }
             }
 
+            // Anty-ślizg z rozpędem: w trakcie biegu rękami prędkość się utrzymuje,
+            // dopiero gdy przestaniesz machać (MOMENTUM_TIME), gracz szybko się zatrzymuje
             if (grounded && !activeRopeConstraint) {
-                const k = handPushing ? FRICTION_PUSH : FRICTION_IDLE;
+                let k;
+                if (handPushing) k = FRICTION_PUSH;
+                else if (simTime - lastPushTime < MOMENTUM_TIME) k = FRICTION_RUN;
+                else k = FRICTION_IDLE;
                 v.x *= k; v.z *= k;
-                if (!handPushing) {
+                if (k === FRICTION_IDLE) {
                     if (Math.abs(v.x) < 0.05) v.x = 0;
                     if (Math.abs(v.z) < 0.05) v.z = 0;
                 }
@@ -1785,24 +1983,20 @@
         function clampHandVisual(controller, handMesh) {
             const pos = new THREE.Vector3(); controller.getWorldPosition(pos);
             const quat = new THREE.Quaternion(); controller.getWorldQuaternion(quat);
-            
             handMesh.position.copy(pos);
             handMesh.quaternion.copy(quat);
-            
             const hRad = 0.08;
             for(let obs of obstacles) {
                 const box = obs.box3;
                 if (handMesh.position.x > box.min.x - hRad && handMesh.position.x < box.max.x + hRad &&
                     handMesh.position.y > box.min.y - hRad && handMesh.position.y < box.max.y + hRad &&
                     handMesh.position.z > box.min.z - hRad && handMesh.position.z < box.max.z + hRad) {
-                    
                     const px1 = handMesh.position.x - (box.min.x - hRad);
                     const px2 = (box.max.x + hRad) - handMesh.position.x;
                     const py1 = handMesh.position.y - (box.min.y - hRad);
                     const py2 = (box.max.y + hRad) - handMesh.position.y;
                     const pz1 = handMesh.position.z - (box.min.z - hRad);
                     const pz2 = (box.max.z + hRad) - handMesh.position.z;
-                    
                     const min = Math.min(px1, px2, py1, py2, pz1, pz2);
                     if (min === px1) handMesh.position.x = box.min.x - hRad;
                     else if (min === px2) handMesh.position.x = box.max.x + hRad;
@@ -1814,9 +2008,10 @@
             }
         }
 
-        function handleMovement(controller, handMesh, prevLocalPos) {
+        // Zwraca true, jeśli dłoń dotyka podłoża/ściany (wtedy palce się prostują)
+        function handleMovement(controller, handMesh, prevLocalPos, dt) {
             const currentLocalPos = controller.position.clone();
-            
+            let touching = false;
             if (prevLocalPos.lengthSq() > 0 && !activeRopeConstraint) {
                 const deltaLocalPos = new THREE.Vector3().subVectors(currentLocalPos, prevLocalPos);
                 const handWorldPos = new THREE.Vector3(); 
@@ -1824,7 +2019,6 @@
 
                 let isTouchingGround = false;
                 let isTouchingWall = false;
-                
                 if (handWorldPos.y <= 0.25) {
                     isTouchingGround = true;
                 } else {
@@ -1835,44 +2029,53 @@
                         }
                     }
                 }
-
                 for(let t of trampolines) {
                     if (t.box3.distanceToPoint(handWorldPos) <= 0.25) {
                         playerBody.velocity.y = 12 * POWER; isTouchingGround = false; isTouchingWall = false; break;
                     }
                 }
+                touching = isTouchingGround || isTouchingWall;
 
                 const dl = deltaLocalPos.length();
-                if ((isTouchingGround || isTouchingWall) && dl > HAND_DEADZONE) {
+                if (touching && dl > HAND_DEADZONE) {
+                    // Im szybciej machasz ręką, tym mocniej się odpychasz (bieg rękami)
+                    const handSpeed = dl / Math.max(dt, 1 / 120);
+                    const boost = 1 + Math.min(RUN_BOOST_MAX, Math.max(0, (handSpeed - 0.8) * RUN_BOOST_RATE));
                     deltaLocalPos.multiplyScalar((dl - HAND_DEADZONE) / dl);
-
                     const deltaWorld = deltaLocalPos.clone().applyQuaternion(playerRig.quaternion);
                     if(deltaWorld.length() > 0.4 * POWER) deltaWorld.normalize().multiplyScalar(0.4 * POWER);
 
-                    let pushForceXZ = -650 * POWER; 
-                    let pushForceY = -650 * POWER;
-
+                    let pushForceXZ = -650 * POWER * boost; 
+                    let pushForceY = -650 * POWER * (1 + (boost - 1) * 0.5);
                     if (isTouchingWall) {
-                        pushForceY = -800 * POWER; pushForceXZ = -700 * POWER;
+                        pushForceY = -800 * POWER * (1 + (boost - 1) * 0.5); pushForceXZ = -700 * POWER * boost;
                     }
-
                     playerBody.applyImpulse(
                         new CANNON.Vec3(deltaWorld.x * pushForceXZ, deltaWorld.y * pushForceY, deltaWorld.z * pushForceXZ), 
                         playerBody.position
                     );
                     handPushing = true;
+                    lastPushTime = simTime;
                 }
             }
             prevLocalPos.copy(currentLocalPos);
+            return touching;
+        }
+
+        function setHandTarget(rig, idx, touching) {
+            if (touching) rig.target = 0.04;
+            else if (ctrlInput[idx].squeeze) rig.target = 1.0;
+            else if (ctrlInput[idx].select) rig.target = 0.55;
+            else rig.target = 0.22;
         }
 
         renderer.setAnimationLoop(() => {
             const dt = Math.min(clock.getDelta(), 0.1); 
             const t = clock.elapsedTime;
+            simTime = t;
             world.step(1/90, dt, 10); 
             if (stepped) { handPushing = false; stepped = false; }
 
-            // Twarda granica pokoju (zabezpieczenie awaryjne)
             if(playerBody.position.x < -14.6) { playerBody.position.x = -14.6; playerBody.velocity.x = 0; }
             if(playerBody.position.x > 14.6) { playerBody.position.x = 14.6; playerBody.velocity.x = 0; }
             if(playerBody.position.z < -14.6) { playerBody.position.z = -14.6; playerBody.velocity.z = 0; }
@@ -1883,31 +2086,44 @@
             if (renderer.xr.isPresenting) {
                 clampHandVisual(controller1, localAvatar.handL);
                 clampHandVisual(controller2, localAvatar.handR);
-
-                handleMovement(controller1, localAvatar.handL, prevLocalPos1); 
-                handleMovement(controller2, localAvatar.handR, prevLocalPos2);
+                const touchL = handleMovement(controller1, localAvatar.handL, prevLocalPos1, dt); 
+                const touchR = handleMovement(controller2, localAvatar.handR, prevLocalPos2, dt);
+                setHandTarget(localAvatar.handL.userData.rig, 0, touchL);
+                setHandTarget(localAvatar.handR.userData.rig, 1, touchR);
+            }
+            poseHand(localAvatar.handL.userData.rig, dt);
+            poseHand(localAvatar.handR.userData.rig, dt);
+            for (const id in remotePlayersVisuals) {
+                const a = remotePlayersVisuals[id];
+                poseHand(a.handL.userData.rig, dt); poseHand(a.handR.userData.rig, dt);
             }
             
             if(grabbedObject && grabbingController) {
                 const ctrlPos = new THREE.Vector3(); grabbingController.getWorldPosition(ctrlPos); grabbedObject.userData.body.position.copy(ctrlPos);
             }
             for(let ball of throwables) { ball.position.copy(ball.userData.body.position); ball.quaternion.copy(ball.userData.body.quaternion); }
-            
             for(let rope of ropes) {
                 rope.mesh.position.copy(rope.body.position); rope.mesh.quaternion.copy(rope.body.quaternion);
             }
 
             // --- EFEKTY ATMOSFERY ---
             for (const f of flickerLights) {
-                let v = f.base * (0.7 + 0.3 * Math.sin(t * 6.1 + f.ph) * Math.sin(t * 11.7 + f.ph * 1.9));
-                if (Math.sin(t * 0.53 + f.ph * 2.7) > 0.985) v *= 0.04;
+                let v;
+                if (f.subtle) {
+                    v = f.base * (0.92 + 0.08 * Math.sin(t * 9 + f.ph) * Math.sin(t * 13.1 + f.ph * 1.7));
+                    if (Math.sin(t * 0.31 + f.ph * 2.3) > 0.993) v *= 0.3;
+                    if (f.glow) f.glow.material.opacity = 0.45 + 0.35 * (v / f.base);
+                } else {
+                    v = f.base * (0.7 + 0.3 * Math.sin(t * 6.1 + f.ph) * Math.sin(t * 11.7 + f.ph * 1.9));
+                    if (Math.sin(t * 0.53 + f.ph * 2.7) > 0.985) v *= 0.04;
+                }
                 f.l.intensity = v;
             }
             if (flashlight) flashlight.intensity = LP.flashlight.intensity * (Math.sin(t * 0.37) > 0.992 ? 0.15 : 0.96 + 0.04 * Math.sin(t * 23));
             for (let i = 0; i < muralMats.length; i++) muralMats[i].emissiveIntensity = LP.muralBase + LP.muralPulse * Math.sin(t * 1.1 + i * 1.7);
             for (const m of trampMats) m.emissiveIntensity = LP.trampBase + LP.trampPulse * Math.sin(t * 3.0);
             for (let i = 0; i < lampSprites.length; i++) lampSprites[i].material.opacity = 0.45 + 0.35 * Math.sin(t * 2.2 + i * 1.3);
-            for (let i = 0; i < shaftMats.length; i++) shaftMats[i].opacity = 0.14 + 0.05 * Math.sin(t * 0.5 + i);
+            for (let i = 0; i < shaftMats.length; i++) shaftMats[i].opacity = shaftMats[i].userData.base * (0.8 + 0.3 * Math.sin(t * 0.5 + i));
             if (cloudTex) cloudTex.offset.x = (t * 0.003) % 1;
             for (let i = 0; i < dustN; i++) {
                 dustPos[i * 3] += Math.sin(t * 0.4 + dustPh[i]) * 0.12 * dt;
@@ -1919,7 +2135,6 @@
             updateMannequins(dt);
 
             const camLocalPos = camera.position.clone();
-
             playerRig.position.set(
                 playerBody.position.x - camLocalPos.x,
                 playerBody.position.y - radius - gorillaStanceOffset,
@@ -1929,7 +2144,6 @@
             const camWorldPos = new THREE.Vector3(); camera.getWorldPosition(camWorldPos);
             const camWorldQuat = new THREE.Quaternion(); camera.getWorldQuaternion(camWorldQuat);
             const euler = new THREE.Euler().setFromQuaternion(camWorldQuat, "YXZ");
-            
             localAvatar.torso.position.copy(camWorldPos).add(new THREE.Vector3(0, -0.35, 0));
             localAvatar.torso.rotation.set(0, euler.y, 0);
 
