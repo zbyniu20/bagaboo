@@ -3,47 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BagaBoo VR - Daylight Horror Parkour</title>
+    <title>BagaBoo VR - Overcast Nightmare Parkour</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
         
-        body { margin: 0; overflow: hidden; background-color: #9db2c2; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #aab4bb; font-family: sans-serif; }
         
         #lobby {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, #b1c6d6, #5a6e7e); display: flex; flex-direction: column;
+            background: radial-gradient(circle, #c9d1d6, #6f7a82 85%); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 1000; color: #111;
         }
         
         #lobby h1.logo { 
             font-family: 'Creepster', cursive; 
             font-size: 85px; 
-            color: #880000; 
+            color: #8a0000; 
             margin-bottom: 5px;
             letter-spacing: 4px;
-            text-shadow: 2px 2px 0px #fff, 0 0 15px rgba(255, 0, 0, 0.6);
+            text-shadow: 2px 2px 0 #fff, 0 0 14px rgba(255, 0, 0, 0.45);
         }
 
-        #lobby p.subtitle { margin-bottom: 30px; color: #330000; font-size: 16px; font-weight: bold; letter-spacing: 1px; }
+        #lobby p.subtitle { margin-bottom: 30px; color: #3a2020; font-size: 16px; font-weight: bold; letter-spacing: 1px; }
         
         .form-group { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; width: 340px; justify-content: space-between; }
         .form-group label { font-weight: bold; color: #222; }
-        input, select { padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #995555; background: #f0e0e0; color: #111; width: 180px; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1); }
+        input, select { padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #8a6a6a; background: #eef0f2; color: #111; width: 180px; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.12); }
         input[type="color"] { padding: 0; height: 40px; cursor: pointer; border: none; }
         
         .btn-group { display: flex; gap: 10px; margin-top: 25px; flex-wrap: wrap; justify-content: center; max-width: 500px;}
-        button { padding: 15px 20px; font-size: 16px; font-weight: bold; border: 1px solid #aa0000; border-radius: 8px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-transform: uppercase; }
+        button { padding: 15px 20px; font-size: 16px; font-weight: bold; border: 1px solid #aa0000; border-radius: 8px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 8px rgba(0,0,0,0.25); text-transform: uppercase; }
         
         #btnHost { background: #880000; color: #ffffff; }
         #btnJoin { background: #aa0000; color: white; }
         #btnSolo { background: #4a5c6a; color: white; border-color: #3b4d5b; }
         
-        button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(150,0,0,0.3); }
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(150,0,0,0.35); }
         #btnSolo:hover { background: #5a6e7e; box-shadow: 0 6px 12px rgba(0,0,0,0.3); }
         
         button:disabled { background: #aa8888 !important; color: #ffdddd !important; border-color: #997777 !important; cursor: not-allowed; transform: none; box-shadow: none; }
         
-        #status { margin-top: 25px; font-weight: bold; font-size: 16px; color: #440000; text-align: center; max-width: 400px; }
+        #status { margin-top: 25px; font-weight: bold; font-size: 16px; color: #3a1a1a; text-align: center; max-width: 400px; }
         #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #ffffff; font-weight: bold; font-size: 18px; z-index: 100; text-shadow: 2px 2px 4px black; display: none; }
         
         #VRButton { display: none !important; }
@@ -54,9 +54,9 @@
 <body>
     <div id="lobby">
         <h1 class="logo">BagaBoo VR</h1>
-        <p class="subtitle">Daylight Parkour | Don't Look Away</p>
+        <p class="subtitle">Overcast Nightmare Parkour | Don't Look Away</p>
         
-        <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Player1" value="Bagaboo" /></div>
+        <div class="form-group"><label>Nickname:</label><input type="text" id="playerName" placeholder="Player1" value="Acrobat" /></div>
         <div class="form-group"><label>Fur Color:</label><input type="color" id="playerColor" value="#3d2314" /></div>
         <div class="form-group">
             <label>Hat:</label>
@@ -83,7 +83,7 @@
         <div id="status">Checking microphone...</div>
     </div>
 
-    <div id="info">Connected! Climb the bleeding walls...</div>
+    <div id="info">Connected! Climb the bleeding walls... and don't look away.</div>
     <div id="audio-container" style="display:none;"></div>
 
     <script type="importmap">
@@ -97,25 +97,76 @@
     <script type="module">
         import * as THREE from 'three';
         import { VRButton } from 'three/addons/webxr/VRButton.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
         import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
         import * as CANNON from 'cannon-es';
 
         // ==========================================
-        // USTAWIENIA GRAFIKI
+        // USTAWIENIA GRAFIKI (tu stroisz jakość i wydajność)
         // ==========================================
         const GFX = {
-            muralRes: 1536,
-            shadowMap: 1024,
-            exposure: 1.1,
-            ambient: 0.9,
-            fogDensity: 0.010,
-            mannequins: 10,
-            dust: 700,
-            chains: 16
+            muralRes: 2048,     // rozdzielczość muralowych potworów (1024 = lżej, 2048 = ostrzej)
+            shadowMap: 2048,    // rozdzielczość cieni słońca (1024 = lżej)
+            mannequins: 10,     // liczba manekinów
+            dust: 500,          // liczba drobinek pyłu
+            chains: 16,         // liczba łańcuchów pod sufitem
+            xrScale: 1.1,       // ostrość obrazu w goglach (1.0 = lżej, 1.2 = ostrzej, ale wolniej)
+            foveation: 0.4      // 0 = pełna jakość na całym obrazie, 1 = mocne rozmycie na brzegach (szybciej)
         };
 
+        // ==========================================
+        // PRESETY OŚWIETLENIA
+        // Zmień LIGHT_MODE na 'night', żeby wrócić do nocnego horroru.
+        // Preset 'night' to zapisane ustawienia z poprzedniej wersji gry,
+        // do wykorzystania przy rozbudowie (np. nocny poziom albo cykl dnia i nocy).
+        // ==========================================
+        const LIGHT_PRESETS = {
+            overcast: {
+                label: 'Pochmurny dzień',
+                background: 0xaeb8bf, fogColor: 0xaeb8bf, fogDensity: 0.012,
+                exposure: 1.1,
+                hemiSky: 0xe3eaee, hemiGround: 0x716b64, hemiIntensity: 3.0,
+                sunColor: 0xf6f8fa, sunIntensity: 2.4, sunPos: [3, 60, 2],
+                envIntensity: 1.0,
+                flashlight: null,
+                flickers: [],
+                muralBase: 0.22, muralPulse: 0.05,
+                trampBase: 0.5, trampPulse: 0.25,
+                edgeOpacity: 0.12,
+                dustColor: 0xd8d2c8, dustOpacity: 0.6,
+                wallTint: 0xffffff, floorTint: 0xffffff,
+                ceiling: 'sky',
+                shafts: true
+            },
+            night: {
+                label: 'Nocny horror (zapisany preset)',
+                background: 0x020103, fogColor: 0x050204, fogDensity: 0.042,
+                exposure: 1.2,
+                hemiSky: 0x2a3350, hemiGround: 0x180808, hemiIntensity: 1.0,
+                sunColor: 0xffffff, sunIntensity: 0, sunPos: [3, 60, 2],
+                envIntensity: 0,
+                flashlight: { color: 0xfff0d8, intensity: 90, distance: 34, angle: 0.52, penumbra: 0.65, decay: 2 },
+                flickers: [
+                    [-10, 16, -10, 0xff1a1a, 70, 24],
+                    [10, 16, -10, 0xff3010, 60, 24],
+                    [-10, 14, 10, 0x6a20ff, 55, 22],
+                    [10, 16, 10, 0xff1a1a, 65, 24],
+                    [-12, 2.5, -12, 0x30ff70, 22, 12]
+                ],
+                muralBase: 0.7, muralPulse: 0.25,
+                trampBase: 0.45, trampPulse: 0.3,
+                edgeOpacity: 0.35,
+                dustColor: 0x7a6e64, dustOpacity: 0.5,
+                wallTint: 0xc8c8c8, floorTint: 0xc8c8c8,
+                ceiling: 'concrete',
+                shafts: false
+            }
+        };
+        const LIGHT_MODE = 'overcast';
+        const LP = LIGHT_PRESETS[LIGHT_MODE];
+
         // --- GLOBAL VARIABLES ---
-        let myProfile = { name: "Bagaboo", color: "#3d2314", hat: "none", glasses: "none" };
+        let myProfile = { name: "Acrobat", color: "#3d2314", hat: "none", glasses: "none" };
         let myStream = null;
         let audioCtx = null;
 
@@ -299,6 +350,28 @@
             return toTex(c, true);
         }
 
+        // Mapa chropowatości podłogi: kałuże i mokre plamy błyszczą, reszta jest matowa
+        function createFloorRoughTexture() {
+            const S = 512, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(808);
+            ctx.fillStyle = 'rgb(205,205,205)'; ctx.fillRect(0, 0, S, S);
+            for (let i = 0; i < 5000; i++) {
+                const v = (150 + R() * 80) | 0;
+                ctx.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',0.35)';
+                ctx.fillRect(R() * S, R() * S, 2 + R() * 4, 2 + R() * 4);
+            }
+            for (let i = 0; i < 26; i++) {
+                const x = R() * S, y = R() * S, r = 22 + R() * 70;
+                for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) {
+                    const g = ctx.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r);
+                    g.addColorStop(0, 'rgba(30,30,30,0.95)'); g.addColorStop(0.7, 'rgba(60,60,60,0.7)'); g.addColorStop(1, 'rgba(205,205,205,0)');
+                    ctx.fillStyle = g; ctx.fillRect(x + dx - r, y + dy - r, r * 2, r * 2);
+                }
+            }
+            const t = new THREE.CanvasTexture(c);
+            t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.NoColorSpace; t.anisotropy = 8;
+            return t;
+        }
+
         function createPlasterTexture() {
             const S = 512, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(77);
             ctx.fillStyle = '#cdc5b6'; ctx.fillRect(0, 0, S, S);
@@ -328,6 +401,33 @@
             return toTex(c, true);
         }
 
+        function createWoodTexture() {
+            const S = 512, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(2718);
+            ctx.fillStyle = '#6b4a2d'; ctx.fillRect(0, 0, S, S);
+            for (let p = 0; p < 4; p++) {
+                const y0 = p * 128, v = (R() * 26) | 0;
+                ctx.fillStyle = 'rgb(' + (96 + v) + ',' + (68 + v) + ',' + (40 + v) + ')'; ctx.fillRect(0, y0, S, 126);
+                for (let i = 0; i < 40; i++) {
+                    ctx.strokeStyle = 'rgba(30,18,8,' + (0.1 + R() * 0.2) + ')'; ctx.lineWidth = 1 + R() * 1.6;
+                    const y = y0 + R() * 126; ctx.beginPath(); ctx.moveTo(0, y);
+                    ctx.bezierCurveTo(S * 0.3, y + (R() - 0.5) * 8, S * 0.7, y + (R() - 0.5) * 8, S, y + (R() - 0.5) * 6); ctx.stroke();
+                }
+                ctx.fillStyle = 'rgba(10,5,2,0.85)'; ctx.fillRect(0, y0 + 126, S, 2);
+                ctx.fillStyle = 'rgba(20,20,20,0.9)';
+                for (const nx of [18, S - 18]) { ctx.beginPath(); ctx.arc(nx, y0 + 18, 3, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(nx, y0 + 108, 3, 0, 7); ctx.fill(); }
+            }
+            for (let i = 0; i < 9; i++) {
+                const x = R() * S, y = R() * S * 0.5, l = 60 + R() * 260, w = 3 + R() * 6;
+                ctx.fillStyle = 'rgba(95,0,0,0.65)'; ctx.fillRect(x, y, w, l); ctx.beginPath(); ctx.arc(x + w / 2, y + l, w * 0.8, 0, 7); ctx.fill();
+            }
+            for (let i = 0; i < 12; i++) {
+                const x = R() * S, y = R() * S, r = 20 + R() * 60;
+                const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(15,8,3,0.35)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+            }
+            return toTex(c, true);
+        }
+
         function createBloodPoolTexture() {
             const S = 512, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(909);
             ctx.fillStyle = '#3d0000';
@@ -350,6 +450,91 @@
             g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)');
             ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
             return new THREE.CanvasTexture(c);
+        }
+
+        // Chmury na świetliku w suficie (kafel poziomo bezszwowy, więc mogą dryfować)
+        function createCloudTexture() {
+            const S = 1024, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(555);
+            const g = ctx.createLinearGradient(0, 0, 0, S); g.addColorStop(0, '#b3bec6'); g.addColorStop(1, '#dde3e7');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+            function puff(x, y, r, rgb, a) {
+                for (const dx of [-S, 0, S]) {
+                    const gg = ctx.createRadialGradient(x + dx, y, 0, x + dx, y, r);
+                    gg.addColorStop(0, 'rgba(' + rgb + ',' + a + ')'); gg.addColorStop(1, 'rgba(' + rgb + ',0)');
+                    ctx.fillStyle = gg; ctx.fillRect(x + dx - r, y - r, r * 2, r * 2);
+                }
+            }
+            for (let i = 0; i < 70; i++) puff(R() * S, R() * S, 90 + R() * 220, '96,106,116', 0.16 + R() * 0.12);
+            for (let i = 0; i < 110; i++) puff(R() * S, R() * S, 60 + R() * 190, '250,252,255', 0.2 + R() * 0.2);
+            for (let i = 0; i < 60; i++) puff(R() * S, R() * S, 30 + R() * 90, '70,78,88', 0.08 + R() * 0.08);
+            return toTex(c, true);
+        }
+
+        // Pionowy gradient do smug światła (jasno u góry, znika w dół)
+        function createShaftTexture() {
+            const c = makeCanvas(8, 256), ctx = c.getContext('2d');
+            const g = ctx.createLinearGradient(0, 0, 0, 256);
+            g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.55, 'rgba(255,255,255,0.28)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, 8, 256);
+            return new THREE.CanvasTexture(c);
+        }
+
+        // Rytualny krąg na podłodze (rysowany wektorowo)
+        function createSigilTexture() {
+            const S = 1024, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(2024), cx = S / 2, cy = S / 2;
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            function ring(r, w, a) { ctx.strokeStyle = 'rgba(95,0,0,' + a + ')'; ctx.lineWidth = w; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke(); }
+            ring(480, 14, 0.8); ring(455, 4, 0.7); ring(330, 8, 0.75); ring(305, 3, 0.6);
+            ctx.strokeStyle = 'rgba(105,0,0,0.85)'; ctx.lineWidth = 10; ctx.beginPath();
+            for (let i = 0; i <= 5; i++) {
+                const a = -Math.PI / 2 + i * 4 * Math.PI / 5, x = cx + Math.cos(a) * 330, y = cy + Math.sin(a) * 330;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            for (let i = 0; i < 36; i++) {
+                const a = i / 36 * Math.PI * 2, rr = 392;
+                ctx.save(); ctx.translate(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); ctx.rotate(a + Math.PI / 2);
+                ctx.strokeStyle = 'rgba(100,0,0,0.8)'; ctx.lineWidth = 4; ctx.beginPath();
+                const n = 2 + ((R() * 3) | 0); let x = -10, y = -24; ctx.moveTo(x, y);
+                for (let k = 0; k < n; k++) { x = (R() - 0.5) * 26; y += 48 / n; ctx.lineTo(x, y); }
+                ctx.moveTo(-14, (R() - 0.5) * 40); ctx.lineTo(14, (R() - 0.5) * 40); ctx.stroke(); ctx.restore();
+            }
+            for (let i = 0; i < 5; i++) {
+                const a = -Math.PI / 2 + i * 2 * Math.PI / 5;
+                ctx.strokeStyle = 'rgba(100,0,0,0.8)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * 330, cy + Math.sin(a) * 330, 26, 0, 7); ctx.stroke();
+            }
+            ctx.fillStyle = 'rgba(90,0,0,0.7)';
+            for (let i = 0; i < 70; i++) {
+                const a = R() * 6.28, d = 300 + R() * 190;
+                ctx.beginPath(); ctx.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 1.5 + R() * 5, 0, 7); ctx.fill();
+            }
+            for (let i = 0; i < 20; i++) {
+                const a = R() * 6.28, d = 460 + R() * 30, l = 20 + R() * 60;
+                ctx.fillRect(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 3 + R() * 3, l);
+            }
+            ctx.globalCompositeOperation = 'destination-in';
+            const m = ctx.createRadialGradient(cx, cy, 0, cx, cy, S / 2);
+            m.addColorStop(0, 'rgba(255,255,255,1)'); m.addColorStop(0.9, 'rgba(255,255,255,1)'); m.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = m; ctx.fillRect(0, 0, S, S);
+            return toTex(c, false);
+        }
+
+        function createCobwebTexture() {
+            const S = 512, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(31);
+            ctx.strokeStyle = 'rgba(238,238,232,0.7)'; ctx.lineWidth = 1.3; ctx.lineCap = 'round';
+            const cx = S / 2, cy = 0, spokes = [];
+            for (let i = 0; i < 11; i++) spokes.push(Math.PI * (0.08 + 0.84 * i / 10) + (R() - 0.5) * 0.05);
+            for (const a of spokes) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * S * 0.98, cy + Math.sin(a) * S * 0.98); ctx.stroke(); }
+            for (let r = 40; r < S * 0.95; r += 34 + R() * 12) {
+                ctx.beginPath(); let px = 0, py = 0;
+                for (let i = 0; i < spokes.length; i++) {
+                    const a = spokes[i], rr = r * (0.92 + R() * 0.12), x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+                    if (i === 0) ctx.moveTo(x, y); else ctx.quadraticCurveTo((x + px) / 2, (y + py) / 2 + 12, x, y);
+                    px = x; py = y;
+                }
+                ctx.stroke();
+            }
+            return toTex(c, false);
         }
 
         function createEyeballTexture() {
@@ -407,6 +592,7 @@
             ctx.restore();
         }
 
+        // 1) Krzyczaca twarz z wieloma oczami
         function monsterScream(ctx, R) {
             paintBackdrop(ctx, R, 'rgba(110,0,0,0.55)');
             const cx = 512;
@@ -458,6 +644,7 @@
             bloodText(ctx, 'TURN BACK', 512, 990, 80);
         }
 
+        // 2) Wysoka postac bez twarzy z mackami
         function monsterTall(ctx, R) {
             paintBackdrop(ctx, R, 'rgba(50,0,0,0.5)');
             const cx = 512; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -486,6 +673,7 @@
             }
         }
 
+        // 3) Pajak w sieci
         function monsterSpider(ctx, R) {
             paintBackdrop(ctx, R, 'rgba(60,50,0,0.28)');
             const cx = 512, cy = 470;
@@ -524,6 +712,7 @@
             }
         }
 
+        // 4) Wielooka istota z mackami
         function bezPt(p0, p1, p2, p3, t) {
             const u = 1 - t;
             return [u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
@@ -566,6 +755,7 @@
             for (let i = 0; i < 18; i++) { const a = R() * 6.283, r = 185 + R() * 38; glowEye(ctx, cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.9, 8 + R() * 8, R() > 0.5 ? '#ffd000' : '#ff2a00'); }
         }
 
+        // 5) Rogaty demon w plomieniach
         function monsterDemon(ctx, R) {
             paintBackdrop(ctx, R, 'rgba(220,70,0,0.55)');
             const cx = 512;
@@ -616,6 +806,7 @@
             for (let i = 0; i < 5; i++) { const x = cx - 100 + i * 50; ctx.beginPath(); ctx.moveTo(x, 780); ctx.lineTo(x + (R() - 0.5) * 10, 840 + R() * 80); ctx.stroke(); }
         }
 
+        // 6) Tlum cieni z blyszczacymi oczami
         function drawShadowPerson(ctx, x, y, s, R) {
             const h = 240 * s, headR = 22 * s, bw = 34 * s;
             ctx.fillStyle = 'rgba(2,0,2,0.96)';
@@ -653,12 +844,19 @@
             return toTex(c, false);
         }
 
+        const wallTex = createWallTexture();
+        const floorTex = createFloorTexture();
+        const floorRoughTex = createFloorRoughTexture();
+        const plasterTex = createPlasterTexture();
+        const eyeTex = createEyeballTexture();
+        const dotTex = createDotTexture();
+
         // ==========================================
-        // 1. ENGINE & GRAPHICS (Jasny, pochmurny dzien)
+        // 1. ENGINE & GRAPHICS (oświetlenie z presetu LIGHT_MODE)
         // ==========================================
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x9db2c2);
-        scene.fog = new THREE.FogExp2(0x9db2c2, GFX.fogDensity);
+        scene.background = new THREE.Color(LP.background);
+        scene.fog = new THREE.FogExp2(LP.fogColor, LP.fogDensity);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 400);
         const playerRig = new THREE.Group(); playerRig.add(camera); scene.add(playerRig);
@@ -666,26 +864,59 @@
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.xr.enabled = true; 
+        renderer.xr.setFramebufferScaleFactor(GFX.xrScale);
+        renderer.xr.setFoveation(GFX.foveation);
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping; 
-        renderer.toneMappingExposure = GFX.exposure; 
+        renderer.toneMappingExposure = LP.exposure; 
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0)); 
         renderer.shadowMap.enabled = true; 
         renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
         document.body.appendChild(renderer.domElement); 
         const vrBtn = VRButton.createButton(renderer); document.body.appendChild(vrBtn);
 
-        // ŚWIATŁO DZIENNE (Pochmurne)
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.9); scene.add(hemiLight);
-        
-        const dirLight = new THREE.DirectionalLight(0xfff5ed, 0.7);
-        dirLight.position.set(15, 30, 15); dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
-        dirLight.shadow.camera.near = 0.5; dirLight.shadow.camera.far = 100;
-        dirLight.shadow.camera.top = 35; dirLight.shadow.camera.bottom = -35;
-        dirLight.shadow.camera.left = -35; dirLight.shadow.camera.right = 35;
-        dirLight.shadow.bias = -0.0002; 
-        scene.add(dirLight);
+        // Oświetlenie otoczenia z nieba (IBL), daje miękkie odbicia na metalu i mokrej podłodze
+        if (LP.envIntensity > 0) {
+            const pmremGenerator = new THREE.PMREMGenerator(renderer);
+            scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+        }
+
+        const hemiLight = new THREE.HemisphereLight(LP.hemiSky, LP.hemiGround, LP.hemiIntensity); scene.add(hemiLight);
+
+        // Słońce schowane za chmurami: miękkie cienie z góry
+        if (LP.sunIntensity > 0) {
+            const sun = new THREE.DirectionalLight(LP.sunColor, LP.sunIntensity);
+            sun.position.set(LP.sunPos[0], LP.sunPos[1], LP.sunPos[2]);
+            sun.castShadow = true;
+            sun.shadow.mapSize.set(GFX.shadowMap, GFX.shadowMap);
+            sun.shadow.camera.near = 1; sun.shadow.camera.far = 120;
+            sun.shadow.camera.left = -22; sun.shadow.camera.right = 22;
+            sun.shadow.camera.top = 22; sun.shadow.camera.bottom = -22;
+            sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.04;
+            scene.add(sun);
+        }
+
+        // Latarka na głowie (tylko w presecie nocnym)
+        let flashlight = null;
+        if (LP.flashlight) {
+            const F = LP.flashlight;
+            flashlight = new THREE.SpotLight(F.color, F.intensity, F.distance, F.angle, F.penumbra, F.decay);
+            flashlight.position.set(0, 0, 0);
+            flashlight.castShadow = true;
+            flashlight.shadow.mapSize.set(1024, 1024);
+            flashlight.shadow.camera.near = 0.15; flashlight.shadow.camera.far = 36;
+            flashlight.shadow.bias = -0.0005; flashlight.shadow.normalBias = 0.03;
+            flashlight.target.position.set(0, 0, -6);
+            camera.add(flashlight); camera.add(flashlight.target);
+        }
+
+        // Migoczące kolorowe lampy (tylko w presecie nocnym)
+        const flickerLights = [];
+        for (const f of LP.flickers) {
+            const l = new THREE.PointLight(f[3], f[4], f[5], 2);
+            l.position.set(f[0], f[1], f[2]); scene.add(l);
+            flickerLights.push({ l: l, base: f[4], ph: Math.random() * 100 });
+        }
 
         // ==========================================
         // 2. PHYSICS SETUP
@@ -702,6 +933,7 @@
         const radius = 0.35; 
         const gorillaStanceOffset = 0.6;
 
+        // Gracz nie ma kontaktów w Cannonie (mask = 0). Całą kolizję robimy w 'postStep' (sekcja 7).
         const playerBody = new CANNON.Body({
             mass: 50, shape: new CANNON.Sphere(radius), material: physicsMat,
             position: new CANNON.Vec3(0, 2, 0), fixedRotation: true,
@@ -713,7 +945,30 @@
         // 3. PARKOUR LOBBY BUILDING
         // ==========================================
         const obstacles = []; const trampolines = []; const ropes = []; const throwables = [];
-        const trampMats = []; const muralMats = [];
+        const trampMats = []; const muralMats = []; const lampSprites = []; const shaftMats = [];
+        const reserved = [];   // miejsca zajęte przez dekoracje (manekiny tam się nie pojawią)
+        let cloudTex = null;
+
+        // Pomocnicze funkcje do budowy geometrii
+        const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+        const UNIT_SPHERE = new THREE.SphereGeometry(1, 10, 8);
+        const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
+        const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 5, 1);
+        const PIPE_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+        const _tM = new THREE.Matrix4(), _tQ = new THREE.Quaternion(), _tE = new THREE.Euler(), _tP = new THREE.Vector3(), _tS = new THREE.Vector3();
+        function place(geo, px, py, pz, rx, ry, rz, sx, sy, sz) {
+            const g = geo.clone();
+            _tE.set(rx, ry, rz); _tQ.setFromEuler(_tE);
+            _tM.compose(_tP.set(px, py, pz), _tQ, _tS.set(sx, sy, sz));
+            g.applyMatrix4(_tM); return g;
+        }
+        function seg(a, b, r0, r1, sides) {
+            const d = new THREE.Vector3().subVectors(b, a), len = d.length();
+            const g = new THREE.CylinderGeometry(r1, r0, len, sides || 6, 1);
+            const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+            const m = new THREE.Matrix4().compose(new THREE.Vector3().addVectors(a, b).multiplyScalar(0.5), q, new THREE.Vector3(1, 1, 1));
+            g.applyMatrix4(m); return g;
+        }
 
         function addStaticBody(x, y, z, shape, meshOrGroup, isTrampoline = false) {
             const body = new CANNON.Body({ mass: 0, shape: shape, material: physicsMat, collisionFilterGroup: GROUP_ENV, collisionFilterMask: -1 });
@@ -727,42 +982,65 @@
             obstacles.push({ meshOrGroup, body, box3 });
         }
 
-        function scaleBoxUVs(geo, w, h, d) {
+        // Skalowanie UV pudełka do rozmiaru świata (m = ile metrów ma jeden kafel tekstury)
+        function scaleBoxUVs(geo, w, h, d, m) {
             const uv = geo.attributes.uv;
             const dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
             for (let f = 0; f < 6; f++) for (let v = 0; v < 4; v++) {
                 const i = f * 4 + v;
-                uv.setXY(i, uv.getX(i) * dims[f][0] / 4, uv.getY(i) * dims[f][1] / 4);
+                uv.setXY(i, uv.getX(i) * dims[f][0] / m, uv.getY(i) * dims[f][1] / m);
             }
             uv.needsUpdate = true;
         }
 
-        function addCrispBlock(x, y, z, w, h, d, color, edgeColor, isTrampoline = false, texture = wallTex) {
-            const mat = new THREE.MeshStandardMaterial({ map: texture, bumpMap: texture, bumpScale: 1.4, color: color, roughness: 0.78, metalness: 0.15 });
+        // opts: { rough: tekstura chropowatości, physical: lakier/mokry połysk, uvMeters: metry na kafel }
+        function addCrispBlock(x, y, z, w, h, d, color, edgeColor, isTrampoline = false, texture = wallTex, opts = {}) {
+            const params = { map: texture, bumpMap: texture, bumpScale: 1.4, color: color, roughness: 0.78, metalness: 0.15, envMapIntensity: LP.envIntensity };
+            let mat;
+            if (opts.physical) { params.clearcoat = 0.5; params.clearcoatRoughness = 0.3; mat = new THREE.MeshPhysicalMaterial(params); }
+            else mat = new THREE.MeshStandardMaterial(params);
+            if (opts.rough) { mat.roughnessMap = opts.rough; mat.roughness = 1.0; opts.rough.repeat.set(0.25, 0.25); }
             if (isTrampoline) { mat.emissive = new THREE.Color(color); mat.emissiveIntensity = 0.5; trampMats.push(mat); }
             const geo = new THREE.BoxGeometry(w, h, d);
-            scaleBoxUVs(geo, w, h, d);
+            scaleBoxUVs(geo, w, h, d, opts.uvMeters || 4);
             const mesh = new THREE.Mesh(geo, mat);
             mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true;
-            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: edgeColor, transparent: true, opacity: isTrampoline ? 0.9 : 0.35 }));
+            const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: edgeColor, transparent: true, opacity: isTrampoline ? 0.9 : LP.edgeOpacity }));
             mesh.add(edges); scene.add(mesh);
             addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2)), mesh, isTrampoline);
         }
 
-        // Walls
-        addCrispBlock(0, -2.5, 0, 40, 5, 40, 0xc8c8c8, 0x440000, false, floorTex); // Podłoga
-        addCrispBlock(0, 22.5, 0, 40, 5, 40, 0xb0b0b0, 0x440000); // Sufit
-        addCrispBlock(0, 10, -17.5, 40, 20, 5, 0xc8c8c8, 0x550000); // Północ
-        addCrispBlock(0, 10, 17.5, 40, 20, 5, 0xc8c8c8, 0x550000);  // Południe
-        addCrispBlock(-17.5, 10, 0, 5, 20, 40, 0xc0c0c0, 0x550000); // Zachód
-        addCrispBlock(17.5, 10, 0, 5, 20, 40, 0xc0c0c0, 0x550000);  // Wschód
+        // Podłoga (mokra, z kałużami) i ściany
+        addCrispBlock(0, -2.5, 0, 40, 5, 40, LP.floorTint, 0x440000, false, floorTex, { rough: floorRoughTex, physical: true });
+        addCrispBlock(0, 10, -17.5, 40, 20, 5, LP.wallTint, 0x550000); // Północ
+        addCrispBlock(0, 10, 17.5, 40, 20, 5, LP.wallTint, 0x550000);  // Południe
+        addCrispBlock(-17.5, 10, 0, 5, 20, 40, LP.wallTint, 0x550000); // Zachód
+        addCrispBlock(17.5, 10, 0, 5, 20, 40, LP.wallTint, 0x550000);  // Wschód
+
+        // SUFIT: w dzień to ogromny świetlik z chmurami i stalowymi dźwigarami, w nocy betonowa płyta
+        (function buildCeiling() {
+            if (LP.ceiling === 'concrete') { addCrispBlock(0, 22.5, 0, 40, 5, 40, LP.wallTint, 0x440000); return; }
+            const group = new THREE.Group(); scene.add(group);
+            cloudTex = createCloudTexture();
+            const sky = new THREE.Mesh(new THREE.PlaneGeometry(31, 31), new THREE.MeshBasicMaterial({ map: cloudTex, fog: false }));
+            sky.rotation.x = Math.PI / 2; sky.position.set(0, 19.99, 0); group.add(sky);
+            const beams = [];
+            for (const p of [-15, -7.5, 0, 7.5, 15]) {
+                beams.push(place(UNIT_BOX, p, 19.82, 0, 0, 0, 0, 0.42, 0.3, 30.4));
+                beams.push(place(UNIT_BOX, 0, 19.82, p, 0, 0, 0, 30.4, 0.3, 0.42));
+            }
+            for (const px of [-7.5, 0, 7.5]) for (const pz of [-7.5, 0, 7.5]) beams.push(place(UNIT_BOX, px, 19.9, pz, 0, 0, 0, 0.7, 0.2, 0.7));
+            const bm = new THREE.Mesh(mergeGeometries(beams), new THREE.MeshStandardMaterial({ color: 0x2b2e31, roughness: 0.5, metalness: 0.8, envMapIntensity: LP.envIntensity }));
+            bm.castShadow = false; bm.receiveShadow = true; group.add(bm);
+            addStaticBody(0, 22.5, 0, new CANNON.Box(new CANNON.Vec3(20, 2.5, 20)), group);
+        })();
 
         // WEKTOROWE MURALE POTWORÓW NA ŚCIANACH
         function addMural(painter, seed, x, y, z, rotY) {
             const tex = createMural(painter, seed);
             const mat = new THREE.MeshStandardMaterial({
-                map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.8,
-                transparent: true, roughness: 0.9, metalness: 0, depthWrite: false,
+                map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: LP.muralBase,
+                transparent: true, roughness: 0.9, metalness: 0, depthWrite: false, envMapIntensity: 0.4,
                 polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
             });
             const m = new THREE.Mesh(new THREE.PlaneGeometry(11, 11), mat);
@@ -782,7 +1060,7 @@
         // MACABRE STAIRS
         function addScaryStep(x, y, z, size, sides) {
             const group = new THREE.Group();
-            const mat = new THREE.MeshStandardMaterial({ map: wallTex, bumpMap: wallTex, bumpScale: 1.2, color: 0x8a4040, metalness: 0.3, roughness: 0.55 }); 
+            const mat = new THREE.MeshStandardMaterial({ map: wallTex, bumpMap: wallTex, bumpScale: 1.2, color: 0x8a4040, metalness: 0.3, roughness: 0.55, envMapIntensity: LP.envIntensity }); 
             const geo = new THREE.CylinderGeometry(size, size, 0.3, sides);
             const mesh = new THREE.Mesh(geo, mat);
             mesh.castShadow = true; mesh.receiveShadow = true;
@@ -817,7 +1095,7 @@
 
         // BONE GRIPS
         const gripGeo = new THREE.DodecahedronGeometry(0.3);
-        const gripMat = new THREE.MeshStandardMaterial({ color: 0xc8b8a0, emissive: 0x140000, roughness: 0.8, bumpMap: plasterTex, bumpScale: 0.8 }); 
+        const gripMat = new THREE.MeshStandardMaterial({ color: 0xc8b8a0, emissive: 0x140000, roughness: 0.8, bumpMap: plasterTex, bumpScale: 0.8, envMapIntensity: LP.envIntensity }); 
         function addBoneGrip(x, y, z) {
             const mesh = new THREE.Mesh(gripGeo, gripMat); mesh.position.set(x, y, z); 
             mesh.rotation.set(0, Math.random() * Math.PI * 2, 0);
@@ -833,11 +1111,11 @@
         }
 
         // ==========================================
-        // 3b. KAŁUŻE KRWI, ŁAŃCUCHY, PYŁ
+        // 3b. WYSTRÓJ LOBBY: kałuże, rytuał, listwy, rury, pajęczyny, lampy, skrzynie
         // ==========================================
         (function addBloodPools() {
             const mat = new THREE.MeshStandardMaterial({
-                map: createBloodPoolTexture(), transparent: true, roughness: 0.1, metalness: 0.0, depthWrite: false,
+                map: createBloodPoolTexture(), transparent: true, roughness: 0.1, metalness: 0.0, depthWrite: false, envMapIntensity: LP.envIntensity,
                 polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4
             });
             const geo = new THREE.PlaneGeometry(1, 1);
@@ -846,30 +1124,148 @@
                 const m = new THREE.Mesh(geo, mat);
                 m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * 6.28;
                 m.scale.set(s, s * (0.7 + Math.random() * 0.5), 1);
-                m.position.set((Math.random() * 2 - 1) * 13, 0.012, (Math.random() * 2 - 1) * 13);
+                let x, z, tries = 0;
+                do { x = (Math.random() * 2 - 1) * 13; z = (Math.random() * 2 - 1) * 13; tries++; } while (Math.hypot(x, z) < 5.5 && tries < 20);
+                m.position.set(x, 0.014, z);
                 m.receiveShadow = true; scene.add(m);
             }
         })();
 
-        const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
-        const UNIT_SPHERE = new THREE.SphereGeometry(1, 10, 8);
-        const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
-        const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 5, 1);
-        const _tM = new THREE.Matrix4(), _tQ = new THREE.Quaternion(), _tE = new THREE.Euler(), _tP = new THREE.Vector3(), _tS = new THREE.Vector3();
-        function place(geo, px, py, pz, rx, ry, rz, sx, sy, sz) {
-            const g = geo.clone();
-            _tE.set(rx, ry, rz); _tQ.setFromEuler(_tE);
-            _tM.compose(_tP.set(px, py, pz), _tQ, _tS.set(sx, sy, sz));
-            g.applyMatrix4(_tM); return g;
-        }
-        function seg(a, b, r0, r1, sides) {
-            const d = new THREE.Vector3().subVectors(b, a), len = d.length();
-            const g = new THREE.CylinderGeometry(r1, r0, len, sides || 6, 1);
-            const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
-            const m = new THREE.Matrix4().compose(new THREE.Vector3().addVectors(a, b).multiplyScalar(0.5), q, new THREE.Vector3(1, 1, 1));
-            g.applyMatrix4(m); return g;
+        // Rytualny krąg w centrum lobby
+        (function addSigil() {
+            const mat = new THREE.MeshStandardMaterial({
+                map: createSigilTexture(), transparent: true, roughness: 0.28, metalness: 0.0, depthWrite: false, envMapIntensity: LP.envIntensity,
+                polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
+            });
+            const m = new THREE.Mesh(new THREE.PlaneGeometry(13, 13), mat);
+            m.rotation.x = -Math.PI / 2; m.position.set(0, 0.009, 0); m.receiveShadow = true; scene.add(m);
+        })();
+
+        // Miękkie cienie kontaktowe (fałszywe AO): przy ścianach i pod skrzyniami
+        (function addContactAO() {
+            const c = makeCanvas(4, 128), ctx = c.getContext('2d');
+            const g = ctx.createLinearGradient(0, 0, 0, 128);
+            g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, 4, 128);
+            const aoTex = new THREE.CanvasTexture(c);
+            const mat = new THREE.MeshBasicMaterial({
+                map: aoTex, color: 0x000000, transparent: true, opacity: 0.6, depthWrite: false,
+                polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1
+            });
+            const geo = new THREE.PlaneGeometry(30, 1.5); geo.rotateX(-Math.PI / 2);
+            const walls = [[0, -14.25, 0], [0, 14.25, Math.PI], [14.25, 0, -Math.PI / 2], [-14.25, 0, Math.PI / 2]];
+            for (const w of walls) {
+                const m = new THREE.Mesh(geo, mat); m.position.set(w[0], 0.02, w[1]); m.rotation.y = w[2]; scene.add(m);
+            }
+        })();
+        const blobAOMat = new THREE.MeshBasicMaterial({ map: dotTex, color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+        function addBlobAO(x, z, size) {
+            const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), blobAOMat);
+            m.rotation.x = -Math.PI / 2; m.position.set(x, 0.016, z); scene.add(m);
         }
 
+        // Listwy przypodłogowe i pas przy suficie
+        (function addSkirting() {
+            const parts = [];
+            const mk = (cx, cy, cz, w, h, d) => parts.push(place(UNIT_BOX, cx, cy, cz, 0, 0, 0, w, h, d));
+            mk(0, 0.13, -14.93, 30, 0.26, 0.14); mk(0, 0.13, 14.93, 30, 0.26, 0.14);
+            mk(-14.93, 0.13, 0, 0.14, 0.26, 30); mk(14.93, 0.13, 0, 0.14, 0.26, 30);
+            mk(0, 19.55, -14.93, 30, 0.5, 0.14); mk(0, 19.55, 14.93, 30, 0.5, 0.14);
+            mk(-14.93, 19.55, 0, 0.14, 0.5, 30); mk(14.93, 19.55, 0, 0.14, 0.5, 30);
+            const m = new THREE.Mesh(mergeGeometries(parts), new THREE.MeshStandardMaterial({ map: wallTex, bumpMap: wallTex, bumpScale: 1.0, color: 0x555a5e, roughness: 0.8, envMapIntensity: LP.envIntensity }));
+            m.receiveShadow = true; scene.add(m);
+        })();
+
+        // Zardzewiałe rury biegnące po ścianach północnej i południowej
+        (function addPipes() {
+            const pipes = [], flanges = [];
+            for (const s of [-1, 1]) {
+                const z = s * 14.82;
+                for (const y of [2.6, 3.15]) {
+                    pipes.push(place(PIPE_CYL, 0, y, z, 0, 0, Math.PI / 2, 0.065, 29.6, 0.065));
+                    for (let x = -13; x <= 13; x += 3.25) flanges.push(place(PIPE_CYL, x, y, z, 0, 0, Math.PI / 2, 0.1, 0.12, 0.1));
+                }
+                for (const x of [-13.7, 13.7]) {
+                    pipes.push(place(PIPE_CYL, x, 9.9, z, 0, 0, 0, 0.075, 19.8, 0.075));
+                    for (let y = 2; y < 19; y += 3.5) flanges.push(place(PIPE_CYL, x, y, z, 0, 0, 0, 0.11, 0.14, 0.11));
+                }
+            }
+            const mat = new THREE.MeshStandardMaterial({ map: wallTex, bumpMap: wallTex, bumpScale: 1.2, color: 0x8a5a3a, metalness: 0.7, roughness: 0.45, envMapIntensity: LP.envIntensity });
+            const m1 = new THREE.Mesh(mergeGeometries(pipes), mat); m1.castShadow = true; m1.receiveShadow = true; scene.add(m1);
+            const m2 = new THREE.Mesh(mergeGeometries(flanges), new THREE.MeshStandardMaterial({ color: 0x2a2c2e, metalness: 0.8, roughness: 0.4, envMapIntensity: LP.envIntensity }));
+            m2.castShadow = true; scene.add(m2);
+        })();
+
+        // Pajęczyny w rogach pod sufitem
+        (function addCobwebs() {
+            const mat = new THREE.MeshBasicMaterial({ map: createCobwebTexture(), transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: 0.85 });
+            const geo = new THREE.PlaneGeometry(3.2, 3.2);
+            for (const c of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+                const m = new THREE.Mesh(geo, mat);
+                m.position.set(c[0] * 14.2, 18.3, c[1] * 14.2);
+                m.rotation.y = Math.atan2(-c[0], -c[1]);
+                scene.add(m);
+            }
+        })();
+
+        // Awaryjne lampy alarmowe na ścianach
+        function addLamp(x, y, z, rotY) {
+            const g = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.22), new THREE.MeshStandardMaterial({ color: 0x222426, metalness: 0.7, roughness: 0.5 }));
+            const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.14, 12), new THREE.MeshBasicMaterial({ color: 0xff2a1a }));
+            lens.rotation.x = Math.PI / 2; lens.position.z = 0.15;
+            g.add(body, lens);
+            const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, color: 0xff2a1a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.7 }));
+            sp.scale.set(2.4, 2.4, 1); sp.position.z = 0.35; g.add(sp);
+            g.position.set(x, y, z); g.rotation.y = rotY; scene.add(g);
+            lampSprites.push(sp);
+        }
+        addLamp(-14, 16, -14.89, 0); addLamp(14, 16, -14.89, 0);
+        addLamp(-14, 16, 14.89, Math.PI); addLamp(14, 16, 14.89, Math.PI);
+        addLamp(14.89, 16, 13, -Math.PI / 2); addLamp(-14.89, 16, -13, Math.PI / 2);
+
+        // Skrzynie i beczki (mają kolizję, można na nie wchodzić i się odpychać)
+        (function addProps() {
+            const woodTex = createWoodTexture();
+            function crate(x, y, z, s) {
+                addCrispBlock(x, y, z, s, s, s, 0xffffff, 0x120a05, false, woodTex, { uvMeters: s });
+                if (y - s / 2 < 0.05) addBlobAO(x, z, s * 2.2);
+            }
+            crate(12.4, 0.6, -12.4, 1.2); crate(13.7, 0.6, -12.2, 1.2); crate(12.9, 1.8, -12.3, 1.2); crate(12.2, 0.45, -10.9, 0.9);
+            crate(-12.9, 0.6, 12.6, 1.2); crate(-11.6, 0.6, 13.3, 1.2); crate(-12.2, 1.7, 13.0, 1.0);
+            crate(13.2, 0.5, -3.8, 1.0);
+            reserved.push([13, -12, 2.8], [-12.3, 13, 2.6], [13.2, -3.8, 1.4]);
+
+            const barrelMat = new THREE.MeshStandardMaterial({ map: wallTex, bumpMap: wallTex, bumpScale: 1.4, color: 0x8a5a3a, metalness: 0.65, roughness: 0.5, envMapIntensity: LP.envIntensity });
+            const bandMat = new THREE.MeshStandardMaterial({ color: 0x1c1d1f, metalness: 0.8, roughness: 0.4, envMapIntensity: LP.envIntensity });
+            function barrel(x, z) {
+                const group = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.44, 1.1, 18), barrelMat);
+                body.position.y = 0.55; body.castShadow = true; body.receiveShadow = true; group.add(body);
+                const bands = [0.2, 0.55, 0.9].map(y => place(new THREE.TorusGeometry(0.435, 0.022, 6, 18), 0, y, 0, Math.PI / 2, 0, 0, 1, 1, 1));
+                const bm = new THREE.Mesh(mergeGeometries(bands), bandMat); bm.castShadow = true; group.add(bm);
+                group.position.set(x, 0, z); scene.add(group);
+                addStaticBody(x, 0.55, z, new CANNON.Box(new CANNON.Vec3(0.3, 0.55, 0.3)), group);
+                addBlobAO(x, z, 1.9);
+            }
+            barrel(-13.5, -13.5); barrel(-12.4, -13.9); barrel(-13.9, -12.3); barrel(13.6, 12.6); barrel(12.6, 13.7);
+            reserved.push([-13.2, -13.2, 2.0], [13.2, 13.2, 2.0]);
+        })();
+
+        // Smugi światła wpadające przez świetlik (tylko w dzień)
+        if (LP.shafts) {
+            const st = createShaftTexture();
+            const spots = [[-9, -8], [4, -10], [10, -2], [-3, 5], [8, 11], [-11, 10], [0, -1]];
+            spots.forEach((p, i) => {
+                const mat = new THREE.MeshBasicMaterial({ map: st, color: 0xdfe8ee, transparent: true, opacity: 0.17, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+                const m = new THREE.Mesh(new THREE.CylinderGeometry(1.1 + (i % 3) * 0.35, 2.6 + (i % 2) * 0.6, 19.9, 20, 1, true), mat);
+                m.position.set(p[0], 9.95, p[1]);
+                m.rotation.z = (Math.random() - 0.5) * 0.12; m.rotation.x = (Math.random() - 0.5) * 0.12;
+                scene.add(m); shaftMats.push(mat);
+            });
+        }
+
+        // Łańcuchy z hakami i kawałkami mięsa pod sufitem
         (function addHangingChains() {
             const metal = [], meat = [];
             const taken = [[4, -4], [-4, 4], [0, 0], [6, 6], [-8, -2]];
@@ -886,14 +1282,15 @@
                 metal.push(place(new THREE.TorusGeometry(0.12, 0.02, 6, 12, Math.PI * 1.5), x, 20 - len - 0.1, z, 0, 0, 0.6, 1, 1, 1));
                 if (Math.random() < 0.45) meat.push(place(UNIT_SPHERE, x, 20 - len - 0.35, z, 0, 0, 0, 0.17, 0.34, 0.15));
             }
-            const m1 = new THREE.Mesh(mergeGeometries(metal), new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.45, metalness: 0.7 }));
+            const m1 = new THREE.Mesh(mergeGeometries(metal), new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.45, metalness: 0.7, envMapIntensity: LP.envIntensity }));
             m1.castShadow = true; scene.add(m1);
             if (meat.length) {
-                const m2 = new THREE.Mesh(mergeGeometries(meat), new THREE.MeshStandardMaterial({ color: 0x5a0d0d, roughness: 0.25, metalness: 0.1 }));
+                const m2 = new THREE.Mesh(mergeGeometries(meat), new THREE.MeshStandardMaterial({ color: 0x5a0d0d, roughness: 0.25, metalness: 0.1, envMapIntensity: LP.envIntensity }));
                 m2.castShadow = true; scene.add(m2);
             }
         })();
 
+        // Pył w powietrzu
         const dustN = GFX.dust;
         const dustPos = new Float32Array(dustN * 3), dustVy = new Float32Array(dustN), dustPh = new Float32Array(dustN);
         for (let i = 0; i < dustN; i++) {
@@ -902,14 +1299,14 @@
         }
         const dustGeo = new THREE.BufferGeometry();
         dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-        const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ size: 0.05, map: createDotTexture(), color: 0x7a6e64, transparent: true, opacity: 0.5, depthWrite: false }));
+        const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ size: 0.05, map: dotTex, color: LP.dustColor, transparent: true, opacity: LP.dustOpacity, depthWrite: false }));
         dust.frustumCulled = false; scene.add(dust);
 
         // ==========================================
         // 3c. STRASZNE MANEKINY
         // ==========================================
-        const plasterMat = new THREE.MeshStandardMaterial({ map: plasterTex, bumpMap: plasterTex, bumpScale: 0.7, color: 0xd8d0c2, roughness: 0.55, metalness: 0.0 });
-        const darkMat = new THREE.MeshStandardMaterial({ color: 0x101012, roughness: 0.4, metalness: 0.6 });
+        const plasterMat = new THREE.MeshStandardMaterial({ map: plasterTex, bumpMap: plasterTex, bumpScale: 0.7, color: 0xd8d0c2, roughness: 0.55, metalness: 0.0, envMapIntensity: LP.envIntensity });
+        const darkMat = new THREE.MeshStandardMaterial({ color: 0x101012, roughness: 0.4, metalness: 0.6, envMapIntensity: LP.envIntensity });
         const voidMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
         const eyeGlowMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
 
@@ -997,7 +1394,7 @@
 
         const mannequins = [];
         (function spawnMannequins() {
-            const zones = [[0, 0, 3], [0, 5, 3.2], [-7, -7, 7.5], [8, 3, 7], [2, -2, 1.8], [-2, -2, 1.8]];
+            const zones = [[0, 0, 3], [0, 5, 3.2], [-7, -7, 7.5], [8, 3, 7], [2, -2, 1.8], [-2, -2, 1.8]].concat(reserved);
             const placed = [];
             let tries = 0;
             while (placed.length < GFX.mannequins && tries < 800) {
@@ -1010,10 +1407,12 @@
                 m.group.position.set(x, 0, z); m.group.rotation.y = Math.random() * 6.283;
                 scene.add(m.group);
                 addStaticBody(x, 0.95, z, new CANNON.Box(new CANNON.Vec3(0.26, 0.95, 0.26)), m.group);
+                addBlobAO(x, z, 1.5);
                 mannequins.push(m);
             }
         })();
 
+        // Manekiny obracają się do gracza tylko wtedy, gdy na nie nie patrzy
         const _cp = new THREE.Vector3(), _cd = new THREE.Vector3(), _tm = new THREE.Vector3();
         function updateMannequins(dt) {
             camera.getWorldPosition(_cp); camera.getWorldDirection(_cd);
@@ -1039,7 +1438,7 @@
         // ==========================================
         function addGutsRope(x, y, z, height) {
             const ropeGroup = new THREE.Group();
-            const mat = new THREE.MeshStandardMaterial({ color: 0x6a1515, roughness: 0.25, metalness: 0.1 }); 
+            const mat = new THREE.MeshStandardMaterial({ color: 0x6a1515, roughness: 0.25, metalness: 0.1, envMapIntensity: LP.envIntensity }); 
             const geo = new THREE.CylinderGeometry(0.12, 0.12, height, 12, Math.max(20, Math.round(height * 6)));
             const pa = geo.attributes.position;
             for (let i = 0; i < pa.count; i++) {
@@ -1067,7 +1466,7 @@
         addGutsRope(6, 15, 6, 10); addGutsRope(-8, 14, -2, 9);
 
         function createEyeball(id, x, y, z) {
-            const mat = new THREE.MeshPhysicalMaterial({map: eyeTex, emissive: 0x330000, roughness: 0.1, metalness: 0.1, clearcoat: 1.0 });
+            const mat = new THREE.MeshPhysicalMaterial({map: eyeTex, emissive: 0x330000, roughness: 0.1, metalness: 0.1, clearcoat: 1.0, envMapIntensity: LP.envIntensity });
             const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 32), mat); mesh.castShadow = true; scene.add(mesh);
             const body = new CANNON.Body({ mass: 1, shape: new CANNON.Sphere(0.2), position: new CANNON.Vec3(x,y,z), material: physicsMat, collisionFilterGroup: GROUP_BALL, collisionFilterMask: GROUP_ENV | GROUP_BALL | GROUP_ROPE });
             world.addBody(body); mesh.userData = { id: id, body: body }; throwables.push(mesh);
@@ -1172,7 +1571,7 @@
         };
 
         // ==========================================
-        // 6. AVATARS
+        // 6. AVATARS (Odłączone dłonie)
         // ==========================================
         function createNameSprite(message) {
             const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); canvas.width = 512; canvas.height = 128;
@@ -1184,7 +1583,7 @@
 
         function createAvatar(profile, isLocal) {
             const group = new THREE.Group();
-            const mat = new THREE.MeshPhysicalMaterial({ color: profile.color, roughness: 0.8, clearcoat: 0.2 });
+            const mat = new THREE.MeshPhysicalMaterial({ color: profile.color, roughness: 0.8, clearcoat: 0.2, envMapIntensity: LP.envIntensity });
             const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.35), mat); torso.castShadow = true; group.add(torso);
             let head = new THREE.Group();
             
@@ -1193,14 +1592,16 @@
                 pSnout.position.set(0, -0.1, -0.15); head.add(pSnout);
                 const pBrow = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.08), mat); pBrow.position.set(0, 0.02, -0.12); head.add(pBrow);
                 if(profile.hat === 'tophat') {
-                    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x111111, roughness: 0.9})); hat.position.set(0, 0.15, -0.05); head.add(hat);
+                    const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x111111, roughness: 0.9}));
+                    hat.position.set(0, 0.15, -0.05); head.add(hat);
                 } else if (profile.hat === 'cap') {
                     const cap = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), new THREE.MeshPhysicalMaterial({color: 0x0055aa}));
                     const brim = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.15), new THREE.MeshPhysicalMaterial({color: 0x0055aa}));
                     cap.position.set(0, 0.1, -0.05); brim.position.set(0, 0.05, -0.2); head.add(cap, brim);
                 }
                 if(profile.glasses === 'sunglasses') {
-                    const gl = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), new THREE.MeshPhysicalMaterial({color: 0x050505, metalness:0.9, roughness:0.1})); gl.position.set(0, 0.02, -0.17); head.add(gl);
+                    const gl = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.06, 0.02), new THREE.MeshPhysicalMaterial({color: 0x050505, metalness:0.9, roughness:0.1}));
+                    gl.position.set(0, 0.02, -0.17); head.add(gl);
                 }
                 const nameTag = createNameSprite(profile.name); nameTag.position.set(0, 0.4, 0); nameTag.scale.set(2, 0.5, 1); head.add(nameTag);
                 group.add(head);
@@ -1216,6 +1617,7 @@
         const localAvatar = createAvatar(myProfile, true);
         scene.add(localAvatar.group); 
         
+        // Dłonie zostają w Scenie, abyśmy mogli sztucznie je blokować o ściany
         scene.add(localAvatar.handL); 
         scene.add(localAvatar.handR);
 
@@ -1310,6 +1712,7 @@
         let stepped = false;
         const hit = { nx: 0, ny: 0, nz: 0, depth: 0 };
 
+        // Dokładny test kula–AABB. Wynik (normalna + głębokość) trafia do `hit`.
         function sphereVsBox(px, py, pz, r, b) {
             const cx = Math.max(b.min.x, Math.min(px, b.max.x));
             const cy = Math.max(b.min.y, Math.min(py, b.max.y));
@@ -1338,6 +1741,7 @@
             if (vn < 0) { v.x -= vn*hit.nx; v.y -= vn*hit.ny; v.z -= vn*hit.nz; }
         }
 
+        // Wywoływane po KAŻDYM pod-kroku fizyki. To jedyne miejsce, w którym gracz zderza się ze światem.
         world.addEventListener('postStep', () => {
             stepped = true;
             const p = playerBody.position, v = playerBody.velocity;
@@ -1468,6 +1872,7 @@
             world.step(1/90, dt, 10); 
             if (stepped) { handPushing = false; stepped = false; }
 
+            // Twarda granica pokoju (zabezpieczenie awaryjne)
             if(playerBody.position.x < -14.6) { playerBody.position.x = -14.6; playerBody.velocity.x = 0; }
             if(playerBody.position.x > 14.6) { playerBody.position.x = 14.6; playerBody.velocity.x = 0; }
             if(playerBody.position.z < -14.6) { playerBody.position.z = -14.6; playerBody.velocity.z = 0; }
@@ -1492,7 +1897,18 @@
                 rope.mesh.position.copy(rope.body.position); rope.mesh.quaternion.copy(rope.body.quaternion);
             }
 
-            for (let i = 0; i < muralMats.length; i++) muralMats[i].emissiveIntensity = 0.5 + 0.1 * Math.sin(t * 1.1 + i * 1.7);
+            // --- EFEKTY ATMOSFERY ---
+            for (const f of flickerLights) {
+                let v = f.base * (0.7 + 0.3 * Math.sin(t * 6.1 + f.ph) * Math.sin(t * 11.7 + f.ph * 1.9));
+                if (Math.sin(t * 0.53 + f.ph * 2.7) > 0.985) v *= 0.04;
+                f.l.intensity = v;
+            }
+            if (flashlight) flashlight.intensity = LP.flashlight.intensity * (Math.sin(t * 0.37) > 0.992 ? 0.15 : 0.96 + 0.04 * Math.sin(t * 23));
+            for (let i = 0; i < muralMats.length; i++) muralMats[i].emissiveIntensity = LP.muralBase + LP.muralPulse * Math.sin(t * 1.1 + i * 1.7);
+            for (const m of trampMats) m.emissiveIntensity = LP.trampBase + LP.trampPulse * Math.sin(t * 3.0);
+            for (let i = 0; i < lampSprites.length; i++) lampSprites[i].material.opacity = 0.45 + 0.35 * Math.sin(t * 2.2 + i * 1.3);
+            for (let i = 0; i < shaftMats.length; i++) shaftMats[i].opacity = 0.14 + 0.05 * Math.sin(t * 0.5 + i);
+            if (cloudTex) cloudTex.offset.x = (t * 0.003) % 1;
             for (let i = 0; i < dustN; i++) {
                 dustPos[i * 3] += Math.sin(t * 0.4 + dustPh[i]) * 0.12 * dt;
                 dustPos[i * 3 + 2] += Math.cos(t * 0.35 + dustPh[i]) * 0.12 * dt;
