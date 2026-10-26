@@ -142,6 +142,7 @@ world.addEventListener('postStep', () => {
         v.x *= k; v.z *= k;
         if (k === FRICTION_IDLE) { if (Math.abs(v.x) < 0.08) v.x = 0; if (Math.abs(v.z) < 0.08) v.z = 0; }
     }
+    const maxUp = L.maxUp || 99; if (v.y > maxUp) v.y = maxUp;   // limit prędkości w górę ustawiany przez poziom
     const maxV = 12 * POWER, s2 = v.lengthSquared();
     if (s2 > maxV * maxV) v.scale(maxV / Math.sqrt(s2), v);
     for (const ball of L.throwables) if (ball.userData.body.type === CANNON.Body.DYNAMIC) containBall(ball.userData.body);
@@ -169,9 +170,14 @@ function handleMovement(i, dt) {
     if (prev.lengthSq() > 0 && !ropeConstraint) {
         const delta = new THREE.Vector3().subVectors(current, prev);
         const hw = hand.position;
-        let ground = false, wall = false;
+        let ground = false, wall = false, grip = 1;
         if (hw.y <= 0.25) ground = true;
-        else for (const o of L.obstacles) if (o.box3.distanceToPoint(hw) <= 0.3) { if (hw.y > o.box3.min.y + 0.15) wall = true; else ground = true; break; }
+        else {
+            // Najlepszy chwyt spośród dotykanych powierzchni (śliskie ściany mają grip < 1)
+            let best = null, bestGrip = -1;
+            for (const o of L.obstacles) if (o.box3.distanceToPoint(hw) <= 0.3) { const g = o.grip === undefined ? 1 : o.grip; if (g > bestGrip) { best = o; bestGrip = g; } }
+            if (best) { if (hw.y > best.box3.min.y + 0.15) wall = true; else ground = true; grip = bestGrip; }
+        }
         for (const t of L.trampolines) {
             if (t.box3.distanceToPoint(hw) <= 0.25) {
                 playerBody.velocity.y = 12 * POWER; ground = false; wall = false;
@@ -187,8 +193,9 @@ function handleMovement(i, dt) {
             delta.multiplyScalar((dl - HAND_DEADZONE) / dl);
             const dw = delta.applyQuaternion(playerRig.quaternion);
             if (dw.length() > 0.4 * POWER) dw.normalize().multiplyScalar(0.4 * POWER);
-            let fXZ = -650 * POWER * boost, fY = -650 * POWER * vBoost;
-            if (wall) { fY = -800 * POWER * vBoost; fXZ = -700 * POWER * boost; }
+            const k = grip * (L.moveScale || 1);   // poziom może osłabić ruch (np. Studnia)
+            let fXZ = -650 * POWER * boost * k, fY = -650 * POWER * vBoost * k;
+            if (wall) { fY = -800 * POWER * vBoost * k; fXZ = -700 * POWER * boost * k; }
             playerBody.applyImpulse(new CANNON.Vec3(dw.x * fXZ, dw.y * fY, dw.z * fXZ), playerBody.position);
             handPushing = true;
             if (handSpeed > RUN_MIN_SPEED) lastPushTime = simTime;
@@ -220,7 +227,7 @@ export function updatePlayer(dt, t) {
     if (bp.z < B.minZ) { bp.z = B.minZ; bv.z = 0; } if (bp.z > B.maxZ) { bp.z = B.maxZ; bv.z = 0; }
     if (bp.y < radius) { bp.y = radius; if (bv.y < 0) bv.y = 0; }
     if (bp.y > B.maxY) { bp.y = B.maxY; if (bv.y > 0) bv.y = 0; }
-    track('height', bp.y - radius);
+    if (!L.noHeightTrack) track('height', bp.y - radius);
 
     if (hands.L && renderer.xr.isPresenting) {
         clampHand(controllers[0], hands.L); clampHand(controllers[1], hands.R);
