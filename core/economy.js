@@ -26,18 +26,30 @@ export const CATALOG = [
     { slot: 'glasses', id: 'round', name: 'Round spectacles', price: 400 },
     { slot: 'glasses', id: 'sunglasses', name: 'Sunglasses', price: 500 },
     { slot: 'glasses', id: 'eyepatch', name: 'Eye patch', price: 600 },
+    { slot: 'glasses', id: 'weld', name: 'Welding goggles', price: 700 },
     { slot: 'glasses', id: 'visor', name: 'Red glowing visor', price: 2200 },
+    { slot: 'glasses', id: 'thirdeye', name: 'Third eye', price: 2600 },
     { slot: 'sleeve', id: 'cloth', name: 'Cloth sleeve', price: 0 },
     { slot: 'sleeve', id: 'leather', name: 'Leather sleeve', price: 250 },
     { slot: 'sleeve', id: 'camo', name: 'Camo sleeve', price: 350 },
+    { slot: 'sleeve', id: 'straitjacket', name: 'Straitjacket', price: 450 },
     { slot: 'sleeve', id: 'bandage', name: 'Bloody bandages', price: 700 },
     { slot: 'sleeve', id: 'gold', name: 'Gold sleeve', price: 3500 },
     { slot: 'gloves', id: 'none', name: 'Bare hands', price: 0 },
     { slot: 'gloves', id: 'black', name: 'Black gloves', price: 900 },
+    { slot: 'gloves', id: 'mannequin', name: 'Mannequin hands', price: 1200 },
+    { slot: 'gloves', id: 'burnt', name: 'Burnt hands', price: 1600 },
     { slot: 'gloves', id: 'bone', name: 'Bone gloves', price: 2800 },
-    { slot: 'gloves', id: 'ghost', name: 'Ghost hands', price: 6000 }
+    { slot: 'gloves', id: 'ghost', name: 'Ghost hands', price: 6000 },
+    { slot: 'mask', id: 'none', name: 'No mask', price: 0 },
+    { slot: 'mask', id: 'hockey', name: 'Hockey mask', price: 900 },
+    { slot: 'mask', id: 'gas', name: 'Gas mask', price: 1300 },
+    { slot: 'mask', id: 'doll', name: 'Porcelain doll face', price: 1800 },
+    { slot: 'mask', id: 'plague', name: 'Plague doctor', price: 2400 },
+    { slot: 'mask', id: 'skull', name: 'Skull mask', price: 3200 },
+    { slot: 'mask', id: 'blind', name: 'Face of the Blind One', price: 5000 }
 ];
-export const SLOTS = [{ id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }];
+export const SLOTS = [{ id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }];
 
 // Pula zadań dziennych: każdego dnia losowane są 3 (takie same dla wszystkich graczy danego dnia)
 export const QUEST_POOL = [
@@ -65,8 +77,8 @@ export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dni
 function defaultSave() {
     return {
         v: 1, wallet: START_BONES, earned: 0,
-        owned: ['hat:none', 'hat:cap', 'glasses:none', 'sleeve:cloth', 'gloves:none'],
-        equipped: { hat: 'none', glasses: 'none', sleeve: 'cloth', gloves: 'none' },
+        owned: ['hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none'],
+        equipped: { hat: 'none', glasses: 'none', mask: 'none', sleeve: 'cloth', gloves: 'none' },
         profile: { name: 'Acrobat', skin: '#d9a07a', color: '#3d2314' },
         best: { height: 0, jumps: 0 },
         login: { last: 0, streak: 0 },
@@ -79,12 +91,14 @@ function load() {
         const raw = localStorage.getItem(SAVE_KEY);
         if (!raw) return d;
         const s = JSON.parse(raw);
+        const owned = Array.isArray(s.owned) ? s.owned : d.owned.slice();
+        for (const o of d.owned) if (!owned.includes(o)) owned.push(o);   // nowe darmowe przedmioty dla starych zapisów
         return Object.assign(d, s, {
             equipped: Object.assign(d.equipped, s.equipped || {}),
             profile: Object.assign(d.profile, s.profile || {}),
             best: Object.assign(d.best, s.best || {}),
             login: Object.assign(d.login, s.login || {}),
-            owned: Array.isArray(s.owned) ? s.owned : d.owned
+            owned: owned
         });
     } catch (e) { return d; }
 }
@@ -110,7 +124,7 @@ const lookListeners = [];
 export function onLookChange(fn) { lookListeners.push(fn); }
 function notifyLook() { const l = getLook(); lookListeners.forEach(f => f(l)); markAllDirty(); }
 export function getLook() {
-    return { name: SAVE.profile.name, skin: SAVE.profile.skin, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
+    return { name: SAVE.profile.name, skin: SAVE.profile.skin, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
 }
 export function setProfile(p) { Object.assign(SAVE.profile, p); saveGame(); notifyLook(); }
 export function isOwned(item) { return SAVE.owned.includes(item.slot + ':' + item.id); }
