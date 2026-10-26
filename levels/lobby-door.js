@@ -1,5 +1,5 @@
 // ==========================================
-// DODATEK DO LOBBY: drzwi do labiryntu i do trybu Cisza (na poziomie podłogi) oraz lustro
+// DODATEK DO LOBBY: drzwi do poziomów (labirynt, Cisza, Studnia) na poziomie podłogi oraz lustro
 // ==========================================
 import { THREE, L, tex, camera, addStaticBody, addBlobAO, CANNON } from '../core/engine.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
@@ -9,9 +9,10 @@ import { toast } from '../core/terminal.js';
 import { createHead } from '../core/avatar.js';
 import { getLook, onLookChange } from '../core/economy.js';
 
-const DOOR_X = 4, SILENCE_X = -5, WALL_Z = 14.97;    // drzwi w południowej ścianie, na podłodze
+const DOOR_X = 4, SILENCE_X = -5, WELL_X = 9.5, WALL_Z = 14.97;    // drzwi w południowej ścianie, na podłodze
 export const ARRIVAL = [DOOR_X, 1.2, 13.2];          // tu pojawia się gracz po powrocie z labiryntu
-export const ARRIVAL_SILENCE = [SILENCE_X, 1.2, 13.2];   // ...i po powrocie z trybu Cisza
+export const ARRIVAL_SILENCE = [SILENCE_X, 1.2, 13.2];   // ...po powrocie z trybu Cisza
+export const ARRIVAL_WELL = [WELL_X, 1.2, 13.2];         // ...i po powrocie ze Studni
 const MIRROR = { x: -14.93, z: 3.2, w: 1.6, h: 2.3 };   // lustro na zachodniej ścianie, obok sklepu
 const MIRROR_LAYER = 5;                          // warstwa widoczna tylko w lustrze (twoja głowa i tułów)
 const ENV = LP.envIntensity;
@@ -20,12 +21,13 @@ const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Eule
 
 // Wołane przed budową lobby: manekiny nie staną przed drzwiami ani przed lustrem
 export function prebuild() {
-    L.reserved.push([DOOR_X, 13.4, 3.0], [SILENCE_X, 13.4, 3.0], [-13.6, MIRROR.z, 2.6]);
+    L.reserved.push([DOOR_X, 13.4, 3.0], [SILENCE_X, 13.4, 3.0], [WELL_X, 13.4, 3.0], [-13.6, MIRROR.z, 2.6]);
 }
 
 export function build() {
     buildDoor(DOOR_X, 'THE MAZE', '#ff6a40', 0xff3010, 'maze', 'You open the door...');
     buildDoor(SILENCE_X, 'SILENCE', '#9fc8ff', 0x3a7aff, 'silence', 'Shhh...');
+    buildDoor(WELL_X, 'THE WELL', '#b8ffcf', 0x30ff90, 'well', 'Do not look down...');
     buildMirror();
 }
 
@@ -37,7 +39,7 @@ function buildDoor(DX, label, textCol, glowCol, target, msg) {
     add(new THREE.BoxGeometry(0.14, 2.45, 0.16), frameMat, 0.72, 1.22, 0.12);
     add(new THREE.BoxGeometry(1.58, 0.16, 0.16), frameMat, 0, 2.38, 0.12);
     // Skrzydło drzwi z rdzą i krwawym odciskiem dłoni
-    const dc = T.makeCanvas(256, 512), dx = dc.getContext('2d'), R = T.mkRng(target === 'maze' ? 4040 : 5050);
+    const dc = T.makeCanvas(256, 512), dx = dc.getContext('2d'), R = T.mkRng(target.length * 1013);
     dx.fillStyle = '#3a1612'; dx.fillRect(0, 0, 256, 512);
     for (let i = 0; i < 4000; i++) { dx.fillStyle = 'rgba(' + (R() > 0.5 ? '120,60,20' : '0,0,0') + ',' + (R() * 0.25) + ')'; dx.fillRect(R() * 256, R() * 512, 2, 2); }
     dx.strokeStyle = 'rgba(0,0,0,0.6)'; dx.lineWidth = 6; dx.strokeRect(24, 30, 208, 200); dx.strokeRect(24, 270, 208, 210);
