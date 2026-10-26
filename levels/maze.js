@@ -2,7 +2,8 @@
 // POZIOM: LABIRYNT 100 x 100 m, ściany 20 m, ciemność (preset 'night')
 // Przy każdym wejściu losuje się nowy układ. Start na południu, wyjście na północy.
 // Po 20 s manekin wyłamuje się z klatki i goni gracza. Złapanie = nowy labirynt od początku.
-// Jumpscare'y: ślepe zaułki, błądzenie, zjawy na końcu korytarzy. Wyjście = 2000 kości (kolejne razy 200).
+// Jumpscare'y: ślepe zaułki, błądzenie, zjawy na końcu korytarzy. Dotarcie do pokoju końcowego = 2000 kości
+// (kolejne razy 200) i otwiera się dziura w podłodze prowadząca prosto do poziomu Cisza.
 // ==========================================
 import { THREE, L, tex, camera, lighting, addCrispBlock, addCollider, scaleBoxUVs } from '../core/engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -177,13 +178,38 @@ function buildRooms() {
     });
     L.portals.push({
         box3: new THREE.Box3(new THREE.Vector3(1.2, 0, -60), new THREE.Vector3(2.8, 2.6, -58.6)),
-        target: 'lobby', spawn: ARRIVAL,
-        onEnter: () => {
-            const wins = SAVE.mazeWins || 0, reward = wins === 0 ? REWARD_FIRST : REWARD_REPEAT;
-            SAVE.mazeWins = wins + 1;
-            addBones(reward, wins === 0 ? 'first maze escape!' : 'maze escape');
-            saveGame(); toast('You escaped! +' + reward + ' bones', '#7fc47f');
-        }
+        target: 'lobby', spawn: ARRIVAL, onEnter: () => toast('Back to the lobby')
+    });
+    buildHole();
+}
+// Zapadnia w pokoju końcowym: otwiera się po dotarciu do końca, prowadzi na poziom Cisza
+const HOLE = [-1.6, -55.8];
+function buildHole() {
+    const g = new THREE.Group(); g.position.set(HOLE[0], 0.03, HOLE[1]); L.root.add(g);
+    const pit = new THREE.Mesh(new THREE.CircleGeometry(0.95, 32), new THREE.MeshBasicMaterial({ color: 0x000000 })); pit.rotation.x = -Math.PI / 2; pit.visible = false; g.add(pit);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0x3a7aff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 }));
+    glow.scale.set(3, 1.2, 1); glow.position.y = 0.3; g.add(glow);
+    const hinge = new THREE.Group(); hinge.position.set(-1.0, 0, 0); g.add(hinge);
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.06, 2.0), new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x6a5040, roughness: 0.7 }));
+    lid.position.set(1.0, 0.03, 0); lid.castShadow = true; lid.receiveShadow = true; hinge.add(lid);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.015, 6, 16), new THREE.MeshStandardMaterial({ color: 0x5a5a5a, metalness: 0.9 })); ring.rotation.x = -Math.PI / 2; ring.position.set(1.6, 0.07, 0); hinge.add(ring);
+    S.hole = { pit: pit, glow: glow, hinge: hinge, open: 0, opening: false };
+}
+// Dotarcie do pokoju końcowego: nagroda i otwarcie zapadni
+function finishMaze() {
+    S.phase = 'done';
+    S.mq.group.visible = false; S.mq.aura.intensity = 0;
+    const wins = SAVE.mazeWins || 0, reward = wins === 0 ? REWARD_FIRST : REWARD_REPEAT;
+    SAVE.mazeWins = wins + 1;
+    addBones(reward, wins === 0 ? 'first maze escape!' : 'maze escape');
+    saveGame();
+    toast('You escaped! +' + reward + ' bones', '#7fc47f');
+    setTimeout(() => toast('A hatch opened in the floor... or take the EXIT door', '#9fc8ff'), 2600);
+    SFX.creak(0.7);
+    S.hole.opening = true; S.hole.pit.visible = true;
+    L.portals.push({
+        box3: new THREE.Box3(new THREE.Vector3(HOLE[0] - 0.8, -0.5, HOLE[1] - 0.8), new THREE.Vector3(HOLE[0] + 0.8, 1.4, HOLE[1] + 0.8)),
+        target: 'silence', spawn: null, onEnter: () => toast('You fall into the dark...', '#9fc8ff')
     });
 }
 function door(x, z, rotY, label, col) {
@@ -355,6 +381,13 @@ export function update(dt, t, ctx) {
 
     updateScare(dt);
     if (S.phase === 'intro' || S.phase === 'chase') updatePhantom(dt, p);
+    // Pokój końcowy
+    if (p.z < -50.6 && (S.phase === 'intro' || S.phase === 'chase')) finishMaze();
+    if (S.hole && S.hole.opening && S.hole.open < 1) {
+        S.hole.open = Math.min(1, S.hole.open + dt * 0.8);
+        S.hole.hinge.rotation.z = S.hole.open * 1.9;
+        S.hole.glow.material.opacity = 0.6 * S.hole.open;
+    }
 
     if (S.phase === 'intro') {
         if (!S.introShown && S.time > 1) { S.introShown = true; toast('Find the exit. Something is waiting...', '#ff6a40'); }
