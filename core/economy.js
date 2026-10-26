@@ -41,6 +41,11 @@ export const CATALOG = [
     { slot: 'gloves', id: 'burnt', name: 'Burnt hands', price: 1600 },
     { slot: 'gloves', id: 'bone', name: 'Bone gloves', price: 2800 },
     { slot: 'gloves', id: 'ghost', name: 'Ghost hands', price: 6000 },
+    { slot: 'skin', id: 'none', name: 'Your own color', price: 0 },
+    { slot: 'skin', id: 'silverback', name: 'Silverback', price: 1500 },
+    { slot: 'skin', id: 'albino', name: 'Albino gorilla', price: 2200 },
+    { slot: 'skin', id: 'shadow', name: 'Shadow (glowing eyes)', price: 3800 },
+    { slot: 'skin', id: 'king', name: 'Parkour King', price: 0, locked: true },   // tylko za czerwoną trasę w lobby
     { slot: 'mask', id: 'none', name: 'No mask', price: 0 },
     { slot: 'mask', id: 'hockey', name: 'Hockey mask', price: 900 },
     { slot: 'mask', id: 'gas', name: 'Gas mask', price: 1300 },
@@ -49,7 +54,7 @@ export const CATALOG = [
     { slot: 'mask', id: 'skull', name: 'Skull mask', price: 3200 },
     { slot: 'mask', id: 'blind', name: 'Face of the Blind One', price: 5000 }
 ];
-export const SLOTS = [{ id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }];
+export const SLOTS = [{ id: 'skin', name: 'Skins' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }];
 
 // Pula zadań dziennych: każdego dnia losowane są 3 (takie same dla wszystkich graczy danego dnia)
 export const QUEST_POOL = [
@@ -77,9 +82,9 @@ export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dni
 function defaultSave() {
     return {
         v: 1, wallet: START_BONES, earned: 0,
-        owned: ['hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none'],
-        equipped: { hat: 'none', glasses: 'none', mask: 'none', sleeve: 'cloth', gloves: 'none' },
-        profile: { name: 'Acrobat', skin: '#d9a07a', color: '#3d2314' },
+        owned: ['skin:none', 'hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none'],
+        equipped: { skin: 'none', hat: 'none', glasses: 'none', mask: 'none', sleeve: 'cloth', gloves: 'none' },
+        profile: { name: 'Acrobat', color: '#3d2314' },
         best: { height: 0, jumps: 0 },
         login: { last: 0, streak: 0 },
         daily: null, pos: null, savedAt: 0
@@ -124,13 +129,23 @@ const lookListeners = [];
 export function onLookChange(fn) { lookListeners.push(fn); }
 function notifyLook() { const l = getLook(); lookListeners.forEach(f => f(l)); markAllDirty(); }
 export function getLook() {
-    return { name: SAVE.profile.name, skin: SAVE.profile.skin, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
+    return { name: SAVE.profile.name, skin: SAVE.equipped.skin, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
 }
 export function setProfile(p) { Object.assign(SAVE.profile, p); saveGame(); notifyLook(); }
 export function isOwned(item) { return SAVE.owned.includes(item.slot + ':' + item.id); }
 export function isEquipped(item) { return SAVE.equipped[item.slot] === item.id; }
+export function isLocked(item) { return !!item.locked && !isOwned(item); }
+// Odblokowanie przedmiotu za osiągnięcie (np. Parkour King za czerwoną trasę)
+export function unlockItem(slot, id) {
+    const key = slot + ':' + id;
+    if (SAVE.owned.includes(key)) return false;
+    SAVE.owned.push(key); SAVE.equipped[slot] = id;
+    saveGame(); notifyLook();
+    return true;
+}
 export function buyItem(item) {
     if (isOwned(item)) return 'owned';
+    if (item.locked) return 'locked';
     if (SAVE.wallet < item.price) { toast('Not enough bones for ' + item.name, '#e0533f'); return 'poor'; }
     SAVE.wallet -= item.price; SAVE.owned.push(item.slot + ':' + item.id);
     SAVE.equipped[item.slot] = item.id;
