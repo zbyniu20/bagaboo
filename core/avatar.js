@@ -41,14 +41,42 @@ function jacketTexture() {
     x.fillStyle = 'rgba(120,0,0,0.5)'; x.beginPath(); x.arc(200, 120, 18, 0, 7); x.fill();
     return (cosTex.jacket = toTex(c, true));
 }
+// Futro goryla (jasna baza, kolor nadaje gracz albo skórka)
+function furTexture() {
+    if (cosTex.fur) return cosTex.fur;
+    const S = 256, c = makeCanvas(S, S), x = c.getContext('2d'), R = mkRng(828);
+    x.fillStyle = '#b8b8b8'; x.fillRect(0, 0, S, S);
+    x.lineCap = 'round';
+    for (let i = 0; i < 4200; i++) {
+        const px = R() * S, py = R() * S, len = 4 + R() * 9, a = Math.PI / 2 + (R() - 0.5) * 0.7, v = (R() * 120 + 90) | 0;
+        x.strokeStyle = 'rgba(' + v + ',' + v + ',' + v + ',' + (0.35 + R() * 0.4) + ')'; x.lineWidth = 0.8 + R() * 1.2;
+        x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(a) * len, py + Math.sin(a) * len); x.stroke();
+    }
+    return (cosTex.fur = toTex(c, true));
+}
+// Skórki (dział Skins w sklepie): zmieniają futro całej postaci i dłonie
+const SKINS = {
+    silverback: { fur: 0x2a2a2c, back: 0xb8b8bc },
+    albino: { fur: 0xeee8de, face: 0xc8a8a0 },
+    shadow: { fur: 0x0b0b0d, glowEyes: true },
+    king: { fur: 0xd4a640, metal: true, cape: true }
+};
+export function furColor(look) { const k = SKINS[look.skin]; return new THREE.Color(k ? k.fur : (look.color || '#3d2314')); }
+function furMat(look, shade) {
+    const k = SKINS[look.skin], f = furTexture();
+    return new THREE.MeshStandardMaterial({ map: f, bumpMap: f, bumpScale: 3, color: furColor(look).multiplyScalar(shade || 1), roughness: k && k.metal ? 0.35 : 0.95, metalness: k && k.metal ? 0.65 : 0, envMapIntensity: k && k.metal ? Math.max(0.8, ENV) : ENV });
+}
+function faceMat(look) { const k = SKINS[look.skin]; return new THREE.MeshStandardMaterial({ color: k && k.face ? k.face : 0x2a2422, roughness: 0.55, bumpMap: tex.skin, bumpScale: 0.5, envMapIntensity: ENV }); }
 function skinMaterial(look) {
     if (look.gloves === 'mannequin') return new THREE.MeshStandardMaterial({ map: tex.plaster, bumpMap: tex.plaster, bumpScale: 0.7, color: 0xd8d0c2, roughness: 0.55, envMapIntensity: ENV });
     if (look.gloves === 'burnt') { const b = burntTexture(); return new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9, emissive: 0xff5a10, emissiveMap: b, emissiveIntensity: 1.4, bumpMap: tex.plaster, bumpScale: 2, envMapIntensity: ENV }); }
     if (look.gloves === 'black') return new THREE.MeshStandardMaterial({ color: 0x151517, roughness: 0.5, metalness: 0.15, envMapIntensity: ENV });
     if (look.gloves === 'bone') return new THREE.MeshStandardMaterial({ map: tex.plaster, bumpMap: tex.plaster, bumpScale: 1, color: 0xeadfc8, roughness: 0.7, envMapIntensity: ENV });
     if (look.gloves === 'ghost') return new THREE.MeshStandardMaterial({ color: 0x9fe8ff, emissive: 0x2ab8ff, emissiveIntensity: 0.9, transparent: true, opacity: 0.55, roughness: 0.3, depthWrite: false });
-    // Gołe dłonie mają ten sam kolor co postać gracza
-    return new THREE.MeshPhysicalMaterial({ map: tex.skin, bumpMap: tex.skin, bumpScale: 0.25, color: new THREE.Color(look.color || '#3d2314'), roughness: 0.5, sheen: 0.6, sheenColor: new THREE.Color(0xff8f70), sheenRoughness: 0.45, clearcoat: 0.06, clearcoatRoughness: 0.6, envMapIntensity: ENV });
+    // Gołe dłonie mają ten sam kolor co postać gracza (albo skórka)
+    const k = SKINS[look.skin];
+    if (k && k.metal) return new THREE.MeshStandardMaterial({ map: tex.skin, color: furColor(look), metalness: 0.7, roughness: 0.3, envMapIntensity: Math.max(0.8, ENV) });
+    return new THREE.MeshPhysicalMaterial({ map: tex.skin, bumpMap: tex.skin, bumpScale: 0.25, color: furColor(look), roughness: 0.5, sheen: 0.6, sheenColor: new THREE.Color(0xff8f70), sheenRoughness: 0.45, clearcoat: 0.06, clearcoatRoughness: 0.6, envMapIntensity: ENV });
 }
 function nailMaterial(look) {
     if (look.gloves && look.gloves !== 'none') return null;
@@ -61,7 +89,7 @@ function sleeveMaterial(look) {
     if (look.sleeve === 'bandage') return new THREE.MeshStandardMaterial(Object.assign(base, { map: tex.bandage, bumpMap: tex.bandage, bumpScale: 1, roughness: 0.95 }));
     if (look.sleeve === 'straitjacket') return new THREE.MeshStandardMaterial(Object.assign(base, { map: jacketTexture(), roughness: 0.95 }));
     if (look.sleeve === 'gold') return new THREE.MeshStandardMaterial(Object.assign(base, { color: 0xd4a640, metalness: 1, roughness: 0.25, envMapIntensity: Math.max(0.8, ENV) }));
-    return new THREE.MeshStandardMaterial(Object.assign(base, { color: new THREE.Color(look.color || '#3d2314').multiplyScalar(0.6), roughness: 0.95, bumpMap: tex.plaster, bumpScale: 1.5 }));
+    return new THREE.MeshStandardMaterial(Object.assign(base, { map: furTexture(), color: furColor(look).multiplyScalar(0.7), roughness: 0.95, bumpMap: furTexture(), bumpScale: 2 }));
 }
 function fingerSeg(r, len) {
     const g = new THREE.CapsuleGeometry(r, Math.max(0.002, len - r), 4, 12);
@@ -237,27 +265,66 @@ function createNameSprite(message) {
     ctx.font = 'bold 60px sans-serif'; ctx.fillStyle = '#111111'; ctx.textAlign = 'center'; ctx.fillText(message, 256, 85);
     return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas) }));
 }
-// Głowa postaci z kosmetykami (dla innych graczy i dla podglądu w sklepie)
+// Głowa goryla z kosmetykami (dla innych graczy, lustra i podglądu w sklepie)
 export function createHead(look, withName) {
-    const head = new THREE.Group();
-    const fur = mat({ color: new THREE.Color(look.color || '#3d2314'), roughness: 0.9, bumpMap: tex.plaster, bumpScale: 1.5 });
-    const skull = meshAt(new THREE.SphereGeometry(0.13, 24, 18), fur, 0, 0, 0); skull.scale.set(1, 1.05, 1); head.add(skull);
-    head.add(meshAt(new THREE.BoxGeometry(0.15, 0.09, 0.08), mat({ color: 0x1e1a18, roughness: 0.7 }), 0, -0.06, -0.11));
-    head.add(meshAt(new THREE.BoxGeometry(0.2, 0.035, 0.06), fur, 0, 0.055, -0.11));
-    const white = new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.3 }), black = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    for (const s of [-1, 1]) { head.add(meshAt(new THREE.SphereGeometry(0.02, 12, 8), white, s * 0.045, 0.02, -0.112)); head.add(meshAt(new THREE.SphereGeometry(0.009, 8, 6), black, s * 0.045, 0.02, -0.13)); }
+    const head = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
+    const masked = look.mask && look.mask !== 'none', hatted = look.hat && look.hat !== 'none';
+    const skull = meshAt(new THREE.SphereGeometry(0.13, 24, 18), fur, 0, 0.005, 0.01); skull.scale.set(1, 1.05, 1.05); head.add(skull);
+    if (!hatted) { const crest = meshAt(new THREE.SphereGeometry(1, 12, 10), fur, 0, 0.105, 0.03); crest.scale.set(0.035, 0.06, 0.09); head.add(crest); }   // grzebień na czubku
+    for (const s of [-1, 1]) { const cheek = meshAt(new THREE.SphereGeometry(1, 12, 10), fur, s * 0.085, -0.035, -0.05); cheek.scale.set(0.06, 0.07, 0.07); head.add(cheek); }
+    const plate = meshAt(new THREE.SphereGeometry(1, 20, 14), face, 0, -0.01, -0.085); plate.scale.set(0.1, 0.11, 0.06); head.add(plate);
+    const brow = meshAt(new THREE.SphereGeometry(1, 16, 10), face, 0, 0.045, -0.112); brow.scale.set(0.115, 0.028, 0.04); head.add(brow);   // wał nadoczodołowy
+    for (const s of [-1, 1]) { const ear = meshAt(new THREE.SphereGeometry(1, 10, 8), face, s * 0.128, 0.0, -0.005); ear.scale.set(0.02, 0.032, 0.024); head.add(ear); }
+    if (!masked) {
+        const muzzle = meshAt(new THREE.SphereGeometry(1, 18, 12), face, 0, -0.06, -0.115); muzzle.scale.set(0.082, 0.058, 0.05); head.add(muzzle);
+        const dark = new THREE.MeshBasicMaterial({ color: 0x0a0605 });
+        for (const s of [-1, 1]) { const n = meshAt(new THREE.SphereGeometry(0.011, 8, 6), dark, s * 0.02, -0.042, -0.162); n.scale.set(1, 0.7, 0.5); head.add(n); }
+        head.add(meshAt(new THREE.BoxGeometry(0.075, 0.006, 0.01), dark, 0, -0.088, -0.158));
+        const eyeMat = k.glowEyes ? new THREE.MeshBasicMaterial({ color: 0xff2a10 }) : new THREE.MeshPhysicalMaterial({ color: 0x2a160c, roughness: 0.1, clearcoat: 1 });
+        for (const s of [-1, 1]) head.add(meshAt(new THREE.SphereGeometry(0.015, 12, 8), eyeMat, s * 0.042, 0.018, -0.118));
+    }
     head.add(buildMask(look.mask)); head.add(buildHat(look.hat)); head.add(buildGlasses(look.glasses));
     if (withName) { const tag = createNameSprite(String(look.name || 'Player').slice(0, 16)); tag.position.set(0, 0.45, 0); tag.scale.set(2, 0.5, 1); head.add(tag); }
     return head;
 }
-export function lookKey(look) { return [look.name, look.color, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
-// Awatar innego gracza: głowa, tułów i dwie dłonie
+// Tułów goryla: szeroka klatka, garb barków, ciemna pierś (środek = 0.35 m pod głową)
+export function createGorillaTorso(look) {
+    const g = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
+    const add = (m, x, y, z, sx, sy, sz) => { const o = meshAt(new THREE.SphereGeometry(1, 20, 14), m, x, y, z); o.scale.set(sx, sy, sz); g.add(o); return o; };
+    g.userData.chest = add(fur, 0, -0.08, 0.02, 0.3, 0.34, 0.24);
+    add(fur, 0, 0.17, 0.05, 0.36, 0.17, 0.26);                       // garb barków
+    for (const s of [-1, 1]) add(fur, s * 0.27, 0.15, 0.02, 0.13, 0.13, 0.15);   // ramiona
+    add(face, 0, 0.0, -0.17, 0.2, 0.17, 0.08);                       // ciemna pierś
+    if (k.back) add(new THREE.MeshStandardMaterial({ map: furTexture(), color: k.back, roughness: 0.9 }), 0, 0.0, 0.17, 0.25, 0.22, 0.1);
+    if (k.cape) {
+        const cape = meshAt(new THREE.BoxGeometry(0.62, 0.7, 0.02), new THREE.MeshStandardMaterial({ color: 0x9a0a10, roughness: 0.7, side: THREE.DoubleSide }), 0, -0.2, 0.27);
+        cape.rotation.x = 0.15; g.add(cape);
+        for (const s of [-1, 1]) g.add(meshAt(new THREE.SphereGeometry(0.035, 10, 8), new THREE.MeshStandardMaterial({ color: 0xd4a640, metalness: 1, roughness: 0.25 }), s * 0.22, 0.2, -0.05));
+    }
+    return g;
+}
+// Ramię goryla: cylinder od barku do nadgarstka, ustawiany co klatkę
+const ARM_GEO = new THREE.CylinderGeometry(0.055, 0.075, 1, 12).translate(0, 0.5, 0);
+export function createGorillaArm(look) { const m = new THREE.Mesh(ARM_GEO, furMat(look)); m.castShadow = true; return m; }
+const _Y = new THREE.Vector3(0, 1, 0), _sh = new THREE.Vector3(), _hp = new THREE.Vector3(), _dir = new THREE.Vector3();
+export function placeArm(arm, torso, side, hand) {
+    _sh.set(side * 0.27, 0.14, 0.02); torso.localToWorld(_sh);
+    hand.getWorldPosition(_hp);
+    if (arm.parent) arm.parent.worldToLocal(_sh), arm.parent.worldToLocal(_hp);
+    _dir.subVectors(_hp, _sh); const len = Math.max(0.05, _dir.length());
+    arm.position.copy(_sh); arm.quaternion.setFromUnitVectors(_Y, _dir.normalize()); arm.scale.set(1, len, 1);
+    arm.updateMatrixWorld(true);
+}
+export function lookKey(look) { return [look.name, look.color, look.skin, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
+// Awatar innego gracza: głowa i tułów goryla, długie ramiona i dłonie
 export function createAvatar(look) {
     const group = new THREE.Group();
-    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.35), mat({ color: new THREE.Color(look.color || '#3d2314'), roughness: 0.85 }));
-    torso.castShadow = true; group.add(torso);
+    const torso = createGorillaTorso(look); group.add(torso);
     const head = createHead(look, true); group.add(head);
     const handL = createRealHand(true, look), handR = createRealHand(false, look);
-    group.add(handL, handR);
+    const armL = createGorillaArm(look), armR = createGorillaArm(look);
+    group.add(handL, handR, armL, armR);
+    // Ramiona dociągane do dłoni tuż przed rysowaniem
+    torso.userData.chest.onBeforeRender = () => { placeArm(armL, torso, -1, handL); placeArm(armR, torso, 1, handR); };
     return { group, torso, head, handL, handR, key: lookKey(look) };
 }
