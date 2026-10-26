@@ -18,6 +18,16 @@ export const remoteAvatars = {};
 export const audioEls = {}, mutedPeers = new Set(), bannedNames = new Set(), reports = [];
 let peer = null, hostConnection = null, clientConnections = [], myPeerId = 'solo-player', leaving = false;
 const sharedObjectsState = {};
+// Wiadomości poziomu (np. stan potwora w trybie Cisza). Poziom rejestruje jeden odbiornik.
+let levelHandler = null;
+export function onLevelMsg(fn) { levelHandler = fn; }
+export function sendLevelMsg(payload) {
+    if (NET.mode === 'host') clientConnections.forEach(c => { if (c.open) c.send({ type: 'lvl', payload: payload }); });
+    else if (NET.mode === 'guest' && hostConnection && hostConnection.open) hostConnection.send({ type: 'lvl', payload: payload });
+}
+export function myId() { return myPeerId; }
+// Stan hosta widziany przez gościa (pozycja, poziom)
+export function hostState() { for (const id in playersState) if (isHostId(id)) return playersState[id]; return null; }
 const statusDiv = document.getElementById('status');
 
 export async function initMic() {
@@ -114,6 +124,7 @@ function handleGuest(conn) {
             if (nm && bannedNames.has(nm)) { kickConn(conn, nm); return; }
             playersState[conn.peer] = data.payload; updateRemote(conn.peer, data.payload);
         } else if (data.type === 'objectMove') { sharedObjectsState[data.id] = data.payload; syncObject(data.id, data.payload); }
+        else if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, conn.peer); }
         else if (data.type === 'report' && data.payload) {
             const from = (playersState[conn.peer] && playersState[conn.peer].profile) ? playersState[conn.peer].profile.name : 'Guest';
             reports.push({ from: from, targetId: data.payload.targetId, targetName: String(data.payload.targetName || '?').slice(0, 16), reason: String(data.payload.reason || '').slice(0, 24), time: new Date().toLocaleTimeString() });
@@ -159,6 +170,7 @@ export function startJoin(code, cb) {
             if (!data) return;
             if (data.type === 'serverFull') { leaveNetwork('Room ' + code + ' is full: 1 host and 9 guests.'); if (cb.fail) cb.fail(); return; }
             if (data.type === 'kicked') { leaveNetwork('The host removed you from room ' + code + '.'); return; }
+            if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, 'host'); return; }
             if (data.type === 'gameState') {
                 const pl = data.payload.players || {};
                 for (const pId in pl) { if (pId === myPeerId) continue; playersState[pId] = pl[pId]; updateRemote(pId, pl[pId]); }
