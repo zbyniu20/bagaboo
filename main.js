@@ -16,7 +16,8 @@ import { drawScoreboard } from './core/ui.js';
 const LEVELS = {
     lobby: { path: './levels/lobby.js', light: LIGHT_MODE, extras: ['./levels/lobby-door.js'] },
     maze: { path: './levels/maze.js', light: 'night', extras: [] },
-    silence: { path: './levels/silence.js', light: 'night', extras: [] }
+    silence: { path: './levels/silence.js', light: 'night', extras: [] },
+    well: { path: './levels/well.js', light: 'night', extras: [] }
 };
 let level = null, extras = [], levelId = null, started = false, switching = false;
 
@@ -53,17 +54,17 @@ async function goToLevel(id, spawn) {
 const $ = (id) => document.getElementById(id);
 function fillMenu() {
     const p = ECO.SAVE.profile;
-    $('playerName').value = p.name; $('playerSkin').value = p.skin; $('playerColor').value = p.color;
+    $('playerName').value = p.name; $('playerColor').value = p.color;
     const has = ECO.hasSave();
     $('btnSolo').innerText = has ? 'Continue solo' : 'Play solo';
     $('saveInfo').innerText = has
-        ? 'Save found: ' + ECO.SAVE.wallet + ' bones, record ' + Math.floor(ECO.SAVE.best.height) + ' m, ' + (ECO.SAVE.owned.length - 5) + ' items bought.'
+        ? 'Save found: ' + ECO.SAVE.wallet + ' bones, record ' + Math.floor(ECO.SAVE.best.height) + ' m, ' + ECO.SAVE.owned.filter(o => !/none|cap|cloth/.test(o)).length + ' items bought.'
         : 'No save yet. Your progress is saved on this device when you leave the game.';
     $('btnNew').style.display = has ? 'inline-block' : 'none';
 }
 function lobbyButtons(on) { ['btnHost', 'btnJoin', 'btnSolo', 'btnNew'].forEach(id => { $(id).disabled = !on; }); }
 function readProfile() {
-    ECO.setProfile({ name: ($('playerName').value || 'Acrobat').slice(0, 16), skin: $('playerSkin').value, color: $('playerColor').value });
+    ECO.setProfile({ name: ($('playerName').value || 'Acrobat').slice(0, 16), color: $('playerColor').value });
     NETM.NET.code = NETM.sanitizeCode($('roomCode').value) || 'MAIN';
 }
 
