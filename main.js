@@ -2,24 +2,46 @@
 // START GRY: menu, ładowanie poziomów, zapis przy wyjściu, pętla gry
 // ==========================================
 import { VRButton } from 'three/addons/webxr/VRButton.js';
-import { THREE, scene, camera, renderer, L, clearLevel } from './core/engine.js';
+import { THREE, scene, camera, renderer, L, clearLevel, applyLighting } from './core/engine.js';
+import { LIGHT_PRESETS, LIGHT_MODE } from './core/config.js';
 import * as ECO from './core/economy.js';
 import * as NETM from './core/network.js';
 import { updatePlayer, setPlayerPosition, buildHands, hands, playerBody, releaseAll } from './core/player.js';
-import { redrawTerminals, updatePointers, updateToast, markAllDirty, toast } from './core/terminal.js';
+import { redrawTerminals, updatePointers, updateToast, markAllDirty, toast, terminals } from './core/terminal.js';
+import { initAudio } from './core/audio.js';
 import { drawScoreboard } from './core/ui.js';
 
 // Lista poziomów. Nowy poziom = nowy plik w folderze levels/ + wpis tutaj.
-const LEVELS = { lobby: './levels/lobby.js' };
-let level = null, levelId = null, started = false;
+// light: preset oświetlenia z config.js, extras: dodatkowe pliki doładowywane razem z poziomem
+const LEVELS = {
+    lobby: { path: './levels/lobby.js', light: LIGHT_MODE, extras: ['./levels/lobby-door.js'] },
+    maze: { path: './levels/maze.js', light: 'night', extras: [] }
+};
+let level = null, extras = [], levelId = null, started = false, switching = false;
 
-export async function loadLevel(id) {
+export async function loadLevel(id, spawn) {
+    const cfg = LEVELS[id];
     releaseAll();
+    if (level && level.dispose) level.dispose();
+    for (const t of terminals) t.mesh = null;   // ekrany starego poziomu przestają reagować na laser
     clearLevel();
-    level = await import(LEVELS[id]);
+    applyLighting(LIGHT_PRESETS[cfg.light]);
+    level = await import(cfg.path);
     level.build();
-    levelId = id;
+    extras = [];
+    for (const e of cfg.extras) { const m = await import(e); m.build(); extras.push(m); }
+    levelId = id; L.levelId = id;
+    const sp = spawn || L.spawn;
+    setPlayerPosition(sp[0], sp[1], sp[2]);
     markAllDirty();
+}
+// Przejście przez drzwi do innego poziomu
+async function goToLevel(id, spawn) {
+    if (switching) return;
+    switching = true;
+    try { await loadLevel(id, spawn); saveNow(); }
+    catch (e) { console.error(e); toast('Could not load the level'); }
+    switching = false;
 }
 
 // --- Menu ---
@@ -59,9 +81,9 @@ function startGame(restorePosition) {
     setInterval(saveNow, 30000);
 }
 
-$('btnSolo').onclick = () => { readProfile(); startGame(true); };
-$('btnHost').onclick = () => { readProfile(); lobbyButtons(false); NETM.startHost(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
-$('btnJoin').onclick = () => { readProfile(); lobbyButtons(false); NETM.startJoin(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
+$('btnSolo').onclick = () => { initAudio(); readProfile(); startGame(true); };
+$('btnHost').onclick = () => { initAudio(); readProfile(); lobbyButtons(false); NETM.startHost(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
+$('btnJoin').onclick = () => { initAudio(); readProfile(); lobbyButtons(false); NETM.startJoin(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
 $('btnNew').onclick = () => {
     if (!confirm('Delete your save? Bones, bought items and records will be lost.')) return;
     ECO.resetSave(); location.reload();
@@ -84,7 +106,15 @@ let uiTimer = 0;
 renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1), t = clock.elapsedTime;
     updatePlayer(dt, t);
-    if (level) level.update(dt, t, { pos: playerBody.position });
+    if (level && !switching) {
+        const ctx = { pos: playerBody.position, body: playerBody };
+        level.update(dt, t, ctx);
+        for (const e of extras) if (e.update) e.update(dt, t, ctx);
+        // Drzwi do innych poziomów
+        if (started) for (const pt of L.portals) {
+            if (pt.box3.containsPoint(playerBody.position)) { if (pt.onEnter) pt.onEnter(); goToLevel(pt.target, pt.spawn); break; }
+        }
+    }
     NETM.poseRemoteHands(dt);
     if (started) ECO.tick(dt, NETM.otherPlayers().length);
     updatePointers();
