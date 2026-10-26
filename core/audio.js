@@ -71,7 +71,7 @@ export function scream() {
 export function scare() {
     if (!ctx) return;
     const t0 = ctx.currentTime;
-    duckDrone(t0);
+    duckDrone(t0); lastLoud = t0 + 1.2;
     const sub = ctx.createOscillator(), sg = ctx.createGain(); sub.type = 'sine';
     sub.frequency.setValueAtTime(110, t0); sub.frequency.exponentialRampToValueAtTime(26, t0 + 0.7);
     env(sg, t0, 1.0, 0.004, 0.8); sub.connect(sg); sg.connect(scareBus); sub.start(t0); sub.stop(t0 + 0.9);
@@ -86,7 +86,7 @@ export function scare() {
 export function stinger() {
     if (!ctx) return;
     const t0 = ctx.currentTime;
-    duckDrone(t0);
+    duckDrone(t0); lastLoud = t0;
     for (const f of [1318, 1396, 1975]) saw(t0, f, f * 0.8, 0.7, 0.28, shaper);
     const n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.4);
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2500;
@@ -138,3 +138,71 @@ export function heartbeat(intensity) {
     thump(now, 1.0 * intensity); thump(now + 0.17, 0.65 * intensity);
     hb.next = now + 60 / (55 + 95 * intensity);
 }
+
+// ---------- TRYB CISZA: ryk, kroki, bezpiecznik, mikrofon ----------
+let lastLoud = -10, micAnalyser = null, micBuf = null, micStream = null;
+function out(pan) {
+    if (!ctx.createStereoPanner || pan === undefined) return master;
+    const p = ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); p.connect(master); return p;
+}
+// Ryk Ślepca (vol 0..1 zależnie od odległości, pan -1..1 lewo/prawo)
+export function roar(vol, pan) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, dest = out(pan); lastLoud = t0;
+    const g = ctx.createGain(); env(g, t0, Math.max(0.01, vol), 0.15, 1.6);
+    const ws = ctx.createWaveShaper(); ws.curve = distortionCurve(80);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
+    ws.connect(lp); lp.connect(g); g.connect(dest);
+    for (const f of [68, 71, 103, 140]) {
+        const o = ctx.createOscillator(); o.type = 'sawtooth';
+        o.frequency.setValueAtTime(f * 1.3, t0); o.frequency.linearRampToValueAtTime(f, t0 + 0.4); o.frequency.linearRampToValueAtTime(f * 0.8, t0 + 1.7);
+        const og = ctx.createGain(); og.gain.value = 0.35; o.connect(og); og.connect(ws); o.start(t0); o.stop(t0 + 1.9);
+    }
+    const n = ctx.createBufferSource(); n.buffer = noiseBuffer(1.8);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 1.2;
+    const ng = ctx.createGain(); ng.gain.value = 0.6; n.connect(bp); bp.connect(ng); ng.connect(ws); n.start(t0);
+}
+// Ciężki krok potwora
+export function step(vol, pan) {
+    if (!ctx || vol < 0.02) return;
+    const t0 = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(70, t0); o.frequency.exponentialRampToValueAtTime(32, t0 + 0.25);
+    env(g, t0, vol, 0.01, 0.3); o.connect(g); g.connect(out(pan)); o.start(t0); o.stop(t0 + 0.35);
+}
+// Uderzenie kuli o podłogę lub ścianę
+export function ballHit(vol) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.3);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+    const g = ctx.createGain(); env(g, t0, vol, 0.003, 0.25); n.connect(lp); lp.connect(g); g.connect(master); n.start(t0);
+    const o = ctx.createOscillator(), og = ctx.createGain(); o.frequency.setValueAtTime(180, t0); o.frequency.exponentialRampToValueAtTime(60, t0 + 0.2);
+    env(og, t0, vol * 0.8, 0.003, 0.22); o.connect(og); og.connect(master); o.start(t0); o.stop(t0 + 0.3);
+}
+// Bezpiecznik włożony do panelu
+export function fuse() {
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    for (const [f, d] of [[660, 0], [990, 0.08], [1320, 0.16]]) {
+        const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'square'; o.frequency.value = f;
+        env(g, t0 + d, 0.12, 0.005, 0.18); o.connect(g); g.connect(master); o.start(t0 + d); o.stop(t0 + d + 0.25);
+    }
+}
+// Mikrofon: poziom głośności 0..1 (bez podłączania do głośników)
+export function attachMic(stream) {
+    if (!ctx || !stream || micStream === stream) return;
+    try {
+        const src = ctx.createMediaStreamSource(stream);
+        micAnalyser = ctx.createAnalyser(); micAnalyser.fftSize = 1024;
+        micBuf = new Float32Array(micAnalyser.fftSize);
+        src.connect(micAnalyser); micStream = stream;
+    } catch (e) { micAnalyser = null; }
+}
+// Zaraz po głośnym dźwięku gry mikrofon jest ignorowany, żeby gra nie "usłyszała" samej siebie z głośnika
+export function micLevel() {
+    if (!micAnalyser || !ctx || ctx.currentTime - lastLoud < 1.4) return 0;
+    if (micStream && !micStream.getAudioTracks().some(t => t.enabled)) return 0;
+    micAnalyser.getFloatTimeDomainData(micBuf);
+    let s = 0; for (let i = 0; i < micBuf.length; i++) s += micBuf[i] * micBuf[i];
+    return Math.sqrt(s / micBuf.length);
+}
+export function markLoud() { if (ctx) lastLoud = ctx.currentTime; }
