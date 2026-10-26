@@ -3,6 +3,7 @@
 // Ślepiec nic nie widzi, ale słyszy uderzenia dłoni i mikrofon. Przetrwaj 3 minuty.
 // Bezpieczniki skracają czas, czarne kule odciągają potwora, liny ratują przed szarżą.
 // W multiplayerze potworem steruje host; złapanych gracz trafia do gniazda, a inni mogą go uwolnić.
+// Po wygranej otwierają się drzwi do Studni (poziom 3); drzwi LOBBY za plecami prowadzą do lobby.
 // ==========================================
 import { THREE, CANNON, L, tex, camera, lighting, addBody, addConstraint, addCrispBlock, addBlobAO, physicsMat, GROUP, place, seg, V3, UNIT_SPHERE } from '../core/engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -19,7 +20,7 @@ import { ARRIVAL_SILENCE } from './lobby-door.js';
 const NP = LIGHT_PRESETS.night;
 const CEIL = 14;                             // pokój 30 x 30 m, 14 m wysokości
 const GAME_TIME = 180;                       // 3 minuty ucieczki
-const INTRO_TIME = 30, RESTART_INTRO = 6;    // instrukcja na start / krótka przerwa po restarcie
+const INTRO_TIME = 10, RESTART_INTRO = 6;    // instrukcja na start / krótka przerwa po restarcie
 const FUSE_COUNT = 4, FUSE_CUT = 25, FUSE_BONES = 40;   // każdy bezpiecznik: -25 s na zegarze i +40 kości
 const REWARD_FIRST = 1800, REWARD_REPEAT = 180;
 const CATCH_Y = 4.3, CATCH_R = 1.5;          // poniżej tej wysokości potwór cię dosięgnie
@@ -62,6 +63,7 @@ export function build() {
     buildFuses();
     buildClockBoard();
     buildExitDoor();
+    buildWellDoor();
     S.mon = buildMonster();
     buildScare();
     buildHud();
@@ -222,6 +224,32 @@ function buildExitDoor() {
     });
 }
 
+// Drzwi do Studni pod zegarem: zamknięte kratą, otwierają się po wygranej
+function buildWellDoor() {
+    const g = new THREE.Group(); g.position.set(0, 0, -14.97); L.root.add(g);
+    const frame = new THREE.MeshStandardMaterial({ color: 0x1c1416, metalness: 0.7, roughness: 0.45 });
+    for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.45, 0.16), frame); p.position.set(s * 0.72, 1.22, 0.1); g.add(p); }
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.58, 0.16, 0.16), frame); top.position.set(0, 2.38, 0.1); g.add(top);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.3, 0.06), new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x4a6a5a, roughness: 0.6 })); panel.position.set(0, 1.15, 0.06); g.add(panel);
+    const bars = [];
+    for (let i = 0; i < 7; i++) bars.push(new THREE.CylinderGeometry(0.025, 0.025, 2.3, 6).translate(-0.6 + i * 0.2, 1.15, 0.16));
+    const grate = new THREE.Mesh(mergeGeometries(bars), new THREE.MeshStandardMaterial({ color: 0x2a2624, metalness: 0.85, roughness: 0.35 })); g.add(grate);
+    const sc = T.makeCanvas(512, 128), sx = sc.getContext('2d');
+    sx.fillStyle = '#040a06'; sx.fillRect(0, 0, 512, 128);
+    sx.font = 'bold 70px serif'; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.shadowColor = '#b8ffcf'; sx.shadowBlur = 24; sx.fillStyle = '#b8ffcf'; sx.fillText('THE WELL', 256, 66);
+    const st = new THREE.CanvasTexture(sc); st.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.35), new THREE.MeshBasicMaterial({ map: st, toneMapped: false, transparent: true, opacity: 0.25 })); sign.position.set(0, 2.75, 0.1); g.add(sign);
+    S.wellDoor = { grate: grate, sign: sign, open: 0 };
+}
+function openWellDoor() {
+    S.wellDoor.opening = true; S.wellDoor.sign.material.opacity = 1;
+    const l = new THREE.PointLight(0x40ff90, 6, 6, 2); l.position.set(0, 2.6, -13.8); L.root.add(l);
+    L.portals.push({
+        box3: new THREE.Box3(new THREE.Vector3(-0.7, -0.5, -15.2), new THREE.Vector3(0.7, 2.6, -14.2)),
+        target: 'well', spawn: null, onEnter: () => toast('Do not look down...', '#b8ffcf')
+    });
+}
+
 // ---------- ŚLEPIEC (model) ----------
 function chain(pts, rads, sides, out) {
     for (let i = 0; i < pts.length - 1; i++) out.push(seg(pts[i], pts[i + 1], rads[i], rads[i + 1], sides || 10));
@@ -348,6 +376,7 @@ function drawHud() {
     let msg = '', col = '#cfe3ff';
     if (S.localNested) { msg = 'Caught! Wait for a friend to free you.'; col = '#ff6a4a'; }
     else if (S.rescueT > 0) { msg = 'Freeing... keep squeezing the cage lock'; col = '#9aff40'; }
+    else if (S.won) { msg = 'You survived! THE WELL (under the clock) or LOBBY (behind you)'; col = '#9aff40'; }
     else if (S.mon.mode === 'chase' || S.mon.mode === 'roar') { msg = 'It is coming! Climb a rope!'; col = '#ff4a2a'; }
     else if (S.mon.mode === 'camp') { msg = 'It waits below. Throw a black ball away.'; col = '#ffb030'; }
     else if (S.alert > 0) { msg = 'It heard something...'; col = '#ffb030'; }
@@ -557,15 +586,19 @@ function freeMe() {
     setPlayerPosition(NEST[0] + 2.2, 1.0, NEST[1] + 2.2);
     toast('You are free! Stay quiet.', '#9aff40');
 }
+// Wygrana: nagroda, potwór zastyga, otwierają się drzwi do Studni (gracz sam wybiera drzwi)
 function win() {
-    if (S.won || S.leaving) return;
-    S.won = true; S.leaving = true;
+    if (S.won) return;
+    S.won = true; S.phase = 'won';
     const wins = SAVE.silenceWins || 0, reward = wins === 0 ? REWARD_FIRST : REWARD_REPEAT;
     SAVE.silenceWins = wins + 1;
     addBones(reward, wins === 0 ? 'first silent escape!' : 'silent escape');
     saveGame();
     toast('You survived! +' + reward + ' bones', '#7fc47f');
-    S.ctx.goto('lobby', ARRIVAL_SILENCE);
+    setTimeout(() => toast('Choose a door: THE WELL or LOBBY', '#b8ffcf'), 2600);
+    S.mon.mode = 'sleep'; S.mon.speedNow = 0;
+    if (S.localNested) freeMe();
+    openWellDoor();
 }
 
 // ---------- CO KLATKĘ ----------
@@ -610,7 +643,7 @@ export function update(dt, t, ctx) {
         if (S.phase === 'play') {
             think(dt, parts);
             S.t -= dt;
-            if (S.t <= 0) { S.t = 0; S.phase = 'won'; broadcast(); win(); return; }
+            if (S.t <= 0) { S.t = 0; S.phase = 'won'; broadcast(); win(); }
         }
         S.netT -= dt;
         if (S.netT <= 0 && N.NET.mode === 'host') { S.netT = 0.1; broadcast(); }
@@ -658,6 +691,7 @@ export function update(dt, t, ctx) {
     }
 
     updateScare(dt);
+    if (S.wellDoor.opening && S.wellDoor.open < 1) { S.wellDoor.open = Math.min(1, S.wellDoor.open + dt * 0.6); S.wellDoor.grate.position.y = S.wellDoor.open * 2.4; }
     S.boardT -= dt; if (S.boardT <= 0) { S.boardT = 0.25; drawBoard(); }
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.12; drawHud(); }
 }
