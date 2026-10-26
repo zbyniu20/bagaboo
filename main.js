@@ -15,7 +15,8 @@ import { drawScoreboard } from './core/ui.js';
 // light: preset oświetlenia z config.js, extras: dodatkowe pliki doładowywane razem z poziomem
 const LEVELS = {
     lobby: { path: './levels/lobby.js', light: LIGHT_MODE, extras: ['./levels/lobby-door.js'] },
-    maze: { path: './levels/maze.js', light: 'night', extras: [] }
+    maze: { path: './levels/maze.js', light: 'night', extras: [] },
+    silence: { path: './levels/silence.js', light: 'night', extras: [] }
 };
 let level = null, extras = [], levelId = null, started = false, switching = false;
 
