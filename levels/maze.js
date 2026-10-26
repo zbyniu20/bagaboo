@@ -1,34 +1,37 @@
 // ==========================================
 // POZIOM: LABIRYNT 100 x 100 m, ściany 20 m, ciemność (preset 'night')
-// Start na południu, wyjście na północy. Po 20 s manekin wyłamuje się z klatki i goni gracza.
-// Złapanie = restart labiryntu. Błądzenie w ślepych odnogach = jumpscare. Wyjście = 2000 kości.
+// Przy każdym wejściu losuje się nowy układ. Start na południu, wyjście na północy.
+// Po 20 s manekin wyłamuje się z klatki i goni gracza. Złapanie = nowy labirynt od początku.
+// Jumpscare'y: ślepe zaułki, błądzenie, zjawy na końcu korytarzy. Wyjście = 2000 kości (kolejne razy 200).
 // ==========================================
-import { THREE, L, tex, camera, addCrispBlock, addCollider, scaleBoxUVs } from '../core/engine.js';
+import { THREE, L, tex, camera, lighting, addCrispBlock, addCollider, scaleBoxUVs } from '../core/engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LIGHT_PRESETS } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
-import { addBones, saveGame } from '../core/economy.js';
+import { addBones, saveGame, SAVE } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
-import { setPlayerPosition } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import { ARRIVAL } from './lobby-door.js';
 
 const NP = LIGHT_PRESETS.night;
 const N = 25, CELL = 4, HALF = 50, WT = 0.6, H = 20;   // 25 x 25 komórek po 4 m = 100 x 100 m
-const START_I = 12, SEED = 66613;
-const REWARD = 2000;
+const START_I = 12;
+const REWARD_FIRST = 2000, REWARD_REPEAT = 200;   // pierwsze przejście / każde kolejne
 const CAGE_TIME = 20;          // po ilu sekundach manekin się uwalnia
-const SPEED_START = 1.4, SPEED_MAX = 2.3, SPEED_RAMP = 180;   // m/s, rośnie przez 3 minuty
-const LOST_TIME = 22, SCARE_COOLDOWN = 40;   // ile sekund błądzenia do jumpscare'a
+const SPEED_START = 2.2, SPEED_MAX = 3.4, SPEED_RAMP = 120;   // m/s, rośnie przez 2 minuty
+const LOST_TIME = 10;          // ile sekund błądzenia poza główną drogą do jumpscare'a
+const SCARE_COOLDOWN = 15;     // minimalna przerwa między jumpscare'ami
+const DEADEND_CHANCE = 0.6;    // szansa na jumpscare po wejściu w ślepy zaułek
+const PHANTOM_MIN = 22, PHANTOM_MAX = 45;   // co ile sekund zjawa na końcu korytarza
 const START_NODE = N * N, END_NODE = N * N + 1;
 
 export const info = { id: 'maze', name: 'The Maze', spawn: [2, 1.0, 56] };
 let S = null;   // stan poziomu
 
 // ---------- GENEROWANIE LABIRYNTU ----------
-function generate() {
-    const R = T.mkRng(SEED);
+function generate(seed) {
+    const R = T.mkRng(seed);
     const hW = [], vW = [];   // hW[j][i]: ściana nad komórką (i,j); vW[j][i]: ściana po lewej komórki (i,j)
     for (let j = 0; j <= N; j++) hW.push(new Array(N).fill(true));
     for (let j = 0; j < N; j++) vW.push(new Array(N + 1).fill(true));
@@ -78,8 +81,10 @@ function bfs(M, from) {
 
 // ---------- BUDOWA ----------
 export function build() {
-    const M = generate(), root = L.root;
-    S = { M: M, time: 0, phase: 'intro', phaseT: 0, chaseT: 0, lost: 0, lastScare: -99, scareT: -1, playerNode: -1, dist: null, target: null, introShown: false, lights: [] };
+    const seed = (Math.random() * 1e9) | 0, M = generate(seed), root = L.root;
+    L.levelId = 'maze-' + seed;   // każdy gracz ma swój labirynt, więc inni gracze są ukryci
+    S = { M: M, time: 0, phase: 'intro', phaseT: 0, chaseT: 0, lost: 0, lastScare: -99, scareT: -1, playerNode: -1, dist: null, target: null, introShown: false, lights: [],
+          lastNode: -1, nextPhantom: PHANTOM_MIN + Math.random() * (PHANTOM_MAX - PHANTOM_MIN), phantom: null, blackout: 0 };
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -49.5, maxX: 49.5, minZ: -59.5, maxZ: 59.5, maxY: 19.6 };
 
@@ -112,6 +117,7 @@ export function build() {
     buildRooms();
     buildCage();
     buildScare();
+    buildPhantom();
     buildDecor();
 }
 
@@ -172,7 +178,12 @@ function buildRooms() {
     L.portals.push({
         box3: new THREE.Box3(new THREE.Vector3(1.2, 0, -60), new THREE.Vector3(2.8, 2.6, -58.6)),
         target: 'lobby', spawn: ARRIVAL,
-        onEnter: () => { addBones(REWARD, 'you escaped the maze!'); saveGame(); toast('You escaped! +' + REWARD + ' bones', '#7fc47f'); }
+        onEnter: () => {
+            const wins = SAVE.mazeWins || 0, reward = wins === 0 ? REWARD_FIRST : REWARD_REPEAT;
+            SAVE.mazeWins = wins + 1;
+            addBones(reward, wins === 0 ? 'first maze escape!' : 'maze escape');
+            saveGame(); toast('You escaped! +' + reward + ' bones', '#7fc47f');
+        }
     });
 }
 function door(x, z, rotY, label, col) {
@@ -229,21 +240,79 @@ function resetMannequin() {
     c.pivot.rotation.y = 0; c.pivot.position.set(0.7, 0, -0.7); c.lock.visible = true; c.group.position.set(c.home[0], 0, c.home[1]);
 }
 
-// Twarz do jumpscare'a, przyczepiona do kamery
+// Twarz do jumpscare'a, przyczepiona do kamery: wyskakuje z ciemności prosto w oczy
 function buildScare() {
     const m = buildMannequin(T.mkRng(4242)), head = m.head;
     head.parent.remove(head);
     head.traverse((o) => { if (o.material) { o.material = o.material.clone(); o.material.depthTest = false; o.renderOrder = 1000; } });
-    for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1000, transparent: true, blending: THREE.AdditiveBlending, depthTest: false })); e.scale.set(0.12, 0.12, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 1001; head.add(e); }
-    head.rotation.set(0, 0, 0); head.scale.setScalar(2.2); head.position.set(0, -0.33, -0.34);
-    const red = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.35, depthTest: false }));
-    red.position.z = -0.25; red.renderOrder = 999;
-    const g = new THREE.Group(); g.add(red); g.add(head); g.visible = false; camera.add(g);
-    S.scare = g;
+    for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1000, transparent: true, blending: THREE.AdditiveBlending, depthTest: false })); e.scale.set(0.16, 0.16, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 1001; head.add(e); }
+    head.rotation.set(0, 0, 0); head.scale.setScalar(2.4);
+    const plane = (col) => { const m2 = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, depthTest: false })); m2.position.z = -0.25; return m2; };
+    const black = plane(0x000000), red = plane(0xff0000);
+    black.renderOrder = 998; red.renderOrder = 999;
+    const g = new THREE.Group(); g.add(black); g.add(red); g.add(head); g.visible = false; camera.add(g);
+    S.scare = { g: g, head: head, red: red, black: black };
 }
 function jumpscare() {
-    S.scareT = 0; S.scare.visible = true; S.lastScare = S.time;
-    SFX.scream();
+    if (S.scareT >= 0) return;
+    S.scareT = 0; S.scare.g.visible = true; S.lastScare = S.time;
+    SFX.scare();
+}
+function updateScare(dt) {
+    if (S.scareT < 0) return;
+    S.scareT += dt;
+    const k = S.scareT, sc = S.scare, j = (a) => (Math.random() - 0.5) * a;
+    // 0.1 s: twarz pędzi z ciemności, potem trzęsie się tuż przed oczami
+    const z = k < 0.1 ? -1.9 + 1.58 * (k / 0.1) : -0.32;
+    sc.head.position.set(j(0.03), -0.36 + j(0.02), z + j(0.015));
+    sc.head.rotation.set(j(0.15), j(0.2), j(0.35));
+    // Stroboskop: czerwień i czerń na zmianę
+    const ph = Math.floor(k / 0.05) % 3;
+    if (k < 0.8) { sc.red.material.opacity = ph === 0 ? 0.6 : 0; sc.black.material.opacity = ph === 1 ? 0.92 : 0.5; }
+    else { const f = Math.max(0, 1 - (k - 0.8) / 0.6); sc.red.material.opacity = 0.35 * f; sc.black.material.opacity = 0.6 * f; }
+    if (k > 1.4) { sc.g.visible = false; S.scareT = -1; }
+}
+
+// Zjawa: manekin stoi na końcu korytarza, w który patrzysz. Gdy na nią spojrzysz, znika ze zgrzytem i gaśnie latarka.
+function buildPhantom() {
+    const m = buildMannequin(T.mkRng(31337));
+    for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.1, 0.1, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
+    m.group.visible = false; L.root.add(m.group);
+    S.ph = { group: m.group, active: false, t: 0, seen: 0 };
+}
+function openDir(i, j, d) {
+    const M = S.M;
+    if (d === 0) return j > 0 && !M.hW[j][i];
+    if (d === 1) return j < N - 1 && !M.hW[j + 1][i];
+    if (d === 2) return i > 0 && !M.vW[j][i];
+    return i < N - 1 && !M.vW[j][i + 1];
+}
+const _v = new THREE.Vector3(), _c = new THREE.Vector3();
+function trySpawnPhantom(p) {
+    const n = nodeAt(p.x, p.z); if (n >= N * N) return false;
+    camera.getWorldDirection(_v);
+    const D = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+    let d = 0, best = -9;
+    for (let k = 0; k < 4; k++) { const dot = D[k][0] * _v.x + D[k][1] * _v.z; if (dot > best) { best = dot; d = k; } }
+    let i = n % N, j = (n / N) | 0, last = null;
+    for (let s = 1; s <= 5; s++) { if (!openDir(i, j, d)) break; i += D[d][0]; j += D[d][1]; if (s >= 2) last = [i, j]; }
+    if (!last) return false;
+    const c = cellCenter(last[0], last[1]), ph = S.ph;
+    ph.group.position.set(c[0], 0, c[1]); ph.group.rotation.y = Math.atan2(p.x - c[0], p.z - c[1]);
+    ph.group.visible = true; ph.active = true; ph.t = 0; ph.seen = 0;
+    SFX.whisper();
+    return true;
+}
+function updatePhantom(dt, p) {
+    const ph = S.ph; if (!ph.active) return;
+    ph.t += dt;
+    camera.getWorldPosition(_c); camera.getWorldDirection(_v);
+    const dx = ph.group.position.x - _c.x, dy = 1.5 - _c.y, dz = ph.group.position.z - _c.z, d = Math.hypot(dx, dy, dz);
+    if ((dx * _v.x + dy * _v.y + dz * _v.z) / d > 0.92) ph.seen += dt;
+    const near = Math.hypot(p.x - ph.group.position.x, p.z - ph.group.position.z) < 2.2;
+    if (near) { ph.active = false; ph.group.visible = false; jumpscare(); }
+    else if (ph.seen > 0.35) { ph.active = false; ph.group.visible = false; SFX.stinger(); S.blackout = 0.45; S.lastScare = S.time; }
+    else if (ph.t > 5) { ph.active = false; ph.group.visible = false; }
 }
 
 function buildDecor() {
@@ -260,12 +329,6 @@ function buildDecor() {
 }
 
 // ---------- CO KLATKĘ ----------
-function restart(msg) {
-    resetMannequin();
-    S.phase = 'intro'; S.phaseT = 0; S.time = 0; S.chaseT = 0; S.lost = 0; S.introShown = false;
-    setPlayerPosition(info.spawn[0], info.spawn[1], info.spawn[2]);
-    if (msg) toast(msg, '#e0533f');
-}
 function freeze(body) { if (!S.frozen) S.frozen = body.position.clone(); body.position.copy(S.frozen); body.velocity.set(0, 0, 0); }
 
 export function update(dt, t, ctx) {
@@ -273,20 +336,25 @@ export function update(dt, t, ctx) {
     const body = ctx.body, p = body.position, q = S.mq, c = S.cage;
     S.time += dt; S.phaseT += dt;
 
-    // Migotanie lamp
+    if (S.blackout > 0) S.blackout -= dt;
+    const dark = S.blackout > 0;
+    // Migotanie lamp (i ich zgaśnięcie, gdy znika zjawa)
     for (const lt of S.lights) {
         let v = lt.base * (0.85 + 0.15 * Math.sin(t * 9 + lt.ph) * Math.sin(t * 13.3 + lt.ph * 1.7));
         if (Math.sin(t * 0.4 + lt.ph * 2.1) > 0.99) v *= 0.15;
         if (S.phase === 'cutscene' && S.phaseT < 2.2) v *= Math.random() < 0.5 ? 0.05 : 1.2;
+        if (dark) v = 0;
         lt.l.intensity = v; lt.glow.material.opacity = 0.35 + 0.45 * v / lt.base;
     }
+    // Latarka: gaśnie przy zjawie i przerywa, gdy manekin jest blisko
+    const qd = Math.hypot(p.x - q.x, p.z - q.z);
+    let lamp = 1;
+    if (dark) lamp = 0;
+    else if (S.phase === 'chase' && qd < 10 && Math.random() < 0.12) lamp = 0.15;
+    lighting.headLamp.intensity = NP.flashlight.intensity * lamp;
 
-    // Jumpscare trwa 1 sekundę
-    if (S.scareT >= 0) {
-        S.scareT += dt;
-        S.scare.children[0].material.opacity = 0.25 + 0.25 * Math.sin(S.scareT * 60);
-        if (S.scareT > 1.0) { S.scare.visible = false; S.scareT = -1; }
-    }
+    updateScare(dt);
+    if (S.phase === 'intro' || S.phase === 'chase') updatePhantom(dt, p);
 
     if (S.phase === 'intro') {
         if (!S.introShown && S.time > 1) { S.introShown = true; toast('Find the exit. Something is waiting...', '#ff6a40'); }
@@ -312,17 +380,28 @@ export function update(dt, t, ctx) {
         chase(dt, t, p);
         const dx = p.x - q.x, dz = p.z - q.z, dist = Math.hypot(dx, dz);
         SFX.heartbeat(Math.max(0, 1 - dist / 22));
-        if (dist < 0.85 && p.y < 3.2) { S.phase = 'caught'; S.phaseT = 0; jumpscare(); }
+        if (dist < 0.85 && p.y < 3.2) { S.phase = 'caught'; S.phaseT = 0; S.scareT = -1; jumpscare(); }
     } else if (S.phase === 'caught') {
         freeze(body);
-        if (S.phaseT > 1.3) { S.frozen = null; restart('The mannequin caught you. Starting over.'); }
-    }
+        if (S.phaseT > 1.5) { S.phase = 'leaving'; S.frozen = null; toast('The mannequin caught you. A new maze awaits...', '#e0533f'); ctx.goto('maze'); }
+        return;
+    } else return;
 
-    // Błądzenie poza główną drogą (w ślepych odnogach) przez dłuższy czas = jumpscare
-    const pn = nodeAt(p.x, p.z);
-    if (S.phase === 'intro' || S.phase === 'chase') {
-        if (!S.onPath.has(pn)) S.lost += dt; else S.lost = Math.max(0, S.lost - dt * 2);
-        if (S.lost > LOST_TIME && S.time - S.lastScare > SCARE_COOLDOWN && S.scareT < 0) { jumpscare(); S.lost = 0; }
+    if (S.phase === 'cutscene') return;
+    // Jumpscare'y za złą drogę
+    const pn = nodeAt(p.x, p.z), canScare = S.time - S.lastScare > SCARE_COOLDOWN && S.scareT < 0 && !S.ph.active;
+    if (pn !== S.lastNode) {
+        S.lastNode = pn;
+        // Wejście w ślepy zaułek poza główną drogą
+        if (pn < N * N && !S.onPath.has(pn) && neighbors(S.M, pn).length === 1 && canScare && Math.random() < DEADEND_CHANCE) jumpscare();
+    }
+    // Dłuższe błądzenie poza główną drogą
+    if (!S.onPath.has(pn)) S.lost += dt; else S.lost = Math.max(0, S.lost - dt * 2);
+    if (S.lost > LOST_TIME && canScare) { jumpscare(); S.lost = 0; }
+    // Zjawa na końcu korytarza co jakiś czas
+    S.nextPhantom -= dt;
+    if (S.nextPhantom <= 0 && canScare) {
+        S.nextPhantom = trySpawnPhantom(p) ? PHANTOM_MIN + Math.random() * (PHANTOM_MAX - PHANTOM_MIN) : 3;
     }
 }
 
@@ -357,6 +436,6 @@ function chase(dt, t, p) {
 
 // Wywoływane przy wyjściu z poziomu: sprzątanie rzeczy przyczepionych do kamery
 export function dispose() {
-    if (S && S.scare) camera.remove(S.scare);
+    if (S && S.scare) camera.remove(S.scare.g);
     S = null;
 }
