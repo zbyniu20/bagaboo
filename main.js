@@ -23,14 +23,18 @@ export async function loadLevel(id, spawn) {
     const cfg = LEVELS[id];
     releaseAll();
     if (level && level.dispose) level.dispose();
+    for (const e of extras) if (e.dispose) e.dispose();
     for (const t of terminals) t.mesh = null;   // ekrany starego poziomu przestają reagować na laser
     clearLevel();
     applyLighting(LIGHT_PRESETS[cfg.light]);
     level = await import(cfg.path);
-    level.build();
     extras = [];
-    for (const e of cfg.extras) { const m = await import(e); m.build(); extras.push(m); }
-    levelId = id; L.levelId = id;
+    for (const e of cfg.extras) extras.push(await import(e));
+    L.levelId = id;   // poziom może to nadpisać (labirynt ma osobne id dla każdego układu)
+    for (const e of extras) if (e.prebuild) e.prebuild();
+    level.build();
+    for (const e of extras) e.build();
+    levelId = id;
     const sp = spawn || L.spawn;
     setPlayerPosition(sp[0], sp[1], sp[2]);
     markAllDirty();
@@ -107,7 +111,7 @@ renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1), t = clock.elapsedTime;
     updatePlayer(dt, t);
     if (level && !switching) {
-        const ctx = { pos: playerBody.position, body: playerBody };
+        const ctx = { pos: playerBody.position, body: playerBody, goto: (id, sp) => goToLevel(id, sp) };
         level.update(dt, t, ctx);
         for (const e of extras) if (e.update) e.update(dt, t, ctx);
         // Drzwi do innych poziomów
