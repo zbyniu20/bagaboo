@@ -2,7 +2,7 @@
 // DŁONIE (kciuk + dwa palce), GŁOWY I KOSMETYKI ZE SKLEPU
 // look = { name, skin, color, hat, glasses, sleeve, gloves }
 // ==========================================
-import { THREE, g, V3 } from './engine.js';
+import { THREE, tex, seg, V3 } from './engine.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP } from './config.js';
