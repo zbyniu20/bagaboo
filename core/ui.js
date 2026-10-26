@@ -76,7 +76,7 @@ export const computer = new Terminal((t) => {
 });
 
 // ---------- AUTOMAT SKLEPOWY (sklep, nagroda za logowanie, zadania dzienne) ----------
-const shopUi = { tab: 'shop', slot: 'hat', tryItem: null };
+const shopUi = { tab: 'shop', slot: 'skin', tryItem: null };
 const previewHandlers = [];
 export function onPreview(fn) { previewHandlers.push(fn); }
 export function previewLook() {
@@ -97,16 +97,18 @@ export const shop = new Terminal((t) => {
     if (login.ready) { c.fillStyle = OK_COL; c.beginPath(); c.arc(28 + 250 + 222, 92, 9, 0, 7); c.fill(); }
 
     if (shopUi.tab === 'shop') {
-        E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * 195, 152, 182, 46, s.name, () => { shopUi.slot = s.id; }, { size: 22, tone: 'gold', active: shopUi.slot === s.id }));
+        E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * 162, 152, 152, 46, s.name, () => { shopUi.slot = s.id; }, { size: 21, tone: 'gold', active: shopUi.slot === s.id }));
         const items = E.CATALOG.filter(it => it.slot === shopUi.slot);
         items.forEach((it, i) => {
             const y = 208 + i * 50, owned = E.isOwned(it), worn = E.isEquipped(it), trying = shopUi.tryItem === it;
             c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, 44);
             t.text(it.name, 40, y + 22, 24, worn ? OK_COL : GOLD, 'left', true);
-            t.text(it.price === 0 ? 'Free' : it.price + ' bones', 430, y + 22, 22, owned ? AMBER_DIM : (E.SAVE.wallet >= it.price ? AMBER : BAD_COL), 'left');
+            const locked = E.isLocked(it);
+            t.text(locked ? 'Red route only' : (it.price === 0 ? 'Free' : it.price + ' bones'), 430, y + 22, 22, locked ? BAD_COL : (owned ? AMBER_DIM : (E.SAVE.wallet >= it.price ? AMBER : BAD_COL)), 'left');
             t.btn('try' + it.id, 610, y + 4, 160, 36, trying ? 'Trying' : 'Try on', () => { shopUi.tryItem = trying ? null : it; refreshPreview(); }, { size: 20, active: trying });
             if (worn) t.btn('worn' + it.id, 790, y + 4, 200, 36, 'Wearing', null, { size: 20, disabled: true });
             else if (owned) t.btn('wear' + it.id, 790, y + 4, 200, 36, 'Wear', () => { E.equipItem(it); }, { size: 20, tone: 'ok' });
+            else if (locked) t.btn('lock' + it.id, 790, y + 4, 200, 36, 'Locked', null, { size: 20, disabled: true });
             else t.btn('buy' + it.id, 790, y + 4, 200, 36, E.SAVE.wallet >= it.price ? 'Buy' : 'Need ' + (it.price - E.SAVE.wallet), () => { E.buyItem(it); }, { size: 20, tone: 'gold', disabled: E.SAVE.wallet < it.price });
         });
         t.text('Look at the stand next to the machine to see the item on a head.', 40, 626, 18, AMBER_DIM, 'left');
