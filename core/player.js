@@ -38,7 +38,8 @@ export function setPlayerPosition(x, y, z) {
 }
 
 let grounded = false, handPushing = false, stepped = false, simTime = 0, lastPushTime = -10, lastTrampTime = -10;
-let grabbed = null, grabbingIndex = -1, ropeConstraint = null;
+let grabbed = null, grabbingIndex = -1, ropeConstraint = null, ropeHand = -1;
+const wasTouch = [false, false], lastSpd = [0, 0], lastScrape = [0, 0];
 const prevLocal = [new THREE.Vector3(), new THREE.Vector3()];
 const ctrlInput = [{ squeeze: false, select: false }, { squeeze: false, select: false }];
 const hit = { nx: 0, ny: 0, nz: 0, depth: 0 };
@@ -60,20 +61,26 @@ function onSqueezeStart(i) {
             return;
         }
     }
-    if (ropeConstraint) return;
+    // Lina: chwyt drugą ręką wyżej przenosi uchwyt, ciągnięcie ręki w dół podciąga gracza (wspinanie)
     for (const rope of L.ropes) {
         const localY = pos.y - rope.body.position.y;
         if (localY < rope.halfHeight && localY > -rope.halfHeight && Math.hypot(pos.x - rope.body.position.x, pos.z - rope.body.position.z) < 0.8) {
-            const off = new CANNON.Vec3(playerBody.position.x - pos.x, playerBody.position.y - pos.y, playerBody.position.z - pos.z);
-            ropeConstraint = new CANNON.PointToPointConstraint(playerBody, off, rope.body, new CANNON.Vec3(0, localY, 0));
-            world.addConstraint(ropeConstraint);
-            track('rope');
+            const first = !ropeConstraint;
+            if (ropeConstraint) world.removeConstraint(ropeConstraint);
+            ropeConstraint = new CANNON.PointToPointConstraint(playerBody, ropePivot(i), rope.body, new CANNON.Vec3(0, localY, 0));
+            world.addConstraint(ropeConstraint); ropeHand = i;
+            if (first) track('rope');
             return;
         }
     }
 }
+// Punkt chwytu względem środka gracza, liczony z pozycji kontrolera
+function ropePivot(i) {
+    const c = controllers[i].position, cam = camera.position;
+    return new CANNON.Vec3(c.x - cam.x, c.y - radius - gorillaStanceOffset, c.z - cam.z);
+}
 function onSqueezeEnd(i) {
-    if (ropeConstraint) { world.removeConstraint(ropeConstraint); ropeConstraint = null; }
+    if (ropeConstraint && i === ropeHand) { world.removeConstraint(ropeConstraint); ropeConstraint = null; ropeHand = -1; }
     if (grabbed && grabbingIndex === i) {
         const b = grabbed.userData.body;
         b.type = CANNON.Body.DYNAMIC;
@@ -86,9 +93,11 @@ function onSqueezeEnd(i) {
 }
 // Po zmianie poziomu liny i piłki znikają, więc puszczamy wszystko
 export function releaseAll() {
-    if (ropeConstraint) { world.removeConstraint(ropeConstraint); ropeConstraint = null; }
+    releaseRope();
     grabbed = null; grabbingIndex = -1; L.heldId = null;
 }
+export function releaseRope() { if (ropeConstraint) { world.removeConstraint(ropeConstraint); ropeConstraint = null; ropeHand = -1; } }
+export function isOnRope() { return !!ropeConstraint; }
 
 function sphereVsBox(px, py, pz, r, b) {
     const cx = Math.max(b.min.x, Math.min(px, b.max.x)), cy = Math.max(b.min.y, Math.min(py, b.max.y)), cz = Math.max(b.min.z, Math.min(pz, b.max.z));
@@ -155,6 +164,7 @@ function clampHand(controller, hand) {
 function handleMovement(i, dt) {
     const controller = controllers[i], hand = i === 0 ? hands.L : hands.R, prev = prevLocal[i];
     const current = controller.position.clone();
+    const spd = prev.lengthSq() > 0 ? current.distanceTo(prev) / Math.max(dt, 1 / 120) : 0;   // prędkość dłoni względem ciała
     let touching = false;
     if (prev.lengthSq() > 0 && !ropeConstraint) {
         const delta = new THREE.Vector3().subVectors(current, prev);
@@ -184,6 +194,12 @@ function handleMovement(i, dt) {
             if (handSpeed > RUN_MIN_SPEED) lastPushTime = simTime;
         }
     }
+    // Hałas rąk dla poziomów, które go słuchają (L.onNoise): uderzenie przy dotknięciu i mocne szuranie
+    if (L.onNoise) {
+        if (touching && !wasTouch[i]) L.onNoise(Math.max(spd, lastSpd[i]), hand.position);
+        else if (touching && spd > 2.0 && simTime - lastScrape[i] > 0.25) { lastScrape[i] = simTime; L.onNoise(spd * 0.7, hand.position); }
+    }
+    wasTouch[i] = touching; lastSpd[i] = spd;
     prev.copy(current);
     return touching;
 }
@@ -212,6 +228,7 @@ export function updatePlayer(dt, t) {
         handTarget(hands.R.userData.rig, 1, handleMovement(1, dt));
     }
     if (hands.L) { poseHand(hands.L.userData.rig, dt); poseHand(hands.R.userData.rig, dt); }
+    if (ropeConstraint && ropeHand >= 0) { ropeConstraint.pivotA.copy(ropePivot(ropeHand)); hands[ropeHand === 0 ? 'L' : 'R'].userData.rig.target = 1.0; }
     if (grabbed) {
         const hm = grabbingIndex === 0 ? hands.L : hands.R, b = grabbed.userData.body;
         b.position.set(hm.position.x, hm.position.y, hm.position.z); containBall(b);
