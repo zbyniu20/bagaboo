@@ -31,28 +31,39 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
-if (LP.envIntensity > 0) scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
-scene.add(new THREE.HemisphereLight(LP.hemiSky, LP.hemiGround, LP.hemiIntensity));
-if (LP.sunIntensity > 0) {
-    const sun = new THREE.DirectionalLight(LP.sunColor, LP.sunIntensity);
-    sun.position.set(LP.sunPos[0], LP.sunPos[1], LP.sunPos[2]);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(GFX.shadowMap, GFX.shadowMap);
-    sun.shadow.camera.near = 1; sun.shadow.camera.far = 160;
-    sun.shadow.camera.left = -26; sun.shadow.camera.right = 26; sun.shadow.camera.top = 26; sun.shadow.camera.bottom = -26;
-    sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.04;
-    scene.add(sun);
+// Światło. Każdy poziom ma własny preset (applyLighting). Lobby używa LIGHT_MODE z config.js.
+const envTex = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+const hemi = new THREE.HemisphereLight(0xffffff, 0x000000, 1); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 1);
+sun.castShadow = true;
+sun.shadow.mapSize.set(GFX.shadowMap, GFX.shadowMap);
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 160;
+sun.shadow.camera.left = -26; sun.shadow.camera.right = 26; sun.shadow.camera.top = 26; sun.shadow.camera.bottom = -26;
+sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.04;
+scene.add(sun);
+// Latarka na głowie (włączana tylko w ciemnych poziomach)
+const headLamp = new THREE.SpotLight(0xffffff, 0, 34, 0.52, 0.65, 2);
+headLamp.castShadow = true; headLamp.shadow.mapSize.set(1024, 1024);
+headLamp.shadow.camera.near = 0.15; headLamp.shadow.camera.far = 36;
+headLamp.shadow.bias = -0.0005; headLamp.shadow.normalBias = 0.03;
+headLamp.target.position.set(0, 0, -6);
+camera.add(headLamp); camera.add(headLamp.target);
+export const lighting = { preset: null, headLamp: headLamp, sun: sun, hemi: hemi };
+export let flashlight = null;   // zostawione dla zgodności z lobby.js
+
+export function applyLighting(P) {
+    lighting.preset = P;
+    scene.background.set(P.background);
+    scene.fog.color.set(P.fogColor); scene.fog.density = P.fogDensity;
+    renderer.toneMappingExposure = P.exposure;
+    scene.environment = P.envIntensity > 0 ? envTex : null;
+    hemi.color.set(P.hemiSky); hemi.groundColor.set(P.hemiGround); hemi.intensity = P.hemiIntensity;
+    sun.visible = P.sunIntensity > 0; sun.intensity = P.sunIntensity; sun.color.set(P.sunColor);
+    sun.position.set(P.sunPos[0], P.sunPos[1], P.sunPos[2]);
+    headLamp.visible = !!P.flashlight;
+    if (P.flashlight) { const F = P.flashlight; headLamp.color.set(F.color); headLamp.intensity = F.intensity; headLamp.distance = F.distance; headLamp.angle = F.angle; headLamp.penumbra = F.penumbra; headLamp.decay = F.decay; }
 }
-export let flashlight = null;
-if (LP.flashlight) {
-    const F = LP.flashlight;
-    flashlight = new THREE.SpotLight(F.color, F.intensity, F.distance, F.angle, F.penumbra, F.decay);
-    flashlight.castShadow = true; flashlight.shadow.mapSize.set(1024, 1024);
-    flashlight.shadow.camera.near = 0.15; flashlight.shadow.camera.far = 36;
-    flashlight.shadow.bias = -0.0005; flashlight.shadow.normalBias = 0.03;
-    flashlight.target.position.set(0, 0, -6);
-    camera.add(flashlight); camera.add(flashlight.target);
-}
+applyLighting(LP);
 
 // Fizyka (gracz nie ma kontaktów w Cannonie, jego kolizje liczy player.js)
 export const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12.0, 0) });
@@ -72,17 +83,27 @@ export const tex = {
 export const L = {
     root: new THREE.Group(),
     obstacles: [], trampolines: [], ropes: [], throwables: [], bodies: [], constraints: [], reserved: [],
+    portals: [],      // przejścia do innych poziomów { box3, target, spawn, onEnter }
     tramp: null,      // animacja maty trampoliny { mat, k }
     heldId: null,     // id piłki trzymanej przez lokalnego gracza
-    spawn: [0, 2, 0]
+    spawn: [0, 2, 0],
+    levelId: 'lobby',
+    bounds: { minX: -14.6, maxX: 14.6, minZ: -14.6, maxZ: 14.6, maxY: 19.6 }   // twarde granice ruchu gracza
 };
 scene.add(L.root);
 
 export function clearLevel() {
     for (const c of L.constraints) world.removeConstraint(c);
     for (const b of L.bodies) world.removeBody(b);
-    for (const k of ['obstacles', 'trampolines', 'ropes', 'throwables', 'bodies', 'constraints', 'reserved']) L[k].length = 0;
+    for (const k of ['obstacles', 'trampolines', 'ropes', 'throwables', 'bodies', 'constraints', 'reserved', 'portals']) L[k].length = 0;
     L.tramp = null; L.heldId = null;
+    L.bounds = { minX: -14.6, maxX: 14.6, minZ: -14.6, maxZ: 14.6, maxY: 19.6 };
+    // Zwolnienie pamięci karty graficznej po starym poziomie
+    L.root.traverse((o) => {
+        if (o.geometry) o.geometry.dispose();
+        const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+        for (const m of mats) { for (const k of ['map', 'emissiveMap', 'bumpMap', 'roughnessMap']) if (m[k]) m[k].dispose(); m.dispose(); }
+    });
     L.root.clear();
 }
 export function addBody(body) { world.addBody(body); L.bodies.push(body); return body; }
@@ -118,10 +139,14 @@ export function addStaticBody(x, y, z, shape, obj, isTrampoline) {
     if (isTrampoline) L.trampolines.push({ box3 });
     L.obstacles.push({ obj, body, box3 });
 }
-function scaleBoxUVs(geo, w, h, d, m) {
+export function scaleBoxUVs(geo, w, h, d, m) {
     const uv = geo.attributes.uv, dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
     for (let f = 0; f < 6; f++) for (let v = 0; v < 4; v++) { const i = f * 4 + v; uv.setXY(i, uv.getX(i) * dims[f][0] / m, uv.getY(i) * dims[f][1] / m); }
     uv.needsUpdate = true;
+}
+// Sama kolizja gracza (bez fizyki Cannona): szybsza przy setkach ścian, np. w labiryncie
+export function addCollider(minX, minY, minZ, maxX, maxY, maxZ) {
+    L.obstacles.push({ obj: null, body: null, box3: new THREE.Box3(new THREE.Vector3(minX, minY, minZ), new THREE.Vector3(maxX, maxY, maxZ)) });
 }
 // Teksturowany blok z kolizją. opts: { rough, physical, uvMeters }
 export function addCrispBlock(x, y, z, w, h, d, color, edgeColor, texture, opts) {
