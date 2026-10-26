@@ -53,6 +53,7 @@ function updateRemote(id, st) {
     if (st.h2.g !== undefined) p.handR.userData.rig.target = st.h2.g;
     const e = new THREE.Euler().setFromQuaternion(p.head.quaternion, 'YXZ');
     p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -0.35, 0)); p.torso.rotation.set(0, e.y, 0);
+    p.group.visible = (st.lvl || 'lobby') === L.levelId;   // widać tylko graczy na tym samym poziomie
 }
 function removeRemote(id) { if (remoteAvatars[id]) { scene.remove(remoteAvatars[id].group); delete remoteAvatars[id]; } }
 export function poseRemoteHands(dt) { for (const id in remoteAvatars) { poseHand(remoteAvatars[id].handL.userData.rig, dt); poseHand(remoteAvatars[id].handR.userData.rig, dt); } }
@@ -211,6 +212,7 @@ export function networkTick(handL, handR) {
     const l2p = new THREE.Vector3(), l2q = new THREE.Quaternion(); handR.getWorldPosition(l2p); handR.getWorldQuaternion(l2q);
     const myState = {
         profile: getLook(),
+        lvl: L.levelId,
         head: { p: hp.toArray(), q: hq.toArray() },
         h1: { p: l1p.toArray(), q: l1q.toArray(), g: handL.userData.rig.grip },
         h2: { p: l2p.toArray(), q: l2q.toArray(), g: handR.userData.rig.grip },
