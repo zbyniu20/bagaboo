@@ -199,11 +199,11 @@ export function updatePlayer(dt, t) {
     simTime = t;
     world.step(1 / 90, dt, 10);
     if (stepped) { handPushing = false; stepped = false; }
-    const bp = playerBody.position, bv = playerBody.velocity;
-    if (bp.x < -14.6) { bp.x = -14.6; bv.x = 0; } if (bp.x > 14.6) { bp.x = 14.6; bv.x = 0; }
-    if (bp.z < -14.6) { bp.z = -14.6; bv.z = 0; } if (bp.z > 14.6) { bp.z = 14.6; bv.z = 0; }
+    const bp = playerBody.position, bv = playerBody.velocity, B = L.bounds;   // granice ustawia poziom
+    if (bp.x < B.minX) { bp.x = B.minX; bv.x = 0; } if (bp.x > B.maxX) { bp.x = B.maxX; bv.x = 0; }
+    if (bp.z < B.minZ) { bp.z = B.minZ; bv.z = 0; } if (bp.z > B.maxZ) { bp.z = B.maxZ; bv.z = 0; }
     if (bp.y < radius) { bp.y = radius; if (bv.y < 0) bv.y = 0; }
-    if (bp.y > 19.6) { bp.y = 19.6; if (bv.y > 0) bv.y = 0; }
+    if (bp.y > B.maxY) { bp.y = B.maxY; if (bv.y > 0) bv.y = 0; }
     track('height', bp.y - radius);
 
     if (hands.L && renderer.xr.isPresenting) {
