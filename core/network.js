@@ -26,6 +26,13 @@ export function sendLevelMsg(payload) {
     else if (NET.mode === 'guest' && hostConnection && hostConnection.open) hostConnection.send({ type: 'lvl', payload: payload });
 }
 export function myId() { return myPeerId; }
+// Drużyna idzie za hostem: host wysyła poziom (i ziarno układu), goście wchodzą tam za nim
+let followHandler = null, lastFollow = null;
+export function onFollow(fn) { followHandler = fn; }
+export function sendFollow(level, data) {
+    lastFollow = { level: level, data: data || {} };
+    if (NET.mode === 'host') clientConnections.forEach(c => { if (c.open) c.send({ type: 'follow', level: level, data: lastFollow.data }); });
+}
 // Stan hosta widziany przez gościa (pozycja, poziom)
 export function hostState() { for (const id in playersState) if (isHostId(id)) return playersState[id]; return null; }
 const statusDiv = document.getElementById('status');
@@ -116,6 +123,7 @@ function handleGuest(conn) {
     conn.on('open', () => {
         if (clientConnections.length >= MAX_GUESTS) { conn.send({ type: 'serverFull' }); setTimeout(() => { try { conn.close(); } catch (e) {} }, 500); return; }
         clientConnections.push(conn); hostStatus();
+        if (lastFollow && lastFollow.level !== 'lobby') conn.send({ type: 'follow', level: lastFollow.level, data: lastFollow.data });   // nowy gość dołącza tam, gdzie jest host
     });
     conn.on('data', (data) => {
         if (!data || !clientConnections.includes(conn)) return;
@@ -171,6 +179,7 @@ export function startJoin(code, cb) {
             if (data.type === 'serverFull') { leaveNetwork('Room ' + code + ' is full: 1 host and 9 guests.'); if (cb.fail) cb.fail(); return; }
             if (data.type === 'kicked') { leaveNetwork('The host removed you from room ' + code + '.'); return; }
             if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, 'host'); return; }
+            if (data.type === 'follow') { if (followHandler) followHandler(data.level, data.data || {}); return; }
             if (data.type === 'gameState') {
                 const pl = data.payload.players || {};
                 for (const pId in pl) { if (pId === myPeerId) continue; playersState[pId] = pl[pId]; updateRemote(pId, pl[pId]); }
