@@ -1,20 +1,17 @@
 // ==========================================
 // USTAWIENIA GRAFIKI I PRESETY OŚWIETLENIA
 // ==========================================
-export const GFX = {
-    muralRes: 2048,     // rozdzielczość muralowych potworów (1024 = lżej)
-    surfaceRes: 2048,   // rozdzielczość tekstur ścian i podłogi (1024 = lżej)
-    shadowMap: 4096,    // rozdzielczość cieni słońca (2048 albo 1024 = lżej)
-    mannequins: 10,     // liczba manekinów
-    dust: 600,          // drobinki pyłu w powietrzu
-    chains: 16,         // łańcuchy pod sufitem
-    leaves: 450,        // suche liście na podłodze
-    papers: 40,         // porozrzucane kartki
-    rubble: 220,        // gruz przy ścianach
-    shards: 70,         // odłamki szkła
-    xrScale: 1.15,      // ostrość obrazu w goglach (1.0 = lżej)
-    foveation: 0.3      // 0 = pełna jakość, 1 = mocne rozmycie na brzegach (szybciej)
+import { SETTINGS } from './settings.js';
+
+// Trzy poziomy jakości. Wybór w menu gry (pole Graphics), zapisany w ustawieniach gracza.
+const QUALITY = {
+    low: { muralRes: 1024, surfaceRes: 1024, shadowMap: 1024, mannequins: 6, dust: 250, chains: 10, leaves: 200, papers: 20, rubble: 100, shards: 30, xrScale: 0.9, foveation: 0.6, mirror: 384 },
+    medium: { muralRes: 1024, surfaceRes: 1024, shadowMap: 2048, mannequins: 8, dust: 400, chains: 12, leaves: 320, papers: 30, rubble: 160, shards: 50, xrScale: 1.0, foveation: 0.45, mirror: 512 },
+    high: { muralRes: 2048, surfaceRes: 2048, shadowMap: 4096, mannequins: 10, dust: 600, chains: 16, leaves: 450, papers: 40, rubble: 220, shards: 70, xrScale: 1.15, foveation: 0.3, mirror: 640 }
 };
+// muralRes: murale, surfaceRes: ściany i podłoga, shadowMap: cienie słońca, xrScale: ostrość w goglach,
+// foveation: rozmycie brzegów obrazu (więcej = szybciej), mirror: rozdzielczość lustra
+export const GFX = Object.assign({}, QUALITY[SETTINGS.quality] || QUALITY.medium);
 
 // LIGHT_MODE: 'dusk' (zachód słońca / szarówka), 'overcast' (pochmurny dzień), 'night' (nocny horror)
 export const LIGHT_PRESETS = {
