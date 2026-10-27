@@ -181,7 +181,7 @@ export function createWoodTexture() {
     return toTex(c, true);
 }
 
-export function createLeafTexture() {
+function _createLeafTexture() {
     const S = 128, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(64);
     ctx.translate(64, 64);
     ctx.fillStyle = '#9a6a3a';
@@ -194,7 +194,7 @@ export function createLeafTexture() {
     return toTex(c, false);
 }
 
-export function createPaperTexture() {
+function _createPaperTexture() {
     const W = 256, H = 360, c = makeCanvas(W, H), ctx = c.getContext('2d'), R = mkRng(99);
     ctx.fillStyle = '#d8d0bc'; ctx.fillRect(0, 0, W, H);
     for (let i = 0; i < 2500; i++) { ctx.fillStyle = 'rgba(90,70,40,' + (R() * 0.08) + ')'; ctx.fillRect(R() * W, R() * H, 2, 2); }
@@ -205,7 +205,7 @@ export function createPaperTexture() {
     return toTex(c, false);
 }
 
-export function createMistTexture() {
+function _createMistTexture() {
     const S = 512, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(1212);
     for (let i = 0; i < 70; i++) {
         const x = R() * S, y = R() * S, r = 40 + R() * 130, a = 0.05 + R() * 0.12;
@@ -215,7 +215,7 @@ export function createMistTexture() {
     return t;
 }
 
-export function createBloodPoolTexture() {
+function _createBloodPoolTexture() {
     const S = 512, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(909);
     ctx.fillStyle = '#3d0000';
     for (let i = 0; i < 30; i++) { const a = R() * 6.28, d = R() * 100; ctx.beginPath(); ctx.arc(256 + Math.cos(a) * d, 256 + Math.sin(a) * d, 35 + R() * 70, 0, 7); ctx.fill(); }
@@ -234,7 +234,7 @@ export function createDotTexture() {
     return new THREE.CanvasTexture(c);
 }
 
-export function createSkyBaseTexture(sky) {
+function _createSkyBaseTexture(sky) {
     const W = 1024, H = 1024, c = makeCanvas(W, H), ctx = c.getContext('2d');
     const g = ctx.createLinearGradient(0, 0, W, 0);
     for (const s of sky.base) g.addColorStop(s[0], s[1]);
@@ -246,7 +246,7 @@ export function createSkyBaseTexture(sky) {
     }
     return toTex(c, false);
 }
-export function createCloudLayerTexture(spec) {
+function _createCloudLayerTexture(spec) {
     const S = 1024, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(555);
     for (const L of spec) for (let i = 0; i < L[1]; i++) {
         const x = R() * S, y = R() * S, r = L[2] + R() * (L[3] - L[2]), a = L[4] + R() * (L[5] - L[4]);
@@ -254,7 +254,7 @@ export function createCloudLayerTexture(spec) {
     }
     return toTex(c, true);
 }
-export function createShaftTexture() {
+function _createShaftTexture() {
     const c = makeCanvas(8, 256), ctx = c.getContext('2d');
     const g = ctx.createLinearGradient(0, 0, 0, 256);
     g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.55, 'rgba(255,255,255,0.28)'); g.addColorStop(1, 'rgba(255,255,255,0)');
@@ -262,7 +262,7 @@ export function createShaftTexture() {
     return new THREE.CanvasTexture(c);
 }
 
-export function createSigilTexture() {
+function _createSigilTexture() {
     const S = 1024, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(2024), cx = S / 2, cy = S / 2;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     function ring(r, w, a) { ctx.strokeStyle = 'rgba(95,0,0,' + a + ')'; ctx.lineWidth = w; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke(); }
@@ -289,7 +289,7 @@ export function createSigilTexture() {
     return toTex(c, false);
 }
 
-export function createCobwebTexture() {
+function _createCobwebTexture() {
     const S = 512, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(31);
     ctx.strokeStyle = 'rgba(238,238,232,0.7)'; ctx.lineWidth = 1.3; ctx.lineCap = 'round';
     const cx = S / 2, cy = 0, spokes = [];
@@ -318,7 +318,7 @@ export function createEyeballTexture() {
 }
 
 // Pasy ostrzegawcze na obręczy trampoliny
-export function createHazardTexture() {
+function _createHazardTexture() {
     const c = makeCanvas(256, 64), ctx = c.getContext('2d');
     ctx.fillStyle = '#140909'; ctx.fillRect(0, 0, 256, 64);
     ctx.fillStyle = '#c01808';
@@ -327,7 +327,7 @@ export function createHazardTexture() {
     return t;
 }
 // Tkana mata trampoliny z zabrudzeniami
-export function createTrampMatTexture() {
+function _createTrampMatTexture() {
     const S = 512, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(5150);
     ctx.fillStyle = '#0e0e11'; ctx.fillRect(0, 0, S, S);
     ctx.fillStyle = 'rgba(255,255,255,0.04)';
@@ -362,3 +362,24 @@ export function createBandageTexture() {
     for (let i = 0; i < 6; i++) radial(ctx, R() * S, R() * S, 20 + R() * 40, 'rgba(130,0,0,0.75)', 'rgba(130,0,0,0)');
     return toTex(c, true);
 }
+
+// Pamięć podręczna tekstur poziomów: przy powrocie do lobby nie rysujemy ich od nowa (szybsze ładowanie)
+const _texCache = new Map();
+function cached(name, fn) {
+    return function () {
+        const key = name + JSON.stringify(Array.from(arguments));
+        if (!_texCache.has(key)) _texCache.set(key, fn.apply(null, arguments));
+        return _texCache.get(key);
+    };
+}
+export const createSkyBaseTexture = cached('createSkyBaseTexture', _createSkyBaseTexture);
+export const createCloudLayerTexture = cached('createCloudLayerTexture', _createCloudLayerTexture);
+export const createSigilTexture = cached('createSigilTexture', _createSigilTexture);
+export const createBloodPoolTexture = cached('createBloodPoolTexture', _createBloodPoolTexture);
+export const createCobwebTexture = cached('createCobwebTexture', _createCobwebTexture);
+export const createLeafTexture = cached('createLeafTexture', _createLeafTexture);
+export const createPaperTexture = cached('createPaperTexture', _createPaperTexture);
+export const createMistTexture = cached('createMistTexture', _createMistTexture);
+export const createHazardTexture = cached('createHazardTexture', _createHazardTexture);
+export const createTrampMatTexture = cached('createTrampMatTexture', _createTrampMatTexture);
+export const createShaftTexture = cached('createShaftTexture', _createShaftTexture);
