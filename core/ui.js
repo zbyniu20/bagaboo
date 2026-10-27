@@ -5,6 +5,7 @@ import { THREE } from './engine.js';
 import { Terminal, wrapText, AMBER, AMBER_DIM, OK_COL, BAD_COL, GOLD, markAllDirty } from './terminal.js';
 import * as N from './network.js';
 import * as E from './economy.js';
+import { PRESENCE } from './presence.js';
 
 // ---------- KOMPUTER (multiplayer) ----------
 const ui = { page: 'main', temp: '', target: null };
@@ -17,18 +18,37 @@ export const computer = new Terminal((t) => {
         t.text('Mode: ' + modeName(), 40, 104, 28, GOLD, 'left', true);
         t.text('Room code: ' + N.NET.code, 40, 142, 28, GOLD, 'left', true);
         t.text('Players: ' + (solo ? 1 : N.otherPlayers().length + 1) + ' of ' + (N.MAX_GUESTS + 1), 40, 180, 28, GOLD, 'left', true);
-        wrapText(N.NET.status, 62).slice(0, 3).forEach((l, i) => t.text(l, 40, 224 + i * 30, 22, AMBER, 'left'));
-        t.text('One host per room. Guests can join only while the host is online.', 40, 322, 18, AMBER_DIM, 'left');
-        t.btn('host', 32, 350, 300, 72, 'Host room', () => N.startHost(N.NET.code), { tone: 'ok', disabled: !solo || N.NET.busy });
-        t.btn('join', 362, 350, 300, 72, 'Join as guest', () => N.startJoin(N.NET.code), { disabled: !solo || N.NET.busy });
-        t.btn('leave', 692, 350, 300, 72, 'Leave room', () => N.leaveNetwork('You left the room. Playing solo.'), { tone: 'bad', disabled: solo && !N.NET.busy });
-        t.btn('code', 32, 438, 300, 72, 'Change code', () => { ui.temp = N.NET.code; ui.page = 'keyboard'; }, { disabled: !solo || N.NET.busy });
-        t.btn('players', 362, 438, 300, 72, 'Players', () => { ui.page = 'players'; }, { disabled: solo });
-        t.btn('reports', 692, 438, 300, 72, 'Reports (' + N.reports.length + ')', () => { ui.page = 'reports'; }, { disabled: N.NET.mode !== 'host' });
-        t.btn('voice', 32, 526, 300, 72, N.voice.on ? 'Mic on' : 'Mic off', N.toggleVoice, { tone: N.voice.on ? 'ok' : 'bad', disabled: !N.voice.stream });
+        t.text(PRESENCE.ok ? 'Online now: ' + PRESENCE.online + (PRESENCE.online === 1 ? ' player' : ' players') : 'Online now: counting...', 1000, 104, 24, PRESENCE.ok ? OK_COL : AMBER_DIM, 'right', true);
+        wrapText(N.NET.status, 62).slice(0, 3).forEach((l, i) => t.text(l, 40, 220 + i * 28, 22, AMBER, 'left'));
+        t.text('One host per room. Guests can join only while the host is online.', 40, 308, 18, AMBER_DIM, 'left');
+        t.btn('host', 32, 332, 300, 62, 'Host room', () => N.startHost(N.NET.code), { tone: 'ok', disabled: !solo || N.NET.busy });
+        t.btn('join', 362, 332, 300, 62, 'Join as guest', () => N.startJoin(N.NET.code), { disabled: !solo || N.NET.busy });
+        t.btn('leave', 692, 332, 300, 62, 'Leave room', () => N.leaveNetwork('You left the room. Playing solo.'), { tone: 'bad', disabled: solo && !N.NET.busy });
+        t.btn('code', 32, 404, 300, 62, 'Change code', () => { ui.temp = N.NET.code; ui.page = 'keyboard'; }, { disabled: !solo || N.NET.busy });
+        t.btn('players', 362, 404, 300, 62, 'Players', () => { ui.page = 'players'; }, { disabled: solo });
+        t.btn('reports', 692, 404, 300, 62, 'Reports (' + N.reports.length + ')', () => { ui.page = 'reports'; }, { disabled: N.NET.mode !== 'host' });
+        t.btn('voice', 32, 476, 300, 62, N.voice.on ? 'Mic on' : 'Mic off', N.toggleVoice, { tone: N.voice.on ? 'ok' : 'bad', disabled: !N.voice.stream });
         const anyOn = Object.keys(N.audioEls).some(id => !N.mutedPeers.has(id));
-        t.btn('muteall', 362, 526, 300, 72, anyOn ? 'Mute everyone' : 'Unmute everyone', () => { for (const id in N.audioEls) { if (anyOn) N.mutedPeers.add(id); else N.mutedPeers.delete(id); N.audioEls[id].muted = N.mutedPeers.has(id); } }, { disabled: Object.keys(N.audioEls).length === 0 });
-        t.btn('reset', 692, 526, 300, 72, 'Reset session', () => { E.SESSION.maxH = 0; E.SESSION.jumps = 0; E.SESSION.since = Date.now(); E.SESSION.lastM = 0; N.setStatus('Your session score was reset.'); });
+        t.btn('muteall', 362, 476, 300, 62, anyOn ? 'Mute everyone' : 'Unmute everyone', () => { for (const id in N.audioEls) { if (anyOn) N.mutedPeers.add(id); else N.mutedPeers.delete(id); N.audioEls[id].muted = N.mutedPeers.has(id); } }, { disabled: Object.keys(N.audioEls).length === 0 });
+        t.btn('online', 32, 548, 960, 62, PRESENCE.ok ? "Who's online (" + PRESENCE.online + ')' : "Who's online", () => { ui.page = 'online'; }, { tone: 'gold' });
+        t.btn('reset', 692, 476, 300, 62, 'Reset session', () => { E.SESSION.maxH = 0; E.SESSION.jumps = 0; E.SESSION.since = Date.now(); E.SESSION.lastM = 0; N.setStatus('Your session score was reset.'); });
+    } else if (ui.page === 'online') {
+        // Ilu graczy ma teraz włączoną grę i w jakich pokojach (liczone na żywo między graczami)
+        t.header("Who's online", null, null, () => { ui.page = 'main'; });
+        if (!PRESENCE.ok) t.text('Connecting to the online counter...', 40, 120, 26, AMBER, 'left');
+        else {
+            t.text('Players online now: ' + PRESENCE.online, 40, 112, 32, GOLD, 'left', true);
+            t.text('In rooms: ' + (PRESENCE.online - PRESENCE.solo) + ', playing solo: ' + PRESENCE.solo, 40, 152, 22, AMBER, 'left');
+            if (!PRESENCE.rooms.length) t.text('No open rooms right now. Host one and others will see it here.', 40, 200, 22, AMBER_DIM, 'left');
+            PRESENCE.rooms.slice(0, 7).forEach((r, i) => {
+                const y = 184 + i * 56, mine = N.NET.mode !== 'solo' && r.code === N.NET.code;
+                c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, 50);
+                t.text('Room ' + r.code, 40, y + 26, 26, mine ? OK_COL : GOLD, 'left', true);
+                t.text(r.count + (r.count === 1 ? ' player' : ' players') + (mine ? ' (you are here)' : ''), 420, y + 26, 22, AMBER, 'left');
+                t.btn('oj' + r.code, 800, y + 5, 190, 40, 'Join', () => { N.NET.code = r.code; N.startJoin(r.code); ui.page = 'main'; }, { size: 22, disabled: N.NET.mode !== 'solo' || N.NET.busy || r.count >= N.MAX_GUESTS + 1 });
+            });
+        }
+        t.text('Counted live between everyone who has the game open. Room codes are visible to all players.', 40, 612, 16, AMBER_DIM, 'left');
     } else if (ui.page === 'keyboard') {
         t.header('Change room code', null, null, () => { ui.page = 'main'; });
         t.rrect(32, 92, 960, 64, 6); c.fillStyle = '#0c0703'; c.fill(); c.strokeStyle = AMBER; c.lineWidth = 2; c.stroke();
@@ -47,10 +67,13 @@ export const computer = new Terminal((t) => {
             const y = 88 + i * 58;
             c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, 52);
             t.text(p.name, 40, y + 27, 26, GOLD, 'left', true);
-            t.text(p.role, 400, y + 27, 22, p.role === 'Host' ? OK_COL : AMBER, 'left', true);
-            t.btn('m' + p.id, 520, y + 5, 150, 42, N.mutedPeers.has(p.id) ? 'Unmute' : 'Mute', () => N.toggleMute(p.id), { size: 20, disabled: !N.audioEls[p.id] });
-            t.btn('r' + p.id, 680, y + 5, 150, 42, 'Report', () => { ui.target = p; ui.page = 'report'; }, { size: 20 });
-            if (N.NET.mode === 'host') t.btn('x' + p.id, 840, y + 5, 150, 42, 'Kick', () => N.kickPlayer(p.id), { size: 20, tone: 'bad' });
+            t.text(p.role, 330, y + 27, 22, p.role === 'Host' ? OK_COL : AMBER, 'left', true);
+            t.btn('m' + p.id, 440, y + 5, 130, 42, N.mutedPeers.has(p.id) ? 'Unmute' : 'Mute', () => N.toggleMute(p.id), { size: 20, disabled: !N.audioEls[p.id] });
+            t.btn('r' + p.id, 580, y + 5, 130, 42, 'Report', () => { ui.target = p; ui.page = 'report'; }, { size: 20 });
+            if (N.NET.mode === 'host') {
+                t.btn('i' + p.id, 720, y + 5, 140, 42, 'Invite', () => { N.sendInvite(p.id, 'staff'); N.setStatus('Invited ' + p.name + ' to the staff room.'); }, { size: 20, tone: 'gold' });
+                t.btn('x' + p.id, 870, y + 5, 120, 42, 'Kick', () => N.kickPlayer(p.id), { size: 20, tone: 'bad' });
+            }
         });
     } else if (ui.page === 'report') {
         t.header('Report a player', null, null, () => { ui.page = 'players'; });
@@ -97,7 +120,7 @@ export const shop = new Terminal((t) => {
     if (login.ready) { c.fillStyle = OK_COL; c.beginPath(); c.arc(28 + 246 + 218, 92, 9, 0, 7); c.fill(); }
 
     if (shopUi.tab === 'shop') {
-        E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * 162, 152, 152, 46, s.name, () => { shopUi.slot = s.id; }, { size: 21, tone: 'gold', active: shopUi.slot === s.id }));
+        E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * 139, 152, 131, 46, s.name, () => { shopUi.slot = s.id; }, { size: 19, tone: 'gold', active: shopUi.slot === s.id }));
         const items = E.CATALOG.filter(it => it.slot === shopUi.slot);
         const step = items.length > 8 ? 47 : 50;   // przy 9 przedmiotach wiersze są niższe
         items.forEach((it, i) => {
@@ -135,15 +158,15 @@ export const shop = new Terminal((t) => {
         // Najlepsze czasy i osiągnięcia
         t.text('Best times', 40, 176, 28, GOLD, 'left', true);
         E.RECORDS.forEach((r, i) => {
-            const v = E.SAVE.records[r.id], y = 214 + i * 34;
+            const v = E.SAVE.records[r.id], y = 208 + i * 30;
             t.text(r.name, 40, y, 22, AMBER, 'left');
             t.text(v === undefined ? '--:--' : E.fmtDuration(v * 1000), 400, y, 22, v === undefined ? AMBER_DIM : GOLD, 'left', true);
         });
-        t.text('Wins: maze ' + (E.SAVE.mazeWins || 0) + ', silence ' + (E.SAVE.silenceWins || 0) + ', well ' + (E.SAVE.wellWins || 0), 560, 214, 20, AMBER_DIM, 'left');
-        t.text('Achievements', 40, 370, 28, GOLD, 'left', true);
+        t.text('Wins: maze ' + (E.SAVE.mazeWins || 0) + ', silence ' + (E.SAVE.silenceWins || 0) + ', well ' + (E.SAVE.wellWins || 0) + ', lava ' + (E.SAVE.lavaWins || 0), 520, 208, 18, AMBER_DIM, 'left');
+        t.text('Achievements', 40, 362, 26, GOLD, 'left', true);
         E.ACHIEVEMENTS.forEach((a, i) => {
-            const done = !!E.SAVE.achievements[a.id], y = 404 + i * 46;
-            c.fillStyle = done ? 'rgba(127,196,127,0.12)' : 'rgba(255,176,0,0.06)'; c.fillRect(24, y - 20, 976, 42);
+            const done = !!E.SAVE.achievements[a.id], y = 400 + i * 40;
+            c.fillStyle = done ? 'rgba(127,196,127,0.12)' : 'rgba(255,176,0,0.06)'; c.fillRect(24, y - 19, 976, 37);
             t.text((done ? '✓ ' : '• ') + a.name, 40, y - 4, 22, done ? OK_COL : GOLD, 'left', true);
             t.text(a.desc, 40, y + 14, 16, AMBER, 'left');
             t.text(a.rewardName, 980, y - 2, 20, done ? OK_COL : AMBER_DIM, 'right', true);
