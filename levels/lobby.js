@@ -319,7 +319,7 @@ function buildShop() {
     const sc = T.makeCanvas(512, 128), sx = sc.getContext('2d');
     sx.fillStyle = '#1a0606'; sx.fillRect(0, 0, 512, 128);
     sx.font = 'bold 76px serif'; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.shadowColor = '#ff3a1a'; sx.shadowBlur = 24; sx.fillStyle = '#ffcf9a';
-    sx.fillText('BONE SHOP', 256, 68);
+    sx.fillText('BAGABUCKS', 256, 68);
     const signTex = new THREE.CanvasTexture(sc); signTex.colorSpace = THREE.SRGBColorSpace;
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.32), new THREE.MeshBasicMaterial({ map: signTex, toneMapped: false })); sign.position.set(0, 1.86, 0.455); g.add(sign);
     add(new THREE.BoxGeometry(0.5, 0.22, 0.08), dark, 0, 0.42, 0.46);
