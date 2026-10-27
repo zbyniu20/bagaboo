@@ -9,7 +9,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LIGHT_PRESETS } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
-import { addBones, saveGame, SAVE } from '../core/economy.js';
+import { levelReward, recordTime, unlockAchievement } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import { hands } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -259,8 +259,9 @@ function randomScare(p) {
         S.faller = { x: x, z: z, y: p.y + 10, v: 0, screamed: false };
         S.fallerMesh.visible = true; S.fallerMesh.rotation.set(Math.PI, S.R() * 6, 0.3);
     } else {               // ciemność, szept i ręka ze ściany tuż przy twarzy
-        S.blackout = 1.4; SFX.whisper();
-        camera.getWorldPosition(_c);
+        S.blackout = 1.4;
+        camera.getWorldPosition(_c); camera.getWorldDirection(_d);
+        SFX.whisper({ x: _c.x - _d.x * 0.6, y: _c.y, z: _c.z - _d.z * 0.6 });   // szept tuż za plecami
         const dists = [_c.z + HS, HS - _c.z, _c.x + HS, HS - _c.x], side = dists.indexOf(Math.min(...dists));
         const pos = side === 0 ? [_c.x, _c.y, -HS] : side === 1 ? [_c.x, _c.y, HS] : side === 2 ? [-HS, _c.y, _c.z] : [HS, _c.y, _c.z];
         const yaw = side === 0 ? 0 : side === 1 ? Math.PI : side === 2 ? Math.PI / 2 : -Math.PI / 2;
@@ -363,11 +364,10 @@ function caught() {
 function win() {
     if (S.leaving) return;
     S.leaving = true;
-    const wins = SAVE.wellWins || 0, reward = wins === 0 ? REWARD_FIRST : REWARD_REPEAT;
-    SAVE.wellWins = wins + 1;
-    addBones(reward, wins === 0 ? 'first escape from the well!' : 'escaped the well');
-    saveGame();
-    toast('You climbed out! +' + reward + ' bones', '#7fc47f');
+    toast('You climbed out!', '#7fc47f');
+    levelReward('well', REWARD_FIRST, REWARD_REPEAT, 'escape from the well');
+    recordTime('well', S.playT);
+    if (S.playT < 270) unlockAchievement('well_climber');
     S.ctx.goto('lobby', ARRIVAL_WELL);
 }
 
@@ -382,7 +382,7 @@ export function update(dt, t, ctx) {
         const sec = Math.max(0, Math.ceil(S.introT));
         if (sec !== S.intro.last) { S.intro.last = sec; drawIntro(sec); }
         S.intro.mesh.visible = S.introT > 0;
-        if (S.introT <= 0) { S.phase = 'play'; SFX.roar(0.35, 0); toast('Climb!', '#b8ffcf'); }
+        if (S.introT <= 0) { S.phase = 'play'; SFX.roar(0.6, { x: 0, y: S.ooze, z: 0 }); toast('Climb!', '#b8ffcf'); }
     }
 
     if (S.phase === 'play') {
@@ -390,7 +390,7 @@ export function update(dt, t, ctx) {
         // Maź: stały przyrost + nagłe skoki
         let rise = (OOZE_SPEED + OOZE_ACCEL * S.playT) * dt;
         S.nextSurge -= dt;
-        if (S.nextSurge <= 0) { S.nextSurge = rnd(S.R, SURGE_MIN, SURGE_MAX); S.surge = 2.5; SFX.roar(0.8, 0); }
+        if (S.nextSurge <= 0) { S.nextSurge = rnd(S.R, SURGE_MIN, SURGE_MAX); S.surge = 2.5; SFX.roar(1.0, { x: 0, y: S.ooze, z: 0 }); }   // ryk spod nóg
         if (S.surge > 0) { S.surge -= dt; rise += SURGE_HEIGHT / 2.5 * dt; }
         S.ooze = Math.min(TOP - 2, S.ooze + rise);
         if (h < S.ooze + 0.1) caught();
@@ -403,9 +403,9 @@ export function update(dt, t, ctx) {
     for (const g of S.grates) {
         if (g.open) { if (g.lift < 1) { g.lift = Math.min(1, g.lift + dt * 0.7); g.g.position.x = g.lift * (HS * 2 + 0.3); } continue; }
         for (const ch of g.chains) if (pullCheck(ch, dt)) {
-            g.pulls++; SFX.creak(0.5); g.g.position.y = g.y + g.pulls * 0.03;
+            g.pulls++; SFX.creak(0.6, { x: 0, y: g.y, z: 0 }); g.g.position.y = g.y + g.pulls * 0.03;
             if (g.pulls >= PULLS_PER_GRATE) {
-                g.open = true; SFX.bang(); toast('The grate slides open!', '#b8ffcf');
+                g.open = true; SFX.bang({ x: 0, y: g.y, z: 0 }); toast('The grate slides open!', '#b8ffcf');
                 const i = L.obstacles.indexOf(g.ob); if (i >= 0) L.obstacles.splice(i, 1);
                 world.removeBody(g.body);
             }
@@ -413,9 +413,9 @@ export function update(dt, t, ctx) {
     }
     const H = S.hatch;
     if (!H.open && S.playT >= MIN_TIME && pullCheck(H.chain, dt)) {
-        H.pulls++; SFX.creak(0.6);
+        H.pulls++; SFX.creak(0.6, { x: 0, y: TOP, z: 0 });
         if (H.pulls >= HATCH_PULLS) {
-            H.open = true; SFX.bang(); toast('The hatch is open!', '#b8ffcf');
+            H.open = true; SFX.bang({ x: 0, y: TOP, z: 0 }); toast('The hatch is open!', '#b8ffcf');
             const i = L.obstacles.indexOf(H.ob); if (i >= 0) L.obstacles.splice(i, 1);
             if (H.ob.body) world.removeBody(H.ob.body);
         }
@@ -432,7 +432,7 @@ export function update(dt, t, ctx) {
         if (load) {
             c.t += dt; c.mesh.position.x += (Math.random() - 0.5) * 0.01;
             if (c.t > CRUMBLE_TIME) {
-                c.falling = true; SFX.ballHit(0.5);
+                c.falling = true; SFX.ballHit(0.6, c.mesh.position);
                 const i = L.obstacles.indexOf(c.ob); if (i >= 0) L.obstacles.splice(i, 1);
                 if (c.ob.body) world.removeBody(c.ob.body);
             }
@@ -454,7 +454,7 @@ export function update(dt, t, ctx) {
     if (S.faller) {
         const f = S.faller; f.v += 18 * dt; f.y -= f.v * dt;
         S.fallerMesh.position.set(f.x, f.y, f.z); S.fallerMesh.rotation.y += dt * 4;
-        if (!f.screamed && f.y < p.y + 2.5) { f.screamed = true; SFX.stinger(); }
+        if (!f.screamed && f.y < p.y + 2.5) { f.screamed = true; SFX.stinger({ x: f.x, y: f.y, z: f.z }); }
         if (f.y < S.ooze - 3) { S.fallerMesh.visible = false; S.faller = null; }
     }
     // Ręka ze ściany w ciemności
