@@ -54,6 +54,14 @@ export const CATALOG = [
     { slot: 'skin', id: 'shadow', name: 'Shadow (glowing eyes)', price: 3800 },
     { slot: 'skin', id: 'king', name: 'Parkour King', price: 0, locked: true, hint: 'Red route' },   // tylko za czerwoną trasę w lobby
     { slot: 'skin', id: 'bloodmoon', name: 'Bloodmoon', price: 0, locked: true, hint: 'Achievement' },
+    { slot: 'badge', id: 'none', name: 'No badge', price: 0 },
+    { slot: 'badge', id: 'early', name: 'Early player', price: 0 },
+    { slot: 'badge', id: 'skull', name: 'Skull pin', price: 500 },
+    { slot: 'badge', id: 'bone', name: 'Bone collector', price: 900 },
+    { slot: 'badge', id: 'eye', name: 'Watching eye', price: 1200 },
+    { slot: 'badge', id: 'moon', name: 'Blood moon', price: 1800 },
+    { slot: 'badge', id: 'flame', name: 'Lava walker', price: 0, locked: true, hint: 'Achievement' },
+    { slot: 'badge', id: 'crown', name: 'Parkour King', price: 0, locked: true, hint: 'Red route' },
     { slot: 'mask', id: 'none', name: 'No mask', price: 0 },
     { slot: 'mask', id: 'hockey', name: 'Hockey mask', price: 900 },
     { slot: 'mask', id: 'gas', name: 'Gas mask', price: 1300 },
@@ -62,7 +70,7 @@ export const CATALOG = [
     { slot: 'mask', id: 'skull', name: 'Skull mask', price: 3200 },
     { slot: 'mask', id: 'blind', name: 'Face of the Blind One', price: 5000 }
 ];
-export const SLOTS = [{ id: 'skin', name: 'Skins' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }];
+export const SLOTS = [{ id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badges' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }];
 
 // Pula zadań dziennych: każdego dnia losowane są 3 (takie same dla wszystkich graczy danego dnia)
 export const QUEST_POOL = [
@@ -92,10 +100,11 @@ export const ACHIEVEMENTS = [
     { id: 'silent_ghost', name: 'Silent ghost', desc: 'Survive Absolute Silence without throwing a ball or being caught', reward: ['sleeve', 'ghostcloth'], rewardName: 'Ghost cloth' },
     { id: 'well_climber', name: 'Well climber', desc: 'Climb out of the well in under 4:30', reward: ['hat', 'miner'], rewardName: "Miner's helmet" },
     { id: 'route_rush', name: 'Route rush', desc: 'Finish the red route in under 1:30', reward: ['glasses', 'goldshades'], rewardName: 'Gold shades' },
+    { id: 'lava_walker', name: 'Lava walker', desc: 'Finish Floor is Lava without burning even once', reward: ['badge', 'flame'], rewardName: 'Lava walker badge' },
     { id: 'completionist', name: 'Completionist', desc: 'Beat all three levels and become Parkour King', reward: ['skin', 'bloodmoon'], rewardName: 'Bloodmoon skin' }
 ];
 export const RECORDS = [
-    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'route', name: 'Red route' }
+    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'route', name: 'Red route' }
 ];
 export const HEIGHT_RECORD_BONUS = 10;   // za każdy nowy metr rekordu wysokości
 export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dnia
@@ -103,8 +112,8 @@ export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dni
 function defaultSave() {
     return {
         v: 1, wallet: START_BONES, earned: 0,
-        owned: ['skin:none', 'hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none'],
-        equipped: { skin: 'none', hat: 'none', glasses: 'none', mask: 'none', sleeve: 'cloth', gloves: 'none' },
+        owned: ['skin:none', 'badge:none', 'hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none'],
+        equipped: { skin: 'none', badge: 'none', hat: 'none', glasses: 'none', mask: 'none', sleeve: 'cloth', gloves: 'none' },
         profile: { name: 'Acrobat', color: '#3d2314' },
         best: { height: 0, jumps: 0 },
         login: { last: 0, streak: 0 },
@@ -176,7 +185,7 @@ const lookListeners = [];
 export function onLookChange(fn) { lookListeners.push(fn); }
 function notifyLook() { const l = getLook(); lookListeners.forEach(f => f(l)); markAllDirty(); }
 export function getLook() {
-    return { name: SAVE.profile.name, skin: SAVE.equipped.skin, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
+    return { name: SAVE.profile.name, skin: SAVE.equipped.skin, badge: SAVE.equipped.badge, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
 }
 export function setProfile(p) { Object.assign(SAVE.profile, p); saveGame(); notifyLook(); }
 export function isOwned(item) { return SAVE.owned.includes(item.slot + ':' + item.id); }
