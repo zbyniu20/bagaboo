@@ -228,9 +228,13 @@ export function monsterCrowd(ctx, R) {
     bloodText(ctx, 'THEY ARE WATCHING', 512, 120, 70);
 }
 
+const _muralCache = new Map();   // murale rysujemy raz, potem używamy z pamięci
 export function createMural(painter, seed) {
+    if (_muralCache.has(seed)) return _muralCache.get(seed);
     const res = GFX.muralRes, c = makeCanvas(res, res), ctx = c.getContext('2d');
     ctx.scale(res / 1024, res / 1024);
     painter(ctx, mkRng(seed));
-    return toTex(c, false);
+    const t = toTex(c, false);
+    _muralCache.set(seed, t);
+    return t;
 }
