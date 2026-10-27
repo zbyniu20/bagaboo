@@ -56,5 +56,16 @@ export const LIGHT_PRESETS = {
         wallTint: 0xc8c8c8, floorTint: 0xc8c8c8, ceiling: 'concrete', shafts: false
     }
 };
+// Dodatkowe presety dla poziomów: lawa (pomarańczowa poświata od dołu) i pokój szefa (ciepłe światło)
+LIGHT_PRESETS.lava = {
+    background: 0x140303, fogColor: 0x3a0c04, fogDensity: 0.022, exposure: 1.15,
+    hemiSky: 0xff7a3a, hemiGround: 0x2a0804, hemiIntensity: 0.9,
+    sunColor: 0xff6a2a, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0, flashlight: null
+};
+LIGHT_PRESETS.staff = {
+    background: 0x1a120c, fogColor: 0x1a120c, fogDensity: 0.004, exposure: 1.0,
+    hemiSky: 0xffe0c0, hemiGround: 0x3a2a20, hemiIntensity: 1.3,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.4, flashlight: null
+};
 export const LIGHT_MODE = 'dusk';
 export const LP = LIGHT_PRESETS[LIGHT_MODE];
