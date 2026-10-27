@@ -9,7 +9,7 @@ import { THREE, CANNON, L, tex, camera, lighting, addBody, addConstraint, addCri
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LIGHT_PRESETS } from '../core/config.js';
 import * as T from '../core/textures.js';
-import { addBones, saveGame, SAVE } from '../core/economy.js';
+import { levelReward, rewardActivity, recordTime, unlockAchievement } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import { setPlayerPosition, releaseRope, isOnRope, hands } from '../core/player.js';
 import * as N from '../core/network.js';
@@ -21,7 +21,7 @@ const NP = LIGHT_PRESETS.night;
 const CEIL = 14;                             // pokój 30 x 30 m, 14 m wysokości
 const GAME_TIME = 180;                       // 3 minuty ucieczki
 const INTRO_TIME = 10, RESTART_INTRO = 6;    // instrukcja na start / krótka przerwa po restarcie
-const FUSE_COUNT = 4, FUSE_CUT = 25, FUSE_BONES = 40;   // każdy bezpiecznik: -25 s na zegarze i +40 kości
+const FUSE_COUNT = 4, FUSE_CUT = 25;          // każdy bezpiecznik: -25 s na zegarze (+40 Bagabucks, dzienny limit w economy.js)
 const REWARD_FIRST = 1800, REWARD_REPEAT = 180;
 const CATCH_Y = 4.3, CATCH_R = 1.5;          // poniżej tej wysokości potwór cię dosięgnie
 const SPEED = { patrol: 1.2, investigate: 2.4, decoy: 3.6, chase: 5.0, camp: 1.5 };
@@ -43,7 +43,7 @@ const BALLS = [['black1', 2, 0.3, 10], ['black2', -5, 0.3, -1], ['black3', 9, 1.
 export const info = { id: 'silence', name: 'Absolute Silence', spawn: [0, 1.0, 11.5] };
 
 let S = null, restartFlag = false;
-const _c = new THREE.Vector3(), _r = new THREE.Vector3();
+const _c = new THREE.Vector3();
 
 // ---------- BUDOWA ----------
 export function build() {
@@ -530,7 +530,7 @@ function catchPlayer(id, parts) {
     }
 }
 function localCaught(toNest) {
-    jumpscare();
+    jumpscare(); S.wasCaught = true;
     S.caughtT = 0; S.caughtToNest = toNest;
     releaseRope();
 }
@@ -590,11 +590,10 @@ function freeMe() {
 function win() {
     if (S.won) return;
     S.won = true; S.phase = 'won';
-    const wins = SAVE.silenceWins || 0, reward = wins === 0 ? REWARD_FIRST : REWARD_REPEAT;
-    SAVE.silenceWins = wins + 1;
-    addBones(reward, wins === 0 ? 'first silent escape!' : 'silent escape');
-    saveGame();
-    toast('You survived! +' + reward + ' bones', '#7fc47f');
+    toast('You survived!', '#7fc47f');
+    levelReward('silence', REWARD_FIRST, REWARD_REPEAT, 'silent escape');
+    recordTime('silence', S.playT || GAME_TIME);
+    if (!S.usedBall && !S.wasCaught) unlockAchievement('silent_ghost');
     setTimeout(() => toast('Choose a door: THE WELL or LOBBY', '#b8ffcf'), 2600);
     S.mon.mode = 'sleep'; S.mon.speedNow = 0;
     if (S.localNested) freeMe();
@@ -607,6 +606,8 @@ export function update(dt, t, ctx) {
     S.ctx = ctx; S.clock += dt;
     const p = ctx.body.position, m = S.mon, auth = isAuthority();
     S.noiseShown = Math.max(0, S.noiseShown - dt * 0.8);
+    if (S.phase === 'play') S.playT = (S.playT || 0) + dt;
+    if (L.heldId && String(L.heldId).startsWith('black')) S.usedBall = true;   // do osiągnięcia "Silent ghost"
     if (S.alert > 0) S.alert -= dt;
 
     // Instrukcja przez pierwsze 30 s (w multiplayerze u gościa gra może już trwać)
@@ -618,7 +619,7 @@ export function update(dt, t, ctx) {
     }
     if (auth && S.phase === 'intro' && S.introT <= 0) {
         S.phase = 'play'; setMode('patrol');
-        SFX.roar(0.5, 0); toast('It is awake. Stay quiet...', '#9fc8ff');
+        SFX.roar(0.8, { x: S.mon.x, y: 3, z: S.mon.z }); toast('It is awake. Stay quiet...', '#9fc8ff');
     }
 
     // Mikrofon
@@ -631,7 +632,7 @@ export function update(dt, t, ctx) {
     for (const ball of L.throwables) {
         const b = ball.userData.body, st = S.balls[ball.userData.id], sp = b.velocity.length();
         if (st && b.type === CANNON.Body.DYNAMIC && ball.userData.id !== L.heldId && st.prev > 3 && st.prev - sp > 2.5) {
-            SFX.ballHit(Math.min(1, st.prev / 10));
+            SFX.ballHit(Math.min(1, st.prev / 10), b.position);
             if (auth) hear({ x: b.position.x, z: b.position.z, L: 0.95, id: 'ball' });
         }
         if (st) st.prev = sp;
@@ -658,7 +659,7 @@ export function update(dt, t, ctx) {
         const f = S.fuses[i]; if (!f.g.visible) continue;
         f.glow.material.opacity = 0.55 + 0.3 * Math.sin(t * 4 + i);
         if (hands.L.position.distanceTo(f.g.position) < 0.4 || hands.R.position.distanceTo(f.g.position) < 0.4) {
-            SFX.fuse(); addBones(FUSE_BONES, 'fuse found'); toast('Fuse found! -' + FUSE_CUT + ' s', '#9aff40');
+            SFX.fuse(); rewardActivity('fuse'); toast('Fuse found! -' + FUSE_CUT + ' s', '#9aff40');
             if (auth) collectFuse(i); else { S.fusePending |= (1 << i); refreshFuses(); N.sendLevelMsg({ k: 'fuse', i: i }); }
         }
     }
@@ -686,7 +687,7 @@ export function update(dt, t, ctx) {
         const near = (h) => h.position.distanceTo(S.lockPos) < 0.6 && h.userData.rig.target === 1.0;
         if (near(hands.L) || near(hands.R)) {
             S.rescueT += dt;
-            if (S.rescueT > 2) { S.rescueT = 0; SFX.creak(0.5); if (auth) S.nest.clear(); else N.sendLevelMsg({ k: 'free' }); toast('You opened the cage!', '#9aff40'); }
+            if (S.rescueT > 2) { S.rescueT = 0; SFX.creak(0.5, S.lockPos); if (auth) S.nest.clear(); else N.sendLevelMsg({ k: 'free' }); toast('You opened the cage!', '#9aff40'); }
         } else S.rescueT = 0;
     }
 
@@ -702,16 +703,15 @@ function animateMonster(dt, t, p) {
     m.root.position.set(m.x, 0, m.z); m.root.rotation.y = m.yaw;
     camera.getWorldPosition(_c);
     const dx = m.x - _c.x, dz = m.z - _c.z, dist = Math.hypot(dx, dz);
-    _r.set(1, 0, 0).applyQuaternion(camera.getWorldQuaternion(new THREE.Quaternion()));
-    const pan = dist > 0.01 ? (dx * _r.x + dz * _r.z) / dist : 0, vol = Math.max(0, 1 - dist / 30);
-    if (m.mode === 'roar' && S.prevMode !== 'roar') { SFX.roar(Math.max(0.25, vol), pan); }
+    const head = { x: m.x, y: 3.6, z: m.z }, foot = { x: m.x, y: 0.1, z: m.z };   // dźwięk 3D z miejsca potwora
+    if (m.mode === 'roar' && S.prevMode !== 'roar') SFX.roar(1.0, head);
     S.prevMode = m.mode;
     const moving = m.speedNow > 0.1, amp = moving ? Math.min(1.3, 0.5 + m.speedNow / 4) : 0;
     m.ph += dt * (moving ? 1.4 + m.speedNow * 0.9 : 0);
     const s = Math.sin(m.ph);
     m.legs[0].rotation.x = s * 0.45 * amp; m.legs[1].rotation.x = -s * 0.45 * amp;
     const sign = s >= 0 ? 1 : -1;
-    if (moving && sign !== m.lastStepSign) SFX.step(Math.min(1, vol * (0.4 + m.speedNow / 6)), pan);
+    if (moving && sign !== m.lastStepSign) SFX.step(Math.min(1, 0.5 + m.speedNow / 8), foot);
     m.lastStepSign = sign;
     m.hips.position.y = 2.0 + Math.abs(s) * 0.08 * amp - (m.mode === 'sleep' ? 0.9 : 0);
     m.hips.rotation.x = m.mode === 'sleep' ? 0.9 : (m.mode === 'chase' ? 0.25 : 0.08);
