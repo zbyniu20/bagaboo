@@ -23,17 +23,17 @@ import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions } fr
 const NP = LIGHT_PRESETS.night;
 const HS = 2.3, TOP = 64;                  // pół szerokości szybu i wysokość wyjścia
 const GRATES = [16, 32, 48];               // kraty na tych wysokościach
-const PULLS_PER_GRATE = 6, HATCH_PULLS = 3;
+const PULLS_PER_GRATE = 4, HATCH_PULLS = 3;
 const MIN_TIME = 190;                      // klapa na szczycie nie otworzy się wcześniej (ponad 3 minuty)
 const INTRO_TIME = 10, RESTART_INTRO = 3;
-const WALL_GRIP = 0.3, HOLD_GRIP = 1.0, PIPE_GRIP = 0.9;   // przyczepność: śliska ściana / kość / rura
-const MOVE_SCALE = 0.72;                   // ogólne osłabienie odepchnięć
-const MAX_UP = 3.2;                        // maks. prędkość w górę (m/s)
-const EXTRA_GRAVITY = 3.0;                 // dodatkowe przyciąganie w dół (m/s²)
-const OOZE_SPEED = 0.11, OOZE_ACCEL = 0.00035;      // maź: prędkość startowa i przyspieszenie
-const SURGE_MIN = 35, SURGE_MAX = 55, SURGE_HEIGHT = 2.2;
+const WALL_GRIP = 0.55, HOLD_GRIP = 1.0, PIPE_GRIP = 1.0;  // przyczepność: śliska ściana / kość / rura
+const MOVE_SCALE = 0.9;                    // ogólne osłabienie odepchnięć (1.0 = jak w lobby)
+const MAX_UP = 4.5;                        // maks. prędkość w górę (m/s)
+const EXTRA_GRAVITY = 1.2;                 // dodatkowe przyciąganie w dół (m/s²)
+const OOZE_SPEED = 0.08, OOZE_ACCEL = 0.0002;       // maź: prędkość startowa i przyspieszenie
+const SURGE_MIN = 40, SURGE_MAX = 60, SURGE_HEIGHT = 1.5;
 const SCARE_MIN = 22, SCARE_MAX = 38;      // co ile sekund jumpscare
-const CRUMBLE_TIME = 1.2;                  // tyle wytrzyma pękająca kość
+const CRUMBLE_TIME = 2.0;                  // tyle wytrzyma pękająca kość
 const REWARD_FIRST = 2500, REWARD_REPEAT = 250;
 export const info = { id: 'well', name: 'The Well', spawn: [0, 1.0, 0.8] };
 
@@ -122,7 +122,7 @@ function buildHolds(R) {
                 if (y < 3 && side === 1) side = 0;   // nie zasłaniaj drzwi do lobby na dole
                 lastSide = side;
                 const t = (R() * 2 - 1) * (HS - 0.6), roll = R();
-                if (roll < 0.14) {   // półka
+                if (roll < 0.22) {   // półka
                     const p = wallPos(side, t, y, 0.35), horiz = side < 2;
                     addCrispBlock(p[0], p[1], p[2], horiz ? 1.3 : 0.7, 0.2, horiz ? 0.7 : 1.3, 0x5a5a52, 0x0a0a08); setGrip(HOLD_GRIP);
                 } else if (roll < 0.28) {   // rura w poprzek szybu
@@ -132,8 +132,8 @@ function buildHolds(R) {
                     L.root.add(m);
                     addStaticBody(alongX ? 0 : pz, y, alongX ? pz : 0, new CANNON.Box(new CANNON.Vec3(alongX ? HS : 0.09, 0.09, alongX ? 0.09 : HS)), m, false); setGrip(PIPE_GRIP);
                 } else {   // kość (co czwarta pęka)
-                    const crumbly = R() < 0.27, p = wallPos(side, t, y, 0.2), horiz = side < 2;
-                    const w = 0.5, d = 0.36;
+                    const crumbly = R() < 0.15, p = wallPos(side, t, y, 0.22), horiz = side < 2;
+                    const w = 0.6, d = 0.42;
                     const geo = new THREE.BoxGeometry(horiz ? w : d, 0.22, horiz ? d : w); scaleBoxUVs(geo, w, 0.22, d, 1);
                     const m = new THREE.Mesh(geo, crumbly ? crackMat : boneMat); m.position.set(p[0], p[1], p[2]); m.castShadow = true; L.root.add(m);
                     addStaticBody(p[0], p[1], p[2], new CANNON.Box(new CANNON.Vec3((horiz ? w : d) / 2, 0.11, (horiz ? d : w) / 2)), m, false);
@@ -141,7 +141,7 @@ function buildHolds(R) {
                     if (crumbly) S.crumbles.push({ ob: ob, mesh: m, t: 0, falling: false, vy: 0 });
                 }
             }
-            y += 1.25 + R() * 0.6;
+            y += 1.0 + R() * 0.45;   // gęściej rozmieszczone uchwyty
         }
     }
 }
