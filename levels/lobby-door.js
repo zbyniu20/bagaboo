@@ -11,12 +11,16 @@ import { createHead, createGorillaTorso, createGorillaArm, placeArm, buildHat } 
 import { getLook, onLookChange, unlockItem, recordTime, unlockAchievement } from '../core/economy.js';
 import { hands } from '../core/player.js';
 import * as SFX from '../core/audio.js';
+import * as N from '../core/network.js';
 import { buildDoor as buildDoor3 } from '../core/levelkit.js';
 
-const DOOR_X = 4, SILENCE_X = -5, WELL_X = 9.5, WALL_Z = 14.97;    // drzwi w południowej ścianie, na podłodze
+const DOOR_X = 4, SILENCE_X = -5, WELL_X = 9.5, LAVA_X = -10, WALL_Z = 14.97;    // drzwi w południowej ścianie, na podłodze
+const STAFF_Z = 8;   // drzwi pokoju szefa w zachodniej ścianie
 export const ARRIVAL = [DOOR_X, 1.2, 13.2];          // tu pojawia się gracz po powrocie z labiryntu
 export const ARRIVAL_SILENCE = [SILENCE_X, 1.2, 13.2];   // ...po powrocie z trybu Cisza
-export const ARRIVAL_WELL = [WELL_X, 1.2, 13.2];         // ...i po powrocie ze Studni
+export const ARRIVAL_WELL = [WELL_X, 1.2, 13.2];         // ...po powrocie ze Studni
+export const ARRIVAL_LAVA = [LAVA_X, 1.2, 13.2];         // ...z poziomu Floor is Lava
+export const ARRIVAL_STAFF = [-13.2, 1.2, STAFF_Z];      // ...i z pokoju szefa
 const MIRROR = { x: -14.93, z: 3.2, w: 1.6, h: 2.3 };   // lustro na zachodniej ścianie, obok sklepu
 const MIRROR_LAYER = 5;                          // warstwa widoczna tylko w lustrze (twoja głowa i tułów)
 const ENV = LP.envIntensity;
@@ -25,13 +29,17 @@ const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Eule
 
 // Wołane przed budową lobby: manekiny nie staną przed drzwiami ani przed lustrem
 export function prebuild() {
-    L.reserved.push([DOOR_X, 13.4, 3.0], [SILENCE_X, 13.4, 3.0], [WELL_X, 13.4, 3.0], [-13.6, MIRROR.z, 2.6], [12, -13.4, 2.2]);
+    L.reserved.push([DOOR_X, 13.4, 3.0], [SILENCE_X, 13.4, 3.0], [WELL_X, 13.4, 3.0], [LAVA_X, 13.4, 2.6], [-13.4, STAFF_Z, 2.6], [-13.6, MIRROR.z, 2.6], [12, -13.4, 2.2]);
 }
 
 export function build() {
     buildDoor(DOOR_X, 'THE MAZE', '#ff6a40', 0xff3010, 'maze', 'You open the door...');
     buildDoor(SILENCE_X, 'SILENCE', '#9fc8ff', 0x3a7aff, 'silence', 'Shhh...');
     buildDoor(WELL_X, 'THE WELL', '#b8ffcf', 0x30ff90, 'well', 'Do not look down...');
+    buildDoor(LAVA_X, 'LAVA', '#ff8a3a', 0xff5a10, 'lava', 'The floor is lava...');
+    // Pokój szefa: wchodzi tylko host (albo gracz solo), goście dostają zaproszenie
+    buildDoor3({ x: -14.97, z: STAFF_Z, rotY: Math.PI / 2, label: 'STAFF ONLY', color: '#ffd27a', glow: 0xffb040, wood: 0x4a3020, signY: 2.7, collider: true, ao: true,
+        portal: { target: 'staff', opts: { noFollow: true }, cond: () => N.NET.mode !== 'guest', deny: 'Staff only. The host can invite you.', onEnter: () => toast('Welcome to the staff room', '#ffd27a') } });
     buildMirror();
     buildRoute();
     buildTitle();
@@ -150,7 +158,8 @@ function updateRoute(dt, t, p) {
             const time = route.clock - route.startT;
             recordTime('route', time);
             if (time < 90) unlockAchievement('route_rush');
-            if (unlockItem('skin', 'king')) { SFX.fuse(); toast('PARKOUR KING unlocked! It is on you now.', '#ffd27a'); }
+            unlockItem('badge', 'crown');
+            if (unlockItem('skin', 'king')) { SFX.fuse(); toast('PARKOUR KING unlocked! Skin and badge are on you now.', '#ffd27a'); }
             else if (route.msgT <= 0) toast('Route done in ' + Math.floor(time / 60) + ':' + String(Math.floor(time % 60)).padStart(2, '0'), '#ffd27a');
             route.msgT = 4; resetRoute();
         } else if (route.msgT <= 0) { toast('Touch all 3 red checkpoints in one climb first', '#ff6a4a'); route.msgT = 4; }
