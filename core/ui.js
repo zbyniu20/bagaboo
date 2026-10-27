@@ -90,35 +90,36 @@ E.onLookChange(() => { shopUi.tryItem = null; refreshPreview(); });
 export const shop = new Terminal((t) => {
     const c = t.ctx;
     t.background();
-    t.header('Bone shop', 'Bones: ' + E.SAVE.wallet, GOLD);
-    const tabs = [['shop', 'Shop'], ['daily', 'Daily reward'], ['quests', 'Daily quests']];
-    tabs.forEach((tb, i) => t.btn('tab' + tb[0], 28 + i * 250, 84, 236, 54, tb[1], () => { shopUi.tab = tb[0]; }, { size: 24, active: shopUi.tab === tb[0] }));
+    t.header('Bagabucks shop', E.CURRENCY + ': ' + E.SAVE.wallet, GOLD);
+    const tabs = [['shop', 'Shop'], ['daily', 'Daily reward'], ['quests', 'Daily quests'], ['records', 'Records']];
+    tabs.forEach((tb, i) => t.btn('tab' + tb[0], 28 + i * 246, 84, 232, 54, tb[1], () => { shopUi.tab = tb[0]; }, { size: 23, active: shopUi.tab === tb[0] }));
     const login = E.loginStatus();
-    if (login.ready) { c.fillStyle = OK_COL; c.beginPath(); c.arc(28 + 250 + 222, 92, 9, 0, 7); c.fill(); }
+    if (login.ready) { c.fillStyle = OK_COL; c.beginPath(); c.arc(28 + 246 + 218, 92, 9, 0, 7); c.fill(); }
 
     if (shopUi.tab === 'shop') {
         E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * 162, 152, 152, 46, s.name, () => { shopUi.slot = s.id; }, { size: 21, tone: 'gold', active: shopUi.slot === s.id }));
         const items = E.CATALOG.filter(it => it.slot === shopUi.slot);
+        const step = items.length > 8 ? 47 : 50;   // przy 9 przedmiotach wiersze są niższe
         items.forEach((it, i) => {
-            const y = 208 + i * 50, owned = E.isOwned(it), worn = E.isEquipped(it), trying = shopUi.tryItem === it;
-            c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, 44);
+            const y = 208 + i * step, owned = E.isOwned(it), worn = E.isEquipped(it), trying = shopUi.tryItem === it;
+            c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, step - 6);
             t.text(it.name, 40, y + 22, 24, worn ? OK_COL : GOLD, 'left', true);
             const locked = E.isLocked(it);
-            t.text(locked ? 'Red route only' : (it.price === 0 ? 'Free' : it.price + ' bones'), 430, y + 22, 22, locked ? BAD_COL : (owned ? AMBER_DIM : (E.SAVE.wallet >= it.price ? AMBER : BAD_COL)), 'left');
+            t.text(locked ? (it.hint || 'Locked') + ' only' : (it.price === 0 ? 'Free' : it.price + ' ' + E.CURRENCY), 430, y + 22, 22, locked ? BAD_COL : (owned ? AMBER_DIM : (E.SAVE.wallet >= it.price ? AMBER : BAD_COL)), 'left');
             t.btn('try' + it.id, 610, y + 4, 160, 36, trying ? 'Trying' : 'Try on', () => { shopUi.tryItem = trying ? null : it; refreshPreview(); }, { size: 20, active: trying });
             if (worn) t.btn('worn' + it.id, 790, y + 4, 200, 36, 'Wearing', null, { size: 20, disabled: true });
             else if (owned) t.btn('wear' + it.id, 790, y + 4, 200, 36, 'Wear', () => { E.equipItem(it); }, { size: 20, tone: 'ok' });
             else if (locked) t.btn('lock' + it.id, 790, y + 4, 200, 36, 'Locked', null, { size: 20, disabled: true });
             else t.btn('buy' + it.id, 790, y + 4, 200, 36, E.SAVE.wallet >= it.price ? 'Buy' : 'Need ' + (it.price - E.SAVE.wallet), () => { E.buyItem(it); }, { size: 20, tone: 'gold', disabled: E.SAVE.wallet < it.price });
         });
-        t.text('Look at the stand next to the machine to see the item on a head.', 40, 626, 18, AMBER_DIM, 'left');
+        if (items.length <= 8) t.text('Look at the stand next to the machine to see the item on a head.', 40, 626, 18, AMBER_DIM, 'left');
     } else if (shopUi.tab === 'daily') {
         t.text('Login reward every 6 hours', 40, 176, 30, GOLD, 'left', true);
-        t.text('Current streak: ' + login.streak + '   Next reward: ' + login.nextAmount + ' bones', 40, 222, 24, AMBER, 'left');
-        if (login.ready) t.btn('claim', 40, 252, 420, 76, 'Claim ' + login.nextAmount + ' bones', () => { E.claimLoginReward(); }, { tone: 'ok' });
+        t.text('Current streak: ' + login.streak + '   Next reward: ' + login.nextAmount + ' ' + E.CURRENCY, 40, 222, 24, AMBER, 'left');
+        if (login.ready) t.btn('claim', 40, 252, 420, 76, 'Claim ' + login.nextAmount + ' ' + E.CURRENCY, () => { E.claimLoginReward(); }, { tone: 'ok' });
         else { t.text('Next reward in ' + E.fmtDuration(login.msLeft), 40, 290, 28, GOLD, 'left', true); t.bar(40, 316, 600, 16, 1 - login.msLeft / E.LOGIN_INTERVAL, AMBER); }
-        t.text('Come back within 30 hours to keep the streak: +15 bones per step, up to 250.', 40, 362, 18, AMBER_DIM, 'left');
-        t.text('Bonus bones for playing', 40, 410, 26, GOLD, 'left', true);
+        t.text('Come back within 30 hours to keep the streak: +15 per step, up to 250.', 40, 362, 18, AMBER_DIM, 'left');
+        t.text('Bonus Bagabucks for playing', 40, 410, 26, GOLD, 'left', true);
         const d = E.ensureDaily(), A = E.ACTIVITY;
         const rows = [
             [A.tramp.label, '+' + A.tramp.each, d.caps.tramp, A.tramp.cap], [A.rope.label, '+' + A.rope.each, d.caps.rope, A.rope.cap], [A.throw.label, '+' + A.throw.each, d.caps.throw, A.throw.cap],
@@ -130,6 +131,23 @@ export const shop = new Terminal((t) => {
             t.text(r[2] + ' / ' + r[3] + ' today', 520, y, 20, r[2] >= r[3] ? AMBER_DIM : AMBER, 'left');
         });
         t.text('New height record: +' + E.HEIGHT_RECORD_BONUS + ' per meter. First time at 15 m today: +' + E.HIGH_DAILY_BONUS + '.', 40, 600, 18, AMBER_DIM, 'left');
+    } else if (shopUi.tab === 'records') {
+        // Najlepsze czasy i osiągnięcia
+        t.text('Best times', 40, 176, 28, GOLD, 'left', true);
+        E.RECORDS.forEach((r, i) => {
+            const v = E.SAVE.records[r.id], y = 214 + i * 34;
+            t.text(r.name, 40, y, 22, AMBER, 'left');
+            t.text(v === undefined ? '--:--' : E.fmtDuration(v * 1000), 400, y, 22, v === undefined ? AMBER_DIM : GOLD, 'left', true);
+        });
+        t.text('Wins: maze ' + (E.SAVE.mazeWins || 0) + ', silence ' + (E.SAVE.silenceWins || 0) + ', well ' + (E.SAVE.wellWins || 0), 560, 214, 20, AMBER_DIM, 'left');
+        t.text('Achievements', 40, 370, 28, GOLD, 'left', true);
+        E.ACHIEVEMENTS.forEach((a, i) => {
+            const done = !!E.SAVE.achievements[a.id], y = 404 + i * 46;
+            c.fillStyle = done ? 'rgba(127,196,127,0.12)' : 'rgba(255,176,0,0.06)'; c.fillRect(24, y - 20, 976, 42);
+            t.text((done ? '✓ ' : '• ') + a.name, 40, y - 4, 22, done ? OK_COL : GOLD, 'left', true);
+            t.text(a.desc, 40, y + 14, 16, AMBER, 'left');
+            t.text(a.rewardName, 980, y - 2, 20, done ? OK_COL : AMBER_DIM, 'right', true);
+        });
     } else {
         const d = E.ensureDaily();
         t.text('Today\'s quests (new ones in ' + E.fmtDuration(E.msToMidnight()) + ')', 40, 176, 26, GOLD, 'left', true);
@@ -137,11 +155,11 @@ export const shop = new Terminal((t) => {
             const def = E.questDef(q.id), y = 214 + i * 110;
             c.fillStyle = q.done ? 'rgba(127,196,127,0.10)' : 'rgba(255,176,0,0.07)'; c.fillRect(24, y, 976, 96);
             t.text(def.text, 44, y + 28, 24, q.done ? OK_COL : GOLD, 'left', true);
-            t.text(q.done ? 'Done, +' + def.reward + ' bones paid' : def.reward + ' bones', 980, y + 28, 22, q.done ? OK_COL : AMBER, 'right', true);
+            t.text(q.done ? 'Done, +' + def.reward + ' paid' : def.reward + ' ' + E.CURRENCY, 980, y + 28, 22, q.done ? OK_COL : AMBER, 'right', true);
             t.bar(44, y + 58, 720, 18, q.p / def.target, q.done ? OK_COL : AMBER);
             t.text(q.p + ' / ' + def.target, 790, y + 67, 22, AMBER, 'left', true);
         });
-        t.text(d.bonus ? 'All quests done today. Bonus of ' + E.QUEST_ALL_BONUS + ' bones paid.' : 'Finish all three for a bonus of ' + E.QUEST_ALL_BONUS + ' bones.', 40, 560, 24, d.bonus ? OK_COL : GOLD, 'left', true);
+        t.text(d.bonus ? 'All quests done today. Bonus of ' + E.QUEST_ALL_BONUS + ' paid.' : 'Finish all three for a bonus of ' + E.QUEST_ALL_BONUS + ' ' + E.CURRENCY + '.', 40, 560, 24, d.bonus ? OK_COL : GOLD, 'left', true);
         t.text('Rewards are paid automatically when a quest is done.', 40, 600, 18, AMBER_DIM, 'left');
     }
     t.scanlines();
