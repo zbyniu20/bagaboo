@@ -6,6 +6,7 @@ import { createRealHand, poseHand } from './avatar.js';
 import { track } from './economy.js';
 import { initPointers, clickPointer } from './terminal.js';
 import { sendObjectMove } from './network.js';
+import { buzz } from './haptics.js';
 
 const radius = 0.35, gorillaStanceOffset = 0.6;
 const POWER = 1.2;            // siła odepchnięcia i skoku (1.0 = oryginał)
@@ -51,12 +52,18 @@ controllers.forEach((c, i) => {
     c.addEventListener('squeezeend', () => { ctrlInput[i].squeeze = false; onSqueezeEnd(i); });
 });
 
+// Sterowanie z zewnątrz (tryb testowy na komputerze): chwyt dłonią i ruch bez hamowania
+export const external = { move: false };
+export function squeeze(i, down) {
+    if (down) { ctrlInput[i].squeeze = true; onSqueezeStart(i); }
+    else { ctrlInput[i].squeeze = false; onSqueezeEnd(i); }
+}
 function onSqueezeStart(i) {
     const hand = i === 0 ? hands.L : hands.R; if (!hand) return;
     const pos = new THREE.Vector3(); hand.getWorldPosition(pos);
     for (const ball of L.throwables) {
         if (ball.position.distanceTo(pos) < 0.3) {
-            grabbed = ball; grabbingIndex = i; L.heldId = ball.userData.id;
+            grabbed = ball; grabbingIndex = i; L.heldId = ball.userData.id; buzz(i, 0.3, 40);
             const b = ball.userData.body; b.type = CANNON.Body.KINEMATIC; b.velocity.set(0, 0, 0); b.angularVelocity.set(0, 0, 0);
             return;
         }
@@ -68,7 +75,7 @@ function onSqueezeStart(i) {
             const first = !ropeConstraint;
             if (ropeConstraint) world.removeConstraint(ropeConstraint);
             ropeConstraint = new CANNON.PointToPointConstraint(playerBody, ropePivot(i), rope.body, new CANNON.Vec3(0, localY, 0));
-            world.addConstraint(ropeConstraint); ropeHand = i;
+            world.addConstraint(ropeConstraint); ropeHand = i; buzz(i, 0.4, 60);
             if (first) track('rope');
             return;
         }
@@ -76,6 +83,7 @@ function onSqueezeStart(i) {
 }
 // Punkt chwytu względem środka gracza, liczony z pozycji kontrolera
 function ropePivot(i) {
+    if (!renderer.xr.isPresenting) { const h = i === 0 ? hands.L : hands.R, b = playerBody.position; return new CANNON.Vec3(h.position.x - b.x, h.position.y - b.y, h.position.z - b.z); }
     const c = controllers[i].position, cam = camera.position;
     return new CANNON.Vec3(c.x - cam.x, c.y - radius - gorillaStanceOffset, c.z - cam.z);
 }
@@ -134,7 +142,7 @@ world.addEventListener('postStep', () => {
     }
     grounded = false;
     for (const o of L.obstacles) if (sphereVsBox(p.x, p.y, p.z, radius + 0.03, o.box3) && hit.ny > 0.5) { grounded = true; break; }
-    if (grounded && !ropeConstraint) {
+    if (grounded && !ropeConstraint && !external.move) {
         let k;
         if (handPushing) k = FRICTION_PUSH;
         else if (simTime - lastPushTime < MOMENTUM_TIME) k = FRICTION_RUN;
@@ -181,7 +189,7 @@ function handleMovement(i, dt) {
         for (const t of L.trampolines) {
             if (t.box3.distanceToPoint(hw) <= 0.25) {
                 playerBody.velocity.y = 12 * POWER; ground = false; wall = false;
-                if (simTime - lastTrampTime > 0.6) { lastTrampTime = simTime; track('tramp'); if (L.tramp) L.tramp.k = 1; }
+                if (simTime - lastTrampTime > 0.6) { lastTrampTime = simTime; track('tramp'); if (L.tramp) L.tramp.k = 1; buzz('both', 0.5, 90); }
                 break;
             }
         }
@@ -201,6 +209,8 @@ function handleMovement(i, dt) {
             if (handSpeed > RUN_MIN_SPEED) lastPushTime = simTime;
         }
     }
+    // Wibracja przy dotknięciu powierzchni: mocniejsza przy mocniejszym uderzeniu
+    if (touching && !wasTouch[i]) buzz(i, 0.12 + Math.min(0.6, Math.max(spd, lastSpd[i]) * 0.15), 30);
     // Hałas rąk dla poziomów, które go słuchają (L.onNoise): uderzenie przy dotknięciu i mocne szuranie
     if (L.onNoise) {
         if (touching && !wasTouch[i]) L.onNoise(Math.max(spd, lastSpd[i]), hand.position);
