@@ -9,7 +9,7 @@ import { GFX, LP } from '../core/config.js';
 import * as T from '../core/textures.js';
 import * as M from '../core/murals.js';
 import { computer, shop, board, onPreview, previewLook } from '../core/ui.js';
-import { createHead } from '../core/avatar.js';
+import { createHead, createGorillaTorso } from '../core/avatar.js';
 import { track } from '../core/economy.js';
 
 export const info = { id: 'lobby', name: 'Lobby', spawn: [0, 2, 0] };
@@ -334,7 +334,7 @@ function buildShop() {
     const col = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 1.0, 20), body); col.position.y = 0.5; col.castShadow = true; col.receiveShadow = true; ped.add(col);
     const top = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.05, 20), dark); top.position.y = 1.02; ped.add(top);
     const spot = new THREE.PointLight(0xffe0b0, 3, 2.5, 2); spot.position.set(0.5, 1.7, 0); ped.add(spot);
-    fx.preview = new THREE.Group(); fx.preview.position.set(0, 1.22, 0); fx.preview.scale.setScalar(1.3); ped.add(fx.preview);
+    fx.preview = new THREE.Group(); fx.preview.position.set(0, 1.72, 0); fx.preview.scale.setScalar(1.3); ped.add(fx.preview);
     addStaticBody(px, 0.5, pz, new CANNON.Box(new CANNON.Vec3(0.22, 0.5, 0.22)), ped, false);
     addBlobAO(px, pz, 1.2);
     L.reserved.push([-13.4, -0.6, 3.0]);
@@ -344,7 +344,10 @@ function buildShop() {
 function setPreview(look) {
     if (!fx || !fx.preview) return;
     if (fx.previewHead) fx.preview.remove(fx.previewHead);
-    fx.previewHead = createHead(look, false);
+    // Popiersie goryla: głowa i tułów (widać też odznakę na piersi)
+    fx.previewHead = new THREE.Group();
+    fx.previewHead.add(createHead(look, false));
+    const torso = createGorillaTorso(look); torso.position.y = -0.35; fx.previewHead.add(torso);
     fx.preview.add(fx.previewHead);
 }
 
