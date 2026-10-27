@@ -15,6 +15,7 @@ import { setPlayerPosition, releaseRope, isOnRope, hands } from '../core/player.
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
 import { ARRIVAL_SILENCE } from './lobby-door.js';
+import { buildDoor, addDoorPortal, createJumpscare, cameraPanel, panelBg, drawInstructions } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA ----------
 const NP = LIGHT_PRESETS.night;
@@ -53,7 +54,7 @@ export function build() {
     S = {
         clock: 0, phase: 'intro', introT: quickStart ? RESTART_INTRO : INTRO_TIME, introLen: quickStart ? RESTART_INTRO : INTRO_TIME,
         t: GAME_TIME, nest: new Set(), localNested: false, caughtT: -1, rescueT: 0, grip: 0, exhausted: false,
-        noiseShown: 0, alert: 0, lastMicSend: 0, lastHostMsg: -10, netT: 0, hudT: 0, boardT: 0, scareT: -1, prevMode: 'sleep',
+        noiseShown: 0, alert: 0, lastMicSend: 0, lastHostMsg: -10, netT: 0, hudT: 0, boardT: 0, prevMode: 'sleep',
         fuseSeed: (Math.random() * 1e9) | 0, fuseGot: 0, fusePending: 0, leaving: false, won: false, balls: {}
     };
     buildRoom();
@@ -207,47 +208,19 @@ function drawBoard() {
 
 // Drzwi do lobby za plecami gracza na starcie (wyjście w każdej chwili)
 function buildExitDoor() {
-    const g = new THREE.Group(); g.position.set(0, 0, 14.97); g.rotation.y = Math.PI; L.root.add(g);
-    const frame = new THREE.MeshStandardMaterial({ color: 0x1c1416, metalness: 0.7, roughness: 0.45 });
-    for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.45, 0.16), frame); p.position.set(s * 0.72, 1.22, 0.1); g.add(p); }
-    const top = new THREE.Mesh(new THREE.BoxGeometry(1.58, 0.16, 0.16), frame); top.position.set(0, 2.38, 0.1); g.add(top);
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.3, 0.06), new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x6a7a8a, roughness: 0.6 })); panel.position.set(0, 1.15, 0.08); g.add(panel);
-    const sc = T.makeCanvas(512, 128), sx = sc.getContext('2d');
-    sx.fillStyle = '#04080a'; sx.fillRect(0, 0, 512, 128);
-    sx.font = 'bold 76px serif'; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.shadowColor = '#70ff90'; sx.shadowBlur = 24; sx.fillStyle = '#70ff90'; sx.fillText('LOBBY', 256, 66);
-    const st = new THREE.CanvasTexture(sc); st.colorSpace = THREE.SRGBColorSpace;
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.35), new THREE.MeshBasicMaterial({ map: st, toneMapped: false })); sign.position.set(0, 2.75, 0.1); g.add(sign);
-    const l = new THREE.PointLight(0x60ff90, 4, 5, 2); l.position.set(0, 2.6, 13.8); L.root.add(l);
-    L.portals.push({
-        box3: new THREE.Box3(new THREE.Vector3(-0.7, -0.5, 14.2), new THREE.Vector3(0.7, 2.6, 15.2)),
-        target: 'lobby', spawn: ARRIVAL_SILENCE, onEnter: () => toast('Back to the lobby')
-    });
+    buildDoor({ x: 0, z: 14.97, rotY: Math.PI, label: 'LOBBY', color: '#70ff90', glow: 0x60ff90, wood: 0x6a7a8a, light: true,
+        portal: { target: 'lobby', spawn: ARRIVAL_SILENCE, onEnter: () => toast('Back to the lobby') } });
 }
-
 // Drzwi do Studni pod zegarem: zamknięte kratą, otwierają się po wygranej
 function buildWellDoor() {
-    const g = new THREE.Group(); g.position.set(0, 0, -14.97); L.root.add(g);
-    const frame = new THREE.MeshStandardMaterial({ color: 0x1c1416, metalness: 0.7, roughness: 0.45 });
-    for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.45, 0.16), frame); p.position.set(s * 0.72, 1.22, 0.1); g.add(p); }
-    const top = new THREE.Mesh(new THREE.BoxGeometry(1.58, 0.16, 0.16), frame); top.position.set(0, 2.38, 0.1); g.add(top);
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.3, 0.06), new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x4a6a5a, roughness: 0.6 })); panel.position.set(0, 1.15, 0.06); g.add(panel);
-    const bars = [];
-    for (let i = 0; i < 7; i++) bars.push(new THREE.CylinderGeometry(0.025, 0.025, 2.3, 6).translate(-0.6 + i * 0.2, 1.15, 0.16));
-    const grate = new THREE.Mesh(mergeGeometries(bars), new THREE.MeshStandardMaterial({ color: 0x2a2624, metalness: 0.85, roughness: 0.35 })); g.add(grate);
-    const sc = T.makeCanvas(512, 128), sx = sc.getContext('2d');
-    sx.fillStyle = '#040a06'; sx.fillRect(0, 0, 512, 128);
-    sx.font = 'bold 70px serif'; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.shadowColor = '#b8ffcf'; sx.shadowBlur = 24; sx.fillStyle = '#b8ffcf'; sx.fillText('THE WELL', 256, 66);
-    const st = new THREE.CanvasTexture(sc); st.colorSpace = THREE.SRGBColorSpace;
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.35), new THREE.MeshBasicMaterial({ map: st, toneMapped: false, transparent: true, opacity: 0.25 })); sign.position.set(0, 2.75, 0.1); g.add(sign);
-    S.wellDoor = { grate: grate, sign: sign, open: 0 };
+    const d = buildDoor({ x: 0, z: -14.97, rotY: 0, label: 'THE WELL', color: '#b8ffcf', wood: 0x4a6a5a, grate: true });
+    d.sign.material.opacity = 0.25;
+    S.wellDoor = { door: d, grate: d.grate, sign: d.sign, open: 0 };
 }
 function openWellDoor() {
     S.wellDoor.opening = true; S.wellDoor.sign.material.opacity = 1;
     const l = new THREE.PointLight(0x40ff90, 6, 6, 2); l.position.set(0, 2.6, -13.8); L.root.add(l);
-    L.portals.push({
-        box3: new THREE.Box3(new THREE.Vector3(-0.7, -0.5, -15.2), new THREE.Vector3(0.7, 2.6, -14.2)),
-        target: 'well', spawn: null, onEnter: () => toast('Do not look down...', '#b8ffcf')
-    });
+    addDoorPortal(S.wellDoor.door, { target: 'well', onEnter: () => toast('Do not look down...', '#b8ffcf') });
 }
 
 // ---------- ŚLEPIEC (model) ----------
@@ -323,40 +296,17 @@ function buildMonster() {
     return m;
 }
 
-// ---------- JUMPSCARE, HUD, INSTRUKCJA ----------
+// ---------- JUMPSCARE, HUD, INSTRUKCJA (wspólne klocki z core/levelkit.js) ----------
 function buildScare() {
-    const head = buildHead(monsterMats());
-    head.traverse((o) => { if (o.material) { o.material = o.material.clone(); o.material.depthTest = false; o.material.transparent = true; o.renderOrder = 1000; } });
-    head.scale.setScalar(2.2); head.userData.jaw.rotation.x = 0.9;
-    const plane = (col) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, depthTest: false })); p.position.z = -0.25; return p; };
-    const black = plane(0x000000), red = plane(0x8a0000); black.renderOrder = 998; red.renderOrder = 999;
-    const g = new THREE.Group(); g.add(black, red, head); g.visible = false; camera.add(g);
-    S.scare = { g: g, head: head, red: red, black: black };
-}
-function jumpscare() { if (S.scareT >= 0) return; S.scareT = 0; S.scare.g.visible = true; SFX.scare(); }
-function updateScare(dt) {
-    if (S.scareT < 0) return;
-    S.scareT += dt;
-    const k = S.scareT, sc = S.scare, j = (a) => (Math.random() - 0.5) * a;
+    const head = buildHead(monsterMats()); head.userData.jaw.rotation.x = 0.9;
     // Paszcza (przód głowy ok. 1.8 m od jej środka po skalowaniu) pędzi z ciemności pod sam nos
-    const z = k < 0.12 ? -4.8 + 2.65 * (k / 0.12) : -2.15;
-    sc.head.position.set(j(0.03), -0.28 + j(0.02), z + j(0.03));
-    sc.head.rotation.set(-0.15 + j(0.15), j(0.2), j(0.3));
-    const ph = Math.floor(k / 0.05) % 3;
-    if (k < 0.8) { sc.red.material.opacity = ph === 0 ? 0.6 : 0; sc.black.material.opacity = ph === 1 ? 0.92 : 0.5; }
-    else { const f = Math.max(0, 1 - (k - 0.8) / 0.6); sc.red.material.opacity = 0.35 * f; sc.black.material.opacity = 0.6 * f; }
-    if (k > 1.4) { sc.g.visible = false; S.scareT = -1; }
+    S.scare = createJumpscare({ head: head, scale: 2.2, y: -0.28, restZ: -2.15, fromZ: -4.8, tilt: -0.15, eyes: false });
 }
-function buildHud() {
-    const c = T.makeCanvas(1024, 200), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.082), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthTest: false, toneMapped: false }));
-    m.position.set(0, 0.2, -0.75); m.renderOrder = 990; camera.add(m);
-    S.hud = { canvas: c, tex: tx, mesh: m };
-}
+function jumpscare() { S.scare.trigger(); }
+function buildHud() { S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990); }
 function drawHud() {
-    const x = S.hud.canvas.getContext('2d');
-    x.clearRect(0, 0, 1024, 200);
-    x.fillStyle = 'rgba(4,8,12,0.72)'; x.beginPath(); x.roundRect(4, 4, 1016, 192, 26); x.fill();
+    const x = S.hud.ctx;
+    panelBg(S.hud, 'rgba(4,8,12,0.72)');
     x.textBaseline = 'middle'; x.textAlign = 'left';
     x.font = 'bold 92px "Courier New", monospace'; x.fillStyle = S.t < 30 && S.phase === 'play' ? '#ff6a4a' : '#cfe3ff';
     x.fillText(S.phase === 'intro' ? '-:--' : fmt(S.t), 34, 78);
@@ -382,7 +332,7 @@ function drawHud() {
     else if (S.alert > 0) { msg = 'It heard something...'; col = '#ffb030'; }
     else if (S.nest.size > 0) { msg = 'A friend is in the nest! Squeeze the cage lock.'; col = '#ffb030'; }
     x.font = 'bold 30px "Courier New", monospace'; x.fillStyle = col; x.fillText(msg, 34, 168);
-    S.hud.tex.needsUpdate = true;
+    S.hud.update();
 }
 const INTRO_LINES = [
     'The Blind One cannot see you. It hears every slap of your hands and every sound from your microphone.',
@@ -394,32 +344,11 @@ const INTRO_LINES = [
     'Multiplayer: stay silent and use hand gestures. If it catches someone, it drags them into its nest. Squeeze the cage lock for 2 seconds to free them.',
     'The LOBBY door behind you takes you back at any time.'
 ];
-function buildIntroPanel() {
-    const c = T.makeCanvas(1280, 900), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.703), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthTest: false, toneMapped: false }));
-    m.position.set(0, -0.04, -1.05); m.renderOrder = 995; camera.add(m);
-    S.intro = { canvas: c, tex: tx, mesh: m, last: -1 };
-}
+function buildIntroPanel() { S.intro = cameraPanel(1280, 900, 1.0, 0.703, -0.04, -1.05, 995); S.intro.last = -1; }
 function drawIntro(secLeft, following) {
-    const x = S.intro.canvas.getContext('2d'), W = 1280, H = 900;
-    x.clearRect(0, 0, W, H);
-    x.fillStyle = 'rgba(4,8,12,0.9)'; x.beginPath(); x.roundRect(6, 6, W - 12, H - 12, 34); x.fill();
-    x.strokeStyle = '#3a5a8a'; x.lineWidth = 4; x.stroke();
-    x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.font = 'bold 68px serif'; x.fillStyle = '#cfe3ff'; x.fillText('Absolute Silence', W / 2, 80);
-    x.textAlign = 'left'; x.font = '29px sans-serif'; x.fillStyle = '#d8e2ec';
-    let y = 160;
-    for (const line of INTRO_LINES) {
-        const words = line.split(' '); let cur = '', first = true;
-        for (const w of words) {
-            const test = cur ? cur + ' ' + w : w;
-            if (x.measureText(test).width > 1110) { x.fillText((first ? '•  ' : '    ') + cur, 64, y); y += 38; cur = w; first = false; } else cur = test;
-        }
-        x.fillText((first ? '•  ' : '    ') + cur, 64, y); y += 52;
-    }
-    x.textAlign = 'center'; x.font = 'bold 40px "Courier New", monospace'; x.fillStyle = '#ffb030';
-    x.fillText(following ? 'The hunt is already on. This closes in ' + secLeft + ' s' : 'It wakes up in ' + secLeft + ' s', W / 2, H - 56);
-    S.intro.tex.needsUpdate = true;
+    drawInstructions(S.intro, 'Absolute Silence', INTRO_LINES,
+        following ? 'The hunt is already on. This closes in ' + secLeft + ' s' : 'It wakes up in ' + secLeft + ' s',
+        { bg: 'rgba(4,8,12,0.9)', border: '#3a5a8a', title: '#cfe3ff', text: '#d8e2ec', footer: '#ffb030', size: 29 });
 }
 
 // ---------- HAŁAS I SŁUCH ----------
@@ -691,7 +620,7 @@ export function update(dt, t, ctx) {
         } else S.rescueT = 0;
     }
 
-    updateScare(dt);
+    S.scare.update(dt);
     if (S.wellDoor.opening && S.wellDoor.open < 1) { S.wellDoor.open = Math.min(1, S.wellDoor.open + dt * 0.6); S.wellDoor.grate.position.y = S.wellDoor.open * 2.4; }
     S.boardT -= dt; if (S.boardT <= 0) { S.boardT = 0.25; drawBoard(); }
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.12; drawHud(); }
@@ -736,9 +665,9 @@ function animateMonster(dt, t, p) {
 // Sprzątanie przy wyjściu z poziomu
 export function dispose() {
     if (S) {
-        if (S.scare) camera.remove(S.scare.g);
-        if (S.hud) camera.remove(S.hud.mesh);
-        if (S.intro) camera.remove(S.intro.mesh);
+        if (S.scare) S.scare.dispose();
+        if (S.hud) S.hud.dispose();
+        if (S.intro) S.intro.dispose();
     }
     L.onNoise = null;
     N.onLevelMsg(null);
