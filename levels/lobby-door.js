@@ -4,11 +4,11 @@
 import { THREE, L, tex, camera, addStaticBody, addBlobAO, CANNON } from '../core/engine.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { LP } from '../core/config.js';
+import { LP, GFX } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { toast } from '../core/terminal.js';
 import { createHead, createGorillaTorso, createGorillaArm, placeArm, buildHat } from '../core/avatar.js';
-import { getLook, onLookChange, unlockItem } from '../core/economy.js';
+import { getLook, onLookChange, unlockItem, recordTime, unlockAchievement } from '../core/economy.js';
 import { hands } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 
@@ -85,7 +85,7 @@ function buildMirror() {
     add(new THREE.BoxGeometry(b, H, 0.08), W / 2 + b / 2, y0 + H / 2);
     const back = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ color: 0x1a1c1e, metalness: 0.9, roughness: 0.15 }));
     back.position.set(0, y0 + H / 2, 0.02); g.add(back);
-    mirror = new Reflector(new THREE.PlaneGeometry(W, H), { textureWidth: 640, textureHeight: 920, color: 0xb0b0b0, clipBias: 0.003 });
+    mirror = new Reflector(new THREE.PlaneGeometry(W, H), { textureWidth: GFX.mirror, textureHeight: Math.round(GFX.mirror * 1.44), color: 0xb0b0b0, clipBias: 0.003 });
     mirror.position.set(0, y0 + H / 2, 0.03); g.add(mirror);
     if (mirror.camera) mirror.camera.layers.enable(MIRROR_LAYER);
     addStaticBody(MIRROR.x + 0.05, 1.4, MIRROR.z, new CANNON.Box(new CANNON.Vec3(0.06, 1.4, W / 2 + b)), g, false);
@@ -167,15 +167,20 @@ function updateRoute(dt, t, p) {
     if (route.next > 0 && p.y < 0.6) { resetRoute(); toast('You touched the floor. Back to the start!', '#ff6a4a'); }
     const near = (b) => b.distanceToPoint(hands.L.position) < 0.3 || b.distanceToPoint(hands.R.position) < 0.3;
     const cp = route.cps[route.next];
+    route.clock = (route.clock || 0) + dt;
     if (cp && near(cp.ob.box3)) {
+        if (route.next === 0) route.startT = route.clock;   // czas liczony od pierwszego punktu kontrolnego
         route.next++; cp.mat.color.set(0x30ff60); cp.mat.emissive.set(0x20c040);
         SFX.fuse(); toast('Checkpoint ' + route.next + '/' + route.cps.length, '#7fc47f');
     }
     _p.set(FINAL[0], FINAL[1] + 0.5, FINAL[2]);
     if (hands.L.position.distanceTo(_p) < 0.55 || hands.R.position.distanceTo(_p) < 0.55) {
         if (route.next >= route.cps.length) {
+            const time = route.clock - route.startT;
+            recordTime('route', time);
+            if (time < 90) unlockAchievement('route_rush');
             if (unlockItem('skin', 'king')) { SFX.fuse(); toast('PARKOUR KING unlocked! It is on you now.', '#ffd27a'); }
-            else if (route.msgT <= 0) toast('You are already the Parkour King', '#ffd27a');
+            else if (route.msgT <= 0) toast('Route done in ' + Math.floor(time / 60) + ':' + String(Math.floor(time % 60)).padStart(2, '0'), '#ffd27a');
             route.msgT = 4; resetRoute();
         } else if (route.msgT <= 0) { toast('Touch all 3 red checkpoints in one climb first', '#ff6a4a'); route.msgT = 4; }
     }
