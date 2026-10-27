@@ -13,7 +13,9 @@ import { buildMannequin } from '../core/mannequin.js';
 import { levelReward, recordTime, unlockAchievement } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import * as SFX from '../core/audio.js';
+import * as NET from '../core/network.js';
 import { ARRIVAL } from './lobby-door.js';
+import { buildDoor, createJumpscare } from '../core/levelkit.js';
 
 const NP = LIGHT_PRESETS.night;
 const N = 25, CELL = 4, HALF = 50, WT = 0.6, H = 20;   // 25 x 25 komórek po 4 m = 100 x 100 m
@@ -82,9 +84,10 @@ function bfs(M, from) {
 
 // ---------- BUDOWA ----------
 export function build() {
-    const seed = (Math.random() * 1e9) | 0, M = generate(seed), root = L.root;
+    // Ziarno od main.js (w multiplayerze wspólne z hostem, więc cała drużyna ma ten sam układ)
+    const seed = L.levelSeed !== undefined ? L.levelSeed : (Math.random() * 1e9) | 0, M = generate(seed), root = L.root;
     L.levelId = 'maze-' + seed;   // każdy gracz ma swój labirynt, więc inni gracze są ukryci
-    S = { M: M, time: 0, phase: 'intro', phaseT: 0, chaseT: 0, lost: 0, lastScare: -99, scareT: -1, playerNode: -1, dist: null, target: null, introShown: false, lights: [],
+    S = { M: M, seed: seed, time: 0, phase: 'intro', phaseT: 0, chaseT: 0, lost: 0, lastScare: -99, scareT: -1, playerNode: -1, dist: null, target: null, introShown: false, lights: [],
           lastNode: -1, nextPhantom: PHANTOM_MIN + Math.random() * (PHANTOM_MAX - PHANTOM_MIN), phantom: null, blackout: 0 };
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -49.5, maxX: 49.5, minZ: -59.5, maxZ: 59.5, maxY: 19.6 };
@@ -117,7 +120,7 @@ export function build() {
     buildHintsAndLights(M, path);
     buildRooms();
     buildCage();
-    buildScare();
+    S.scare = createJumpscare({});
     buildPhantom();
     buildDecor();
 }
@@ -170,16 +173,8 @@ function addLamp(x, z, color, intensity) {
 function buildRooms() {
     addLamp(2, 57, 0xff8a50, 22);
     addLamp(2, -55, 0x60ff90, 30);
-    door(2, 59.68, Math.PI, 'LOBBY', '#ffb070');
-    door(2, -59.68, 0, 'EXIT', '#70ff90');
-    L.portals.push({
-        box3: new THREE.Box3(new THREE.Vector3(1.2, 0, 58.6), new THREE.Vector3(2.8, 2.6, 60)),
-        target: 'lobby', spawn: ARRIVAL, onEnter: () => toast('Back to the lobby')
-    });
-    L.portals.push({
-        box3: new THREE.Box3(new THREE.Vector3(1.2, 0, -60), new THREE.Vector3(2.8, 2.6, -58.6)),
-        target: 'lobby', spawn: ARRIVAL, onEnter: () => toast('Back to the lobby')
-    });
+    buildDoor({ x: 2, z: 59.68, rotY: Math.PI, label: 'LOBBY', color: '#ffb070', wood: 0x8a6a5a, portal: { target: 'lobby', spawn: ARRIVAL, onEnter: () => toast('Back to the lobby') } });
+    buildDoor({ x: 2, z: -59.68, rotY: 0, label: 'EXIT', color: '#70ff90', wood: 0x8a6a5a, portal: { target: 'lobby', spawn: ARRIVAL, onEnter: () => toast('Back to the lobby') } });
     buildHole();
 }
 // Zapadnia w pokoju końcowym: otwiera się po dotarciu do końca, prowadzi na poziom Cisza
@@ -211,19 +206,6 @@ function finishMaze() {
         target: 'silence', spawn: null, onEnter: () => toast('You fall into the dark...', '#9fc8ff')
     });
 }
-function door(x, z, rotY, label, col) {
-    const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rotY; L.root.add(g);
-    const frame = new THREE.MeshStandardMaterial({ color: 0x1c1416, metalness: 0.7, roughness: 0.45 });
-    for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.45, 0.12), frame); p.position.set(s * 0.72, 1.22, 0.04); g.add(p); }
-    const top = new THREE.Mesh(new THREE.BoxGeometry(1.58, 0.16, 0.12), frame); top.position.set(0, 2.38, 0.04); g.add(top);
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.3, 0.06), new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x8a6a5a, roughness: 0.6 })); panel.position.set(0, 1.15, 0); g.add(panel);
-    const sc = T.makeCanvas(512, 128), sx = sc.getContext('2d');
-    sx.fillStyle = '#080404'; sx.fillRect(0, 0, 512, 128);
-    sx.font = 'bold 76px serif'; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.shadowColor = col; sx.shadowBlur = 24; sx.fillStyle = col; sx.fillText(label, 256, 66);
-    const st = new THREE.CanvasTexture(sc); st.colorSpace = THREE.SRGBColorSpace;
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.35), new THREE.MeshBasicMaterial({ map: st, toneMapped: false })); sign.position.set(0, 2.75, 0.06); g.add(sign);
-}
-
 // Klatka z manekinem w pokoju startowym (po lewej, przed wejściem do labiryntu)
 function buildCage() {
     const cx = -1.6, cz = 52.6, s = 0.7, h = 2.4;
@@ -265,37 +247,9 @@ function resetMannequin() {
     c.pivot.rotation.y = 0; c.pivot.position.set(0.7, 0, -0.7); c.lock.visible = true; c.group.position.set(c.home[0], 0, c.home[1]);
 }
 
-// Twarz do jumpscare'a, przyczepiona do kamery: wyskakuje z ciemności prosto w oczy
-function buildScare() {
-    const m = buildMannequin(T.mkRng(4242)), head = m.head;
-    head.parent.remove(head);
-    head.traverse((o) => { if (o.material) { o.material = o.material.clone(); o.material.depthTest = false; o.renderOrder = 1000; } });
-    for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1000, transparent: true, blending: THREE.AdditiveBlending, depthTest: false })); e.scale.set(0.16, 0.16, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 1001; head.add(e); }
-    head.rotation.set(0, 0, 0); head.scale.setScalar(2.4);
-    const plane = (col) => { const m2 = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, depthTest: false })); m2.position.z = -0.25; return m2; };
-    const black = plane(0x000000), red = plane(0xff0000);
-    black.renderOrder = 998; red.renderOrder = 999;
-    const g = new THREE.Group(); g.add(black); g.add(red); g.add(head); g.visible = false; camera.add(g);
-    S.scare = { g: g, head: head, red: red, black: black };
-}
+// Jumpscare (wspólny klocek z core/levelkit.js); liczymy je do osiągnięcia "Maze runner"
 function jumpscare() {
-    if (S.scareT >= 0) return;
-    S.scareT = 0; S.scare.g.visible = true; S.lastScare = S.time; S.scares = (S.scares || 0) + 1;
-    SFX.scare();
-}
-function updateScare(dt) {
-    if (S.scareT < 0) return;
-    S.scareT += dt;
-    const k = S.scareT, sc = S.scare, j = (a) => (Math.random() - 0.5) * a;
-    // 0.1 s: twarz pędzi z ciemności, potem trzęsie się tuż przed oczami
-    const z = k < 0.1 ? -1.9 + 1.58 * (k / 0.1) : -0.32;
-    sc.head.position.set(j(0.03), -0.36 + j(0.02), z + j(0.015));
-    sc.head.rotation.set(j(0.15), j(0.2), j(0.35));
-    // Stroboskop: czerwień i czerń na zmianę
-    const ph = Math.floor(k / 0.05) % 3;
-    if (k < 0.8) { sc.red.material.opacity = ph === 0 ? 0.6 : 0; sc.black.material.opacity = ph === 1 ? 0.92 : 0.5; }
-    else { const f = Math.max(0, 1 - (k - 0.8) / 0.6); sc.red.material.opacity = 0.35 * f; sc.black.material.opacity = 0.6 * f; }
-    if (k > 1.4) { sc.g.visible = false; S.scareT = -1; }
+    if (S.scare.trigger()) { S.lastScare = S.time; S.scares = (S.scares || 0) + 1; }
 }
 
 // Zjawa: manekin stoi na końcu korytarza, w który patrzysz. Gdy na nią spojrzysz, znika ze zgrzytem i gaśnie latarka.
@@ -379,7 +333,7 @@ export function update(dt, t, ctx) {
     else if (S.phase === 'chase' && qd < 10 && Math.random() < 0.12) lamp = 0.15;
     lighting.headLamp.intensity = NP.flashlight.intensity * lamp;
 
-    updateScare(dt);
+    S.scare.update(dt);
     if (S.phase === 'intro' || S.phase === 'chase') updatePhantom(dt, p);
     // Pokój końcowy
     if (p.z < -50.6 && (S.phase === 'intro' || S.phase === 'chase')) finishMaze();
@@ -413,16 +367,18 @@ export function update(dt, t, ctx) {
         chase(dt, t, p);
         const dx = p.x - q.x, dz = p.z - q.z, dist = Math.hypot(dx, dz);
         SFX.heartbeat(Math.max(0, 1 - dist / 22));
-        if (dist < 0.85 && p.y < 3.2) { S.phase = 'caught'; S.phaseT = 0; S.scareT = -1; jumpscare(); }
+        if (dist < 0.85 && p.y < 3.2) { S.phase = 'caught'; S.phaseT = 0; jumpscare(); }
     } else if (S.phase === 'caught') {
         freeze(body);
-        if (S.phaseT > 1.5) { S.phase = 'leaving'; S.frozen = null; toast('The mannequin caught you. A new maze awaits...', '#e0533f'); ctx.goto('maze'); }
+        if (S.phaseT > 1.5) { S.phase = 'leaving'; S.frozen = null; toast('The mannequin caught you. A new maze awaits...', '#e0533f'); 
+            // Solo: nowy labirynt. W drużynie: ten sam układ, żeby nie rozdzielać graczy.
+            if (NET.NET.mode === 'solo') ctx.goto('maze'); else ctx.goto('maze', null, { seed: S.seed, noFollow: true }); }
         return;
     } else return;
 
     if (S.phase === 'cutscene') return;
     // Jumpscare'y za złą drogę
-    const pn = nodeAt(p.x, p.z), canScare = S.time - S.lastScare > SCARE_COOLDOWN && S.scareT < 0 && !S.ph.active;
+    const pn = nodeAt(p.x, p.z), canScare = S.time - S.lastScare > SCARE_COOLDOWN && !S.scare.active() && !S.ph.active;
     if (pn !== S.lastNode) {
         S.lastNode = pn;
         // Wejście w ślepy zaułek poza główną drogą
@@ -469,6 +425,6 @@ function chase(dt, t, p) {
 
 // Wywoływane przy wyjściu z poziomu: sprzątanie rzeczy przyczepionych do kamery
 export function dispose() {
-    if (S && S.scare) camera.remove(S.scare.g);
+    if (S && S.scare) S.scare.dispose();
     S = null;
 }
