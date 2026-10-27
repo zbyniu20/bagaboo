@@ -82,11 +82,23 @@ export function initPointers(controllers) {
         cur.visible = false; scene.add(cur); cursors.push(cur);
     });
 }
-export function updatePointers() {
+// desktopCam: na komputerze celujesz środkiem ekranu (celownik), klik = spust
+export function updatePointers(desktopCam) {
     const hoverIds = new Map();
     const meshes = terminals.filter(t => t.mesh && t.mesh.parent).map(t => t.mesh);
     for (let i = 0; i < ctrls.length; i++) {
         hits[i] = null; lasers[i].visible = false; cursors[i].visible = false;
+        if (!renderer.xr.isPresenting && desktopCam && i === 0 && meshes.length) {
+            raycaster.setFromCamera({ x: 0, y: 0 }, desktopCam); raycaster.far = 4;
+            const r = raycaster.intersectObjects(meshes, false);
+            if (r.length && r[0].uv) {
+                const h = r[0], term = h.object.userData.terminal, px = h.uv.x * term.W, py = (1 - h.uv.y) * term.H;
+                const b = term.buttons.find(bt => px >= bt.x && px <= bt.x + bt.w && py >= bt.y && py <= bt.y + bt.h) || null;
+                hits[0] = { term: term, btn: b };
+                if (b) hoverIds.set(term, [b.id]);
+            }
+            continue;
+        }
         if (!renderer.xr.isPresenting || !meshes.length) continue;
         const c = ctrls[i];
         _m.identity().extractRotation(c.matrixWorld);
