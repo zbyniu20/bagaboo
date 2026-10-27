@@ -1,7 +1,8 @@
 // ==========================================
-// EKONOMIA I ZAPIS GRY: waluta (kości), sklep, nagroda za logowanie, zadania dzienne, bonusy
+// EKONOMIA I ZAPIS GRY: waluta Bagabucks, sklep, nagroda za logowanie, zadania dzienne, bonusy,
+// rekordy czasów, osiągnięcia i podpisany zapis (wykrywa ręczne zmiany, ma kopię zapasową)
 //
-// Bilans: typowy dzień daje ok. 600-800 kości (1-2 nagrody za logowanie ~250, trzy zadania + bonus ~370,
+// Bilans: typowy dzień daje ok. 600-800 Bagabucks (1-2 nagrody za logowanie ~250, trzy zadania + bonus ~370,
 // aktywności ~150). Dlatego tanie rzeczy (250-500) kupisz w jeden dzień, średnie (600-1000) w 1-2 dni,
 // rzadkie (2200-3500) w 3-5 dni, a legendarne (6000) w około tydzień regularnej gry.
 // ==========================================
@@ -12,6 +13,8 @@ export const LOGIN_INTERVAL = 6 * 3600 * 1000;      // nagroda za logowanie co 6
 const STREAK_WINDOW = 30 * 3600 * 1000;              // seria trwa, jeśli wrócisz w ciągu 30 godzin
 export const QUEST_ALL_BONUS = 150;                  // premia za wykonanie wszystkich 3 zadań dnia
 export const START_BONES = 150;
+export const CURRENCY = 'Bagabucks';
+export const REPEAT_LIMIT = 3;                       // ile powtórnych przejść poziomu dziennie daje nagrodę
 
 export const CATALOG = [
     { slot: 'hat', id: 'none', name: 'No hat', price: 0 },
@@ -22,6 +25,7 @@ export const CATALOG = [
     { slot: 'hat', id: 'horns', name: 'Demon horns', price: 2500 },
     { slot: 'hat', id: 'crown', name: 'Rotten crown', price: 3000 },
     { slot: 'hat', id: 'halo', name: 'Broken halo', price: 4500 },
+    { slot: 'hat', id: 'miner', name: "Miner's helmet", price: 0, locked: true, hint: 'Achievement' },
     { slot: 'glasses', id: 'none', name: 'No glasses', price: 0 },
     { slot: 'glasses', id: 'round', name: 'Round spectacles', price: 400 },
     { slot: 'glasses', id: 'sunglasses', name: 'Sunglasses', price: 500 },
@@ -29,23 +33,27 @@ export const CATALOG = [
     { slot: 'glasses', id: 'weld', name: 'Welding goggles', price: 700 },
     { slot: 'glasses', id: 'visor', name: 'Red glowing visor', price: 2200 },
     { slot: 'glasses', id: 'thirdeye', name: 'Third eye', price: 2600 },
+    { slot: 'glasses', id: 'goldshades', name: 'Gold shades', price: 0, locked: true, hint: 'Achievement' },
     { slot: 'sleeve', id: 'cloth', name: 'Cloth sleeve', price: 0 },
     { slot: 'sleeve', id: 'leather', name: 'Leather sleeve', price: 250 },
     { slot: 'sleeve', id: 'camo', name: 'Camo sleeve', price: 350 },
     { slot: 'sleeve', id: 'straitjacket', name: 'Straitjacket', price: 450 },
     { slot: 'sleeve', id: 'bandage', name: 'Bloody bandages', price: 700 },
     { slot: 'sleeve', id: 'gold', name: 'Gold sleeve', price: 3500 },
+    { slot: 'sleeve', id: 'ghostcloth', name: 'Ghost cloth', price: 0, locked: true, hint: 'Achievement' },
     { slot: 'gloves', id: 'none', name: 'Bare hands', price: 0 },
     { slot: 'gloves', id: 'black', name: 'Black gloves', price: 900 },
     { slot: 'gloves', id: 'mannequin', name: 'Mannequin hands', price: 1200 },
     { slot: 'gloves', id: 'burnt', name: 'Burnt hands', price: 1600 },
     { slot: 'gloves', id: 'bone', name: 'Bone gloves', price: 2800 },
     { slot: 'gloves', id: 'ghost', name: 'Ghost hands', price: 6000 },
+    { slot: 'gloves', id: 'neon', name: 'Neon hands', price: 0, locked: true, hint: 'Achievement' },
     { slot: 'skin', id: 'none', name: 'Your own color', price: 0 },
     { slot: 'skin', id: 'silverback', name: 'Silverback', price: 1500 },
     { slot: 'skin', id: 'albino', name: 'Albino gorilla', price: 2200 },
     { slot: 'skin', id: 'shadow', name: 'Shadow (glowing eyes)', price: 3800 },
-    { slot: 'skin', id: 'king', name: 'Parkour King', price: 0, locked: true },   // tylko za czerwoną trasę w lobby
+    { slot: 'skin', id: 'king', name: 'Parkour King', price: 0, locked: true, hint: 'Red route' },   // tylko za czerwoną trasę w lobby
+    { slot: 'skin', id: 'bloodmoon', name: 'Bloodmoon', price: 0, locked: true, hint: 'Achievement' },
     { slot: 'mask', id: 'none', name: 'No mask', price: 0 },
     { slot: 'mask', id: 'hockey', name: 'Hockey mask', price: 900 },
     { slot: 'mask', id: 'gas', name: 'Gas mask', price: 1300 },
@@ -74,8 +82,21 @@ export const ACTIVITY = {
     rope: { each: 3, cap: 30, label: 'Rope grab' },
     throw: { each: 1, cap: 20, label: 'Eyeball throw' },
     play: { each: 10, every: 300, cap: 120, label: 'Every 5 min played' },
-    social: { each: 15, every: 300, cap: 150, label: 'Every 5 min with others' }
+    social: { each: 15, every: 300, cap: 150, label: 'Every 5 min with others' },
+    fuse: { each: 40, cap: 160, label: 'Fuse found' }
 };
+
+// Osiągnięcia: każde odblokowuje unikalny kosmetyk
+export const ACHIEVEMENTS = [
+    { id: 'maze_runner', name: 'Maze runner', desc: 'Escape the maze without a single jumpscare', reward: ['gloves', 'neon'], rewardName: 'Neon hands' },
+    { id: 'silent_ghost', name: 'Silent ghost', desc: 'Survive Absolute Silence without throwing a ball or being caught', reward: ['sleeve', 'ghostcloth'], rewardName: 'Ghost cloth' },
+    { id: 'well_climber', name: 'Well climber', desc: 'Climb out of the well in under 4:30', reward: ['hat', 'miner'], rewardName: "Miner's helmet" },
+    { id: 'route_rush', name: 'Route rush', desc: 'Finish the red route in under 1:30', reward: ['glasses', 'goldshades'], rewardName: 'Gold shades' },
+    { id: 'completionist', name: 'Completionist', desc: 'Beat all three levels and become Parkour King', reward: ['skin', 'bloodmoon'], rewardName: 'Bloodmoon skin' }
+];
+export const RECORDS = [
+    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'route', name: 'Red route' }
+];
 export const HEIGHT_RECORD_BONUS = 10;   // za każdy nowy metr rekordu wysokości
 export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dnia
 
@@ -87,15 +108,33 @@ function defaultSave() {
         profile: { name: 'Acrobat', color: '#3d2314' },
         best: { height: 0, jumps: 0 },
         login: { last: 0, streak: 0 },
-        daily: null, pos: null, savedAt: 0
+        daily: null, pos: null, savedAt: 0,
+        records: {}, achievements: {}
     };
+}
+// Podpis zapisu: suma kontrolna z "solą". Wykrywa ręczne zmiany w przeglądarce (nie jest to pełne zabezpieczenie).
+const SALT = 'bgb-vr-2026-salt';
+function sign(text) { let h = 2166136261; const t = SALT + text; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+export let loadNotice = '';   // komunikat dla gracza po wczytaniu (np. zapis był zmieniony)
+function readSlot(key) {
+    const raw = localStorage.getItem(key);
+    if (!raw) return { state: 'empty' };
+    let obj; try { obj = JSON.parse(raw); } catch (e) { return { state: 'broken' }; }
+    if (obj && obj.d && obj.s) { const text = JSON.stringify(obj.d); return sign(text) === obj.s ? { state: 'ok', data: obj.d } : { state: 'tampered' }; }
+    return obj && typeof obj === 'object' ? { state: 'ok', data: obj, legacy: true } : { state: 'broken' };   // stary, niepodpisany zapis
 }
 function load() {
     const d = defaultSave();
+    let r;
     try {
-        const raw = localStorage.getItem(SAVE_KEY);
-        if (!raw) return d;
-        const s = JSON.parse(raw);
+        r = readSlot(SAVE_KEY);
+        if (r.state === 'broken' || r.state === 'tampered') {
+            const b = readSlot(SAVE_KEY + '_bak');
+            if (b.state === 'ok') { loadNotice = r.state === 'broken' ? 'Your save was damaged. Restored the backup.' : 'Your save was modified. Restored the backup.'; r = b; }
+            else { loadNotice = r.state === 'broken' ? 'Your save was damaged and could not be restored.' : 'Your save was modified by hand. Progress was reset.'; return d; }
+        }
+        if (r.state !== 'ok') return d;
+        const s = r.data;
         const owned = Array.isArray(s.owned) ? s.owned : d.owned.slice();
         for (const o of d.owned) if (!owned.includes(o)) owned.push(o);   // nowe darmowe przedmioty dla starych zapisów
         return Object.assign(d, s, {
@@ -103,6 +142,8 @@ function load() {
             profile: Object.assign(d.profile, s.profile || {}),
             best: Object.assign(d.best, s.best || {}),
             login: Object.assign(d.login, s.login || {}),
+            records: Object.assign({}, s.records || {}),
+            achievements: Object.assign({}, s.achievements || {}),
             owned: owned
         });
     } catch (e) { return d; }
@@ -112,15 +153,21 @@ export const SESSION = { maxH: 0, jumps: 0, since: Date.now(), lastM: 0 };
 
 export function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
 export function saveGame() {
-    try { SAVE.savedAt = Date.now(); localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); return true; }
-    catch (e) { return false; }
+    try {
+        SAVE.savedAt = Date.now();
+        const prev = localStorage.getItem(SAVE_KEY);
+        if (prev && readSlot(SAVE_KEY).state === 'ok') localStorage.setItem(SAVE_KEY + '_bak', prev);   // kopia zapasowa poprzedniego zapisu
+        const text = JSON.stringify(SAVE);
+        localStorage.setItem(SAVE_KEY, JSON.stringify({ d: JSON.parse(text), s: sign(text) }));
+        return true;
+    } catch (e) { return false; }
 }
-export function resetSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+export function resetSave() { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(SAVE_KEY + '_bak'); } catch (e) {} }
 
 export function addBones(n, why) {
     if (!(n > 0)) return;
     SAVE.wallet += n; SAVE.earned += n;
-    toast('+' + n + ' bones: ' + why);
+    toast('+' + n + ' ' + CURRENCY + ': ' + why);
     markAllDirty();
 }
 
@@ -135,18 +182,59 @@ export function setProfile(p) { Object.assign(SAVE.profile, p); saveGame(); noti
 export function isOwned(item) { return SAVE.owned.includes(item.slot + ':' + item.id); }
 export function isEquipped(item) { return SAVE.equipped[item.slot] === item.id; }
 export function isLocked(item) { return !!item.locked && !isOwned(item); }
+// Nagroda za przejście poziomu: pełna za pierwszym razem, potem mniejsza, maks. REPEAT_LIMIT razy dziennie
+export function levelReward(level, first, repeat, label) {
+    const key = level + 'Wins', wins = SAVE[key] || 0;
+    SAVE[key] = wins + 1;
+    let amount = 0;
+    if (wins === 0) amount = first;
+    else {
+        const d = ensureDaily(); d.repeats = d.repeats || {};
+        const n = d.repeats[level] || 0;
+        if (n < REPEAT_LIMIT) { d.repeats[level] = n + 1; amount = repeat; }
+    }
+    if (amount > 0) addBones(amount, (wins === 0 ? 'first ' : '') + label);
+    else toast('Daily reward limit for this level reached. Come back tomorrow!', '#ffb030');
+    checkCompletionist();
+    saveGame();
+    return amount;
+}
+export function rewardActivity(key) { capped(key, ACTIVITY[key].each); }
+// Rekordy czasów (w sekundach). Zwraca true przy nowym rekordzie.
+export function recordTime(id, sec) {
+    const prev = SAVE.records[id];
+    if (prev === undefined || sec < prev) {
+        SAVE.records[id] = Math.round(sec * 10) / 10; saveGame(); markAllDirty();
+        if (prev !== undefined) toast('New record: ' + fmtDuration(sec * 1000), '#ffd27a');
+        return true;
+    }
+    return false;
+}
+export function unlockAchievement(id) {
+    if (SAVE.achievements[id]) return false;
+    const a = ACHIEVEMENTS.find(x => x.id === id); if (!a) return false;
+    SAVE.achievements[id] = Date.now();
+    const key = a.reward[0] + ':' + a.reward[1];
+    if (!SAVE.owned.includes(key)) SAVE.owned.push(key);
+    saveGame(); markAllDirty();
+    setTimeout(() => toast('Achievement: ' + a.name + '! Unlocked ' + a.rewardName, '#ffd27a'), 1500);
+    return true;
+}
+export function checkCompletionist() {
+    if ((SAVE.mazeWins || 0) > 0 && (SAVE.silenceWins || 0) > 0 && (SAVE.wellWins || 0) > 0 && SAVE.owned.includes('skin:king')) unlockAchievement('completionist');
+}
 // Odblokowanie przedmiotu za osiągnięcie (np. Parkour King za czerwoną trasę)
 export function unlockItem(slot, id) {
     const key = slot + ':' + id;
     if (SAVE.owned.includes(key)) return false;
     SAVE.owned.push(key); SAVE.equipped[slot] = id;
-    saveGame(); notifyLook();
+    saveGame(); notifyLook(); checkCompletionist();
     return true;
 }
 export function buyItem(item) {
     if (isOwned(item)) return 'owned';
     if (item.locked) return 'locked';
-    if (SAVE.wallet < item.price) { toast('Not enough bones for ' + item.name, '#e0533f'); return 'poor'; }
+    if (SAVE.wallet < item.price) { toast('Not enough ' + CURRENCY + ' for ' + item.name, '#e0533f'); return 'poor'; }
     SAVE.wallet -= item.price; SAVE.owned.push(item.slot + ':' + item.id);
     SAVE.equipped[item.slot] = item.id;
     toast('Bought ' + item.name + ' (-' + item.price + ')', '#7fc47f');
