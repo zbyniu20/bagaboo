@@ -4,6 +4,7 @@
 // initAudio() musi zostać wywołane po kliknięciu przycisku (wymóg przeglądarek)
 // ==========================================
 import { SETTINGS } from './settings.js';
+import { buzz } from './haptics.js';
 let ctx = null, master = null, droneGain = null, scareBus = null, shaper = null;
 const DRONE = 0.07;
 const hb = { next: 0 };
@@ -116,6 +117,7 @@ export function scare() {
     if (!ctx) return;
     const t0 = ctx.currentTime;
     duckDrone(t0); lastLoud = t0 + 1.2;
+    buzz('both', 1.0, 450);   // jumpscare: mocna wibracja obu kontrolerów
     const sub = ctx.createOscillator(), sg = ctx.createGain(); sub.type = 'sine';
     sub.frequency.setValueAtTime(110, t0); sub.frequency.exponentialRampToValueAtTime(26, t0 + 0.7);
     env(sg, t0, 1.0, 0.004, 0.8); sub.connect(sg); sg.connect(scareBus); sub.start(t0); sub.stop(t0 + 0.9);
@@ -131,6 +133,7 @@ export function stinger(pos) {
     if (!ctx) return;
     const t0 = ctx.currentTime;
     duckDrone(t0); lastLoud = t0;
+    buzz('both', 0.7, 180);
     const dst = pos ? outAt(pos) : shaper;
     for (const f of [1318, 1396, 1975]) saw(t0, f, f * 0.8, 0.7, pos ? 0.45 : 0.28, dst);
     const n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.4);
@@ -179,6 +182,7 @@ export function heartbeat(intensity) {
     const now = ctx.currentTime;
     if (now < hb.next) return;
     thump(now, 1.0 * intensity); thump(now + 0.17, 0.65 * intensity);
+    buzz('both', 0.6 * intensity, 60); setTimeout(() => buzz('both', 0.4 * intensity, 50), 170);   // bicie serca w dłoniach
     hb.next = now + 60 / (55 + 95 * intensity);
 }
 
@@ -188,6 +192,7 @@ let lastLoud = -10, micAnalyser = null, micBuf = null, micStream = null;
 export function roar(vol, pos) {
     if (!ctx) return;
     const t0 = ctx.currentTime, dest = outAt(pos); lastLoud = t0;
+    buzz('both', 0.35 * (vol || 1), 700);
     const g = ctx.createGain(); env(g, t0, Math.max(0.01, vol), 0.15, 1.6);
     const ws = ctx.createWaveShaper(); ws.curve = distortionCurve(80);
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
