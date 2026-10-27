@@ -79,7 +79,7 @@ const ROUTE = [
     [-6.2, 11.4, -14.6], [-7.6, 12.5, -13.0], [-9.4, 13.2, -14.6], [-10.6, 14.4, -13.4, 1], [-14.6, 15.3, -12.0], [-13.0, 16.2, -10.8], [-14.6, 17.0, -12.4]
 ];
 const FINAL = [-12.9, 17.9, -13.7];
-const SLIPPERY_WALL = 0.25;   // ściany przy trasie (północna i zachodnia) są śliskie
+const SLIPPERY_WALL = 0.45;   // ściany przy trasie (północna i zachodnia) są śliskie
 let route = null;
 function buildRoute() {
     // Śliskie ściany: bez uchwytów trudno się po nich wspinać
@@ -88,10 +88,11 @@ function buildRoute() {
     const holds = [], dots = [], ropes = [];
     ROUTE.forEach((r, i) => {
         const [x, y, z, cp] = r, onX = x <= -14.5, floating = !onX && z > -14;
-        const sx = cp ? 0.6 : (onX ? 0.5 : 0.42), sz = cp ? 0.6 : (onX ? 0.42 : 0.5);
+        // Większe platformy: na ścianie 0.9 x 0.8 m, wiszące 1 x 1 m, punkty kontrolne 1.1 x 1.1 m
+        const sx = cp ? 1.1 : (onX ? 0.8 : (floating ? 1.0 : 0.9)), sz = cp ? 1.1 : (onX ? 0.9 : (floating ? 1.0 : 0.8));
         const mat = cp ? new THREE.MeshStandardMaterial({ color: 0xff2a10, emissive: 0xff2a10, emissiveIntensity: 1.0, roughness: 0.3 }) : red;
-        const m = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.22, sz), mat); m.position.set(x, y, z); m.castShadow = true; L.root.add(m);
-        addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(sx / 2, 0.11, sz / 2)), m, false);
+        const m = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.25, sz), mat); m.position.set(x, y, z); m.castShadow = true; L.root.add(m);
+        addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(sx / 2, 0.125, sz / 2)), m, false);
         holds.push({ mesh: m, ob: L.obstacles[L.obstacles.length - 1], cp: !!cp, mat: mat });
         if (floating) ropes.push(new THREE.CylinderGeometry(0.008, 0.008, 19.9 - y, 4).translate(x, (19.9 + y) / 2, z));
         if (i > 0) { const p = ROUTE[i - 1]; for (let k = 1; k < 5; k++) { const t = k / 5; dots.push(new THREE.SphereGeometry(0.035, 6, 4).translate(p[0] + (x - p[0]) * t, p[1] + (y - p[1]) * t, p[2] + (z - p[2]) * t)); } }
@@ -101,9 +102,9 @@ function buildRoute() {
     L.root.add(new THREE.Mesh(mergeGeometries(dots), new THREE.MeshBasicMaterial({ color: 0xff3020 })));
     if (ropes.length) L.root.add(new THREE.Mesh(mergeGeometries(ropes), new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8 })));
     // Platforma z koroną
-    const plat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.25, 1.4), new THREE.MeshStandardMaterial({ color: 0x8a1010, emissive: 0x400000, metalness: 0.4, roughness: 0.4 }));
+    const plat = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.25, 1.9), new THREE.MeshStandardMaterial({ color: 0x8a1010, emissive: 0x400000, metalness: 0.4, roughness: 0.4 }));
     plat.position.set(FINAL[0], FINAL[1], FINAL[2]); plat.castShadow = true; L.root.add(plat);
-    addStaticBody(FINAL[0], FINAL[1], FINAL[2], new CANNON.Box(new CANNON.Vec3(0.7, 0.125, 0.7)), plat, false);
+    addStaticBody(FINAL[0], FINAL[1], FINAL[2], new CANNON.Box(new CANNON.Vec3(0.95, 0.125, 0.95)), plat, false);
     const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.4, 16), new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.3 }));
     ped.position.set(FINAL[0], FINAL[1] + 0.32, FINAL[2]); L.root.add(ped);
     const crown = buildHat('crown'); crown.scale.setScalar(2.6); crown.position.set(FINAL[0], FINAL[1] + 0.12, FINAL[2]); L.root.add(crown);
