@@ -44,6 +44,8 @@ button:disabled { background: #5a4848 !important; color: #b8a0a0 !important; bor
   <div class="form-group"><label for="playerName">Nickname:</label><input type="text" id="playerName" value="Acrobat" maxlength="16"></div>
   <div class="form-group"><label for="playerColor">Body color:</label><input type="color" id="playerColor" value="#3d2314"></div>
   <div class="form-group"><label for="roomCode">Room code:</label><input type="text" id="roomCode" value="MAIN" maxlength="12"></div>
+  <div class="form-group"><label for="quality">Graphics:</label>
+    <select id="quality"><option value="low">Low (fastest)</option><option value="medium">Medium</option><option value="high">High</option></select></div>
   <div class="btn-group">
     <button id="btnHost">Host room</button>
     <button id="btnJoin">Join as guest</button>
@@ -52,7 +54,7 @@ button:disabled { background: #5a4848 !important; color: #b8a0a0 !important; bor
   <button id="btnNew">New game (delete save)</button>
   <div id="saveInfo"></div>
   <div id="status">Checking microphone...</div>
-  <div id="rules">One host per room, up to 9 guests. Guests can join only after the host is online. Hats, glasses, masks, sleeves and gloves are bought with bones in the shop inside the lobby.</div>
+  <div id="rules">One host per room, up to 9 guests. Guests can join only after the host is online. Hats, glasses, masks, sleeves and gloves are bought with Bagabucks in the shop inside the lobby. In VR press Y, B or a stick to pause.</div>
 </div>
 <div id="info">The sun is setting... don't look away.</div>
 <div id="audio-container" style="display:none;"></div>
