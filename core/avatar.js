@@ -299,6 +299,38 @@ export function createHead(look, withName) {
     if (withName) { const tag = createNameSprite(String(look.name || 'Player').slice(0, 16)); tag.position.set(0, 0.45, 0); tag.scale.set(2, 0.5, 1); head.add(tag); }
     return head;
 }
+// Odznaki (jak w Gorilla Tag): okrągła przypinka ze złotą obwódką na piersi
+const BADGES = {
+    early: { bg: '#4a1a7a', draw: (x) => star(x, 64, 64, 40, 18, '#ffd23a') },
+    skull: { bg: '#141414', draw: (x) => { x.fillStyle = '#f0ece0'; x.beginPath(); x.arc(64, 56, 30, 0, 7); x.fill(); x.fillRect(46, 70, 36, 22); x.fillStyle = '#141414'; x.beginPath(); x.arc(52, 56, 9, 0, 7); x.arc(76, 56, 9, 0, 7); x.fill(); x.fillRect(54, 84, 4, 8); x.fillRect(62, 84, 4, 8); x.fillRect(70, 84, 4, 8); } },
+    bone: { bg: '#5a3a22', draw: (x) => { x.save(); x.translate(64, 64); x.rotate(-0.7); x.fillStyle = '#f0e8d4'; x.fillRect(-30, -7, 60, 14); for (const sx of [-1, 1]) for (const sy of [-1, 1]) { x.beginPath(); x.arc(sx * 32, sy * 8, 10, 0, 7); x.fill(); } x.restore(); } },
+    eye: { bg: '#5a0a0a', draw: (x) => { x.fillStyle = '#f4ecdc'; x.beginPath(); x.ellipse(64, 64, 42, 24, 0, 0, 7); x.fill(); x.fillStyle = '#b01010'; x.beginPath(); x.arc(64, 64, 16, 0, 7); x.fill(); x.fillStyle = '#000'; x.beginPath(); x.arc(64, 64, 7, 0, 7); x.fill(); } },
+    moon: { bg: '#0e1430', draw: (x) => { x.fillStyle = '#d01818'; x.beginPath(); x.arc(64, 64, 36, 0, 7); x.fill(); x.fillStyle = '#0e1430'; x.beginPath(); x.arc(80, 54, 32, 0, 7); x.fill(); } },
+    flame: { bg: '#3a0a02', draw: (x) => { for (const [c, k] of [['#ff5a10', 1], ['#ffb020', 0.65], ['#fff0a0', 0.35]]) { x.fillStyle = c; x.beginPath(); x.moveTo(64, 64 - 44 * k - 6); x.bezierCurveTo(64 + 40 * k, 64 - 10 * k, 64 + 30 * k, 64 + 40 * k, 64, 64 + 40 * k); x.bezierCurveTo(64 - 30 * k, 64 + 40 * k, 64 - 40 * k, 64 - 10 * k, 64, 64 - 44 * k - 6); x.fill(); } } },
+    crown: { bg: '#7a0a10', draw: (x) => { x.fillStyle = '#ffd23a'; x.beginPath(); x.moveTo(26, 88); x.lineTo(26, 46); x.lineTo(46, 66); x.lineTo(64, 36); x.lineTo(82, 66); x.lineTo(102, 46); x.lineTo(102, 88); x.closePath(); x.fill(); } }
+};
+function star(x, cx, cy, ro, ri, col) {
+    x.fillStyle = col; x.beginPath();
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? ri : ro; if (i === 0) x.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); else x.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+    x.closePath(); x.fill();
+}
+const badgeTex = {};
+export function buildBadge(id) {
+    const b = BADGES[id]; if (!b) return null;
+    if (!badgeTex[id]) {
+        const c = makeCanvas(128, 128), x = c.getContext('2d');
+        x.fillStyle = b.bg; x.beginPath(); x.arc(64, 64, 62, 0, 7); x.fill();
+        b.draw(x);
+        x.strokeStyle = 'rgba(255,255,255,0.25)'; x.lineWidth = 4; x.beginPath(); x.arc(64, 64, 56, Math.PI * 1.1, Math.PI * 1.6); x.stroke();   // połysk
+        badgeTex[id] = toTex(c, false);
+    }
+    const g = new THREE.Group();
+    const face = new THREE.Mesh(new THREE.CircleGeometry(0.042, 28), new THREE.MeshStandardMaterial({ map: badgeTex[id], roughness: 0.3, metalness: 0.1 }));
+    face.rotation.y = Math.PI; g.add(face);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.043, 0.005, 6, 28), new THREE.MeshStandardMaterial({ color: 0xd4a640, metalness: 1, roughness: 0.25 }));
+    g.add(rim);
+    return g;
+}
 // Tułów goryla: szeroka klatka, garb barków, ciemna pierś (środek = 0.35 m pod głową)
 export function createGorillaTorso(look) {
     const g = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
@@ -308,6 +340,8 @@ export function createGorillaTorso(look) {
     for (const s of [-1, 1]) add(fur, s * 0.27, 0.15, 0.02, 0.13, 0.13, 0.15);   // ramiona
     add(face, 0, 0.0, -0.17, 0.2, 0.17, 0.08);                       // ciemna pierś
     if (k.back) add(new THREE.MeshStandardMaterial({ map: furTexture(), color: k.back, roughness: 0.9 }), 0, 0.0, 0.17, 0.25, 0.22, 0.1);
+    const badge = buildBadge(look.badge);
+    if (badge) { badge.position.set(0.13, 0.06, -0.236); badge.rotation.x = -0.15; g.add(badge); }
     if (k.cape) {
         const cape = meshAt(new THREE.BoxGeometry(0.62, 0.7, 0.02), new THREE.MeshStandardMaterial({ color: 0x9a0a10, roughness: 0.7, side: THREE.DoubleSide }), 0, -0.2, 0.27);
         cape.rotation.x = 0.15; g.add(cape);
@@ -327,7 +361,7 @@ export function placeArm(arm, torso, side, hand) {
     arm.position.copy(_sh); arm.quaternion.setFromUnitVectors(_Y, _dir.normalize()); arm.scale.set(1, len, 1);
     arm.updateMatrixWorld(true);
 }
-export function lookKey(look) { return [look.name, look.color, look.skin, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
+export function lookKey(look) { return [look.name, look.color, look.skin, look.badge, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
 // Awatar innego gracza: głowa i tułów goryla, długie ramiona i dłonie
 export function createAvatar(look) {
     const group = new THREE.Group();
