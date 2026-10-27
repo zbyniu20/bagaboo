@@ -1,7 +1,9 @@
 // ==========================================
-// START GRY: menu, ładowanie poziomów (z ekranem ładowania), pauza, winieta, zapis przy wyjściu, pętla gry
+// START GRY: menu, ładowanie poziomów (z ekranem ładowania), drużyna za hostem, pauza, winieta,
+// tryb testowy na komputerze, okienko błędów, zapis przy wyjściu, pętla gry
 // ==========================================
 import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { updateDebug } from './core/debug.js';
 import { THREE, scene, camera, renderer, L, clearLevel, applyLighting } from './core/engine.js';
 import { LIGHT_PRESETS, LIGHT_MODE } from './core/config.js';
 import * as ECO from './core/economy.js';
@@ -12,6 +14,7 @@ import { initAudio, updateListener } from './core/audio.js';
 import { drawScoreboard } from './core/ui.js';
 import { PAUSE, pauseMenu, pollPauseButtons, closePause } from './core/pause.js';
 import { SETTINGS, saveSettings } from './core/settings.js';
+import { enableDesktop, updateDesktop } from './core/desktop.js';
 
 // Lista poziomów. Nowy poziom = nowy plik w folderze levels/ + wpis tutaj.
 // light: preset oświetlenia z config.js, extras: dodatkowe pliki doładowywane razem z poziomem
@@ -65,11 +68,16 @@ function showLoading(name) {
 }
 const frameWaiters = [];
 function nextFrames(n) { return new Promise(r => frameWaiters.push({ n: n, r: r })); }
-// Przejście przez drzwi do innego poziomu
-async function goToLevel(id, spawn) {
+// Przejście przez drzwi do innego poziomu. opts: { seed (wspólny układ), noFollow (bez prowadzenia drużyny) }
+const SEEDED = { maze: true, well: true };
+async function goToLevel(id, spawn, opts) {
     if (switching) return;
     switching = true;
+    opts = opts || {};
     if (PAUSE.on) closePause();
+    // Ziarno układu: od hosta, z restartu albo nowe losowe
+    L.levelSeed = SEEDED[id] ? (opts.seed !== undefined ? opts.seed : (Math.random() * 1e9) | 0) : undefined;
+    if (NETM.NET.mode === 'host' && !opts.noFollow) NETM.sendFollow(id, { seed: L.levelSeed });   // goście idą za hostem
     showLoading(LEVEL_NAMES[id] || id);
     await nextFrames(3);   // najpierw pokaż czarny ekran, dopiero potem ciężka praca
     try { await loadLevel(id, spawn); saveNow(); }
@@ -78,6 +86,14 @@ async function goToLevel(id, spawn) {
     switching = false;
 }
 PAUSE.onLobby = () => goToLevel('lobby');
+// Gość: host przeszedł przez drzwi, idziemy za nim (ten sam poziom i układ)
+let pendingFollow = null;
+NETM.onFollow((level, data) => {
+    if (NETM.NET.mode !== 'guest') return;
+    if (!started) { pendingFollow = { level: level, data: data }; return; }
+    toast('Following the host...', '#9fc8ff');
+    goToLevel(level, null, { seed: data.seed, noFollow: true });
+});
 
 // Winieta: przyciemnia brzegi obrazu przy szybkim ruchu (mniej choroby lokomocyjnej)
 const vignette = (() => {
@@ -114,6 +130,7 @@ function readProfile() {
 function startGame(restorePosition) {
     if (started) return;
     started = true;
+    enableDesktop();
     $('lobby').style.display = 'none';
     $('info').style.display = 'block';
     document.body.classList.add('connected');
@@ -129,6 +146,7 @@ function startGame(restorePosition) {
     if (!reward) { const st = ECO.loginStatus(); toast('Next login reward in ' + ECO.fmtDuration(st.msLeft)); }
     setInterval(() => NETM.networkTick(hands.L, hands.R), 1000 / 30);
     setInterval(saveNow, 30000);
+    if (pendingFollow) { const f = pendingFollow; pendingFollow = null; goToLevel(f.level, null, { seed: f.data.seed, noFollow: true }); }
 }
 
 $('btnSolo').onclick = () => { initAudio(); readProfile(); startGame(true); };
@@ -161,14 +179,14 @@ renderer.setAnimationLoop(() => {
     pollPauseButtons();
     // Pauza zatrzymuje świat tylko w grze solo
     const frozen = PAUSE.on && NETM.NET.mode === 'solo';
-    if (!frozen) updatePlayer(dt, t);
+    if (!frozen) { updatePlayer(dt, t); updateDesktop(dt); }
     if (level && !switching && !frozen) {
-        const ctx = { pos: playerBody.position, body: playerBody, goto: (id, sp) => goToLevel(id, sp) };
+        const ctx = { pos: playerBody.position, body: playerBody, goto: (id, sp, o) => goToLevel(id, sp, o) };
         level.update(dt, t, ctx);
         for (const e of extras) if (e.update) e.update(dt, t, ctx);
         // Drzwi do innych poziomów
         if (started) for (const pt of L.portals) {
-            if (pt.box3.containsPoint(playerBody.position)) { if (pt.onEnter) pt.onEnter(); goToLevel(pt.target, pt.spawn); break; }
+            if (pt.box3.containsPoint(playerBody.position)) { if (pt.onEnter) pt.onEnter(); goToLevel(pt.target, pt.spawn, pt.opts); break; }
         }
     }
     NETM.poseRemoteHands(dt);
@@ -183,7 +201,8 @@ renderer.setAnimationLoop(() => {
     const vt = SETTINGS.vignette && renderer.xr.isPresenting ? Math.max(0, Math.min(0.85, (sp - 2.2) / 4)) : 0;
     vignette.material.opacity += (vt - vignette.material.opacity) * Math.min(1, dt * 6);
     vignette.visible = vignette.material.opacity > 0.02;
-    updatePointers();
+    updatePointers(renderer.xr.isPresenting ? null : camera);
+    updateDebug(dt);
     if (t - uiTimer > 1) { uiTimer = t; drawScoreboard(); markAllDirty(); }
     redrawTerminals();
     updateToast(dt);
