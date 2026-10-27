@@ -59,7 +59,8 @@ const SKINS = {
     silverback: { fur: 0x2a2a2c, back: 0xb8b8bc },
     albino: { fur: 0xeee8de, face: 0xc8a8a0 },
     shadow: { fur: 0x0b0b0d, glowEyes: true },
-    king: { fur: 0xd4a640, metal: true, cape: true }
+    king: { fur: 0xd4a640, metal: true, cape: true },
+    bloodmoon: { fur: 0x5a0a0c, face: 0x2a0606, glowEyes: true }
 };
 export function furColor(look) { const k = SKINS[look.skin]; return new THREE.Color(k ? k.fur : (look.color || '#3d2314')); }
 function furMat(look, shade) {
@@ -68,6 +69,7 @@ function furMat(look, shade) {
 }
 function faceMat(look) { const k = SKINS[look.skin]; return new THREE.MeshStandardMaterial({ color: k && k.face ? k.face : 0x2a2422, roughness: 0.55, bumpMap: tex.skin, bumpScale: 0.5, envMapIntensity: ENV }); }
 function skinMaterial(look) {
+    if (look.gloves === 'neon') return new THREE.MeshStandardMaterial({ color: 0x20ff70, emissive: 0x10ff60, emissiveIntensity: 1.3, roughness: 0.3 });
     if (look.gloves === 'mannequin') return new THREE.MeshStandardMaterial({ map: tex.plaster, bumpMap: tex.plaster, bumpScale: 0.7, color: 0xd8d0c2, roughness: 0.55, envMapIntensity: ENV });
     if (look.gloves === 'burnt') { const b = burntTexture(); return new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9, emissive: 0xff5a10, emissiveMap: b, emissiveIntensity: 1.4, bumpMap: tex.plaster, bumpScale: 2, envMapIntensity: ENV }); }
     if (look.gloves === 'black') return new THREE.MeshStandardMaterial({ color: 0x151517, roughness: 0.5, metalness: 0.15, envMapIntensity: ENV });
@@ -87,6 +89,7 @@ function sleeveMaterial(look) {
     if (look.sleeve === 'leather') return new THREE.MeshStandardMaterial(Object.assign(base, { color: 0x3a2214, roughness: 0.35, metalness: 0.1 }));
     if (look.sleeve === 'camo') return new THREE.MeshStandardMaterial(Object.assign(base, { map: tex.camo, roughness: 0.9 }));
     if (look.sleeve === 'bandage') return new THREE.MeshStandardMaterial(Object.assign(base, { map: tex.bandage, bumpMap: tex.bandage, bumpScale: 1, roughness: 0.95 }));
+    if (look.sleeve === 'ghostcloth') return new THREE.MeshStandardMaterial(Object.assign(base, { color: 0xe8f4ff, emissive: 0x8ac8ff, emissiveIntensity: 0.8, transparent: true, opacity: 0.55, depthWrite: false }));
     if (look.sleeve === 'straitjacket') return new THREE.MeshStandardMaterial(Object.assign(base, { map: jacketTexture(), roughness: 0.95 }));
     if (look.sleeve === 'gold') return new THREE.MeshStandardMaterial(Object.assign(base, { color: 0xd4a640, metalness: 1, roughness: 0.25, envMapIntensity: Math.max(0.8, ENV) }));
     return new THREE.MeshStandardMaterial(Object.assign(base, { map: furTexture(), color: furColor(look).multiplyScalar(0.7), roughness: 0.95, bumpMap: furTexture(), bumpScale: 2 }));
@@ -183,6 +186,14 @@ export function buildHat(id) {
         for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; g.add(meshAt(new THREE.ConeGeometry(0.022, 0.07, 8), gold, Math.cos(a) * 0.11, 0.215, Math.sin(a) * 0.11)); }
         const gem = new THREE.MeshStandardMaterial({ color: 0xff2020, emissive: 0xaa0000, emissiveIntensity: 0.8 });
         for (let i = 0; i < 3; i++) { const a = -Math.PI / 2 + (i - 1) * 0.6; g.add(meshAt(new THREE.SphereGeometry(0.014, 10, 8), gem, Math.cos(a) * 0.117, 0.15, Math.sin(a) * 0.117)); }
+    } else if (id === 'miner') {
+        const y = mat({ color: 0xd8a820, roughness: 0.4, metalness: 0.2 });
+        const dome = meshAt(new THREE.SphereGeometry(0.142, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), y, 0, 0.03, 0); dome.scale.y = 0.9; g.add(dome);
+        g.add(meshAt(new THREE.CylinderGeometry(0.17, 0.17, 0.012, 24), y, 0, 0.035, 0));
+        const lamp = meshAt(new THREE.CylinderGeometry(0.03, 0.035, 0.05, 14), mat({ color: 0x2a2a2a, metalness: 0.8 }), 0, 0.1, -0.13); lamp.rotation.x = Math.PI / 2; g.add(lamp);
+        const lens = meshAt(new THREE.CircleGeometry(0.028, 16), new THREE.MeshBasicMaterial({ color: 0xfff4c0 }), 0, 0.1, -0.156); lens.rotation.y = Math.PI; g.add(lens);
+        const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xfff0b0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.8 }));
+        glow.scale.set(0.18, 0.18, 1); glow.position.set(0, 0.1, -0.17); g.add(glow);
     } else if (id === 'halo') {
         const h = meshAt(new THREE.TorusGeometry(0.12, 0.012, 8, 40, Math.PI * 1.65), new THREE.MeshStandardMaterial({ color: 0xffe08a, emissive: 0xffc840, emissiveIntensity: 1.2, metalness: 0.6, roughness: 0.3 }), 0, 0.27, 0);
         h.rotation.set(Math.PI / 2 + 0.15, 0, 0.6); h.castShadow = false; g.add(h);
@@ -191,7 +202,8 @@ export function buildHat(id) {
 }
 export function buildGlasses(id) {
     const g = new THREE.Group();
-    if (id === 'sunglasses') g.add(meshAt(new THREE.BoxGeometry(0.2, 0.045, 0.02), mat({ color: 0x050505, metalness: 0.9, roughness: 0.1 }), 0, 0.02, -0.132));
+    if (id === 'goldshades') g.add(meshAt(new THREE.BoxGeometry(0.2, 0.045, 0.02), mat({ color: 0xd4a640, metalness: 1, roughness: 0.15, envMapIntensity: Math.max(0.8, ENV) }), 0, 0.02, -0.132));
+    else if (id === 'sunglasses') g.add(meshAt(new THREE.BoxGeometry(0.2, 0.045, 0.02), mat({ color: 0x050505, metalness: 0.9, roughness: 0.1 }), 0, 0.02, -0.132));
     else if (id === 'round') {
         const m = mat({ color: 0xc8a040, metalness: 1, roughness: 0.3 });
         for (const s of [-1, 1]) g.add(meshAt(new THREE.TorusGeometry(0.03, 0.005, 6, 20), m, s * 0.045, 0.02, -0.13));
