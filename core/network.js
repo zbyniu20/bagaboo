@@ -27,7 +27,10 @@ export function sendLevelMsg(payload) {
 }
 export function myId() { return myPeerId; }
 // Drużyna idzie za hostem: host wysyła poziom (i ziarno układu), goście wchodzą tam za nim
-let followHandler = null, lastFollow = null;
+let followHandler = null, lastFollow = null, inviteHandler = null;
+// Zaproszenie jednego gościa (np. do pokoju szefa) albo odesłanie go do lobby
+export function onInvite(fn) { inviteHandler = fn; }
+export function sendInvite(peerId, level) { const c = clientConnections.find(x => x.peer === peerId); if (NET.mode === 'host' && c && c.open) c.send({ type: 'invite', level: level }); }
 export function onFollow(fn) { followHandler = fn; }
 export function sendFollow(level, data) {
     lastFollow = { level: level, data: data || {} };
@@ -180,6 +183,7 @@ export function startJoin(code, cb) {
             if (data.type === 'kicked') { leaveNetwork('The host removed you from room ' + code + '.'); return; }
             if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, 'host'); return; }
             if (data.type === 'follow') { if (followHandler) followHandler(data.level, data.data || {}); return; }
+            if (data.type === 'invite') { if (inviteHandler) inviteHandler(data.level); return; }
             if (data.type === 'gameState') {
                 const pl = data.payload.players || {};
                 for (const pId in pl) { if (pId === myPeerId) continue; playersState[pId] = pl[pId]; updateRemote(pId, pl[pId]); }
