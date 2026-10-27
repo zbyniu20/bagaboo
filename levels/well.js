@@ -3,6 +3,8 @@
 // Wąski szyb 4,6 x 4,6 m i 64 m wysokości. Od dołu podnosi się czarna maź z rękami.
 // Ściany są śliskie, dobrze trzymają tylko kości, rury i półki. Kraty blokują drogę, dopóki nie
 // pociągniesz za łańcuchy. Klapa na szczycie otwiera się najwcześniej po ponad 3 minutach.
+// Multiplayer: wspólny układ i jedna maź dla całej drużyny (liczy ją host). Kraty i klapa też są wspólne.
+// Złapany gracz ogląda resztę z góry; gdy złapani są wszyscy, cała drużyna zaczyna od nowa.
 // ==========================================
 import { THREE, CANNON, L, tex, camera, lighting, world, addCrispBlock, addStaticBody, scaleBoxUVs } from '../core/engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -13,7 +15,9 @@ import { levelReward, recordTime, unlockAchievement } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import { hands } from '../core/player.js';
 import * as SFX from '../core/audio.js';
+import * as N from '../core/network.js';
 import { ARRIVAL_WELL } from './lobby-door.js';
+import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA (trudność) ----------
 const NP = LIGHT_PRESETS.night;
@@ -39,15 +43,18 @@ const _c = new THREE.Vector3(), _d = new THREE.Vector3();
 // ---------- BUDOWA ----------
 export function build() {
     const quick = restartFlag; restartFlag = false;
-    const R = T.mkRng((Math.random() * 1e9) | 0);
+    const seed = L.levelSeed !== undefined ? L.levelSeed : (Math.random() * 1e9) | 0, R = T.mkRng(seed);
+    L.levelId = 'well-' + seed;   // ten sam układ = ta sama studnia dla całej drużyny
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -HS + 0.2, maxX: HS - 0.2, minZ: -HS + 0.2, maxZ: HS - 0.2, maxY: TOP + 2 };
     L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.noHeightTrack = true;
     S = {
         clock: 0, playT: 0, introT: quick ? RESTART_INTRO : INTRO_TIME, phase: 'intro', ooze: -1.2, nextSurge: rnd(R, SURGE_MIN, SURGE_MAX), surge: 0,
         nextScare: rnd(R, SCARE_MIN, SCARE_MAX), scareT: -1, faller: null, reach: null, blackout: 0, caughtT: -1, leaving: false,
-        grates: [], crumbles: [], hatch: null, hudT: 0, R: R, lastHand: [null, null]
+        grates: [], crumbles: [], hatch: null, hudT: 0, R: R, lastHand: [null, null],
+        seed: seed, out: new Set(), spectator: false, lastHostMsg: -10, netT: 0, surgeNet: 0
     };
+    N.onLevelMsg(onNet);
     buildShaft();
     buildHolds(R);
     GRATES.forEach((y) => S.grates.push(buildGrate(y)));
@@ -187,19 +194,8 @@ function buildHatch() {
     glow.scale.set(3, 3, 1); glow.position.set(0, TOP + 1.2, 0); root.add(glow);
 }
 function buildLobbyDoor() {
-    const g = new THREE.Group(); g.position.set(0, 0, HS - 0.02); g.rotation.y = Math.PI; L.root.add(g);
-    const frame = new THREE.MeshStandardMaterial({ color: 0x1c1416, metalness: 0.7, roughness: 0.45 });
-    for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.2, 0.1), frame); p.position.set(s * 0.6, 1.1, 0.05); g.add(p); }
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.1, 0.05), new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x6a7a6a, roughness: 0.6 })); panel.position.set(0, 1.05, 0.04); g.add(panel);
-    const sc = T.makeCanvas(512, 128), sx = sc.getContext('2d');
-    sx.fillStyle = '#040806'; sx.fillRect(0, 0, 512, 128);
-    sx.font = 'bold 76px serif'; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.shadowColor = '#70ff90'; sx.shadowBlur = 24; sx.fillStyle = '#70ff90'; sx.fillText('LOBBY', 256, 66);
-    const st = new THREE.CanvasTexture(sc); st.colorSpace = THREE.SRGBColorSpace;
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.28), new THREE.MeshBasicMaterial({ map: st, toneMapped: false })); sign.position.set(0, 2.45, 0.06); g.add(sign);
-    L.portals.push({
-        box3: new THREE.Box3(new THREE.Vector3(-0.6, -0.5, HS - 0.75), new THREE.Vector3(0.6, 2.2, HS + 0.2)),
-        target: 'lobby', spawn: ARRIVAL_WELL, onEnter: () => toast('Back to the lobby')
-    });
+    buildDoor({ x: 0, z: HS - 0.02, rotY: Math.PI, label: 'LOBBY', color: '#70ff90', wood: 0x6a7a6a, signY: 2.5,
+        portal: { target: 'lobby', spawn: ARRIVAL_WELL, onEnter: () => toast('Back to the lobby') } });
 }
 
 // Maź z rękami
@@ -221,15 +217,7 @@ function buildOoze() {
 
 // Jumpscare'y: twarz przed oczami, spadający manekin, ręka ze ściany w ciemności
 function buildScares() {
-    const m = buildMannequin(T.mkRng(4242)), head = m.head;
-    head.parent.remove(head);
-    head.traverse((o) => { if (o.material) { o.material = o.material.clone(); o.material.depthTest = false; o.renderOrder = 1000; } });
-    for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1000, transparent: true, blending: THREE.AdditiveBlending, depthTest: false })); e.scale.set(0.16, 0.16, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 1001; head.add(e); }
-    head.scale.setScalar(2.4);
-    const plane = (col) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, depthTest: false })); p.position.z = -0.25; return p; };
-    const black = plane(0x000000), red = plane(0xff0000); black.renderOrder = 998; red.renderOrder = 999;
-    const g = new THREE.Group(); g.add(black, red, head); g.visible = false; camera.add(g);
-    S.face = { g: g, head: head, red: red, black: black };
+    S.face = createJumpscare({});   // wspólny klocek z core/levelkit.js
     const fm = buildMannequin(T.mkRng(999)); fm.group.visible = false; L.root.add(fm.group); S.fallerMesh = fm.group;
     const arm = new THREE.Group(), parts = [];
     parts.push(new THREE.CylinderGeometry(0.05, 0.07, 1.2, 8).rotateX(Math.PI / 2).translate(0, 0, 0.6));
@@ -237,19 +225,7 @@ function buildScares() {
     arm.add(new THREE.Mesh(mergeGeometries(parts), new THREE.MeshStandardMaterial({ color: 0xd8d0c2, map: tex.plaster, roughness: 0.6 })));
     arm.visible = false; L.root.add(arm); S.reachMesh = arm;
 }
-function faceScare() { if (S.scareT >= 0) return; S.scareT = 0; S.face.g.visible = true; SFX.scare(); }
-function updateFace(dt) {
-    if (S.scareT < 0) return;
-    S.scareT += dt;
-    const k = S.scareT, sc = S.face, j = (a) => (Math.random() - 0.5) * a;
-    const z = k < 0.1 ? -1.9 + 1.58 * (k / 0.1) : -0.32;
-    sc.head.position.set(j(0.03), -0.36 + j(0.02), z + j(0.015));
-    sc.head.rotation.set(j(0.15), j(0.2), j(0.35));
-    const ph = Math.floor(k / 0.05) % 3;
-    if (k < 0.8) { sc.red.material.opacity = ph === 0 ? 0.6 : 0; sc.black.material.opacity = ph === 1 ? 0.92 : 0.5; }
-    else { const f = Math.max(0, 1 - (k - 0.8) / 0.6); sc.red.material.opacity = 0.35 * f; sc.black.material.opacity = 0.6 * f; }
-    if (k > 1.4) { sc.g.visible = false; S.scareT = -1; }
-}
+function faceScare() { S.face.trigger(); }
 function randomScare(p) {
     const r = S.R();
     if (r < 0.34) faceScare();
@@ -270,17 +246,11 @@ function randomScare(p) {
 }
 
 // HUD i instrukcja
-function buildHud() {
-    const c = T.makeCanvas(1024, 200), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.082), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthTest: false, toneMapped: false }));
-    m.position.set(0, 0.2, -0.75); m.renderOrder = 990; camera.add(m);
-    S.hud = { canvas: c, tex: tx, mesh: m };
-}
+function buildHud() { S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990); }
 function fmt(t) { t = Math.max(0, Math.ceil(t)); const m = Math.floor(t / 60), s = t % 60; return m + ':' + (s < 10 ? '0' : '') + s; }
 function drawHud(p) {
-    const x = S.hud.canvas.getContext('2d');
-    x.clearRect(0, 0, 1024, 200);
-    x.fillStyle = 'rgba(4,10,6,0.72)'; x.beginPath(); x.roundRect(4, 4, 1016, 192, 26); x.fill();
+    const x = S.hud.ctx;
+    panelBg(S.hud, 'rgba(4,10,6,0.72)');
     x.textBaseline = 'middle'; x.textAlign = 'left';
     const h = Math.max(0, p.y - 0.35);
     x.font = 'bold 76px "Courier New", monospace'; x.fillStyle = '#d8ffe4'; x.fillText(Math.floor(h) + ' / ' + TOP + ' m', 30, 70);
@@ -292,7 +262,8 @@ function drawHud(p) {
     // Najbliższa przeszkoda nad graczem
     let msg = '', col = '#b8ffcf';
     const g = S.grates.find(gr => !gr.open && gr.y > h);
-    if (S.surge > 0) { msg = 'The ooze surges!'; col = '#ff4a2a'; }
+    if (S.spectator) { msg = 'You are out. Watch your team climb.'; col = '#ff6a4a'; }
+    else if (S.surge > 0) { msg = 'The ooze surges!'; col = '#ff4a2a'; }
     else if (g && g.y - h < 6) { msg = 'Grate above: squeeze a chain handle and pull down (' + g.pulls + '/' + PULLS_PER_GRATE + ')'; }
     else if (!g && h > TOP - 6) {
         const left = MIN_TIME - S.playT;
@@ -301,7 +272,7 @@ function drawHud(p) {
         else msg = 'The hatch is open! Climb out!';
     }
     x.font = 'bold 28px "Courier New", monospace'; x.fillStyle = col; x.fillText(msg, 30, 162);
-    S.hud.tex.needsUpdate = true;
+    S.hud.update();
 }
 const INTRO_LINES = [
     'Climb out of the well before the black ooze swallows you.',
@@ -311,29 +282,10 @@ const INTRO_LINES = [
     'Do not look down. Something is down there.',
     'The LOBBY door down here takes you back, until the ooze covers it.'
 ];
-function buildIntro(quick) {
-    const c = T.makeCanvas(1280, 760), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.594), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthTest: false, toneMapped: false }));
-    m.position.set(0, -0.04, -1.05); m.renderOrder = 995; camera.add(m);
-    S.intro = { canvas: c, tex: tx, mesh: m, last: -1, quick: quick };
-}
+function buildIntro(quick) { S.intro = cameraPanel(1280, 760, 1.0, 0.594, -0.04, -1.05, 995); S.intro.last = -1; S.intro.quick = quick; }
 function drawIntro(sec) {
-    const x = S.intro.canvas.getContext('2d'), W = 1280, H = 760;
-    x.clearRect(0, 0, W, H);
-    x.fillStyle = 'rgba(4,10,6,0.9)'; x.beginPath(); x.roundRect(6, 6, W - 12, H - 12, 34); x.fill();
-    x.strokeStyle = '#3a8a5a'; x.lineWidth = 4; x.stroke();
-    x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.font = 'bold 72px serif'; x.fillStyle = '#d8ffe4'; x.fillText('The Well', W / 2, 80);
-    x.textAlign = 'left'; x.font = '32px sans-serif'; x.fillStyle = '#dceee2';
-    let y = 170;
-    for (const line of INTRO_LINES) {
-        const words = line.split(' '); let cur = '', first = true;
-        for (const w of words) { const test = cur ? cur + ' ' + w : w; if (x.measureText(test).width > 1100) { x.fillText((first ? '•  ' : '    ') + cur, 70, y); y += 42; cur = w; first = false; } else cur = test; }
-        x.fillText((first ? '•  ' : '    ') + cur, 70, y); y += 60;
-    }
-    x.textAlign = 'center'; x.font = 'bold 42px "Courier New", monospace'; x.fillStyle = '#ffb030';
-    x.fillText('The ooze starts rising in ' + sec + ' s', W / 2, H - 54);
-    S.intro.tex.needsUpdate = true;
+    drawInstructions(S.intro, 'The Well', INTRO_LINES, 'The ooze starts rising in ' + sec + ' s',
+        { bg: 'rgba(4,10,6,0.9)', border: '#3a8a5a', title: '#d8ffe4', text: '#dceee2', footer: '#ffb030', size: 32 });
 }
 
 // ---------- CO KLATKĘ ----------
@@ -357,9 +309,74 @@ function pullCheck(ch, dt) {
     return pulled;
 }
 function caught() {
-    if (S.caughtT >= 0) return;
+    if (S.caughtT >= 0 || S.spectator) return;
     S.caughtT = 0; faceScare();
     toast('The ooze dragged you down...', '#ff4a2a');
+}
+
+// ---------- DRUŻYNA (wspólna maź, kraty i klapa) ----------
+function teammates() {
+    const out = [];
+    for (const id in N.playersState) { if (id === N.myId()) continue; const st = N.playersState[id]; if (st && st.lvl === L.levelId) out.push(id); }
+    return out;
+}
+function isAuthority() {
+    if (N.NET.mode !== 'guest') return true;
+    const hs = N.hostState();
+    return !(hs && hs.lvl === L.levelId && S.clock - S.lastHostMsg < 1.5);
+}
+function onNet(msg, from) {
+    if (!S || !msg) return;
+    if (N.NET.mode === 'host') {
+        if (msg.k === 'pull') applyPull(msg.g);
+        else if (msg.k === 'out') { S.out.add(from); checkAllOut(); }
+        return;
+    }
+    if (msg.k === 'restart') { restartTeam(); return; }
+    if (msg.k !== 'st') return;
+    S.lastHostMsg = S.clock;
+    S.oozeNet = msg.y; S.playT = msg.pt;
+    if (msg.sg && !S.surgeNet) SFX.roar(1.0, { x: 0, y: msg.y, z: 0 });
+    S.surgeNet = msg.sg; S.surge = msg.sg ? 1 : 0;
+    if (S.phase === 'intro' && msg.pt > 0) { S.phase = 'play'; S.introT = Math.min(S.introT, 0.01); }
+    (msg.gp || []).forEach((n, i) => { const g = S.grates[i]; if (g) while (g.pulls < n) applyPull(i); });
+    while (S.hatch.pulls < (msg.hp || 0)) applyPull(-1);
+}
+// Pociągnięcie łańcucha kraty (g = numer kraty) albo klapy (g = -1)
+function applyPull(gi) {
+    if (gi === -1) {
+        const H = S.hatch; if (H.open) return;
+        H.pulls++; SFX.creak(0.6, { x: 0, y: TOP, z: 0 });
+        if (H.pulls >= HATCH_PULLS) {
+            H.open = true; SFX.bang({ x: 0, y: TOP, z: 0 }); toast('The hatch is open!', '#b8ffcf');
+            const i = L.obstacles.indexOf(H.ob); if (i >= 0) L.obstacles.splice(i, 1);
+            if (H.ob.body) world.removeBody(H.ob.body);
+        }
+        return;
+    }
+    const g = S.grates[gi]; if (!g || g.open) return;
+    g.pulls++; SFX.creak(0.6, { x: 0, y: g.y, z: 0 }); g.g.position.y = g.y + g.pulls * 0.03;
+    if (g.pulls >= PULLS_PER_GRATE) {
+        g.open = true; SFX.bang({ x: 0, y: g.y, z: 0 }); toast('The grate slides open!', '#b8ffcf');
+        const i = L.obstacles.indexOf(g.ob); if (i >= 0) L.obstacles.splice(i, 1);
+        world.removeBody(g.body);
+    }
+}
+function localPull(gi) { if (isAuthority()) applyPull(gi); else { SFX.creak(0.4, hands.R ? hands.R.position : null); N.sendLevelMsg({ k: 'pull', g: gi }); } }
+function checkAllOut() {
+    if (N.NET.mode !== 'host') return;
+    const team = ['me'].concat(teammates());
+    if (team.every(id => S.out.has(id))) { N.sendLevelMsg({ k: 'restart' }); setTimeout(restartTeam, 1200); }
+}
+function restartTeam() {
+    if (!S || S.leaving) return;
+    S.leaving = true; restartFlag = true;
+    toast('Everyone was taken. The well resets...', '#ff4a2a');
+    S.ctx.goto('well', null, { seed: S.seed, noFollow: true });
+}
+function broadcast() {
+    const me = N.myId();
+    N.sendLevelMsg({ k: 'st', y: S.ooze, pt: S.playT, sg: S.surge > 0 ? 1 : 0, gp: S.grates.map(g => g.pulls), hp: S.hatch.pulls, out: [...S.out].map(id => id === 'me' ? me : id) });
 }
 function win() {
     if (S.leaving) return;
@@ -385,43 +402,33 @@ export function update(dt, t, ctx) {
         if (S.introT <= 0) { S.phase = 'play'; SFX.roar(0.6, { x: 0, y: S.ooze, z: 0 }); toast('Climb!', '#b8ffcf'); }
     }
 
+    const auth = isAuthority();
     if (S.phase === 'play') {
-        S.playT += dt;
-        // Maź: stały przyrost + nagłe skoki
-        let rise = (OOZE_SPEED + OOZE_ACCEL * S.playT) * dt;
-        S.nextSurge -= dt;
-        if (S.nextSurge <= 0) { S.nextSurge = rnd(S.R, SURGE_MIN, SURGE_MAX); S.surge = 2.5; SFX.roar(1.0, { x: 0, y: S.ooze, z: 0 }); }   // ryk spod nóg
-        if (S.surge > 0) { S.surge -= dt; rise += SURGE_HEIGHT / 2.5 * dt; }
-        S.ooze = Math.min(TOP - 2, S.ooze + rise);
-        if (h < S.ooze + 0.1) caught();
+        if (auth) {
+            S.playT += dt;
+            // Maź: stały przyrost + nagłe skoki (liczy host albo gracz solo)
+            let rise = (OOZE_SPEED + OOZE_ACCEL * S.playT) * dt;
+            S.nextSurge -= dt;
+            if (S.nextSurge <= 0) { S.nextSurge = rnd(S.R, SURGE_MIN, SURGE_MAX); S.surge = 2.5; SFX.roar(1.0, { x: 0, y: S.ooze, z: 0 }); }   // ryk spod nóg
+            if (S.surge > 0) { S.surge -= dt; rise += SURGE_HEIGHT / 2.5 * dt; }
+            S.ooze = Math.min(TOP - 2, S.ooze + rise);
+            if (N.NET.mode === 'host') { S.netT -= dt; if (S.netT <= 0) { S.netT = 0.2; broadcast(); } }
+        } else if (S.oozeNet !== undefined) S.ooze += (S.oozeNet - S.ooze) * Math.min(1, dt * 6);   // maź od hosta
+        if (!S.spectator && h < S.ooze + 0.1) caught();
         // Jumpscare'y co jakiś czas
         S.nextScare -= dt;
-        if (S.nextScare <= 0 && S.caughtT < 0) { S.nextScare = rnd(S.R, SCARE_MIN, SCARE_MAX); randomScare(p); }
+        if (S.nextScare <= 0 && S.caughtT < 0 && !S.spectator) { S.nextScare = rnd(S.R, SCARE_MIN, SCARE_MAX); randomScare(p); }
     }
 
     // Kraty i klapa
     for (const g of S.grates) {
         if (g.open) { if (g.lift < 1) { g.lift = Math.min(1, g.lift + dt * 0.7); g.g.position.x = g.lift * (HS * 2 + 0.3); } continue; }
-        for (const ch of g.chains) if (pullCheck(ch, dt)) {
-            g.pulls++; SFX.creak(0.6, { x: 0, y: g.y, z: 0 }); g.g.position.y = g.y + g.pulls * 0.03;
-            if (g.pulls >= PULLS_PER_GRATE) {
-                g.open = true; SFX.bang({ x: 0, y: g.y, z: 0 }); toast('The grate slides open!', '#b8ffcf');
-                const i = L.obstacles.indexOf(g.ob); if (i >= 0) L.obstacles.splice(i, 1);
-                world.removeBody(g.body);
-            }
-        }
+        for (const ch of g.chains) if (!S.spectator && pullCheck(ch, dt)) localPull(S.grates.indexOf(g));
     }
     const H = S.hatch;
-    if (!H.open && S.playT >= MIN_TIME && pullCheck(H.chain, dt)) {
-        H.pulls++; SFX.creak(0.6, { x: 0, y: TOP, z: 0 });
-        if (H.pulls >= HATCH_PULLS) {
-            H.open = true; SFX.bang({ x: 0, y: TOP, z: 0 }); toast('The hatch is open!', '#b8ffcf');
-            const i = L.obstacles.indexOf(H.ob); if (i >= 0) L.obstacles.splice(i, 1);
-            if (H.ob.body) world.removeBody(H.ob.body);
-        }
-    }
+    if (!H.open && !S.spectator && S.playT >= MIN_TIME && pullCheck(H.chain, dt)) localPull(-1);
     if (H.open && H.lift < 1) { H.lift = Math.min(1, H.lift + dt); H.lid.rotation.z = H.lift * 1.8; }
-    if (H.open && h > TOP + 0.1) { win(); return; }
+    if (H.open && !S.spectator && h > TOP + 0.1) { win(); return; }
 
     // Pękające kości: dotyk dłonią albo stanie na nich
     for (const c of S.crumbles) {
@@ -469,17 +476,26 @@ export function update(dt, t, ctx) {
     }
     lighting.headLamp.intensity = S.blackout > 0 ? 0 : NP.flashlight.intensity;
 
-    updateFace(dt);
+    S.face.update(dt);
     if (S.caughtT >= 0) {
         S.caughtT += dt;
         body.velocity.set(0, -1, 0);
-        if (S.caughtT > 1.5) { S.leaving = true; restartFlag = true; ctx.goto('well'); return; }
+        if (S.caughtT > 1.5) {
+            S.caughtT = -1;
+            if (teammates().length > 0) {
+                // Drużyna gra dalej: złapany ogląda z góry, aż ktoś wygra albo złapią wszystkich
+                S.spectator = true; toast('You are out. Watch your team...', '#ff6a4a');
+                if (N.NET.mode === 'host') { S.out.add('me'); checkAllOut(); } else N.sendLevelMsg({ k: 'out' });
+            } else { S.leaving = true; restartFlag = true; ctx.goto('well', null, N.NET.mode === 'solo' ? undefined : { seed: S.seed, noFollow: true }); return; }
+        }
     }
+    if (S.spectator) { body.position.set(0, Math.min(TOP - 1, Math.max(2, S.ooze + 6)), 0); body.velocity.set(0, 0, 0); }
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.12; drawHud(p); }
 }
 
 export function dispose() {
-    if (S) for (const m of [S.face && S.face.g, S.hud && S.hud.mesh, S.intro && S.intro.mesh]) if (m) camera.remove(m);
+    if (S) for (const o of [S.face, S.hud, S.intro]) if (o) o.dispose();
     L.moveScale = 1; L.maxUp = 99; L.noHeightTrack = false;
+    N.onLevelMsg(null);
     S = null;
 }
