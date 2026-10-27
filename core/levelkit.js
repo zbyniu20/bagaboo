@@ -33,7 +33,7 @@ function rustDoorTexture(seed) {
 //   rust (zardzewiałe skrzydło), wood (kolor drewnianego skrzydła), signY, signZ, hanging (napis na linkach),
 //   collider, light, ao, grate (krata przed drzwiami), portal: { target, spawn, onEnter } }
 export function buildDoor(o) {
-    const g = new THREE.Group(); g.position.set(o.x, 0, o.z); g.rotation.y = o.rotY || 0; L.root.add(g);
+    const g = new THREE.Group(); g.position.set(o.x, o.y || 0, o.z); g.rotation.y = o.rotY || 0; L.root.add(g);
     const ENV = LP.envIntensity;
     const frame = new THREE.MeshStandardMaterial({ color: 0x1c1416, metalness: 0.7, roughness: 0.45, envMapIntensity: ENV });
     const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
@@ -59,17 +59,18 @@ export function buildDoor(o) {
         grate = new THREE.Mesh(mergeGeometries(bars), new THREE.MeshStandardMaterial({ color: 0x2a2624, metalness: 0.85, roughness: 0.35 })); g.add(grate);
     }
     const f = new THREE.Vector3(Math.sin(o.rotY || 0), 0, Math.cos(o.rotY || 0));   // kierunek do wnętrza pokoju
-    if (o.collider) addStaticBody(o.x + f.x * 0.1, 1.2, o.z + f.z * 0.1, new CANNON.Box(new CANNON.Vec3(Math.abs(f.z) > 0.5 ? 0.8 : 0.08, 1.2, Math.abs(f.z) > 0.5 ? 0.08 : 0.8)), g, false);
+    if (o.collider) addStaticBody(o.x + f.x * 0.1, (o.y || 0) + 1.2, o.z + f.z * 0.1, new CANNON.Box(new CANNON.Vec3(Math.abs(f.z) > 0.5 ? 0.8 : 0.08, 1.2, Math.abs(f.z) > 0.5 ? 0.08 : 0.8)), g, false);
     if (o.ao) addBlobAO(o.x + f.x * 0.6, o.z + f.z * 0.6, 2.2);
     if (o.light) { const l = new THREE.PointLight(o.glow !== undefined ? o.glow : 0xffffff, 4, 5, 2); l.position.set(o.x + f.x * 1.2, 2.6, o.z + f.z * 1.2); L.root.add(l); }
-    const door = { group: g, sign: sign, grate: grate, f: f, x: o.x, z: o.z };
+    const door = { group: g, sign: sign, grate: grate, f: f, x: o.x, y: o.y || 0, z: o.z };
     if (o.portal) addDoorPortal(door, o.portal);
     return door;
 }
 // Przejście przez drzwi: pudełko przed skrzydłem (wejście w nie zmienia poziom)
 export function addDoorPortal(door, p) {
     const f = door.f, cx = door.x + f.x * 0.4, cz = door.z + f.z * 0.4, hx = Math.abs(f.x) > 0.5 ? 0.6 : 0.7, hz = Math.abs(f.z) > 0.5 ? 0.6 : 0.7;
-    L.portals.push({ box3: new THREE.Box3(new THREE.Vector3(cx - hx, -0.5, cz - hz), new THREE.Vector3(cx + hx, 2.6, cz + hz)), target: p.target, spawn: p.spawn || null, opts: p.opts, onEnter: p.onEnter });
+    const y = door.y || 0;
+    L.portals.push({ box3: new THREE.Box3(new THREE.Vector3(cx - hx, y - 0.5, cz - hz), new THREE.Vector3(cx + hx, y + 2.6, cz + hz)), target: p.target, spawn: p.spawn || null, opts: p.opts, onEnter: p.onEnter, cond: p.cond, deny: p.deny });
 }
 
 // Panel przed oczami gracza (HUD, instrukcja). Rysujesz na canvasie i wołasz update().
