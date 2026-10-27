@@ -1,7 +1,7 @@
 // ==========================================
 // DODATEK DO LOBBY: drzwi do poziomów, lustro, czerwona trasa Parkour King i napis z nazwą gry
 // ==========================================
-import { THREE, L, tex, camera, addStaticBody, addBlobAO, CANNON } from '../core/engine.js';
+import { THREE, L, tex, camera, addStaticBody, CANNON } from '../core/engine.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP, GFX } from '../core/config.js';
@@ -11,6 +11,7 @@ import { createHead, createGorillaTorso, createGorillaArm, placeArm, buildHat } 
 import { getLook, onLookChange, unlockItem, recordTime, unlockAchievement } from '../core/economy.js';
 import { hands } from '../core/player.js';
 import * as SFX from '../core/audio.js';
+import { buildDoor as buildDoor3 } from '../core/levelkit.js';
 
 const DOOR_X = 4, SILENCE_X = -5, WELL_X = 9.5, WALL_Z = 14.97;    // drzwi w południowej ścianie, na podłodze
 export const ARRIVAL = [DOOR_X, 1.2, 13.2];          // tu pojawia się gracz po powrocie z labiryntu
@@ -36,41 +37,10 @@ export function build() {
     buildTitle();
 }
 
+// Drzwi w południowej ścianie (wspólny klocek z core/levelkit.js)
 function buildDoor(DX, label, textCol, glowCol, target, msg) {
-    const g = new THREE.Group(); g.position.set(DX, 0, WALL_Z); g.rotation.y = Math.PI; L.root.add(g);
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x1c1416, metalness: 0.7, roughness: 0.45, envMapIntensity: ENV });
-    const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
-    add(new THREE.BoxGeometry(0.14, 2.45, 0.16), frameMat, -0.72, 1.22, 0.12);
-    add(new THREE.BoxGeometry(0.14, 2.45, 0.16), frameMat, 0.72, 1.22, 0.12);
-    add(new THREE.BoxGeometry(1.58, 0.16, 0.16), frameMat, 0, 2.38, 0.12);
-    // Skrzydło drzwi z rdzą i krwawym odciskiem dłoni
-    const dc = T.makeCanvas(256, 512), dx = dc.getContext('2d'), R = T.mkRng(target.length * 1013);
-    dx.fillStyle = '#3a1612'; dx.fillRect(0, 0, 256, 512);
-    for (let i = 0; i < 4000; i++) { dx.fillStyle = 'rgba(' + (R() > 0.5 ? '120,60,20' : '0,0,0') + ',' + (R() * 0.25) + ')'; dx.fillRect(R() * 256, R() * 512, 2, 2); }
-    dx.strokeStyle = 'rgba(0,0,0,0.6)'; dx.lineWidth = 6; dx.strokeRect(24, 30, 208, 200); dx.strokeRect(24, 270, 208, 210);
-    T.handPrint(dx, 140, 250, 1.1, 0.2, R);
-    dx.fillStyle = '#c8a040'; dx.beginPath(); dx.arc(210, 270, 10, 0, 7); dx.fill();
-    const doorTex = T.toTex(dc, false);
-    add(new THREE.BoxGeometry(1.3, 2.3, 0.06), new THREE.MeshStandardMaterial({ map: doorTex, bumpMap: doorTex, bumpScale: 1, roughness: 0.6, metalness: 0.3, envMapIntensity: ENV }), 0, 1.15, 0.12);
-    // Czerwona poświata spod drzwi
-    const leak = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.05), new THREE.MeshBasicMaterial({ color: glowCol })); leak.position.set(0, 0.03, 0.16); g.add(leak);
-    // Napis wisi przed rurami na ścianie
-    const sc = T.makeCanvas(512, 128), sx = sc.getContext('2d');
-    sx.fillStyle = '#0c0404'; sx.fillRect(0, 0, 512, 128);
-    sx.font = 'bold 70px serif'; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.shadowColor = textCol; sx.shadowBlur = 26; sx.fillStyle = textCol;
-    sx.fillText(label, 256, 66);
-    const signTex = new THREE.CanvasTexture(sc); signTex.colorSpace = THREE.SRGBColorSpace;
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.38), new THREE.MeshBasicMaterial({ map: signTex, toneMapped: false })); sign.position.set(0, 3.5, 0.32); g.add(sign);
-    for (const s of [-1, 1]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.9, 4), frameMat); c.position.set(s * 0.6, 4.1, 0.32); g.add(c); }
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: glowCol, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.55 }));
-    glow.scale.set(3.2, 1.6, 1); glow.position.set(0, 3.5, 0.45); g.add(glow);
-    addStaticBody(DX, 1.2, WALL_Z - 0.1, new CANNON.Box(new CANNON.Vec3(0.8, 1.2, 0.08)), g, false);
-    addBlobAO(DX, 14.4, 2.2);
-    L.portals.push({
-        box3: new THREE.Box3(new THREE.Vector3(DX - 0.7, -0.5, 14.2), new THREE.Vector3(DX + 0.7, 2.6, 15.2)),
-        target: target, spawn: null,
-        onEnter: () => toast(msg, textCol)
-    });
+    buildDoor3({ x: DX, z: WALL_Z, rotY: Math.PI, label: label, color: textCol, glow: glowCol, rust: true, signY: 3.5, signZ: 0.32, hanging: true, collider: true, ao: true,
+        portal: { target: target, onEnter: () => toast(msg, textCol) } });
 }
 
 // Lustro: odbija lobby, twoje dłonie oraz twoją głowę z czapką i okularami
