@@ -13,7 +13,7 @@ import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { levelReward, recordTime, unlockAchievement } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
-import { hands } from '../core/player.js';
+import { hands, setPlayerPosition } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import * as N from '../core/network.js';
 import { ARRIVAL_WELL } from './lobby-door.js';
@@ -23,17 +23,18 @@ import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions } fr
 const NP = LIGHT_PRESETS.night;
 const HS = 2.3, TOP = 64;                  // pół szerokości szybu i wysokość wyjścia
 const GRATES = [16, 32, 48];               // kraty na tych wysokościach
-const PULLS_PER_GRATE = 4, HATCH_PULLS = 3;
+const PULLS_PER_GRATE = 3, HATCH_PULLS = 2;
 const MIN_TIME = 190;                      // klapa na szczycie nie otworzy się wcześniej (ponad 3 minuty)
 const INTRO_TIME = 10, RESTART_INTRO = 3;
-const WALL_GRIP = 0.55, HOLD_GRIP = 1.0, PIPE_GRIP = 1.0;  // przyczepność: śliska ściana / kość / rura
-const MOVE_SCALE = 0.9;                    // ogólne osłabienie odepchnięć (1.0 = jak w lobby)
-const MAX_UP = 4.5;                        // maks. prędkość w górę (m/s)
-const EXTRA_GRAVITY = 1.2;                 // dodatkowe przyciąganie w dół (m/s²)
-const OOZE_SPEED = 0.08, OOZE_ACCEL = 0.0002;       // maź: prędkość startowa i przyspieszenie
+const WALL_GRIP = 0.75, HOLD_GRIP = 1.0, PIPE_GRIP = 1.0;  // przyczepność: śliska ściana / kość / rura
+const MOVE_SCALE = 1.0;                    // siła odepchnięć (1.0 = jak w lobby)
+const MAX_UP = 6.5;                        // maks. prędkość w górę (m/s)
+const EXTRA_GRAVITY = -3.0;                // ujemne = lżej niż w lobby (grawitacja 9 zamiast 12 m/s²)
+const OOZE_SPEED = 0.07, OOZE_ACCEL = 0.00015;      // maź: prędkość startowa i przyspieszenie
 const SURGE_MIN = 40, SURGE_MAX = 60, SURGE_HEIGHT = 1.5;
 const SCARE_MIN = 22, SCARE_MAX = 38;      // co ile sekund jumpscare
-const CRUMBLE_TIME = 2.0;                  // tyle wytrzyma pękająca kość
+const CRUMBLE_TIME = 3.0;                  // tyle wytrzyma pękająca kość
+const SECOND_CHANCE_DROP = 8;              // ułatwienie: po złapaniu wracasz nad ostatnią otwartą kratę, a maź opada o tyle metrów
 const REWARD_FIRST = 2500, REWARD_REPEAT = 250;
 export const info = { id: 'well', name: 'The Well', spawn: [0, 1.0, 0.8] };
 
@@ -122,9 +123,9 @@ function buildHolds(R) {
                 if (y < 3 && side === 1) side = 0;   // nie zasłaniaj drzwi do lobby na dole
                 lastSide = side;
                 const t = (R() * 2 - 1) * (HS - 0.6), roll = R();
-                if (roll < 0.22) {   // półka
-                    const p = wallPos(side, t, y, 0.35), horiz = side < 2;
-                    addCrispBlock(p[0], p[1], p[2], horiz ? 1.3 : 0.7, 0.2, horiz ? 0.7 : 1.3, 0x5a5a52, 0x0a0a08); setGrip(HOLD_GRIP);
+                if (roll < 0.3) {   // półka
+                    const p = wallPos(side, t, y, 0.45), horiz = side < 2;
+                    addCrispBlock(p[0], p[1], p[2], horiz ? 1.8 : 0.9, 0.2, horiz ? 0.9 : 1.8, 0x5a5a52, 0x0a0a08); setGrip(HOLD_GRIP);
                 } else if (roll < 0.28) {   // rura w poprzek szybu
                     const pz = (R() * 2 - 1) * (HS - 0.8), alongX = R() < 0.5;
                     const m = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, HS * 2, 10), pipeMat); m.castShadow = true;
@@ -132,8 +133,8 @@ function buildHolds(R) {
                     L.root.add(m);
                     addStaticBody(alongX ? 0 : pz, y, alongX ? pz : 0, new CANNON.Box(new CANNON.Vec3(alongX ? HS : 0.09, 0.09, alongX ? 0.09 : HS)), m, false); setGrip(PIPE_GRIP);
                 } else {   // kość (co czwarta pęka)
-                    const crumbly = R() < 0.15, p = wallPos(side, t, y, 0.22), horiz = side < 2;
-                    const w = 0.6, d = 0.42;
+                    const crumbly = R() < 0.08, p = wallPos(side, t, y, 0.3), horiz = side < 2;
+                    const w = 0.9, d = 0.6;   // większe kości
                     const geo = new THREE.BoxGeometry(horiz ? w : d, 0.22, horiz ? d : w); scaleBoxUVs(geo, w, 0.22, d, 1);
                     const m = new THREE.Mesh(geo, crumbly ? crackMat : boneMat); m.position.set(p[0], p[1], p[2]); m.castShadow = true; L.root.add(m);
                     addStaticBody(p[0], p[1], p[2], new CANNON.Box(new CANNON.Vec3((horiz ? w : d) / 2, 0.11, (horiz ? d : w) / 2)), m, false);
@@ -141,7 +142,7 @@ function buildHolds(R) {
                     if (crumbly) S.crumbles.push({ ob: ob, mesh: m, t: 0, falling: false, vy: 0 });
                 }
             }
-            y += 1.0 + R() * 0.45;   // gęściej rozmieszczone uchwyty
+            y += 0.85 + R() * 0.35;   // gęsto rozmieszczone uchwyty
         }
     }
 }
@@ -486,7 +487,15 @@ export function update(dt, t, ctx) {
                 // Drużyna gra dalej: złapany ogląda z góry, aż ktoś wygra albo złapią wszystkich
                 S.spectator = true; toast('You are out. Watch your team...', '#ff6a4a');
                 if (N.NET.mode === 'host') { S.out.add('me'); checkAllOut(); } else N.sendLevelMsg({ k: 'out' });
-            } else { S.leaving = true; restartFlag = true; ctx.goto('well', null, N.NET.mode === 'solo' ? undefined : { seed: S.seed, noFollow: true }); return; }
+            } else {
+                // Ułatwienie: jeśli otwarłeś już jakąś kratę, wracasz nad nią, a maź opada
+                const last = S.grates.filter(g => g.open).pop();
+                if (last && isAuthority()) {
+                    setPlayerPosition(-(HS - 0.6), last.y - 2.4, -(HS - 0.6) - 0.2);   // na półce pod łańcuchem tej kraty
+                    S.ooze = Math.max(-1.2, Math.min(S.ooze, last.y - 3) - SECOND_CHANCE_DROP);
+                    toast('The well spits you back out... Climb!', '#b8ffcf');
+                } else { S.leaving = true; restartFlag = true; ctx.goto('well', null, N.NET.mode === 'solo' ? undefined : { seed: S.seed, noFollow: true }); return; }
+            }
         }
     }
     if (S.spectator) { body.position.set(0, Math.min(TOP - 1, Math.max(2, S.ooze + 6)), 0); body.velocity.set(0, 0, 0); }
