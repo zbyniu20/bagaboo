@@ -29,12 +29,31 @@ button:disabled { background: #5a4848 !important; color: #b8a0a0 !important; bor
 .connected #VRButton { display: block !important; border-color: #ff6a20 !important; color: #ff8a40 !important; background: rgba(40,20,20,0.85) !important; }
 </style>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<script type="importmap">
-{ "imports": {
-  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-  "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
-}}
+<script>
+// Ładowanie gry z automatycznym numerem wersji: przeglądarka i gogle zawsze pobierają komplet aktualnych plików
+// (nowy numer co 5 minut, więc po wgraniu zmian na GitHub nie trzeba już dopisywać ?v= do adresu).
+// Dodając nowy plik .js do gry, dopisz go do listy FILES.
+(function () {
+  var FILES = ["main.js", "core/audio.js", "core/avatar.js", "core/config.js", "core/debug.js", "core/desktop.js", "core/economy.js", "core/engine.js", "core/haptics.js", "core/levelkit.js", "core/mannequin.js", "core/murals.js", "core/network.js", "core/pause.js", "core/player.js", "core/settings.js", "core/terminal.js", "core/textures.js", "core/ui.js", "levels/lobby-door.js", "levels/lobby.js", "levels/maze.js", "levels/silence.js", "levels/well.js"];
+  var VERSION = String(Math.floor(Date.now() / 300000));
+  var imports = {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+    "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+  };
+  FILES.forEach(function (f) { imports['./' + f] = './' + f + '?v=' + VERSION; });
+  var map = document.createElement('script');
+  map.type = 'importmap';
+  map.textContent = JSON.stringify({ imports: imports });
+  document.head.appendChild(map);
+  window.BAGABOO_VERSION = VERSION;
+  window.addEventListener('DOMContentLoaded', function () {
+    import('./main.js').catch(function (e) {
+      var s = document.getElementById('status');
+      if (s) { s.style.color = '#ff6a4a'; s.innerText = 'Could not start the game: ' + e.message + '. Check that every file is uploaded with the right name.'; }
+    });
+  });
+})();
 </script>
 </head>
 <body>
@@ -58,6 +77,6 @@ button:disabled { background: #5a4848 !important; color: #b8a0a0 !important; bor
 </div>
 <div id="info">The sun is setting... don't look away.</div>
 <div id="audio-container" style="display:none;"></div>
-<script type="module" src="./main.js"></script>
+
 </body>
 </html>
