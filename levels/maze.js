@@ -2,7 +2,7 @@
 // POZIOM: LABIRYNT 100 x 100 m, ściany 20 m, ciemność (preset 'night')
 // Przy każdym wejściu losuje się nowy układ. Start na południu, wyjście na północy.
 // Po 20 s manekin wyłamuje się z klatki i goni gracza. Złapanie = nowy labirynt od początku.
-// Jumpscare'y: ślepe zaułki, błądzenie, zjawy na końcu korytarzy. Dotarcie do pokoju końcowego = 2000 kości
+// Jumpscare'y: ślepe zaułki, błądzenie, zjawy na końcu korytarzy. Dotarcie do pokoju końcowego = 2000 Bagabucks
 // (kolejne razy 200) i otwiera się dziura w podłodze prowadząca prosto do poziomu Cisza.
 // ==========================================
 import { THREE, L, tex, camera, lighting, addCrispBlock, addCollider, scaleBoxUVs } from '../core/engine.js';
@@ -10,7 +10,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LIGHT_PRESETS } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
-import { addBones, saveGame, SAVE } from '../core/economy.js';
+import { levelReward, recordTime, unlockAchievement } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import * as SFX from '../core/audio.js';
 import { ARRIVAL } from './lobby-door.js';
@@ -199,13 +199,12 @@ function buildHole() {
 function finishMaze() {
     S.phase = 'done';
     S.mq.group.visible = false; S.mq.aura.intensity = 0;
-    const wins = SAVE.mazeWins || 0, reward = wins === 0 ? REWARD_FIRST : REWARD_REPEAT;
-    SAVE.mazeWins = wins + 1;
-    addBones(reward, wins === 0 ? 'first maze escape!' : 'maze escape');
-    saveGame();
-    toast('You escaped! +' + reward + ' bones', '#7fc47f');
+    toast('You escaped!', '#7fc47f');
+    levelReward('maze', REWARD_FIRST, REWARD_REPEAT, 'maze escape');
+    recordTime('maze', S.runT || 0);
+    if (!S.scares) unlockAchievement('maze_runner');
     setTimeout(() => toast('A hatch opened in the floor... or take the EXIT door', '#9fc8ff'), 2600);
-    SFX.creak(0.7);
+    SFX.creak(0.7, { x: HOLE[0], y: 0.2, z: HOLE[1] });
     S.hole.opening = true; S.hole.pit.visible = true;
     L.portals.push({
         box3: new THREE.Box3(new THREE.Vector3(HOLE[0] - 0.8, -0.5, HOLE[1] - 0.8), new THREE.Vector3(HOLE[0] + 0.8, 1.4, HOLE[1] + 0.8)),
@@ -281,7 +280,7 @@ function buildScare() {
 }
 function jumpscare() {
     if (S.scareT >= 0) return;
-    S.scareT = 0; S.scare.g.visible = true; S.lastScare = S.time;
+    S.scareT = 0; S.scare.g.visible = true; S.lastScare = S.time; S.scares = (S.scares || 0) + 1;
     SFX.scare();
 }
 function updateScare(dt) {
@@ -326,7 +325,7 @@ function trySpawnPhantom(p) {
     const c = cellCenter(last[0], last[1]), ph = S.ph;
     ph.group.position.set(c[0], 0, c[1]); ph.group.rotation.y = Math.atan2(p.x - c[0], p.z - c[1]);
     ph.group.visible = true; ph.active = true; ph.t = 0; ph.seen = 0;
-    SFX.whisper();
+    SFX.whisper({ x: c[0], y: 1.6, z: c[1] });   // szept dobiega z miejsca, gdzie stoi zjawa
     return true;
 }
 function updatePhantom(dt, p) {
@@ -337,7 +336,7 @@ function updatePhantom(dt, p) {
     if ((dx * _v.x + dy * _v.y + dz * _v.z) / d > 0.92) ph.seen += dt;
     const near = Math.hypot(p.x - ph.group.position.x, p.z - ph.group.position.z) < 2.2;
     if (near) { ph.active = false; ph.group.visible = false; jumpscare(); }
-    else if (ph.seen > 0.35) { ph.active = false; ph.group.visible = false; SFX.stinger(); S.blackout = 0.45; S.lastScare = S.time; }
+    else if (ph.seen > 0.35) { ph.active = false; ph.group.visible = false; SFX.stinger({ x: ph.group.position.x, y: 1.6, z: ph.group.position.z }); S.blackout = 0.45; S.lastScare = S.time; }
     else if (ph.t > 5) { ph.active = false; ph.group.visible = false; }
 }
 
@@ -360,7 +359,8 @@ function freeze(body) { if (!S.frozen) S.frozen = body.position.clone(); body.po
 export function update(dt, t, ctx) {
     if (!S) return;
     const body = ctx.body, p = body.position, q = S.mq, c = S.cage;
-    S.time += dt; S.phaseT += dt;
+    S.time += dt; S.phaseT += dt; S.runT = (S.runT || 0) + dt;
+    const cagePos = { x: c.home[0], y: 1.5, z: c.home[1] };
 
     if (S.blackout > 0) S.blackout -= dt;
     const dark = S.blackout > 0;
@@ -392,21 +392,21 @@ export function update(dt, t, ctx) {
     if (S.phase === 'intro') {
         if (!S.introShown && S.time > 1) { S.introShown = true; toast('Find the exit. Something is waiting...', '#ff6a40'); }
         q.head.rotation.y = Math.sin(t * 0.7) * 0.4;   // manekin rozgląda się w klatce
-        if (S.time >= CAGE_TIME) { S.phase = 'cutscene'; S.phaseT = 0; S.frozen = null; SFX.creak(0.6); toast('Something is breaking free...', '#ff6a40'); }
+        if (S.time >= CAGE_TIME) { S.phase = 'cutscene'; S.phaseT = 0; S.frozen = null; SFX.creak(0.9, cagePos); toast('Something is breaking free...', '#ff6a40'); }
     } else if (S.phase === 'cutscene') {
         // Krótka scenka: klatka się trzęsie, drzwi wylatują, manekin wychodzi. Gracz stoi w miejscu.
         freeze(body);
         const k = S.phaseT;
         if (k < 1.6) c.group.position.set(c.home[0] + (Math.random() - 0.5) * 0.05 * k, 0, c.home[1] + (Math.random() - 0.5) * 0.05 * k);
         else c.group.position.set(c.home[0], 0, c.home[1]);
-        if (k >= 1.6 && c.lock.visible) { c.lock.visible = false; SFX.bang(); q.eyes.visible = true; }
+        if (k >= 1.6 && c.lock.visible) { c.lock.visible = false; SFX.bang(cagePos); q.eyes.visible = true; }
         if (k >= 1.6) c.pivot.rotation.y = Math.min(2.2, (k - 1.6) * 9);
         q.aura.intensity = k >= 1.6 ? 4 : 0;
         // Głowa gwałtownie obraca się do gracza
         const toP = Math.atan2(p.x - q.x, p.z - q.z);
         if (k >= 1.8) q.head.rotation.y += (Math.atan2(Math.sin(toP - q.yaw), Math.cos(toP - q.yaw)) - q.head.rotation.y) * Math.min(1, dt * 12);
         if (k >= 2.4) { const a = Math.min(1, (k - 2.4) / 1.6); q.x = c.home[0] + a * 1.6; q.z = c.home[1]; q.group.position.set(q.x, Math.abs(Math.sin(k * 7)) * 0.05, q.z); }
-        if (k >= 2.3 && k - dt < 2.3) SFX.scream();
+        if (k >= 2.3 && k - dt < 2.3) SFX.scream({ x: q.x, y: 1.6, z: q.z });
         if (k >= 4.3) { S.phase = 'chase'; S.phaseT = 0; S.frozen = null; toast('RUN!', '#e0533f'); }
     } else if (S.phase === 'chase') {
         S.chaseT += dt;
