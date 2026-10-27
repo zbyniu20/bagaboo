@@ -31,7 +31,8 @@ export const pauseMenu = new Terminal((t) => {
     slider(t, 'sc', 'Jumpscares', 'scare', 370);
     t.text('Comfort vignette', 60, 486, 28, AMBER, 'left', true);
     t.btn('vig', 380, 460, 260, 56, SETTINGS.vignette ? 'On' : 'Off', () => { SETTINGS.vignette = !SETTINGS.vignette; saveSettings(); }, { tone: SETTINGS.vignette ? 'ok' : undefined });
-    t.text('Darkens the edges of your view when you move fast.', 60, 540, 20, AMBER_DIM, 'left');
+    t.btn('hap', 680, 460, 280, 56, SETTINGS.haptics ? 'Vibration on' : 'Vibration off', () => { SETTINGS.haptics = !SETTINGS.haptics; saveSettings(); }, { tone: SETTINGS.haptics ? 'ok' : undefined, size: 24 });
+    t.text('Vignette darkens the edges of your view when you move fast.', 60, 540, 20, AMBER_DIM, 'left');
     t.text('Graphics quality: ' + SETTINGS.quality + ' (change it in the main menu).', 60, 580, 20, AMBER_DIM, 'left');
     t.text('Press Y, B or the stick again to resume.', 60, 614, 20, OK_COL, 'left');
     t.scanlines();
