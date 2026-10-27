@@ -15,6 +15,7 @@ import { drawScoreboard } from './core/ui.js';
 import { PAUSE, pauseMenu, pollPauseButtons, closePause } from './core/pause.js';
 import { SETTINGS, saveSettings } from './core/settings.js';
 import { enableDesktop, updateDesktop } from './core/desktop.js';
+import { startPresence } from './core/presence.js';
 
 // Lista poziomów. Nowy poziom = nowy plik w folderze levels/ + wpis tutaj.
 // light: preset oświetlenia z config.js, extras: dodatkowe pliki doładowywane razem z poziomem
@@ -22,7 +23,9 @@ const LEVELS = {
     lobby: { path: './levels/lobby.js', light: LIGHT_MODE, extras: ['./levels/lobby-door.js'] },
     maze: { path: './levels/maze.js', light: 'night', extras: [] },
     silence: { path: './levels/silence.js', light: 'night', extras: [] },
-    well: { path: './levels/well.js', light: 'night', extras: [] }
+    well: { path: './levels/well.js', light: 'night', extras: [] },
+    lava: { path: './levels/lava.js', light: 'lava', extras: [] },
+    staff: { path: './levels/staff.js', light: 'staff', extras: [] }
 };
 let level = null, extras = [], levelId = null, started = false, switching = false;
 
@@ -47,7 +50,7 @@ export async function loadLevel(id, spawn) {
     markAllDirty();
 }
 // Ekran ładowania przed oczami: zamiast zamrożonego obrazu gracz widzi czerń z napisem
-const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well' };
+const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well', lava: 'Floor is Lava', staff: 'Staff room' };
 const fade = (() => {
     const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
@@ -77,7 +80,7 @@ async function goToLevel(id, spawn, opts) {
     if (PAUSE.on) closePause();
     // Ziarno układu: od hosta, z restartu albo nowe losowe
     L.levelSeed = SEEDED[id] ? (opts.seed !== undefined ? opts.seed : (Math.random() * 1e9) | 0) : undefined;
-    if (NETM.NET.mode === 'host' && !opts.noFollow) NETM.sendFollow(id, { seed: L.levelSeed });   // goście idą za hostem
+    if (NETM.NET.mode === 'host' && !opts.noFollow && id !== 'staff') NETM.sendFollow(id, { seed: L.levelSeed });   // goście idą za hostem (oprócz pokoju szefa)
     showLoading(LEVEL_NAMES[id] || id);
     await nextFrames(3);   // najpierw pokaż czarny ekran, dopiero potem ciężka praca
     try { await loadLevel(id, spawn); saveNow(); }
@@ -90,10 +93,19 @@ PAUSE.onLobby = () => goToLevel('lobby');
 let pendingFollow = null;
 NETM.onFollow((level, data) => {
     if (NETM.NET.mode !== 'guest') return;
+    if (level === levelId && !SEEDED[level]) return;   // już tu jesteśmy
     if (!started) { pendingFollow = { level: level, data: data }; return; }
     toast('Following the host...', '#9fc8ff');
     goToLevel(level, null, { seed: data.seed, noFollow: true });
 });
+// Gość: zaproszenie od hosta (pokój szefa) albo odesłanie do lobby
+NETM.onInvite((level) => {
+    if (!started || level === levelId) return;
+    toast(level === 'staff' ? 'The host invited you to the staff room' : 'The host sent you back to the lobby', '#ffd27a');
+    goToLevel(level, null, { noFollow: true });
+});
+// Licznik graczy online (wspólny dla wszystkich, którzy mają włączoną grę)
+startPresence(() => ({ room: NETM.NET.mode === 'solo' ? '' : NETM.NET.code, name: ECO.SAVE.profile.name }), () => markAllDirty());
 
 // Winieta: przyciemnia brzegi obrazu przy szybkim ruchu (mniej choroby lokomocyjnej)
 const vignette = (() => {
@@ -186,7 +198,10 @@ renderer.setAnimationLoop(() => {
         for (const e of extras) if (e.update) e.update(dt, t, ctx);
         // Drzwi do innych poziomów
         if (started) for (const pt of L.portals) {
-            if (pt.box3.containsPoint(playerBody.position)) { if (pt.onEnter) pt.onEnter(); goToLevel(pt.target, pt.spawn, pt.opts); break; }
+            if (pt.box3.containsPoint(playerBody.position)) {
+                if (pt.cond && !pt.cond()) { if (pt.deny && t - (pt.deniedAt || -9) > 3) { pt.deniedAt = t; toast(pt.deny, '#e0533f'); } continue; }   // drzwi zamknięte dla tego gracza
+                if (pt.onEnter) pt.onEnter(); goToLevel(pt.target, pt.spawn, pt.opts); break;
+            }
         }
     }
     NETM.poseRemoteHands(dt);
