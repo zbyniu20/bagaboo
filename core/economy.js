@@ -104,7 +104,7 @@ export const ACHIEVEMENTS = [
     { id: 'completionist', name: 'Completionist', desc: 'Beat all three levels and become Parkour King', reward: ['skin', 'bloodmoon'], rewardName: 'Bloodmoon skin' }
 ];
 export const RECORDS = [
-    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'route', name: 'Red route' }
+    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'route', name: 'Red route' }, { id: 'range', name: 'Shooting range (kills)', score: true }
 ];
 export const HEIGHT_RECORD_BONUS = 10;   // za każdy nowy metr rekordu wysokości
 export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dnia
@@ -217,6 +217,12 @@ export function recordTime(id, sec) {
         if (prev !== undefined) toast('New record: ' + fmtDuration(sec * 1000), '#ffd27a');
         return true;
     }
+    return false;
+}
+// Rekord punktowy (im więcej, tym lepiej), np. strzelnica
+export function recordScore(id, score) {
+    const prev = SAVE.records[id];
+    if (prev === undefined || score > prev) { SAVE.records[id] = score; saveGame(); markAllDirty(); if (prev !== undefined) toast('New record: ' + score, '#ffd27a'); return true; }
     return false;
 }
 export function unlockAchievement(id) {
