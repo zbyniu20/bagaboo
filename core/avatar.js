@@ -277,23 +277,22 @@ function createNameSprite(message) {
     ctx.font = 'bold 60px sans-serif'; ctx.fillStyle = '#111111'; ctx.textAlign = 'center'; ctx.fillText(message, 256, 85);
     return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas) }));
 }
-// Głowa goryla z kosmetykami (dla innych graczy, lustra i podglądu w sklepie)
+// Głowa goryla: kwadratowa, cała w futrze, tylko twarz bez owłosienia (dla innych graczy, lustra i sklepu)
 export function createHead(look, withName) {
     const head = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
-    const masked = look.mask && look.mask !== 'none', hatted = look.hat && look.hat !== 'none';
-    const skull = meshAt(new THREE.SphereGeometry(0.13, 24, 18), fur, 0, 0.005, 0.01); skull.scale.set(1, 1.05, 1.05); head.add(skull);
-    if (!hatted) { const crest = meshAt(new THREE.SphereGeometry(1, 12, 10), fur, 0, 0.105, 0.03); crest.scale.set(0.035, 0.06, 0.09); head.add(crest); }   // grzebień na czubku
-    for (const s of [-1, 1]) { const cheek = meshAt(new THREE.SphereGeometry(1, 12, 10), fur, s * 0.085, -0.035, -0.05); cheek.scale.set(0.06, 0.07, 0.07); head.add(cheek); }
-    const plate = meshAt(new THREE.SphereGeometry(1, 20, 14), face, 0, -0.01, -0.085); plate.scale.set(0.1, 0.11, 0.06); head.add(plate);
-    const brow = meshAt(new THREE.SphereGeometry(1, 16, 10), face, 0, 0.045, -0.112); brow.scale.set(0.115, 0.028, 0.04); head.add(brow);   // wał nadoczodołowy
-    for (const s of [-1, 1]) { const ear = meshAt(new THREE.SphereGeometry(1, 10, 8), face, s * 0.128, 0.0, -0.005); ear.scale.set(0.02, 0.032, 0.024); head.add(ear); }
+    const masked = look.mask && look.mask !== 'none';
+    const skull = meshAt(new RoundedBoxGeometry(0.26, 0.26, 0.25, 4, 0.045), fur, 0, 0.005, 0.0); head.add(skull);
+    // Twarz: płaska, ciemna, bez futra, z futrzanym daszkiem brwi nad nią
+    const plate = meshAt(new RoundedBoxGeometry(0.19, 0.16, 0.03, 3, 0.012), face, 0, -0.025, -0.118); head.add(plate);
+    head.add(meshAt(new RoundedBoxGeometry(0.22, 0.035, 0.05, 2, 0.012), fur, 0, 0.065, -0.115));
+    for (const s of [-1, 1]) head.add(meshAt(new RoundedBoxGeometry(0.03, 0.05, 0.04, 2, 0.01), fur, s * 0.135, 0.0, -0.01));   // uszy
     if (!masked) {
-        const muzzle = meshAt(new THREE.SphereGeometry(1, 18, 12), face, 0, -0.06, -0.115); muzzle.scale.set(0.082, 0.058, 0.05); head.add(muzzle);
         const dark = new THREE.MeshBasicMaterial({ color: 0x0a0605 });
-        for (const s of [-1, 1]) { const n = meshAt(new THREE.SphereGeometry(0.011, 8, 6), dark, s * 0.02, -0.042, -0.162); n.scale.set(1, 0.7, 0.5); head.add(n); }
-        head.add(meshAt(new THREE.BoxGeometry(0.075, 0.006, 0.01), dark, 0, -0.088, -0.158));
+        const muzzle = meshAt(new RoundedBoxGeometry(0.11, 0.06, 0.03, 2, 0.012), face, 0, -0.065, -0.135); head.add(muzzle);
+        for (const s of [-1, 1]) head.add(meshAt(new THREE.SphereGeometry(0.009, 8, 6), dark, s * 0.018, -0.05, -0.151));
+        head.add(meshAt(new THREE.BoxGeometry(0.07, 0.006, 0.006), dark, 0, -0.085, -0.15));
         const eyeMat = k.glowEyes ? new THREE.MeshBasicMaterial({ color: 0xff2a10 }) : new THREE.MeshPhysicalMaterial({ color: 0x2a160c, roughness: 0.1, clearcoat: 1 });
-        for (const s of [-1, 1]) head.add(meshAt(new THREE.SphereGeometry(0.015, 12, 8), eyeMat, s * 0.042, 0.018, -0.118));
+        for (const s of [-1, 1]) head.add(meshAt(new THREE.SphereGeometry(0.014, 12, 8), eyeMat, s * 0.045, 0.02, -0.132));
     }
     head.add(buildMask(look.mask)); head.add(buildHat(look.hat)); head.add(buildGlasses(look.glasses));
     if (withName) { const tag = createNameSprite(String(look.name || 'Player').slice(0, 16)); tag.position.set(0, 0.45, 0); tag.scale.set(2, 0.5, 1); head.add(tag); }
@@ -331,21 +330,19 @@ export function buildBadge(id) {
     g.add(rim);
     return g;
 }
-// Tułów goryla: szeroka klatka, garb barków, ciemna pierś (środek = 0.35 m pod głową)
+// Tułów: zwykła sylwetka (nie gruba, nie chuda), cały w futrze, z łysym plackiem na brzuchu (środek = 0.35 m pod głową)
 export function createGorillaTorso(look) {
     const g = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
-    const add = (m, x, y, z, sx, sy, sz) => { const o = meshAt(new THREE.SphereGeometry(1, 20, 14), m, x, y, z); o.scale.set(sx, sy, sz); g.add(o); return o; };
-    g.userData.chest = add(fur, 0, -0.08, 0.02, 0.3, 0.34, 0.24);
-    add(fur, 0, 0.17, 0.05, 0.36, 0.17, 0.26);                       // garb barków
-    for (const s of [-1, 1]) add(fur, s * 0.27, 0.15, 0.02, 0.13, 0.13, 0.15);   // ramiona
-    add(face, 0, 0.0, -0.17, 0.2, 0.17, 0.08);                       // ciemna pierś
-    if (k.back) add(new THREE.MeshStandardMaterial({ map: furTexture(), color: k.back, roughness: 0.9 }), 0, 0.0, 0.17, 0.25, 0.22, 0.1);
+    g.userData.chest = meshAt(new RoundedBoxGeometry(0.42, 0.5, 0.24, 4, 0.08), fur, 0, -0.06, 0.0); g.add(g.userData.chest);
+    for (const s of [-1, 1]) g.add(meshAt(new THREE.SphereGeometry(0.085, 14, 10), fur, s * 0.21, 0.15, 0));   // barki
+    g.add(meshAt(new RoundedBoxGeometry(0.22, 0.24, 0.02, 3, 0.01), face, 0, -0.12, -0.12));                // łysy placek na brzuchu
+    if (k.back) g.add(meshAt(new RoundedBoxGeometry(0.34, 0.3, 0.02, 3, 0.01), new THREE.MeshStandardMaterial({ map: furTexture(), color: k.back, roughness: 0.9 }), 0, 0.0, 0.122));
     const badge = buildBadge(look.badge);
-    if (badge) { badge.position.set(0.13, 0.06, -0.236); badge.rotation.x = -0.15; g.add(badge); }
+    if (badge) { badge.position.set(0.11, 0.09, -0.128); g.add(badge); }
     if (k.cape) {
-        const cape = meshAt(new THREE.BoxGeometry(0.62, 0.7, 0.02), new THREE.MeshStandardMaterial({ color: 0x9a0a10, roughness: 0.7, side: THREE.DoubleSide }), 0, -0.2, 0.27);
-        cape.rotation.x = 0.15; g.add(cape);
-        for (const s of [-1, 1]) g.add(meshAt(new THREE.SphereGeometry(0.035, 10, 8), new THREE.MeshStandardMaterial({ color: 0xd4a640, metalness: 1, roughness: 0.25 }), s * 0.22, 0.2, -0.05));
+        const cape = meshAt(new THREE.BoxGeometry(0.5, 0.62, 0.02), new THREE.MeshStandardMaterial({ color: 0x9a0a10, roughness: 0.7, side: THREE.DoubleSide }), 0, -0.14, 0.14);
+        cape.rotation.x = 0.12; g.add(cape);
+        for (const s of [-1, 1]) g.add(meshAt(new THREE.SphereGeometry(0.03, 10, 8), new THREE.MeshStandardMaterial({ color: 0xd4a640, metalness: 1, roughness: 0.25 }), s * 0.18, 0.15, -0.1));
     }
     return g;
 }
@@ -354,7 +351,7 @@ const ARM_GEO = new THREE.CylinderGeometry(0.055, 0.075, 1, 12).translate(0, 0.5
 export function createGorillaArm(look) { const m = new THREE.Mesh(ARM_GEO, furMat(look)); m.castShadow = true; return m; }
 const _Y = new THREE.Vector3(0, 1, 0), _sh = new THREE.Vector3(), _hp = new THREE.Vector3(), _dir = new THREE.Vector3();
 export function placeArm(arm, torso, side, hand) {
-    _sh.set(side * 0.27, 0.14, 0.02); torso.localToWorld(_sh);
+    _sh.set(side * 0.23, 0.15, 0.0); torso.localToWorld(_sh);
     hand.getWorldPosition(_hp);
     if (arm.parent) arm.parent.worldToLocal(_sh), arm.parent.worldToLocal(_hp);
     _dir.subVectors(_hp, _sh); const len = Math.max(0.05, _dir.length());
