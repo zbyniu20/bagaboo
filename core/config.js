@@ -67,5 +67,13 @@ LIGHT_PRESETS.staff = {
     hemiSky: 0xffe0c0, hemiGround: 0x3a2a20, hemiIntensity: 1.3,
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.4, flashlight: null
 };
+LIGHT_PRESETS.arcade = {
+    background: 0x08060c, fogColor: 0x0c0814, fogDensity: 0.012, exposure: 1.1,
+    hemiSky: 0x8a6aff, hemiGround: 0x200a20, hemiIntensity: 0.9,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3, flashlight: null
+};
+// Nicki z dostępem do pokoju szefa (Staff room). Liczy się nick wpisany na stronie startowej.
+export const STAFF_NAMES = ['BoyIsGamer'];
+export function isStaffName(name) { return STAFF_NAMES.some(n => n.toLowerCase() === String(name || '').trim().toLowerCase()); }
 export const LIGHT_MODE = 'dusk';
 export const LP = LIGHT_PRESETS[LIGHT_MODE];
