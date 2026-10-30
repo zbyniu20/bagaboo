@@ -1,10 +1,11 @@
 // ==========================================
 // POZIOM: STAFF ROOM (pokój szefa gry)
-// Wejście tylko dla hosta (albo gracza solo). Host zaprasza gości przyciskiem "Invite" na komputerze
-// w lobby albo na telewizorze tutaj. Kanapa, fotele, stolik, biurko szefa, regał i telewizor z listą graczy.
+// Wejście tylko dla gracza z nickiem z listy STAFF_NAMES (core/config.js). Jeśli jest hostem, zaprasza gości
+// przyciskiem "Invite" na komputerze w lobby albo na telewizorze tutaj. Kanapa, fotele, stolik, biurko szefa, regał i telewizor z listą graczy.
 // ==========================================
 import { THREE, L, tex, addCrispBlock, addStaticBody, CANNON } from '../core/engine.js';
-import { LIGHT_PRESETS } from '../core/config.js';
+import { LIGHT_PRESETS, isStaffName } from '../core/config.js';
+import { SAVE } from '../core/economy.js';
 import * as T from '../core/textures.js';
 import { toast, Terminal, AMBER, AMBER_DIM, GOLD, OK_COL } from '../core/terminal.js';
 import * as N from '../core/network.js';
@@ -31,7 +32,7 @@ const tv = new Terminal((t) => {
         c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, 56);
         t.text(p.name, 40, y + 29, 26, GOLD, 'left', true);
         t.text(here ? 'in the staff room' : 'elsewhere', 360, y + 29, 22, here ? OK_COL : AMBER_DIM, 'left');
-        if (N.NET.mode === 'host') {
+        if (N.NET.mode === 'host' && isStaffName(SAVE.profile.name)) {
             t.btn('inv' + p.id, 620, y + 7, 170, 42, 'Invite', () => { N.sendInvite(p.id, 'staff'); toast('Invited ' + p.name); }, { size: 22, tone: 'gold', disabled: here });
             t.btn('out' + p.id, 810, y + 7, 180, 42, 'Send out', () => { N.sendInvite(p.id, 'lobby'); toast(p.name + ' was sent to the lobby'); }, { size: 22, tone: 'bad', disabled: !here });
         }
