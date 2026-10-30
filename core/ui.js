@@ -6,6 +6,7 @@ import { Terminal, wrapText, AMBER, AMBER_DIM, OK_COL, BAD_COL, GOLD, markAllDir
 import * as N from './network.js';
 import * as E from './economy.js';
 import { PRESENCE } from './presence.js';
+import { isStaffName } from './config.js';
 
 // ---------- KOMPUTER (multiplayer) ----------
 const ui = { page: 'main', temp: '', target: null };
@@ -71,7 +72,7 @@ export const computer = new Terminal((t) => {
             t.btn('m' + p.id, 440, y + 5, 130, 42, N.mutedPeers.has(p.id) ? 'Unmute' : 'Mute', () => N.toggleMute(p.id), { size: 20, disabled: !N.audioEls[p.id] });
             t.btn('r' + p.id, 580, y + 5, 130, 42, 'Report', () => { ui.target = p; ui.page = 'report'; }, { size: 20 });
             if (N.NET.mode === 'host') {
-                t.btn('i' + p.id, 720, y + 5, 140, 42, 'Invite', () => { N.sendInvite(p.id, 'staff'); N.setStatus('Invited ' + p.name + ' to the staff room.'); }, { size: 20, tone: 'gold' });
+                if (isStaffName(E.SAVE.profile.name)) t.btn('i' + p.id, 720, y + 5, 140, 42, 'Invite', () => { N.sendInvite(p.id, 'staff'); N.setStatus('Invited ' + p.name + ' to the staff room.'); }, { size: 20, tone: 'gold' });
                 t.btn('x' + p.id, 870, y + 5, 120, 42, 'Kick', () => N.kickPlayer(p.id), { size: 20, tone: 'bad' });
             }
         });
@@ -160,13 +161,13 @@ export const shop = new Terminal((t) => {
         E.RECORDS.forEach((r, i) => {
             const v = E.SAVE.records[r.id], y = 208 + i * 30;
             t.text(r.name, 40, y, 22, AMBER, 'left');
-            t.text(v === undefined ? '--:--' : E.fmtDuration(v * 1000), 400, y, 22, v === undefined ? AMBER_DIM : GOLD, 'left', true);
+            t.text(v === undefined ? (r.score ? '-' : '--:--') : (r.score ? String(v) : E.fmtDuration(v * 1000)), 400, y, 22, v === undefined ? AMBER_DIM : GOLD, 'left', true);
         });
         t.text('Wins: maze ' + (E.SAVE.mazeWins || 0) + ', silence ' + (E.SAVE.silenceWins || 0) + ', well ' + (E.SAVE.wellWins || 0) + ', lava ' + (E.SAVE.lavaWins || 0), 520, 208, 18, AMBER_DIM, 'left');
-        t.text('Achievements', 40, 362, 26, GOLD, 'left', true);
+        t.text('Achievements', 40, 384, 26, GOLD, 'left', true);
         E.ACHIEVEMENTS.forEach((a, i) => {
-            const done = !!E.SAVE.achievements[a.id], y = 400 + i * 40;
-            c.fillStyle = done ? 'rgba(127,196,127,0.12)' : 'rgba(255,176,0,0.06)'; c.fillRect(24, y - 19, 976, 37);
+            const done = !!E.SAVE.achievements[a.id], y = 416 + i * 37;
+            c.fillStyle = done ? 'rgba(127,196,127,0.12)' : 'rgba(255,176,0,0.06)'; c.fillRect(24, y - 18, 976, 34);
             t.text((done ? '✓ ' : '• ') + a.name, 40, y - 4, 22, done ? OK_COL : GOLD, 'left', true);
             t.text(a.desc, 40, y + 14, 16, AMBER, 'left');
             t.text(a.rewardName, 980, y - 2, 20, done ? OK_COL : AMBER_DIM, 'right', true);
