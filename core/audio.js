@@ -250,3 +250,20 @@ export function micLevel() {
     return Math.sqrt(s / micBuf.length);
 }
 export function markLoud() { if (ctx) lastLoud = ctx.currentTime; }
+
+// Strzał z pistoletu (krótki trzask) i trafienie potwora (pisk z miejsca trafienia)
+export function shot() {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.25);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 0.8;
+    const g = ctx.createGain(); env(g, t0, 0.7, 0.002, 0.18); n.connect(bp); bp.connect(g); g.connect(master); n.start(t0);
+    const o = ctx.createOscillator(), og = ctx.createGain(); o.frequency.setValueAtTime(220, t0); o.frequency.exponentialRampToValueAtTime(50, t0 + 0.12);
+    env(og, t0, 0.6, 0.002, 0.12); o.connect(og); og.connect(master); o.start(t0); o.stop(t0 + 0.2);
+}
+export function splat(pos) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, dst = outAt(pos);
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(900, t0); o.frequency.exponentialRampToValueAtTime(140, t0 + 0.35);
+    env(g, t0, 0.4, 0.005, 0.35); o.connect(g); g.connect(dst); o.start(t0); o.stop(t0 + 0.4);
+}
