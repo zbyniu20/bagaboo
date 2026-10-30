@@ -7,6 +7,7 @@
 import { THREE, camera, renderer } from './engine.js';
 import { playerBody, hands, squeeze, external, isGrounded } from './player.js';
 import { clickPointer } from './terminal.js';
+import { L } from './engine.js';
 
 export const DESKTOP = { enabled: false };
 const keys = {};
@@ -39,7 +40,7 @@ window.addEventListener('keyup', (e) => {
 canvas.addEventListener('mousedown', (e) => {
     if (!DESKTOP.enabled || renderer.xr.isPresenting) return;
     if (!locked()) { canvas.requestPointerLock(); return; }
-    if (e.button === 0) { mouseL = true; clickPointer(0); }
+    if (e.button === 0) { mouseL = true; if (!clickPointer(0) && L.onTrigger) L.onTrigger(1); }
 });
 window.addEventListener('mouseup', (e) => { if (e.button === 0) mouseL = false; });
 window.addEventListener('mousemove', (e) => {
