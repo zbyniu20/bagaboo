@@ -23,7 +23,7 @@ import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions } fr
 const NP = LIGHT_PRESETS.night;
 const HS = 2.3, TOP = 64;                  // pół szerokości szybu i wysokość wyjścia
 const GRATES = [16, 32, 48];               // kraty na tych wysokościach
-const PULLS_PER_GRATE = 3, HATCH_PULLS = 2;
+const PULLS_PER_GRATE = 1, HATCH_PULLS = 1;   // jedno pociągnięcie zielonej dźwigni otwiera kratę / klapę
 const MIN_TIME = 190;                      // klapa na szczycie nie otworzy się wcześniej (ponad 3 minuty)
 const INTRO_TIME = 10, RESTART_INTRO = 3;
 const WALL_GRIP = 0.75, HOLD_GRIP = 1.0, PIPE_GRIP = 1.0;  // przyczepność: śliska ściana / kość / rura
@@ -147,7 +147,7 @@ function buildHolds(R) {
     }
 }
 
-// Krata nad sekcją: dwa łańcuchy pod spodem, każde pociągnięcie podnosi ją trochę
+// Krata nad sekcją. Otwiera ją zielona dźwignia na ścianie pod kratą (nad półką).
 function buildGrate(y) {
     const bars = [];
     for (let i = -5; i <= 5; i++) { bars.push(new THREE.BoxGeometry(0.06, 0.12, HS * 2).translate(i * 0.42, 0, 0)); bars.push(new THREE.BoxGeometry(HS * 2, 0.12, 0.06).translate(0, 0, i * 0.42)); }
@@ -155,24 +155,32 @@ function buildGrate(y) {
     const mesh = new THREE.Mesh(mergeGeometries(bars), new THREE.MeshStandardMaterial({ color: 0x3a2a20, metalness: 0.8, roughness: 0.55 })); mesh.castShadow = true; g.add(mesh);
     addStaticBody(0, y, 0, new CANNON.Box(new CANNON.Vec3(HS, 0.08, HS)), g, false);
     const ob = setGrip(0.6), body = ob.body;
-    const chains = [];
-    for (const c of [[-(HS - 0.6), -(HS - 0.6)], [HS - 0.6, HS - 0.6]]) {
-        const handle = makeChain(c[0], y, c[1], 1.6);
-        chains.push({ handle: handle, pos: new THREE.Vector3(c[0], y - 1.6, c[1]), cool: 0, armed: [true, true], startY: [null, null] });
-        // Półka pod łańcuchem
-        const sz = Math.sign(c[1]);
-        addCrispBlock(c[0], y - 3.0, c[1] + sz * 0.35, 1.2, 0.2, 1.0, 0x5a5a52, 0x0a0a08); setGrip(HOLD_GRIP);
-    }
-    return { y: y, g: g, ob: ob, body: body, chains: chains, pulls: 0, open: false, lift: 0 };
+    // Półki pod kratą (w dwóch rogach) i dźwignia nad pierwszą z nich
+    for (const c of [[-(HS - 0.6), -(HS - 0.6)], [HS - 0.6, HS - 0.6]]) { addCrispBlock(c[0], y - 3.0, c[1] + Math.sign(c[1]) * 0.35, 1.2, 0.2, 1.0, 0x5a5a52, 0x0a0a08); setGrip(HOLD_GRIP); }
+    const lever = makeLever(-(HS - 0.6), y - 1.75, -HS, 0);
+    return { y: y, g: g, ob: ob, body: body, chains: [lever], pulls: 0, open: false, lift: 0 };
 }
-function makeChain(x, yTop, z, len) {
-    const links = [];
-    for (let k = 0; k < len / 0.12; k++) links.push(new THREE.TorusGeometry(0.035, 0.01, 5, 8).rotateY(k % 2 ? Math.PI / 2 : 0).translate(0, -k * 0.12, 0));
-    const g = new THREE.Group(); g.position.set(x, yTop, z); L.root.add(g);
-    g.add(new THREE.Mesh(mergeGeometries(links), new THREE.MeshStandardMaterial({ color: 0x4a4a4a, metalness: 0.9, roughness: 0.4 })));
-    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.02, 8, 18), new THREE.MeshStandardMaterial({ color: 0xc8a040, metalness: 0.9, roughness: 0.3, emissive: 0x2a1a00 }));
-    handle.position.set(0, -len, 0); g.add(handle);
-    return g;
+// Dźwignia na ścianie: zielona, podświetlona tabliczka "PULL". Złap kulkę (grip) i pociągnij w dół.
+// rotY: 0 = ściana północna (dźwignia wystaje na +Z), -PI/2 = ściana wschodnia (wystaje na -X)
+function makeLever(x, y, z, rotY) {
+    const wall = new THREE.Group(); wall.position.set(x, y, z); wall.rotation.y = rotY; L.root.add(wall);
+    const green = new THREE.MeshStandardMaterial({ color: 0x20c040, emissive: 0x10ff40, emissiveIntensity: 0.9, roughness: 0.4 });
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.06), new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.7, roughness: 0.4 })); plate.position.z = 0.03; wall.add(plate);
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.66, 0.03), green); frame.position.z = 0.015; wall.add(frame);
+    const pivot = new THREE.Group(); pivot.position.set(0, 0, 0.07); pivot.rotation.x = -0.7; wall.add(pivot);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.5, 10), new THREE.MeshStandardMaterial({ color: 0x8a8a8a, metalness: 0.9, roughness: 0.3 }));
+    arm.rotation.x = Math.PI / 2; arm.position.z = 0.25; pivot.add(arm);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 10), green); knob.position.z = 0.5; pivot.add(knob);
+    // Tabliczka PULL ze strzałką i pulsująca poświata
+    const c = T.makeCanvas(256, 128), sx = c.getContext('2d');
+    sx.fillStyle = '#041a08'; sx.fillRect(0, 0, 256, 128); sx.strokeStyle = '#40ff60'; sx.lineWidth = 6; sx.strokeRect(4, 4, 248, 120);
+    sx.font = 'bold 64px sans-serif'; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.fillStyle = '#60ff80'; sx.fillText('PULL \u2193', 128, 66);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.25), new THREE.MeshBasicMaterial({ map: T.toTex(c, false), toneMapped: false })); sign.position.set(0, 0.55, 0.05); wall.add(sign);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0x40ff60, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.7 }));
+    glow.scale.set(1.4, 1.4, 1); glow.position.set(0, 0.2, 0.3); wall.add(glow);
+    wall.updateMatrixWorld(true);
+    const pos = new THREE.Vector3(0, Math.sin(0.7) * 0.5, 0.07 + Math.cos(0.7) * 0.5); wall.localToWorld(pos);
+    return { handle: pivot, pos: pos, cool: 0, armed: [true, true], startY: [null, null], lever: true, glow: glow, done: false };
 }
 // Klapa na szczycie: zamknięta do MIN_TIME, potem trzy pociągnięcia łańcucha
 function buildHatch() {
@@ -188,9 +196,9 @@ function buildHatch() {
     plate.position.set(0.8, 0, 0); lid.add(plate);
     addStaticBody(0, TOP + 0.05, 0, new CANNON.Box(new CANNON.Vec3(0.8, 0.06, 0.8)), lid, false);
     const ob = setGrip(0.6);
-    addCrispBlock(HS - 0.4, TOP - 2.6, 0, 0.8, 0.2, 1.4, 0x5a5a52, 0x0a0a08); setGrip(HOLD_GRIP);   // półka pod łańcuchem klapy
-    const chain = makeChain(HS - 0.9, TOP, 0.5, 1.4);
-    S.hatch = { lid: lid, ob: ob, pulls: 0, open: false, lift: 0, chain: { handle: chain, pos: new THREE.Vector3(HS - 0.9, TOP - 1.4, 0.5), cool: 0, armed: [true, true], startY: [null, null] } };
+    addCrispBlock(HS - 0.5, TOP - 2.6, 0, 1.0, 0.2, 1.6, 0x5a5a52, 0x0a0a08); setGrip(HOLD_GRIP);   // półka pod dźwignią klapy
+    const lever = makeLever(HS, TOP - 1.4, 0.4, -Math.PI / 2); lever.glow.material.opacity = 0.15;
+    S.hatch = { lid: lid, ob: ob, pulls: 0, open: false, lift: 0, chain: lever };
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xa8c8ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.5 }));
     glow.scale.set(3, 3, 1); glow.position.set(0, TOP + 1.2, 0); root.add(glow);
 }
@@ -265,11 +273,11 @@ function drawHud(p) {
     const g = S.grates.find(gr => !gr.open && gr.y > h);
     if (S.spectator) { msg = 'You are out. Watch your team climb.'; col = '#ff6a4a'; }
     else if (S.surge > 0) { msg = 'The ooze surges!'; col = '#ff4a2a'; }
-    else if (g && g.y - h < 6) { msg = 'Grate above: squeeze a chain handle and pull down (' + g.pulls + '/' + PULLS_PER_GRATE + ')'; }
+    else if (g && g.y - h < 6) { msg = 'Grate above! Grab the green PULL lever on the wall and pull it down'; col = '#60ff80'; }
     else if (!g && h > TOP - 6) {
         const left = MIN_TIME - S.playT;
         if (left > 0) { msg = 'The hatch is jammed. It loosens in ' + fmt(left); col = '#ffb030'; }
-        else if (!S.hatch.open) msg = 'Pull the hatch chain (' + S.hatch.pulls + '/' + HATCH_PULLS + ')';
+        else if (!S.hatch.open) { msg = 'Pull the green lever under the hatch'; col = '#60ff80'; }
         else msg = 'The hatch is open! Climb out!';
     }
     x.font = 'bold 28px "Courier New", monospace'; x.fillStyle = col; x.fillText(msg, 30, 162);
@@ -278,7 +286,7 @@ function drawHud(p) {
 const INTRO_LINES = [
     'Climb out of the well before the black ooze swallows you.',
     'The walls are slimy. Bones, pipes and ledges grip much better. Cracked bones crumble.',
-    'Grates block the way. Squeeze a chain handle and pull it down to lift the grate.',
+    'Grates block the way. Find the glowing green PULL lever under each grate, grab it and pull it down.',
     'The hatch at the top stays jammed for a while. Keep climbing.',
     'Do not look down. Something is down there.',
     'The LOBBY door down here takes you back, until the ooze covers it.'
@@ -291,22 +299,25 @@ function drawIntro(sec) {
 
 // ---------- CO KLATKĘ ----------
 function squeezing(h) { return h.userData.rig.target === 1.0; }
-// Łańcuch: ściśnij uchwyt i pociągnij dłoń w dół o 35 cm
+// Dźwignia: ściśnij zieloną kulkę (grip) i pociągnij dłoń w dół o 30 cm
 function pullCheck(ch, dt) {
     ch.cool = Math.max(0, ch.cool - dt);
+    if (ch.done) return false;
+    ch.glow.material.opacity = 0.45 + 0.35 * Math.sin(S.clock * 5);
     let pulled = false;
     [hands.L, hands.R].forEach((h, i) => {
-        if (!h) return;
-        const near = h.position.distanceTo(ch.pos) < 0.4;
+        if (!h || pulled) return;
+        const near = h.position.distanceTo(ch.pos) < 0.45;
         if (squeezing(h) && (near || ch.startY[i] !== null)) {
             if (ch.startY[i] === null && near && ch.armed[i]) ch.startY[i] = h.position.y;
             if (ch.startY[i] !== null) {
                 const drop = ch.startY[i] - h.position.y;
-                ch.handle.position.y = -Math.max(0, Math.min(0.35, drop));
-                if (drop > 0.35 && ch.cool <= 0) { pulled = true; ch.cool = 0.8; ch.armed[i] = false; ch.startY[i] = null; }
+                ch.handle.rotation.x = -0.7 + Math.max(0, Math.min(1, drop / 0.3)) * 1.4;
+                if (drop > 0.3 && ch.cool <= 0) { pulled = true; ch.cool = 0.8; ch.armed[i] = false; ch.startY[i] = null; }
             }
-        } else { ch.startY[i] = null; ch.armed[i] = true; ch.handle.position.y *= 0.8; }
+        } else { ch.startY[i] = null; ch.armed[i] = true; ch.handle.rotation.x += (-0.7 - ch.handle.rotation.x) * Math.min(1, dt * 6); }
     });
+    if (pulled) { ch.done = true; ch.handle.rotation.x = 0.7; ch.glow.visible = false; }   // dźwignia zostaje na dole
     return pulled;
 }
 function caught() {
@@ -347,6 +358,7 @@ function onNet(msg, from) {
 function applyPull(gi) {
     if (gi === -1) {
         const H = S.hatch; if (H.open) return;
+        H.chain.done = true; H.chain.handle.rotation.x = 0.7; H.chain.glow.visible = false;
         H.pulls++; SFX.creak(0.6, { x: 0, y: TOP, z: 0 });
         if (H.pulls >= HATCH_PULLS) {
             H.open = true; SFX.bang({ x: 0, y: TOP, z: 0 }); toast('The hatch is open!', '#b8ffcf');
@@ -356,6 +368,7 @@ function applyPull(gi) {
         return;
     }
     const g = S.grates[gi]; if (!g || g.open) return;
+    for (const lv of g.chains) { lv.done = true; lv.handle.rotation.x = 0.7; lv.glow.visible = false; }
     g.pulls++; SFX.creak(0.6, { x: 0, y: g.y, z: 0 }); g.g.position.y = g.y + g.pulls * 0.03;
     if (g.pulls >= PULLS_PER_GRATE) {
         g.open = true; SFX.bang({ x: 0, y: g.y, z: 0 }); toast('The grate slides open!', '#b8ffcf');
