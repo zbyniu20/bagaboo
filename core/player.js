@@ -46,7 +46,7 @@ const ctrlInput = [{ squeeze: false, select: false }, { squeeze: false, select: 
 const hit = { nx: 0, ny: 0, nz: 0, depth: 0 };
 
 controllers.forEach((c, i) => {
-    c.addEventListener('selectstart', () => { ctrlInput[i].select = true; clickPointer(i); });
+    c.addEventListener('selectstart', () => { ctrlInput[i].select = true; if (!clickPointer(i) && L.onTrigger) L.onTrigger(i); });   // spust: ekran albo akcja poziomu (np. strzał)
     c.addEventListener('selectend', () => { ctrlInput[i].select = false; });
     c.addEventListener('squeezestart', () => { ctrlInput[i].squeeze = true; onSqueezeStart(i); });
     c.addEventListener('squeezeend', () => { ctrlInput[i].squeeze = false; onSqueezeEnd(i); });
@@ -150,7 +150,8 @@ world.addEventListener('postStep', () => {
         v.x *= k; v.z *= k;
         if (k === FRICTION_IDLE) { if (Math.abs(v.x) < 0.08) v.x = 0; if (Math.abs(v.z) < 0.08) v.z = 0; }
     }
-    const maxUp = L.maxUp || 99; if (v.y > maxUp) v.y = maxUp;   // limit prędkości w górę ustawiany przez poziom
+    const maxUp = L.maxUp || 99; if (v.y > maxUp && simTime - lastTrampTime > 0.5) v.y = maxUp;   // limit prędkości w górę (trampoliny nadal wybijają wysoko)
+    if (L.maxSpeedXZ) { const h2 = v.x * v.x + v.z * v.z, m = L.maxSpeedXZ; if (h2 > m * m) { const k = m / Math.sqrt(h2); v.x *= k; v.z *= k; } }   // limit prędkości poziomej
     const maxV = 12 * POWER, s2 = v.lengthSquared();
     if (s2 > maxV * maxV) v.scale(maxV / Math.sqrt(s2), v);
     for (const ball of L.throwables) if (ball.userData.body.type === CANNON.Body.DYNAMIC) containBall(ball.userData.body);
