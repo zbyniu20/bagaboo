@@ -1,5 +1,5 @@
 // ==========================================
-// POZIOM: FLOOR IS LAVA
+// GAME MODE: FLOOR IS LAVA (wejście z salonu BagaBoo Games)
 // Długa hala zalana lawą. Nie wolno dotknąć podłogi, nawet dłonią. Trasa: kamienne słupy,
 // zapadające się płyty, ruchome platformy, trampolina i liny, a na końcu wspinaczka do drzwi EXIT.
 // Zielone platformy to punkty kontrolne. Co jakiś czas lawa się podnosi.
@@ -12,7 +12,7 @@ import { toast } from '../core/terminal.js';
 import { hands, setPlayerPosition, releaseAll } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
-import { ARRIVAL_LAVA } from './lobby-door.js';
+import { ARRIVAL_FROM_LAVA } from './games.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA ----------
@@ -22,6 +22,8 @@ const SINK_DELAY = 0.8, SINK_SPEED = 0.7, SINK_RESET = 4;   // zapadające się 
 const MOVE_AMP = 3, MOVE_SPEED = 0.6;        // ruchome platformy: zasięg (m) i tempo
 const REWARD_FIRST = 1500, REWARD_REPEAT = 150;
 const INTRO_TIME = 10;
+// Cięższy ruch: nie da się przeskoczyć kilku bloków naraz
+const MOVE_SCALE = 0.8, MAX_UP = 4.2, MAX_SPEED_XZ = 3.8, EXTRA_GRAVITY = 3.0;
 export const info = { id: 'lava', name: 'Floor is Lava', spawn: [0, 1.9, 2.6] };
 
 let S = null;
@@ -31,6 +33,7 @@ const _c = new THREE.Vector3();
 export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -9.6, maxX: 9.6, minZ: -61.6, maxZ: 4.6, maxY: 23.5 };
+    L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.maxSpeedXZ = MAX_SPEED_XZ;
     S = { clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', burns: 0, cp: 0, grace: 0, lavaY: LAVA_Y, surgeT: 0, nextSurge: 45, flash: 0,
           sinkers: [], movers: [], mannequins: [], hudT: 0, leaving: false };
     S.checkpoints = [info.spawn.slice()];
@@ -38,9 +41,9 @@ export function build() {
     buildLava();
     buildCourse();
     buildMannequins();
-    buildDoor({ x: 0, z: 4.97, rotY: Math.PI, label: 'LOBBY', color: '#ffb070', wood: 0x5a4a44, portal: { target: 'lobby', spawn: ARRIVAL_LAVA, onEnter: () => toast('Back to the lobby') } });
+    buildDoor({ x: 0, z: 4.97, rotY: Math.PI, label: 'GAMES', color: '#d080ff', wood: 0x5a4a44, portal: { target: 'games', spawn: ARRIVAL_FROM_LAVA, onEnter: () => toast('Back to BagaBoo Games') } });
     buildDoor({ x: 0, y: 7.0, z: -61.97, rotY: 0, label: 'EXIT', color: '#70ff90', glow: 0x60ff90, wood: 0x4a5a4a, light: true,
-        portal: { target: 'lobby', spawn: ARRIVAL_LAVA, onEnter: finish } });
+        portal: { target: 'games', spawn: ARRIVAL_FROM_LAVA, onEnter: finish } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     S.flashPanel = makeFlash();
@@ -174,7 +177,7 @@ const INTRO = [
     'Cracked orange platforms sink a moment after you land. Keep moving.',
     'Green platforms are checkpoints. If you burn, you come back to the last one.',
     'Every now and then the lava rises. Stay high.',
-    'Reach the EXIT door at the far end. The LOBBY door behind you takes you back.'
+    'You are heavier here: one jump at a time. Reach the EXIT door at the far end. The GAMES door behind you takes you back.'
 ];
 function fmt(t) { t = Math.max(0, Math.floor(t)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
 function drawHud() {
@@ -203,6 +206,7 @@ export function update(dt, t, ctx) {
         if (S.introT <= 0) { S.phase = 'play'; toast('Go! Do not touch the floor.', '#ffb070'); }
     }
     if (S.phase === 'play') S.runT += dt;
+    ctx.body.velocity.y -= EXTRA_GRAVITY * dt;   // mocniejsza grawitacja
 
     // Lawa: falowanie, pulsowanie i wzbieranie
     S.nextSurge -= dt;
@@ -257,5 +261,6 @@ export function update(dt, t, ctx) {
 
 export function dispose() {
     if (S) { S.hud.dispose(); S.intro.dispose(); camera.remove(S.flashPanel); }
+    L.moveScale = 1; L.maxUp = 99; L.maxSpeedXZ = 0;
     S = null;
 }
