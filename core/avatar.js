@@ -7,6 +7,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP } from './config.js';
 import { makeCanvas, toTex, mkRng } from './textures.js';
+import { isOwnerName } from './config.js';
 
 const ENV = LP.envIntensity;
 const NAIL_GEO = new THREE.SphereGeometry(1, 12, 8);
@@ -311,6 +312,7 @@ const BADGES = {
     eye: { bg: '#5a0a0a', draw: (x) => { x.fillStyle = '#f4ecdc'; x.beginPath(); x.ellipse(64, 64, 42, 24, 0, 0, 7); x.fill(); x.fillStyle = '#b01010'; x.beginPath(); x.arc(64, 64, 16, 0, 7); x.fill(); x.fillStyle = '#000'; x.beginPath(); x.arc(64, 64, 7, 0, 7); x.fill(); } },
     moon: { bg: '#0e1430', draw: (x) => { x.fillStyle = '#d01818'; x.beginPath(); x.arc(64, 64, 36, 0, 7); x.fill(); x.fillStyle = '#0e1430'; x.beginPath(); x.arc(80, 54, 32, 0, 7); x.fill(); } },
     flame: { bg: '#3a0a02', draw: (x) => { for (const [c, k] of [['#ff5a10', 1], ['#ffb020', 0.65], ['#fff0a0', 0.35]]) { x.fillStyle = c; x.beginPath(); x.moveTo(64, 64 - 44 * k - 6); x.bezierCurveTo(64 + 40 * k, 64 - 10 * k, 64 + 30 * k, 64 + 40 * k, 64, 64 + 40 * k); x.bezierCurveTo(64 - 30 * k, 64 + 40 * k, 64 - 40 * k, 64 - 10 * k, 64, 64 - 44 * k - 6); x.fill(); } } },
+    owner: { bg: '#3a0612', draw: (x) => { x.fillStyle = '#ffd23a'; x.beginPath(); x.moveTo(30, 82); x.lineTo(30, 44); x.lineTo(47, 60); x.lineTo(64, 32); x.lineTo(81, 60); x.lineTo(98, 44); x.lineTo(98, 82); x.closePath(); x.fill(); x.fillRect(30, 86, 68, 10); x.fillStyle = '#c01030'; for (const cx of [47, 64, 81]) { x.beginPath(); x.arc(cx, 72, 5, 0, 7); x.fill(); } } },
     ultimate: { bg: '#2a1a00', draw: (x) => { star(x, 64, 60, 46, 20, '#ffd23a'); x.fillStyle = '#2a1a00'; x.font = 'bold 34px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('U', 64, 64); } },
     admin: { bg: '#8a0a0a', draw: (x) => shield(x, '#ffd23a', 'A') },
     mod: { bg: '#0a2a7a', draw: (x) => shield(x, '#d8e8ff', 'M') },
@@ -454,21 +456,24 @@ export function buildHammer(tool) {
     return g;
 }
 export function lookKey(look) { return [look.name, look.color, look.skin, look.badge, look.tool, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
-// Napis nad głową ultimate admina
-export function ultimateLabel() {
+// Stały napis nad głową (ULTIMATE ADMIN, OWNER)
+export function roleLabel(text, color, glow) {
     const c = makeCanvas(512, 96), x = c.getContext('2d');
     x.font = 'bold 60px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.shadowColor = '#ffb000'; x.shadowBlur = 20; x.fillStyle = '#ffe070'; x.fillText('ULTIMATE ADMIN', 256, 50);
+    x.shadowColor = glow; x.shadowBlur = 20; x.fillStyle = color; x.fillText(text, 256, 50);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: toTex(c, false), transparent: true, depthWrite: false }));
     sp.scale.set(1.0, 0.19, 1);
     return sp;
 }
+export function ultimateLabel() { return roleLabel('ULTIMATE ADMIN', '#ffe070', '#ffb000'); }
+export function ownerLabel() { return roleLabel('OWNER', '#ff5a7a', '#ff1a40'); }
 export const ULTIMATE_SCALE = 2;
 export function createAvatar(look) {
     const group = new THREE.Group(), ult = look.skin === 'ultimate', sc = ult ? ULTIMATE_SCALE : 1;
     const torso = createGorillaTorso(look); torso.scale.setScalar(sc); group.add(torso);
     const head = createHead(look, true); head.scale.setScalar(sc); group.add(head);
     if (ult) { const lab = ultimateLabel(); lab.position.set(0, 0.62, 0); head.add(lab); }   // stały napis nad głową
+    if (isOwnerName(look.name)) { const lab = ownerLabel(); lab.position.set(0, ult ? 0.74 : 0.62, 0); head.add(lab); }
     const handL = createRealHand(true, look), handR = createRealHand(false, look);
     handL.scale.setScalar(sc); handR.scale.setScalar(sc);
     const armL = createGorillaArm(look), armR = createGorillaArm(look);
