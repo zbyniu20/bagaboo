@@ -171,8 +171,12 @@ async function canStart() {
     const ban = NETM.myBanUntil();
     if (ban) { $('status').innerText = 'You are banned until ' + new Date(ban).toLocaleString() + '.'; return false; }
     const name = ($('playerName').value || '').trim();
-    if (isReservedNick(name) && !(await checkNickPassword(name, $('playerPass').value))) {
-        $('status').innerText = 'The nickname "' + name + '" is reserved. Enter the correct password.'; $('passRow').style.display = 'flex'; return false;
+    if (isReservedNick(name)) {
+        if (!(await checkNickPassword(name, $('playerPass').value))) {
+            forgetPassword(name);   // zapisane hasło przestało pasować (np. zostało zmienione)
+            $('status').innerText = 'The nickname "' + name + '" is reserved. Enter the correct password.'; passVis(); return false;
+        }
+        if ($('rememberPass').checked) rememberPassword(name, $('playerPass').value); else forgetPassword(name);
     }
     return true;
 }
@@ -180,7 +184,20 @@ $('btnSolo').onclick = async () => { if (!(await canStart())) return; initAudio(
 $('btnHost').onclick = async () => { if (!(await canStart())) return; initAudio(); readProfile(); lobbyButtons(false); NETM.startHost(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
 $('btnJoin').onclick = async () => { if (!(await canStart())) return; initAudio(); readProfile(); lobbyButtons(false); NETM.startJoin(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
 // Pole hasła pokazuje się tylko przy zastrzeżonym nicku
-const passVis = () => { $('passRow').style.display = isReservedNick($('playerName').value) ? 'flex' : 'none'; };
+// Zapamiętane hasła do zastrzeżonych nicków (tylko na tym urządzeniu)
+const PW_KEY = 'bagaboo_saved_pw';
+function savedPasswords() { try { return JSON.parse(localStorage.getItem(PW_KEY)) || {}; } catch (e) { return {}; } }
+function rememberPassword(name, pw) { const m = savedPasswords(); m[name.trim().toLowerCase()] = pw; try { localStorage.setItem(PW_KEY, JSON.stringify(m)); } catch (e) {} }
+function forgetPassword(name) { const m = savedPasswords(); delete m[String(name).trim().toLowerCase()]; try { localStorage.setItem(PW_KEY, JSON.stringify(m)); } catch (e) {} }
+// Pole hasła pokazuje się tylko przy zastrzeżonym nicku; zapamiętane hasło wpisuje się samo
+const passVis = () => {
+    const name = $('playerName').value, reserved = isReservedNick(name);
+    $('passRow').style.display = $('rememberRow').style.display = reserved ? 'flex' : 'none';
+    if (!reserved) return;
+    const saved = savedPasswords()[name.trim().toLowerCase()];
+    if (saved !== undefined) { $('playerPass').value = saved; $('rememberPass').checked = true; }
+    else if (!$('playerPass').value) $('rememberPass').checked = false;
+};
 $('playerName').addEventListener('input', passVis);
 // Jakość grafiki: zapis ustawienia i ponowne uruchomienie (tekstury i cienie tworzą się przy starcie)
 $('quality').onchange = () => { SETTINGS.quality = $('quality').value; saveSettings(); location.reload(); };
