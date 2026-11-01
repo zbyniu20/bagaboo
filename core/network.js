@@ -7,7 +7,7 @@ import { THREE, camera, scene, L, CANNON, containBall } from './engine.js';
 import { createAvatar, poseHand, lookKey } from './avatar.js';
 import { getLook, SESSION, SAVE } from './economy.js';
 import { markAllDirty, toast } from './terminal.js';
-import { isAdminName, isModName, setLocalMod } from './config.js';
+import { rankOf, setLocalMod } from './config.js';
 
 /* global Peer */
 export const GAME_PREFIX = 'bagaboo-vr-v3-';
@@ -40,13 +40,13 @@ function isBannedName(name) { const b = banList(), u = b[String(name || '').toLo
 // Czy to urządzenie ma bana (sprawdzane na stronie startowej)
 export function myBanUntil() { try { const u = +localStorage.getItem(MY_BAN_KEY) || 0; return u > Date.now() ? u : 0; } catch (e) { return 0; } }
 function nameOf(id) { const st = playersState[id]; return st && st.profile ? st.profile.name : ''; }
-function roleOfName(name) { return isAdminName(name) ? 'admin' : (isModName(name) ? 'mod' : 'none'); }
+
 // Host wykonuje polecenie moderatora: kick, ban, invite, mod (nadanie / odebranie roli)
 function performMod(action, targetId, byName, extra) {
-    const by = roleOfName(byName), targetName = nameOf(targetId), target = roleOfName(targetName);
-    if (by === 'none') return;
-    if (target === 'admin' && action !== 'invite') return;                 // admina nie da się wyrzucić ani zbanować
-    if (by === 'mod' && (target === 'mod' || action === 'mod')) return;     // moderator nie rusza innych moderatorów ani ról
+    const by = rankOf(byName), targetName = nameOf(targetId), target = rankOf(targetName);
+    if (by === 0) return;
+    if (action !== 'invite' && target >= by) return;   // tylko ktoś z wyższą rangą (ultimate admin może zbanować admina)
+    if (action === 'mod' && by < 2) return;            // role nadaje tylko admin
     const conn = connById(targetId);
     if (action === 'kick' && conn) {
         try { conn.send({ type: 'kicked', temp: true, by: byName }); } catch (e) {}
@@ -114,7 +114,7 @@ function updateRemote(id, st) {
     if (st.h1.g !== undefined) p.handL.userData.rig.target = st.h1.g;
     if (st.h2.g !== undefined) p.handR.userData.rig.target = st.h2.g;
     const e = new THREE.Euler().setFromQuaternion(p.head.quaternion, 'YXZ');
-    p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -0.35, 0)); p.torso.rotation.set(0, e.y, 0);
+    p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -(p.torsoDrop || 0.35), 0)); p.torso.rotation.set(0, e.y, 0);
     p.group.visible = (st.lvl || 'lobby') === L.levelId;   // widać tylko graczy na tym samym poziomie
 }
 function removeRemote(id) { if (remoteAvatars[id]) { scene.remove(remoteAvatars[id].group); delete remoteAvatars[id]; } }
