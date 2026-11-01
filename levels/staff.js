@@ -4,7 +4,7 @@
 // wybór moderatorów (admin), lista banów, zakup i zakładanie młotków Kick i Ban. Kanapa, fotele, stolik, biurko szefa, regał i telewizor z listą graczy.
 // ==========================================
 import { THREE, L, tex, addCrispBlock, addStaticBody, CANNON } from '../core/engine.js';
-import { LIGHT_PRESETS, isStaffName, isAdminName, isModName, MOD_NAMES, localMods, setLocalMod } from '../core/config.js';
+import { LIGHT_PRESETS, isStaffName, isAdminName, isModName, isUltimateName, MOD_NAMES, localMods, setLocalMod } from '../core/config.js';
 import { SAVE, CATALOG, isOwned, buyItem, equipItem } from '../core/economy.js';
 import * as T from '../core/textures.js';
 import { toast, Terminal, AMBER, AMBER_DIM, GOLD, OK_COL } from '../core/terminal.js';
@@ -51,10 +51,10 @@ const pc = { page: 'home' };
 const staffPC = new Terminal((t) => {
     const c = t.ctx, me = SAVE.profile.name, admin = isAdminName(me);
     t.background();
-    const role = admin ? 'Admin' : (isModName(me) ? 'Moderator' : 'Guest');
+    const role = isUltimateName(me) ? 'Ultimate admin' : (admin ? 'Admin' : (isModName(me) ? 'Moderator' : 'Guest'));
     if (pc.page === 'home') {
         t.header('Staff computer', role + ': ' + me, admin ? '#ff6a4a' : OK_COL);
-        t.text(admin ? 'You are the admin. You can do everything.' : 'You are a moderator.', 40, 110, 26, GOLD, 'left', true);
+        t.text(isUltimateName(me) ? 'You are the ultimate admin. You can do everything, even ban admins.' : (admin ? 'You are the admin. You can do everything.' : 'You are a moderator.'), 40, 110, 24, GOLD, 'left', true);
         t.btn('mods', 40, 160, 450, 90, 'Moderators', () => { pc.page = 'mods'; }, { tone: 'gold', disabled: !admin });
         t.btn('bans', 534, 160, 450, 90, 'Bans', () => { pc.page = 'bans'; });
         t.btn('ham', 40, 280, 944, 90, 'Hammers', () => { pc.page = 'hammers'; }, { tone: 'bad' });
@@ -73,7 +73,7 @@ const staffPC = new Terminal((t) => {
             const y = 170 + i * 62, mod = isModName(p.name), adm = isAdminName(p.name);
             c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, 56);
             t.text(p.name, 40, y + 29, 26, GOLD, 'left', true);
-            t.text(adm ? 'admin' : (mod ? 'moderator' : 'player'), 400, y + 29, 22, mod || adm ? OK_COL : AMBER_DIM, 'left');
+            t.text(isUltimateName(p.name) ? 'ultimate admin' : (adm ? 'admin' : (mod ? 'moderator' : 'player')), 400, y + 29, 22, mod || adm ? OK_COL : AMBER_DIM, 'left');
             if (!adm) t.btn('md' + p.id, 700, y + 7, 290, 42, mod ? 'Remove moderator' : 'Make moderator', () => { setLocalMod(p.name, !mod); N.requestMod('mod', p.id, !mod); }, { size: 21, tone: mod ? 'bad' : 'ok', disabled: MOD_NAMES.some(m => m.toLowerCase() === p.name.toLowerCase()) });
         });
     } else if (pc.page === 'bans') {
