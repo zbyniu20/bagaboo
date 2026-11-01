@@ -8,7 +8,7 @@ import { hands } from './player.js';
 import { buildHammer } from './avatar.js';
 import { SAVE } from './economy.js';
 import * as N from './network.js';
-import { isStaffName, isAdminName } from './config.js';
+import { isStaffName, rankOf } from './config.js';
 import { toast } from './terminal.js';
 import { buzz } from './haptics.js';
 import * as SFX from './audio.js';
@@ -36,7 +36,7 @@ export function updateHammer(dt) {
         const near = head.distanceTo(hp) < 0.45 || head.distanceTo(hp.clone().setY(hp.y - 0.45)) < 0.5;
         if (!near) continue;
         cool = 2;
-        if (isAdminName(st.profile.name)) { toast('You cannot hit the admin', '#ffb030'); return; }
+        if (rankOf(st.profile.name) >= rankOf(SAVE.profile.name)) { toast('You cannot hit ' + st.profile.name, '#ffb030'); return; }
         N.requestMod(tool === 'ban' ? 'ban' : 'kick', id);
         SFX.bang(head); buzz(1, 1, 150);
         toast((tool === 'ban' ? 'BANNED ' : 'KICKED ') + st.profile.name, tool === 'ban' ? '#ff4a2a' : '#ffd27a');
