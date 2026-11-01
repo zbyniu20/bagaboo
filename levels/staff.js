@@ -11,6 +11,7 @@ import { toast, Terminal, AMBER, AMBER_DIM, GOLD, OK_COL } from '../core/termina
 import * as N from '../core/network.js';
 import { PRESENCE } from '../core/presence.js';
 import { buildDoor } from '../core/levelkit.js';
+import { buildHammer } from '../core/avatar.js';
 import { ARRIVAL_STAFF } from './lobby-door.js';
 
 const W = 7, D = 5.5, H = 3.6;     // pokój 14 x 11 m, 3,6 m wysokości
@@ -208,8 +209,8 @@ function buildFurniture() {
     const rack = new THREE.Group(); rack.position.set(W - 0.05, 1.7, 1.6); rack.rotation.y = -Math.PI / 2; L.root.add(rack);
     const board = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 0.05), wood); rack.add(board);
     for (const [x, col, txt] of [[-0.4, 0xe8c020, 'KICK'], [0.4, 0xc01010, 'BAN']]) {
-        const hh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.14, 0.14), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.25, metalness: 0.5 })); hh.position.set(x, 0.25, 0.1); rack.add(hh);
-        const hd = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6, 8), new THREE.MeshStandardMaterial({ color: 0x3a2414 })); hd.position.set(x, -0.1, 0.1); rack.add(hd);
+        // Prawdziwe modele młotków (świecą i iskrzą tak samo jak w dłoni), zawieszone główką do góry
+        const hm = buildHammer(txt === 'BAN' ? 'ban' : 'kick'); hm.scale.setScalar(1.3); hm.rotation.x = Math.PI / 2; hm.position.set(x, -0.35, 0.14); rack.add(hm);
         const lc = T.makeCanvas(256, 64), lx = lc.getContext('2d'); lx.fillStyle = '#100808'; lx.fillRect(0, 0, 256, 64); lx.font = 'bold 40px sans-serif'; lx.textAlign = 'center'; lx.textBaseline = 'middle'; lx.fillStyle = '#ffd27a'; lx.fillText(txt + ' HAMMER', 128, 34);
         const lb = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.15), new THREE.MeshBasicMaterial({ map: T.toTex(lc, false) })); lb.position.set(x, -0.42, 0.03); rack.add(lb);
     }
