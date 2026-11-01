@@ -6,7 +6,8 @@
 import { THREE, camera, scene, L, CANNON, containBall } from './engine.js';
 import { createAvatar, poseHand, lookKey } from './avatar.js';
 import { getLook, SESSION, SAVE } from './economy.js';
-import { markAllDirty } from './terminal.js';
+import { markAllDirty, toast } from './terminal.js';
+import { isAdminName, isModName, setLocalMod } from './config.js';
 
 /* global Peer */
 export const GAME_PREFIX = 'bagaboo-vr-v3-';
@@ -28,6 +29,47 @@ export function sendLevelMsg(payload) {
 export function myId() { return myPeerId; }
 // Drużyna idzie za hostem: host wysyła poziom (i ziarno układu), goście wchodzą tam za nim
 let followHandler = null, lastFollow = null, inviteHandler = null;
+
+// ---------- MODERACJA: wyrzucenie (można wrócić), ban na dobę, role ----------
+const BAN_KEY = 'bagaboo_banlist', MY_BAN_KEY = 'bagaboo_banned', DAY = 24 * 3600 * 1000;
+function banList() { try { return JSON.parse(localStorage.getItem(BAN_KEY)) || {}; } catch (e) { return {}; } }
+function saveBanList(b) { try { localStorage.setItem(BAN_KEY, JSON.stringify(b)); } catch (e) {} }
+export function bannedNamesList() { const b = banList(), now = Date.now(); return Object.keys(b).filter(n => b[n] > now).map(n => ({ name: n, until: b[n] })); }
+export function unbanName(name) { const b = banList(); delete b[String(name).toLowerCase()]; saveBanList(b); markAllDirty(); }
+function isBannedName(name) { const b = banList(), u = b[String(name || '').toLowerCase()]; return u && u > Date.now(); }
+// Czy to urządzenie ma bana (sprawdzane na stronie startowej)
+export function myBanUntil() { try { const u = +localStorage.getItem(MY_BAN_KEY) || 0; return u > Date.now() ? u : 0; } catch (e) { return 0; } }
+function nameOf(id) { const st = playersState[id]; return st && st.profile ? st.profile.name : ''; }
+function roleOfName(name) { return isAdminName(name) ? 'admin' : (isModName(name) ? 'mod' : 'none'); }
+// Host wykonuje polecenie moderatora: kick, ban, invite, mod (nadanie / odebranie roli)
+function performMod(action, targetId, byName, extra) {
+    const by = roleOfName(byName), targetName = nameOf(targetId), target = roleOfName(targetName);
+    if (by === 'none') return;
+    if (target === 'admin' && action !== 'invite') return;                 // admina nie da się wyrzucić ani zbanować
+    if (by === 'mod' && (target === 'mod' || action === 'mod')) return;     // moderator nie rusza innych moderatorów ani ról
+    const conn = connById(targetId);
+    if (action === 'kick' && conn) {
+        try { conn.send({ type: 'kicked', temp: true, by: byName }); } catch (e) {}
+        setTimeout(() => { try { conn.close(); } catch (e) {} }, 300);
+        setStatus(targetName + ' was kicked by ' + byName + '. They can come back.');
+    } else if (action === 'ban' && conn) {
+        const b = banList(); b[targetName.toLowerCase()] = Date.now() + DAY; saveBanList(b);
+        try { conn.send({ type: 'banned', until: Date.now() + DAY, by: byName }); } catch (e) {}
+        setTimeout(() => { try { conn.close(); } catch (e) {} }, 300);
+        setStatus(targetName + ' was banned for one day by ' + byName + '.');
+    } else if (action === 'invite' && conn) conn.send({ type: 'invite', level: extra || 'staff' });
+    else if (action === 'mod') {
+        setLocalMod(targetName, !!extra);
+        if (conn) conn.send({ type: 'role', mod: !!extra, name: targetName });
+        setStatus(targetName + (extra ? ' is now a moderator.' : ' is no longer a moderator.'));
+    }
+}
+// Wywołanie z gry (komputer, telewizor, młotek): host robi to od razu, gość prosi hosta
+export function requestMod(action, targetId, extra) {
+    const me = getLook().name;
+    if (NET.mode === 'host') performMod(action, targetId, me, extra);
+    else if (NET.mode === 'guest' && hostConnection && hostConnection.open) hostConnection.send({ type: 'modreq', action: action, target: targetId, extra: extra });
+}
 // Zaproszenie jednego gościa (np. do pokoju szefa) albo odesłanie go do lobby
 export function onInvite(fn) { inviteHandler = fn; }
 export function sendInvite(peerId, level) { const c = clientConnections.find(x => x.peer === peerId); if (NET.mode === 'host' && c && c.open) c.send({ type: 'invite', level: level }); }
@@ -132,10 +174,11 @@ function handleGuest(conn) {
         if (!data || !clientConnections.includes(conn)) return;
         if (data.type === 'playerUpdate') {
             const nm = data.payload && data.payload.profile && data.payload.profile.name;
-            if (nm && bannedNames.has(nm)) { kickConn(conn, nm); return; }
+            if (nm && (bannedNames.has(nm) || isBannedName(nm))) { try { conn.send({ type: 'banned', until: banList()[nm.toLowerCase()] || Date.now() + DAY }); } catch (e) {} kickConn(conn, null); return; }
             playersState[conn.peer] = data.payload; updateRemote(conn.peer, data.payload);
         } else if (data.type === 'objectMove') { sharedObjectsState[data.id] = data.payload; syncObject(data.id, data.payload); }
         else if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, conn.peer); }
+        else if (data.type === 'modreq') performMod(data.action, data.target === myPeerId ? null : data.target, nameOf(conn.peer), data.extra);
         else if (data.type === 'report' && data.payload) {
             const from = (playersState[conn.peer] && playersState[conn.peer].profile) ? playersState[conn.peer].profile.name : 'Guest';
             reports.push({ from: from, targetId: data.payload.targetId, targetName: String(data.payload.targetName || '?').slice(0, 16), reason: String(data.payload.reason || '').slice(0, 24), time: new Date().toLocaleTimeString() });
@@ -180,7 +223,14 @@ export function startJoin(code, cb) {
         conn.on('data', (data) => {
             if (!data) return;
             if (data.type === 'serverFull') { leaveNetwork('Room ' + code + ' is full: 1 host and 9 guests.'); if (cb.fail) cb.fail(); return; }
-            if (data.type === 'kicked') { leaveNetwork('The host removed you from room ' + code + '.'); return; }
+            if (data.type === 'kicked') { leaveNetwork(data.temp ? 'You were kicked from room ' + code + ' by ' + (data.by || 'the host') + '. You can join again.' : 'The host removed you from room ' + code + '.'); toast('You were kicked from the room', '#e0533f'); return; }
+            if (data.type === 'banned') {
+                try { localStorage.setItem(MY_BAN_KEY, String(data.until || Date.now() + DAY)); } catch (e) {}
+                leaveNetwork('You are banned for one day.'); toast('You were banned for one day', '#e0533f');
+                setTimeout(() => location.reload(), 2500);
+                return;
+            }
+            if (data.type === 'role') { setLocalMod(data.name, data.mod); toast(data.mod ? 'You are now a moderator!' : 'You are no longer a moderator', '#ffd27a'); markAllDirty(); return; }
             if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, 'host'); return; }
             if (data.type === 'follow') { if (followHandler) followHandler(data.level, data.data || {}); return; }
             if (data.type === 'invite') { if (inviteHandler) inviteHandler(data.level); return; }
