@@ -7,7 +7,7 @@
 // rzadkie (2200-3500) w 3-5 dni, a legendarne (6000) w około tydzień regularnej gry.
 // ==========================================
 import { toast, markAllDirty } from './terminal.js';
-import { isAdminName, isModName, isStaffName } from './config.js';
+import { isAdminName, isModName, isStaffName, isUltimateName } from './config.js';
 
 const SAVE_KEY = 'bagaboo_save_v1';
 export const LOGIN_INTERVAL = 6 * 3600 * 1000;      // nagroda za logowanie co 6 godzin
@@ -63,6 +63,7 @@ export const CATALOG = [
     { slot: 'badge', id: 'moon', name: 'Blood moon', price: 1800 },
     { slot: 'badge', id: 'flame', name: 'Lava walker', price: 0, locked: true, hint: 'Achievement' },
     { slot: 'badge', id: 'crown', name: 'Parkour King', price: 0, locked: true, hint: 'Red route' },
+    { slot: 'badge', id: 'ultimate', name: 'Ultimate admin', price: 0, locked: true, hint: 'Ultimate' },
     { slot: 'badge', id: 'admin', name: 'Admin', price: 0, locked: true, hint: 'Admin' },
     { slot: 'badge', id: 'mod', name: 'Moderator', price: 0, locked: true, hint: 'Moderator' },
     // Młotki (kupowane i zakładane na komputerze w pokoju szefa, nie w sklepie)
@@ -192,15 +193,17 @@ const lookListeners = [];
 export function onLookChange(fn) { lookListeners.push(fn); }
 function notifyLook() { const l = getLook(); lookListeners.forEach(f => f(l)); markAllDirty(); }
 export function getLook() {
-    return { name: SAVE.profile.name, skin: SAVE.equipped.skin, badge: SAVE.equipped.badge, tool: SAVE.equipped.tool, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
+    // Ultimate admin jest zawsze cały złoty
+    return { name: SAVE.profile.name, skin: isUltimateName(SAVE.profile.name) ? 'ultimate' : SAVE.equipped.skin, badge: SAVE.equipped.badge, tool: SAVE.equipped.tool, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
 }
 export function setProfile(p) { Object.assign(SAVE.profile, p); refreshStaffItems(); saveGame(); notifyLook(); }
 // Odznaki Admin / Moderator i młotek Kick należą się tylko ekipie (wg nicku); reszcie są zabierane
 export function refreshStaffItems() {
     const n = SAVE.profile.name, give = (key, on) => { const has = SAVE.owned.includes(key); if (on && !has) SAVE.owned.push(key); if (!on && has) SAVE.owned.splice(SAVE.owned.indexOf(key), 1); };
-    give('badge:admin', isAdminName(n)); give('badge:mod', isModName(n) && !isAdminName(n)); give('tool:kick', isStaffName(n));
+    give('badge:ultimate', isUltimateName(n)); give('badge:admin', isAdminName(n)); give('badge:mod', isModName(n) && !isAdminName(n)); give('tool:kick', isStaffName(n));
     if (!isStaffName(n)) { if (SAVE.equipped.tool !== 'none') SAVE.equipped.tool = 'none'; }
     if (SAVE.equipped.badge === 'admin' && !isAdminName(n)) SAVE.equipped.badge = 'none';
+    if (SAVE.equipped.badge === 'ultimate' && !isUltimateName(n)) SAVE.equipped.badge = 'none';
     if (SAVE.equipped.badge === 'mod' && !isModName(n)) SAVE.equipped.badge = 'none';
 }
 export function isOwned(item) { return SAVE.owned.includes(item.slot + ':' + item.id); }
