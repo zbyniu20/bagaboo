@@ -58,8 +58,8 @@ export const LIGHT_PRESETS = {
 };
 // Dodatkowe presety dla poziomów: lawa (pomarańczowa poświata od dołu) i pokój szefa (ciepłe światło)
 LIGHT_PRESETS.lava = {
-    background: 0x140303, fogColor: 0x3a0c04, fogDensity: 0.022, exposure: 1.15,
-    hemiSky: 0xff7a3a, hemiGround: 0x2a0804, hemiIntensity: 0.9,
+    background: 0x1e0805, fogColor: 0x4a1608, fogDensity: 0.015, exposure: 1.35,
+    hemiSky: 0xffa070, hemiGround: 0x3a1208, hemiIntensity: 1.7,
     sunColor: 0xff6a2a, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0, flashlight: null
 };
 LIGHT_PRESETS.staff = {
@@ -72,8 +72,35 @@ LIGHT_PRESETS.arcade = {
     hemiSky: 0x8a6aff, hemiGround: 0x200a20, hemiIntensity: 0.9,
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3, flashlight: null
 };
-// Nicki z dostępem do pokoju szefa (Staff room). Liczy się nick wpisany na stronie startowej.
-export const STAFF_NAMES = ['BoyIsGamer'];
-export function isStaffName(name) { return STAFF_NAMES.some(n => n.toLowerCase() === String(name || '').trim().toLowerCase()); }
+// ---------- ROLE I ZASTRZEŻONE NICKI ----------
+// Admin ma wszystkie uprawnienia. Moderatorzy: wejście do pokoju szefa, młotki, wyrzucanie i bany (poza adminem).
+export const ADMIN_NAMES = ['BoyIsGamer'];
+export const MOD_NAMES = ['spikyvr', 'lincolnvr'];
+// Zastrzeżone nicki: żeby grać pod tym nickiem, trzeba podać hasło na stronie startowej.
+// Wartość to skrót SHA-256 z tekstu "bagaboo:" + nick małymi literami + ":" + hasło.
+// Nowy skrót wygenerujesz narzędziem na stronie z plikami do wgrania (sekcja "Hasła do nicków").
+export const RESERVED_NICKS = {
+    'boyisgamer': 'c511d81e82b67718a164546ec9e98845084e8793ba2af30298093f32a3baba15',
+    'spikyvr': '01d78f02137245bfe78f82dc4989497d94b5b8ec4ec41cde4e65a8905a32071c',
+    'lincolnvr': '5cdeaae62ff9bb4a7884d64ad076deceae01d21c8492d1dbd54f0f0bfe070f88'
+};
+const low = (n) => String(n || '').trim().toLowerCase();
+// Moderatorzy wybrani przez admina w grze (zapisani na tym urządzeniu)
+export function localMods() { try { return JSON.parse(localStorage.getItem('bagaboo_mods')) || []; } catch (e) { return []; } }
+export function setLocalMod(name, on) {
+    const list = localMods().filter(n => n !== low(name));
+    if (on) list.push(low(name));
+    try { localStorage.setItem('bagaboo_mods', JSON.stringify(list)); } catch (e) {}
+}
+export function isAdminName(name) { return ADMIN_NAMES.some(n => low(n) === low(name)); }
+export function isModName(name) { return MOD_NAMES.some(n => low(n) === low(name)) || localMods().includes(low(name)); }
+export function isStaffName(name) { return isAdminName(name) || isModName(name); }
+export function isReservedNick(name) { return Object.prototype.hasOwnProperty.call(RESERVED_NICKS, low(name)); }
+export async function checkNickPassword(name, password) {
+    const hash = RESERVED_NICKS[low(name)]; if (!hash) return true;
+    const data = new TextEncoder().encode('bagaboo:' + low(name) + ':' + String(password || ''));
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('') === hash;
+}
 export const LIGHT_MODE = 'dusk';
 export const LP = LIGHT_PRESETS[LIGHT_MODE];
