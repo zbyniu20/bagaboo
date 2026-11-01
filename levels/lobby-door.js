@@ -4,10 +4,10 @@
 import { THREE, L, tex, camera, addStaticBody, CANNON } from '../core/engine.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { LP, GFX, isStaffName } from '../core/config.js';
+import { LP, GFX, isStaffName, isOwnerName } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { toast } from '../core/terminal.js';
-import { createHead, createGorillaTorso, createGorillaArm, placeArm, buildHat, ultimateLabel, ULTIMATE_SCALE } from '../core/avatar.js';
+import { createHead, createGorillaTorso, createGorillaArm, placeArm, buildHat, ultimateLabel, ownerLabel, ULTIMATE_SCALE } from '../core/avatar.js';
 import { getLook, onLookChange, unlockItem, recordTime, unlockAchievement } from '../core/economy.js';
 import { hands } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -77,6 +77,7 @@ function buildMe(look) {
     const sc = look.skin === 'ultimate' ? ULTIMATE_SCALE : 1;   // ultimate admin w lustrze też jest 2 razy większy
     head.scale.setScalar(sc); torso.scale.setScalar(sc);
     if (sc > 1) { const lab = ultimateLabel(); lab.position.set(0, 0.62, 0); head.add(lab); for (const a of [armL, armR]) a.geometry = a.geometry.clone().scale(sc, 1, sc); }
+    if (isOwnerName(look.name)) { const lab = ownerLabel(); lab.position.set(0, 0.62, 0); head.add(lab); }   // napis OWNER widać też w lustrze
     for (const o of [head, torso, armL, armR]) { o.traverse(c => c.layers.set(MIRROR_LAYER)); L.root.add(o); }
     me = { head: head, torso: torso, armL: armL, armR: armR, drop: 0.35 * sc };
 }
