@@ -13,7 +13,11 @@ import * as SFX from './audio.js';
 export function signTexture(label, color, bg, font) {
     const c = T.makeCanvas(512, 128), x = c.getContext('2d');
     x.fillStyle = bg || '#060404'; x.fillRect(0, 0, 512, 128);
-    x.font = font || 'bold 72px serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    // Napis zawsze mieści się w całości: czcionka zmniejsza się, aż tekst ma najwyżej 470 px szerokości
+    let f = font || 'bold 72px serif', size = parseInt((f.match(/(\d+)px/) || [0, 72])[1], 10);
+    x.font = f;
+    while (x.measureText(label).width > 470 && size > 18) { size -= 2; f = f.replace(/\d+px/, size + 'px'); x.font = f; }
+    x.textAlign = 'center'; x.textBaseline = 'middle';
     x.shadowColor = color; x.shadowBlur = 24; x.fillStyle = color; x.fillText(label, 256, 66);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     return t;
@@ -45,7 +49,7 @@ export function buildDoor(o) {
     add(new THREE.BoxGeometry(1.3, 2.3, 0.06), panelMat, 0, 1.15, 0.1);
     if (o.glow !== undefined) { const leak = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.05), new THREE.MeshBasicMaterial({ color: o.glow })); leak.position.set(0, 0.03, 0.15); g.add(leak); }
     const signY = o.signY || 2.75, signZ = o.signZ || 0.14;
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 0.36), new THREE.MeshBasicMaterial({ map: signTexture(o.label, o.color), toneMapped: false, transparent: true }));
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 0.36), new THREE.MeshBasicMaterial({ map: signTexture(o.label, o.color, null, o.font), toneMapped: false, transparent: true }));
     sign.position.set(0, signY, signZ); g.add(sign);
     if (o.hanging) for (const s of [-1, 1]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.9, 4), frame); c.position.set(s * 0.6, signY + 0.6, signZ); g.add(c); }
     if (o.glow !== undefined) {
