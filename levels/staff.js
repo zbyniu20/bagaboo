@@ -1,11 +1,11 @@
 // ==========================================
 // POZIOM: STAFF ROOM (pokój szefa gry)
-// Wejście tylko dla gracza z nickiem z listy STAFF_NAMES (core/config.js). Jeśli jest hostem, zaprasza gości
-// przyciskiem "Invite" na komputerze w lobby albo na telewizorze tutaj. Kanapa, fotele, stolik, biurko szefa, regał i telewizor z listą graczy.
+// Wejście tylko dla admina i moderatorów (core/config.js). Telewizor: zaproszenia. Komputer na biurku:
+// wybór moderatorów (admin), lista banów, zakup i zakładanie młotków Kick i Ban. Kanapa, fotele, stolik, biurko szefa, regał i telewizor z listą graczy.
 // ==========================================
 import { THREE, L, tex, addCrispBlock, addStaticBody, CANNON } from '../core/engine.js';
-import { LIGHT_PRESETS, isStaffName } from '../core/config.js';
-import { SAVE } from '../core/economy.js';
+import { LIGHT_PRESETS, isStaffName, isAdminName, isModName, MOD_NAMES, localMods, setLocalMod } from '../core/config.js';
+import { SAVE, CATALOG, isOwned, buyItem, equipItem } from '../core/economy.js';
 import * as T from '../core/textures.js';
 import { toast, Terminal, AMBER, AMBER_DIM, GOLD, OK_COL } from '../core/terminal.js';
 import * as N from '../core/network.js';
@@ -13,9 +13,9 @@ import { PRESENCE } from '../core/presence.js';
 import { buildDoor } from '../core/levelkit.js';
 import { ARRIVAL_STAFF } from './lobby-door.js';
 
-const W = 4.5, D = 3.5, H = 3.2;   // pokój 9 x 7 m, 3,2 m wysokości
+const W = 7, D = 5.5, H = 3.6;     // pokój 14 x 11 m, 3,6 m wysokości
 const ENV = LIGHT_PRESETS.staff.envIntensity;
-export const info = { id: 'staff', name: 'Staff room', spawn: [0, 1.0, 2.3] };
+export const info = { id: 'staff', name: 'Staff room', spawn: [0, 1.0, 4.2] };
 let S = null;
 
 // Telewizor: ekran z laserem (jak komputer). Host zaprasza stąd graczy albo odsyła ich do lobby.
@@ -32,9 +32,9 @@ const tv = new Terminal((t) => {
         c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, 56);
         t.text(p.name, 40, y + 29, 26, GOLD, 'left', true);
         t.text(here ? 'in the staff room' : 'elsewhere', 360, y + 29, 22, here ? OK_COL : AMBER_DIM, 'left');
-        if (N.NET.mode === 'host' && isStaffName(SAVE.profile.name)) {
-            t.btn('inv' + p.id, 620, y + 7, 170, 42, 'Invite', () => { N.sendInvite(p.id, 'staff'); toast('Invited ' + p.name); }, { size: 22, tone: 'gold', disabled: here });
-            t.btn('out' + p.id, 810, y + 7, 180, 42, 'Send out', () => { N.sendInvite(p.id, 'lobby'); toast(p.name + ' was sent to the lobby'); }, { size: 22, tone: 'bad', disabled: !here });
+        if (isStaffName(SAVE.profile.name)) {
+            t.btn('inv' + p.id, 620, y + 7, 170, 42, 'Invite', () => { N.requestMod('invite', p.id, 'staff'); toast('Invited ' + p.name); }, { size: 22, tone: 'gold', disabled: here });
+            t.btn('out' + p.id, 810, y + 7, 180, 42, 'Send out', () => { N.requestMod('invite', p.id, 'lobby'); toast(p.name + ' was sent to the lobby'); }, { size: 22, tone: 'bad', disabled: !here });
         }
     });
     // Pasek z napisem jak w telewizji
@@ -46,13 +46,72 @@ const tv = new Terminal((t) => {
     t.scanlines();
 });
 
+// Komputer ekipy na biurku: moderatorzy, bany, młotki
+const pc = { page: 'home' };
+const staffPC = new Terminal((t) => {
+    const c = t.ctx, me = SAVE.profile.name, admin = isAdminName(me);
+    t.background();
+    const role = admin ? 'Admin' : (isModName(me) ? 'Moderator' : 'Guest');
+    if (pc.page === 'home') {
+        t.header('Staff computer', role + ': ' + me, admin ? '#ff6a4a' : OK_COL);
+        t.text(admin ? 'You are the admin. You can do everything.' : 'You are a moderator.', 40, 110, 26, GOLD, 'left', true);
+        t.btn('mods', 40, 160, 450, 90, 'Moderators', () => { pc.page = 'mods'; }, { tone: 'gold', disabled: !admin });
+        t.btn('bans', 534, 160, 450, 90, 'Bans', () => { pc.page = 'bans'; });
+        t.btn('ham', 40, 280, 944, 90, 'Hammers', () => { pc.page = 'hammers'; }, { tone: 'bad' });
+        t.text('Moderators can enter this room, kick and ban players (except the admin).', 40, 420, 20, AMBER, 'left');
+        t.text('Kick hammer: throws a player out of the room, they can come back.', 40, 456, 20, AMBER, 'left');
+        t.text('Ban hammer: the player cannot join any game for one day.', 40, 492, 20, AMBER, 'left');
+        t.text('Swing the hammer and hit a player on the head or body.', 40, 528, 20, AMBER_DIM, 'left');
+    } else if (pc.page === 'mods') {
+        t.header('Moderators', null, null, () => { pc.page = 'home'; });
+        t.text('Fixed: ' + MOD_NAMES.join(', '), 40, 100, 22, AMBER_DIM, 'left');
+        const extra = localMods().filter(n => !MOD_NAMES.some(m => m.toLowerCase() === n));
+        t.text('Chosen by you: ' + (extra.length ? extra.join(', ') : 'none'), 40, 132, 22, AMBER, 'left');
+        const list = N.otherPlayers();
+        if (!list.length) t.text('Nobody else is in your room. Players must be in the room to become moderators.', 40, 190, 20, AMBER_DIM, 'left');
+        list.slice(0, 6).forEach((p, i) => {
+            const y = 170 + i * 62, mod = isModName(p.name), adm = isAdminName(p.name);
+            c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, 56);
+            t.text(p.name, 40, y + 29, 26, GOLD, 'left', true);
+            t.text(adm ? 'admin' : (mod ? 'moderator' : 'player'), 400, y + 29, 22, mod || adm ? OK_COL : AMBER_DIM, 'left');
+            if (!adm) t.btn('md' + p.id, 700, y + 7, 290, 42, mod ? 'Remove moderator' : 'Make moderator', () => { setLocalMod(p.name, !mod); N.requestMod('mod', p.id, !mod); }, { size: 21, tone: mod ? 'bad' : 'ok', disabled: MOD_NAMES.some(m => m.toLowerCase() === p.name.toLowerCase()) });
+        });
+    } else if (pc.page === 'bans') {
+        t.header('Bans (one day)', null, null, () => { pc.page = 'home'; });
+        const bans = N.bannedNamesList();
+        t.text(N.NET.mode === 'host' ? 'Players banned in rooms you host:' : 'Bans are stored by the host of each room. This list shows bans from rooms you hosted.', 40, 100, 20, AMBER, 'left');
+        if (!bans.length) t.text('No active bans.', 40, 150, 24, AMBER_DIM, 'left');
+        bans.slice(0, 7).forEach((b, i) => {
+            const y = 130 + i * 62;
+            c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, 56);
+            t.text(b.name, 40, y + 29, 26, GOLD, 'left', true);
+            t.text('until ' + new Date(b.until).toLocaleString(), 360, y + 29, 20, AMBER, 'left');
+            t.btn('ub' + i, 810, y + 7, 180, 42, 'Unban', () => N.unbanName(b.name), { size: 22, tone: 'ok' });
+        });
+    } else {
+        t.header('Hammers', null, null, () => { pc.page = 'home'; });
+        t.text('Your Bagabucks: ' + SAVE.wallet, 40, 98, 22, GOLD, 'left', true);
+        const tools = CATALOG.filter(it => it.slot === 'tool');
+        tools.forEach((it, i) => {
+            const y = 130 + i * 115, owned = isOwned(it), worn = SAVE.equipped.tool === it.id;
+            c.fillStyle = 'rgba(255,176,0,0.06)'; c.fillRect(24, y, 976, 104);
+            t.text(it.name, 40, y + 34, 30, worn ? OK_COL : GOLD, 'left', true);
+            t.text(it.id === 'ban' ? '1000 Bagabucks' : (it.id === 'kick' ? 'Free for staff' : ''), 40, y + 74, 22, AMBER, 'left');
+            if (worn) t.btn('w' + it.id, 700, y + 26, 290, 52, 'In your hand', null, { disabled: true });
+            else if (owned) t.btn('e' + it.id, 700, y + 26, 290, 52, it.id === 'none' ? 'Put away' : 'Hold it', () => equipItem(it), { tone: 'ok' });
+            else t.btn('bu' + it.id, 700, y + 26, 290, 52, 'Buy ' + it.price, () => buyItem(it), { tone: 'gold', disabled: SAVE.wallet < it.price });
+        });
+    }
+    t.scanlines();
+});
+
 export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -W + 0.3, maxX: W - 0.3, minZ: -D + 0.3, maxZ: D - 0.3, maxY: H - 0.3 };
     S = { tvT: 0 };
     buildRoom();
     buildFurniture();
-    const screen = tv.createMesh(2.4, 1.5); screen.position.set(0, 1.75, -D + 0.07); L.root.add(screen);
+    const screen = tv.createMesh(2.4, 1.5); screen.position.set(0, 1.85, -D + 0.075); L.root.add(screen);
     buildDoor({ x: 0, z: D - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x6a4a30, signY: 2.6,
         portal: { target: 'lobby', spawn: ARRIVAL_STAFF, onEnter: () => toast('Back to the lobby') } });
 }
@@ -74,7 +133,7 @@ function carpet() {
     return T.toTex(c, false);
 }
 function buildRoom() {
-    const wp = wallpaper(); wp.repeat.set(4, 1.5);
+    const wp = wallpaper(); wp.repeat.set(6, 1.6);
     addCrispBlock(0, -0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0xb08060, 0x2a1a10, tex.wood, { uvMeters: 1.5 });
     addCrispBlock(0, H + 0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x3a2a22, 0x2a1a10);
     const wallMat = new THREE.MeshStandardMaterial({ map: wp, roughness: 0.85 });
@@ -89,12 +148,12 @@ function buildRoom() {
         const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.0, d), panel); m.position.set(x, 0.5, z); m.receiveShadow = true; L.root.add(m);
     }
     const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 3.4), new THREE.MeshStandardMaterial({ map: carpet(), roughness: 0.95 }));
-    rug.rotation.x = -Math.PI / 2; rug.position.set(0, 0.01, 0.2); rug.receiveShadow = true; L.root.add(rug);
+    rug.rotation.x = -Math.PI / 2; rug.position.set(0, 0.01, -1.4); rug.scale.set(1.4, 1.4, 1); rug.receiveShadow = true; L.root.add(rug);
     // Ciepłe światła sufitowe
-    for (const x of [-2, 2]) {
-        const l = new THREE.PointLight(0xffc890, 9, 9, 1.6); l.position.set(x, H - 0.4, 0); L.root.add(l);
+    for (const [x, z] of [[-3.5, -2.5], [3.5, -2.5], [-3.5, 2.5], [3.5, 2.5]]) {
+        const l = new THREE.PointLight(0xffc890, 9, 10, 1.6); l.position.set(x, H - 0.4, z); L.root.add(l);
         const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 0.22, 20, 1, true), new THREE.MeshStandardMaterial({ color: 0xe8d8b0, emissive: 0x6a5030, side: THREE.DoubleSide }));
-        shade.position.set(x, H - 0.25, 0); L.root.add(shade);
+        shade.position.set(x, H - 0.25, z); L.root.add(shade);
     }
 }
 // Mebel z kolizją: pudełko z materiałem
@@ -109,61 +168,74 @@ function buildFurniture() {
     const wood = new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x8a5a38, roughness: 0.5, envMapIntensity: ENV });
     const dark = new THREE.MeshStandardMaterial({ color: 0x1a1a1c, metalness: 0.6, roughness: 0.4, envMapIntensity: ENV });
     const gold = new THREE.MeshStandardMaterial({ color: 0xd4a640, metalness: 1, roughness: 0.3, envMapIntensity: Math.max(0.6, ENV) });
+    const TZ = -D;   // ściana z telewizorem
     // Kanapa przodem do telewizora
-    box(0, 0.22, 1.1, 2.4, 0.44, 0.9, leather);
-    for (const x of [-0.78, 0, 0.78]) box(x, 0.5, 1.05, 0.74, 0.14, 0.8, cushion, false);
-    box(0, 0.8, 1.48, 2.4, 0.75, 0.24, leather);
-    for (const s of [-1, 1]) box(s * 1.32, 0.55, 1.1, 0.24, 0.62, 0.9, leather);
+    box(0, 0.22, -0.6, 2.8, 0.44, 0.9, leather);
+    for (const x of [-0.92, 0, 0.92]) box(x, 0.5, -0.65, 0.88, 0.14, 0.8, cushion, false);
+    box(0, 0.8, -0.22, 2.8, 0.75, 0.24, leather);
+    for (const s of [-1, 1]) box(s * 1.52, 0.55, -0.6, 0.24, 0.62, 0.9, leather);
     // Dwa fotele
     for (const s of [-1, 1]) {
-        const x = s * 3.0;
-        box(x, 0.22, 0.4, 1.0, 0.44, 0.9, leather);
-        box(x, 0.5, 0.36, 0.7, 0.13, 0.75, cushion, false);
-        box(x, 0.8, 0.78, 1.0, 0.75, 0.22, leather);
-        for (const a of [-1, 1]) box(x + a * 0.44, 0.55, 0.4, 0.14, 0.6, 0.9, leather);
+        const x = s * 3.4;
+        box(x, 0.22, -1.4, 1.0, 0.44, 0.9, leather);
+        box(x, 0.5, -1.44, 0.7, 0.13, 0.75, cushion, false);
+        box(x, 0.8, -1.02, 1.0, 0.75, 0.22, leather);
+        for (const a of [-1, 1]) box(x + a * 0.44, 0.55, -1.4, 0.14, 0.6, 0.9, leather);
     }
     // Stolik kawowy z czaszką-świecznikiem
-    box(0, 0.42, -0.4, 1.4, 0.06, 0.7, wood);
-    for (const a of [-0.6, 0.6]) for (const b of [-0.28, 0.28]) box(a, 0.2, -0.4 + b, 0.06, 0.4, 0.06, dark, false);
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 10), new THREE.MeshStandardMaterial({ color: 0xe8e0c8, roughness: 0.6 })); skull.position.set(0.3, 0.52, -0.4); L.root.add(skull);
-    const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.1, 8), new THREE.MeshStandardMaterial({ color: 0xf0e8d0 })); candle.position.set(0.3, 0.64, -0.4); L.root.add(candle);
-    const flame = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffb040, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); flame.scale.set(0.12, 0.18, 1); flame.position.set(0.3, 0.72, -0.4); L.root.add(flame);
-    const cl = new THREE.PointLight(0xffa040, 1.5, 3, 2); cl.position.set(0.3, 0.8, -0.4); L.root.add(cl);
+    box(0, 0.42, -2.2, 1.6, 0.06, 0.8, wood);
+    for (const a of [-0.7, 0.7]) for (const b of [-0.32, 0.32]) box(a, 0.2, -2.2 + b, 0.06, 0.4, 0.06, dark, false);
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 10), new THREE.MeshStandardMaterial({ color: 0xe8e0c8, roughness: 0.6 })); skull.position.set(0.3, 0.52, -2.2); L.root.add(skull);
+    const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.1, 8), new THREE.MeshStandardMaterial({ color: 0xf0e8d0 })); candle.position.set(0.3, 0.64, -2.2); L.root.add(candle);
+    const flame = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffb040, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); flame.scale.set(0.12, 0.18, 1); flame.position.set(0.3, 0.72, -2.2); L.root.add(flame);
+    const cl = new THREE.PointLight(0xffa040, 1.5, 3, 2); cl.position.set(0.3, 0.8, -2.2); L.root.add(cl);
     S.flame = { sprite: flame, light: cl };
     // Szafka pod telewizorem i rama telewizora
-    box(0, 0.3, -D + 0.3, 2.8, 0.6, 0.5, wood);
-    box(0, 1.75, -D + 0.04, 2.56, 1.64, 0.06, dark, false);
-    // Biurko szefa z tabliczką BOSS i krzesłem
-    box(3.3, 0.74, -2.6, 1.6, 0.08, 0.8, wood);
-    for (const a of [-0.7, 0.7]) box(3.3 + a, 0.36, -2.6, 0.1, 0.72, 0.7, wood, false);
+    box(0, 0.3, TZ + 0.3, 3.2, 0.6, 0.5, wood);
+    box(0, 1.85, TZ + 0.04, 2.56, 1.64, 0.06, dark, false);
+    // Biurko szefa przy wschodniej ścianie z komputerem ekipy, tabliczką BOSS i krzesłem
+    box(W - 0.6, 0.74, -3.0, 0.9, 0.08, 1.8, wood);
+    for (const a of [-0.8, 0.8]) box(W - 0.6, 0.36, -3.0 + a, 0.8, 0.72, 0.1, wood, false);
+    box(W - 0.35, 1.12, -3.0, 0.3, 0.66, 1.1, dark, false);
+    const scr = staffPC.createMesh(0.94, 0.59); scr.position.set(W - 0.51, 1.12, -3.0); scr.rotation.y = -Math.PI / 2; L.root.add(scr);
     const plate = T.makeCanvas(256, 64), px = plate.getContext('2d');
     px.fillStyle = '#1a1208'; px.fillRect(0, 0, 256, 64); px.font = 'bold 44px serif'; px.textAlign = 'center'; px.textBaseline = 'middle'; px.fillStyle = '#ffd27a'; px.fillText('BOSS', 128, 34);
-    const nameplate = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 0.04), [dark, dark, dark, dark, new THREE.MeshBasicMaterial({ map: T.toTex(plate, false) }), dark]);
-    nameplate.position.set(3.3, 0.82, -2.25); L.root.add(nameplate);
-    box(3.3, 0.45, -1.8, 0.55, 0.08, 0.55, leather); box(3.3, 0.8, -1.55, 0.55, 0.65, 0.08, leather); box(3.3, 0.22, -1.8, 0.08, 0.44, 0.08, dark, false);
-    const lamp = new THREE.PointLight(0xffd8a0, 2.5, 3, 2); lamp.position.set(2.8, 1.1, -2.7); L.root.add(lamp);
-    box(2.8, 0.95, -2.75, 0.1, 0.35, 0.1, gold, false);
-    // Regał z książkami
-    box(-W + 0.25, 1.1, -1.4, 0.4, 2.2, 1.8, wood);
-    const R = T.mkRng(12), books = [];
-    for (let shelf = 0; shelf < 4; shelf++) for (let i = 0; i < 9; i++) {
-        const h = 0.22 + R() * 0.12;
-        const b = new THREE.Mesh(new THREE.BoxGeometry(0.22, h, 0.13), new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(R(), 0.5, 0.25 + R() * 0.2), roughness: 0.8 }));
-        b.position.set(-W + 0.5, 0.3 + shelf * 0.5 + h / 2, -2.2 + i * 0.18); L.root.add(b); books.push(b);
+    const nameplate = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.075), new THREE.MeshBasicMaterial({ map: T.toTex(plate, false) }));
+    nameplate.position.set(W - 1.06, 0.82, -2.3); nameplate.rotation.y = -Math.PI / 2; L.root.add(nameplate);
+    box(W - 1.6, 0.45, -3.0, 0.55, 0.08, 0.55, leather); box(W - 1.85, 0.8, -3.0, 0.08, 0.65, 0.55, leather); box(W - 1.6, 0.22, -3.0, 0.08, 0.44, 0.08, dark, false);
+    const lamp = new THREE.PointLight(0xffd8a0, 2.5, 3, 2); lamp.position.set(W - 0.7, 1.4, -2.0); L.root.add(lamp);
+    // Stojak z młotkami na ścianie (ozdoba, młotki zakłada się na komputerze)
+    const rack = new THREE.Group(); rack.position.set(W - 0.05, 1.7, 1.6); rack.rotation.y = -Math.PI / 2; L.root.add(rack);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 0.05), wood); rack.add(board);
+    for (const [x, col, txt] of [[-0.4, 0xe8c020, 'KICK'], [0.4, 0xc01010, 'BAN']]) {
+        const hh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.14, 0.14), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.25, metalness: 0.5 })); hh.position.set(x, 0.25, 0.1); rack.add(hh);
+        const hd = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6, 8), new THREE.MeshStandardMaterial({ color: 0x3a2414 })); hd.position.set(x, -0.1, 0.1); rack.add(hd);
+        const lc = T.makeCanvas(256, 64), lx = lc.getContext('2d'); lx.fillStyle = '#100808'; lx.fillRect(0, 0, 256, 64); lx.font = 'bold 40px sans-serif'; lx.textAlign = 'center'; lx.textBaseline = 'middle'; lx.fillStyle = '#ffd27a'; lx.fillText(txt + ' HAMMER', 128, 34);
+        const lb = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.15), new THREE.MeshBasicMaterial({ map: T.toTex(lc, false) })); lb.position.set(x, -0.42, 0.03); rack.add(lb);
     }
-    // Lampa stojąca, roślina, obraz z nazwą gry
-    box(-3.6, 0.8, 2.6, 0.06, 1.6, 0.06, gold, false);
-    const fl = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.32, 20, 1, true), new THREE.MeshStandardMaterial({ color: 0xe8d0a0, emissive: 0x6a4a20, side: THREE.DoubleSide })); fl.position.set(-3.6, 1.7, 2.6); L.root.add(fl);
-    const fll = new THREE.PointLight(0xffc080, 4, 5, 2); fll.position.set(-3.6, 1.6, 2.6); L.root.add(fll);
-    box(3.7, 0.25, 2.7, 0.45, 0.5, 0.45, new THREE.MeshStandardMaterial({ color: 0x5a3a2a, roughness: 0.8 }));
-    for (let i = 0; i < 7; i++) { const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshStandardMaterial({ color: 0x1e4a1e, roughness: 0.8 })); leaf.scale.set(0.5, 1.4, 0.5); leaf.position.set(3.7 + Math.cos(i) * 0.12, 0.85, 2.7 + Math.sin(i) * 0.12); leaf.rotation.z = Math.cos(i * 2) * 0.5; L.root.add(leaf); }
-    const pc = T.makeCanvas(512, 320), x = pc.getContext('2d');
+    // Regał z książkami
+    box(-W + 0.25, 1.1, -2.5, 0.4, 2.2, 2.4, wood);
+    const R = T.mkRng(12);
+    for (let shelf = 0; shelf < 4; shelf++) for (let i = 0; i < 12; i++) {
+        const h = 0.22 + R() * 0.12;
+        const bk = new THREE.Mesh(new THREE.BoxGeometry(0.22, h, 0.13), new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(R(), 0.5, 0.25 + R() * 0.2), roughness: 0.8 }));
+        bk.position.set(-W + 0.5, 0.3 + shelf * 0.5 + h / 2, -3.55 + i * 0.18); L.root.add(bk);
+    }
+    // Lampa stojąca, rośliny, obraz z nazwą gry
+    box(-W + 0.8, 0.8, D - 0.9, 0.06, 1.6, 0.06, gold, false);
+    const fl = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.32, 20, 1, true), new THREE.MeshStandardMaterial({ color: 0xe8d0a0, emissive: 0x6a4a20, side: THREE.DoubleSide })); fl.position.set(-W + 0.8, 1.7, D - 0.9); L.root.add(fl);
+    const fll = new THREE.PointLight(0xffc080, 4, 5, 2); fll.position.set(-W + 0.8, 1.6, D - 0.9); L.root.add(fll);
+    for (const [x, z] of [[W - 0.6, D - 0.6], [-W + 0.6, -D + 0.6]]) {
+        box(x, 0.25, z, 0.45, 0.5, 0.45, new THREE.MeshStandardMaterial({ color: 0x5a3a2a, roughness: 0.8 }));
+        for (let i = 0; i < 7; i++) { const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshStandardMaterial({ color: 0x1e4a1e, roughness: 0.8 })); leaf.scale.set(0.5, 1.4, 0.5); leaf.position.set(x + Math.cos(i) * 0.12, 0.85, z + Math.sin(i) * 0.12); leaf.rotation.z = Math.cos(i * 2) * 0.5; L.root.add(leaf); }
+    }
+    const pc2 = T.makeCanvas(512, 320), x = pc2.getContext('2d');
     x.fillStyle = '#0c0606'; x.fillRect(0, 0, 512, 320);
     x.font = '84px Creepster, serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#b00000'; x.shadowColor = '#ff3a00'; x.shadowBlur = 18; x.fillText('BagaBoo VR', 256, 140);
     x.shadowBlur = 0; x.font = 'italic 32px Georgia, serif'; x.fillStyle = '#e8dcc8'; x.fillText('made by BoyIsGamer', 256, 230);
-    const poster = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.0), new THREE.MeshStandardMaterial({ map: T.toTex(pc, false), roughness: 0.6 }));
-    poster.rotation.y = -Math.PI / 2; poster.position.set(W - 0.05, 1.8, 0.2); L.root.add(poster);
-    box(W - 0.04, 1.8, 0.2, 0.04, 1.12, 1.72, gold, false);
+    const poster = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.0), new THREE.MeshStandardMaterial({ map: T.toTex(pc2, false), roughness: 0.6 }));
+    poster.rotation.y = Math.PI / 2; poster.position.set(-W + 0.05, 1.9, 1.5); L.root.add(poster);
+    box(-W + 0.04, 1.9, 1.5, 0.04, 1.12, 1.72, gold, false);
 }
 
 export function update(dt, t) {
@@ -171,5 +243,6 @@ export function update(dt, t) {
     S.flame.sprite.material.opacity = 0.75 + 0.25 * Math.sin(t * 13) * Math.sin(t * 7.3);
     S.flame.light.intensity = 1.3 + 0.4 * Math.sin(t * 11);
     S.tvT -= dt; if (S.tvT <= 0) { S.tvT = 0.1; tv.dirty = true; }   // pasek na dole się przesuwa
+    S.pcT = (S.pcT || 0) - dt; if (S.pcT <= 0) { S.pcT = 1; staffPC.dirty = true; }
 }
 export function dispose() { S = null; }
