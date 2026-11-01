@@ -16,6 +16,8 @@ import { PAUSE, pauseMenu, pollPauseButtons, closePause } from './core/pause.js'
 import { SETTINGS, saveSettings } from './core/settings.js';
 import { enableDesktop, updateDesktop } from './core/desktop.js';
 import { startPresence } from './core/presence.js';
+import { updateHammer } from './core/hammer.js';
+import { isReservedNick, checkNickPassword } from './core/config.js';
 
 // Lista poziomów. Nowy poziom = nowy plik w folderze levels/ + wpis tutaj.
 // light: preset oświetlenia z config.js, extras: dodatkowe pliki doładowywane razem z poziomem
@@ -164,9 +166,22 @@ function startGame(restorePosition) {
     if (pendingFollow) { const f = pendingFollow; pendingFollow = null; goToLevel(f.level, null, { seed: f.data.seed, noFollow: true }); }
 }
 
-$('btnSolo').onclick = () => { initAudio(); readProfile(); startGame(true); };
-$('btnHost').onclick = () => { initAudio(); readProfile(); lobbyButtons(false); NETM.startHost(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
-$('btnJoin').onclick = () => { initAudio(); readProfile(); lobbyButtons(false); NETM.startJoin(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
+// Przed startem: ban na dobę i hasło do zastrzeżonego nicku
+async function canStart() {
+    const ban = NETM.myBanUntil();
+    if (ban) { $('status').innerText = 'You are banned until ' + new Date(ban).toLocaleString() + '.'; return false; }
+    const name = ($('playerName').value || '').trim();
+    if (isReservedNick(name) && !(await checkNickPassword(name, $('playerPass').value))) {
+        $('status').innerText = 'The nickname "' + name + '" is reserved. Enter the correct password.'; $('passRow').style.display = 'flex'; return false;
+    }
+    return true;
+}
+$('btnSolo').onclick = async () => { if (!(await canStart())) return; initAudio(); readProfile(); startGame(true); };
+$('btnHost').onclick = async () => { if (!(await canStart())) return; initAudio(); readProfile(); lobbyButtons(false); NETM.startHost(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
+$('btnJoin').onclick = async () => { if (!(await canStart())) return; initAudio(); readProfile(); lobbyButtons(false); NETM.startJoin(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
+// Pole hasła pokazuje się tylko przy zastrzeżonym nicku
+const passVis = () => { $('passRow').style.display = isReservedNick($('playerName').value) ? 'flex' : 'none'; };
+$('playerName').addEventListener('input', passVis);
 // Jakość grafiki: zapis ustawienia i ponowne uruchomienie (tekstury i cienie tworzą się przy starcie)
 $('quality').onchange = () => { SETTINGS.quality = $('quality').value; saveSettings(); location.reload(); };
 $('btnNew').onclick = () => {
@@ -194,7 +209,7 @@ renderer.setAnimationLoop(() => {
     pollPauseButtons();
     // Pauza zatrzymuje świat tylko w grze solo
     const frozen = PAUSE.on && NETM.NET.mode === 'solo';
-    if (!frozen) { updatePlayer(dt, t); updateDesktop(dt); }
+    if (!frozen) { updatePlayer(dt, t); updateDesktop(dt); updateHammer(dt); }
     if (level && !switching && !frozen) {
         const ctx = { pos: playerBody.position, body: playerBody, goto: (id, sp, o) => goToLevel(id, sp, o) };
         level.update(dt, t, ctx);
@@ -233,5 +248,10 @@ NETM.initMic();
 fillMenu();
 $('status').innerText = 'Loading the lobby...';
 lobbyButtons(false);
-loadLevel('lobby').then(() => { lobbyButtons(true); $('status').innerText = 'Ready. Put on your headset and press Enter VR after starting.'; drawScoreboard(); })
+loadLevel('lobby').then(() => {
+    lobbyButtons(true); passVis(); drawScoreboard();
+    const ban = NETM.myBanUntil();
+    $('status').innerText = ban ? 'You are banned until ' + new Date(ban).toLocaleString() + '.' : 'Ready. Put on your headset and press Enter VR after starting.';
+    if (ban) lobbyButtons(false);
+})
     .catch((e) => { console.error(e); $('status').innerText = 'Could not load the level: ' + e.message; });
