@@ -77,6 +77,7 @@ LIGHT_PRESETS.arcade = {
 // Admin ma wszystkie uprawnienia. Moderatorzy: wejście do pokoju szefa, młotki, wyrzucanie i bany (poza adminem).
 export const ULTIMATE_NAMES = ['zbyniu'];
 export const ADMIN_NAMES = ['BoyIsGamer'];
+export const OWNER_NAMES = ['BoyIsGamer'];   // właściciel gry: napis OWNER nad głową i odznaka Owner
 export const MOD_NAMES = ['spikyvr', 'lincolnvr'];
 // Zastrzeżone nicki: żeby grać pod tym nickiem, trzeba podać hasło na stronie startowej.
 // Wartość to skrót SHA-256 z tekstu "bagaboo:" + nick małymi literami + ":" + hasło.
@@ -95,6 +96,7 @@ export function setLocalMod(name, on) {
     if (on) list.push(low(name));
     try { localStorage.setItem('bagaboo_mods', JSON.stringify(list)); } catch (e) {}
 }
+export function isOwnerName(name) { return OWNER_NAMES.some(n => low(n) === low(name)); }
 export function isUltimateName(name) { return ULTIMATE_NAMES.some(n => low(n) === low(name)); }
 export function isAdminName(name) { return isUltimateName(name) || ADMIN_NAMES.some(n => low(n) === low(name)); }
 // Ranga: 3 ultimate admin, 2 admin, 1 moderator, 0 gracz. Wyrzucić / zbanować można tylko kogoś z niższą rangą.
