@@ -370,27 +370,90 @@ export function placeArm(arm, torso, side, hand) {
     arm.position.copy(_sh); arm.quaternion.setFromUnitVectors(_Y, _dir.normalize()); arm.scale.set(1, len, 1);
     arm.updateMatrixWorld(true);
 }
-// Młotki ekipy: Kick (żółty) i Ban (czerwony, świecący). Trzymane w prawej dłoni, główka ok. 0.42 m przed dłonią.
+// Młotki ekipy: Ban (obsydian z czerwoną energią) i Kick (złoto z elektrycznie żółtą energią).
+// Metalowa główka z zaokrąglonymi krawędziami, świecące ścianki uderzeniowe, pierścienie energii,
+// pulsujący pas rdzenia, płytki z napisem na czterech bokach, owinięta rękojeść, klejnot na końcu,
+// poświata i iskry krążące wokół główki. Animuje się sam przy każdym rysowaniu (u ciebie i u innych).
+const hammerCache = {};
+function hammerTextures(ban) {
+    const key = ban ? 'ban' : 'kick';
+    if (hammerCache[key]) return hammerCache[key];
+    const glow = ban ? '#ff2a1a' : '#ffd21a', deep = ban ? '#1a0606' : '#2a1e04', text = ban ? 'BAN' : 'KICK';
+    // Płytka z napisem: ciemne tło, świecąca ramka z runami, jasny napis z poświatą
+    const c = makeCanvas(512, 224), x = c.getContext('2d');
+    x.fillStyle = deep; x.fillRect(0, 0, 512, 224);
+    const gr = x.createLinearGradient(0, 0, 0, 224); gr.addColorStop(0, 'rgba(255,255,255,0.10)'); gr.addColorStop(1, 'rgba(0,0,0,0.25)'); x.fillStyle = gr; x.fillRect(0, 0, 512, 224);
+    x.strokeStyle = glow; x.lineWidth = 10; x.shadowColor = glow; x.shadowBlur = 24; x.strokeRect(14, 14, 484, 196);
+    x.lineWidth = 3; x.strokeRect(30, 30, 452, 164);
+    x.font = 'bold 22px monospace'; x.fillStyle = glow; x.textAlign = 'center';
+    for (let i = 0; i < 9; i++) { x.fillText('ᚱᛟᚾᛞᛖᚷ'[i % 6], 56 + i * 50, 48); x.fillText('ᛋᛏᚨᚠᚠ'[i % 5], 56 + i * 50, 196); }
+    x.font = 'bold 104px sans-serif'; x.textBaseline = 'middle'; x.shadowBlur = 40; x.fillStyle = '#ffffff'; x.fillText(text, 256, 116);
+    x.shadowBlur = 0; x.fillStyle = glow; x.globalAlpha = 0.35; x.fillText(text, 256, 116); x.globalAlpha = 1;
+    // Owijka rękojeści: skośne paski skóry
+    const w = makeCanvas(128, 256), wx = w.getContext('2d');
+    wx.fillStyle = ban ? '#1a0e0a' : '#2a1a0a'; wx.fillRect(0, 0, 128, 256);
+    for (let y = -128; y < 384; y += 28) { wx.fillStyle = ban ? '#3a1410' : '#5a3a14'; wx.beginPath(); wx.moveTo(0, y); wx.lineTo(128, y + 40); wx.lineTo(128, y + 56); wx.lineTo(0, y + 16); wx.fill(); }
+    // Świecąca tarcza uderzeniowa: koncentryczne pierścienie energii
+    const d = makeCanvas(256, 256), dx = d.getContext('2d');
+    const rg = dx.createRadialGradient(128, 128, 4, 128, 128, 128);
+    rg.addColorStop(0, '#ffffff'); rg.addColorStop(0.25, glow); rg.addColorStop(0.7, deep); rg.addColorStop(1, '#000000');
+    dx.fillStyle = rg; dx.fillRect(0, 0, 256, 256);
+    dx.strokeStyle = glow; dx.lineWidth = 6; for (const r of [60, 92, 118]) { dx.beginPath(); dx.arc(128, 128, r, 0, 7); dx.stroke(); }
+    const label = toTex(c, false), wrap = toTex(w, true), disc = toTex(d, false);
+    wrap.repeat.set(1, 3);
+    return (hammerCache[key] = { label: label, wrap: wrap, disc: disc, glow: new THREE.Color(glow) });
+}
 export function buildHammer(tool) {
     if (tool !== 'kick' && tool !== 'ban') return null;
-    const g = new THREE.Group(), ban = tool === 'ban', col = ban ? 0xc01010 : 0xe8c020;
-    const handle = meshAt(new THREE.CylinderGeometry(0.02, 0.025, 0.44, 12), mat({ color: 0x3a2414, roughness: 0.7 }), 0, 0, -0.19); handle.rotation.x = Math.PI / 2; g.add(handle);
-    // Pełna, nieprzezroczysta główka. Napis jest nadrukowany na zewnętrznych ściankach (góra, dół, przód, tył), więc zawsze widać go z zewnątrz.
-    const c = makeCanvas(256, 128), x = c.getContext('2d');
-    x.fillStyle = ban ? '#c01010' : '#e8c020'; x.fillRect(0, 0, 256, 128);
-    x.strokeStyle = 'rgba(0,0,0,0.35)'; x.lineWidth = 8; x.strokeRect(4, 4, 248, 120);
-    x.font = 'bold 76px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = ban ? '#ffffff' : '#1a1000'; x.fillText(ban ? 'BAN' : 'KICK', 128, 68);
-    const labelTex = toTex(c, false);
-    const plain = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: ban ? 0.35 : 0.15, metalness: 0.4, roughness: 0.4 });
-    const label = new THREE.MeshStandardMaterial({ map: labelTex, emissive: 0xffffff, emissiveMap: labelTex, emissiveIntensity: 0.35, metalness: 0.2, roughness: 0.5 });
-    // Kolejność ścianek BoxGeometry: +x, -x, +y, -y, +z, -z
-    const head = meshAt(new THREE.BoxGeometry(0.26, 0.13, 0.13), [plain, plain, label, label, label, label], 0, 0, -0.44);
-    g.add(head);
+    const ban = tool === 'ban', tx = hammerTextures(ban), g = new THREE.Group();
+    const glowCol = tx.glow.getHex();
+    const metal = new THREE.MeshPhysicalMaterial({ color: ban ? 0x1c1c22 : 0xc8a030, metalness: 1, roughness: ban ? 0.22 : 0.18, clearcoat: 1, clearcoatRoughness: 0.15, envMapIntensity: Math.max(1.0, ENV * 2) });
+    const trim = new THREE.MeshPhysicalMaterial({ color: ban ? 0x8a1010 : 0xffe080, metalness: 1, roughness: 0.15, clearcoat: 1, envMapIntensity: Math.max(1.0, ENV * 2) });
+    const energy = new THREE.MeshStandardMaterial({ color: glowCol, emissive: glowCol, emissiveIntensity: 2.2, roughness: 0.3, toneMapped: false });
+    // Rękojeść z owijką, metalowe okucia i klejnot na końcu
+    const handle = meshAt(new THREE.CylinderGeometry(0.019, 0.023, 0.4, 16), new THREE.MeshStandardMaterial({ map: tx.wrap, roughness: 0.75, bumpMap: tx.wrap, bumpScale: 1.5 }), 0, 0, -0.2); handle.rotation.x = Math.PI / 2; g.add(handle);
+    for (const z of [-0.02, -0.38]) { const ring = meshAt(new THREE.TorusGeometry(0.026, 0.006, 10, 24), trim, 0, 0, z); g.add(ring); }
+    const pommel = meshAt(new THREE.SphereGeometry(0.03, 20, 14), metal, 0, 0, 0.02); g.add(pommel);
+    const gem = meshAt(new THREE.OctahedronGeometry(0.018, 0), energy, 0, 0, 0.05); g.add(gem);
+    // Główka: zaokrąglona metalowa bryła z kołnierzem
+    const head = meshAt(new RoundedBoxGeometry(0.28, 0.14, 0.14, 5, 0.025), metal, 0, 0, -0.44); g.add(head);
+    const collar = meshAt(new THREE.CylinderGeometry(0.04, 0.03, 0.05, 16), trim, 0, 0, -0.38); collar.rotation.x = Math.PI / 2; g.add(collar);
+    // Dwa pulsujące pasy energii przy końcach główki (środek zostaje wolny na napis) i obręcze przy ściankach uderzeniowych
+    for (const bx of [-0.112, 0.112]) g.add(meshAt(new THREE.BoxGeometry(0.014, 0.146, 0.146), energy, bx, 0, -0.44));
+    for (const sx of [-1, 1]) {
+        const rim = meshAt(new THREE.TorusGeometry(0.058, 0.007, 10, 32), energy, sx * 0.142, 0, -0.44); rim.rotation.y = Math.PI / 2; g.add(rim);
+        const face = meshAt(new THREE.CircleGeometry(0.055, 32), new THREE.MeshBasicMaterial({ map: tx.disc, toneMapped: false }), sx * 0.1415, 0, -0.44); face.rotation.y = sx * Math.PI / 2; g.add(face);
+        const trimRing = meshAt(new THREE.TorusGeometry(0.066, 0.006, 8, 32), trim, sx * 0.13, 0, -0.44); trimRing.rotation.y = Math.PI / 2; g.add(trimRing);
+    }
+    // Płytki z napisem na trzech bokach (góra, dół i czoło od strony przeciwnej do rękojeści), lekko nad powierzchnią
+    const plateMat = new THREE.MeshBasicMaterial({ map: tx.label, toneMapped: false });
+    const plates = [];
+    for (const [px, py, pz, rx, ry] of [[0, 0.0735, -0.44, -Math.PI / 2, 0], [0, -0.0735, -0.44, Math.PI / 2, 0], [0, 0, -0.5135, 0, Math.PI]]) {
+        const pl = meshAt(new THREE.PlaneGeometry(0.19, 0.083), plateMat, px, py, pz); pl.rotation.set(rx, ry, 0); pl.castShadow = false; g.add(pl); plates.push(pl);
+    }
+    // Poświata i iskry krążące wokół główki
+    const aura = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: glowCol, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.55 }));
+    aura.scale.set(0.55, 0.38, 1); aura.position.set(0, 0, -0.44); g.add(aura);
+    const sparkN = 24, sp = new Float32Array(sparkN * 3), sgeo = new THREE.BufferGeometry(); sgeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+    const sparks = new THREE.Points(sgeo, new THREE.PointsMaterial({ map: tex.dot, color: glowCol, size: 0.018, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    sparks.frustumCulled = false; g.add(sparks);
+    const seeds = Array.from({ length: sparkN }, () => [Math.random() * 6.28, 0.09 + Math.random() * 0.06, (Math.random() - 0.5) * 0.25, 1.5 + Math.random() * 2.5]);
+    // Animacja: pulsowanie energii, migotanie poświaty, obrót klejnotu, krążące iskry
+    head.onBeforeRender = () => {
+        const t = performance.now() / 1000, pulse = 0.5 + 0.5 * Math.sin(t * (ban ? 5 : 7));
+        energy.emissiveIntensity = 1.6 + pulse * 1.8;
+        aura.material.opacity = 0.35 + pulse * 0.35; aura.scale.set(0.5 + pulse * 0.12, 0.34 + pulse * 0.08, 1);
+        gem.rotation.y = t * 2; gem.rotation.x = t * 1.3;
+        for (let i = 0; i < sparkN; i++) {
+            const [a0, r, x0, sp2] = seeds[i], a = a0 + t * sp2;
+            sp[i * 3] = x0; sp[i * 3 + 1] = Math.cos(a) * r; sp[i * 3 + 2] = -0.44 + Math.sin(a) * r;
+        }
+        sgeo.attributes.position.needsUpdate = true;
+    };
     g.userData.headOffset = new THREE.Vector3(0, 0, -0.44);
     return g;
 }
 export function lookKey(look) { return [look.name, look.color, look.skin, look.badge, look.tool, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
-// Awatar innego gracza: głowa i tułów goryla, długie ramiona i dłonie
 // Napis nad głową ultimate admina
 export function ultimateLabel() {
     const c = makeCanvas(512, 96), x = c.getContext('2d');
