@@ -306,8 +306,14 @@ const BADGES = {
     eye: { bg: '#5a0a0a', draw: (x) => { x.fillStyle = '#f4ecdc'; x.beginPath(); x.ellipse(64, 64, 42, 24, 0, 0, 7); x.fill(); x.fillStyle = '#b01010'; x.beginPath(); x.arc(64, 64, 16, 0, 7); x.fill(); x.fillStyle = '#000'; x.beginPath(); x.arc(64, 64, 7, 0, 7); x.fill(); } },
     moon: { bg: '#0e1430', draw: (x) => { x.fillStyle = '#d01818'; x.beginPath(); x.arc(64, 64, 36, 0, 7); x.fill(); x.fillStyle = '#0e1430'; x.beginPath(); x.arc(80, 54, 32, 0, 7); x.fill(); } },
     flame: { bg: '#3a0a02', draw: (x) => { for (const [c, k] of [['#ff5a10', 1], ['#ffb020', 0.65], ['#fff0a0', 0.35]]) { x.fillStyle = c; x.beginPath(); x.moveTo(64, 64 - 44 * k - 6); x.bezierCurveTo(64 + 40 * k, 64 - 10 * k, 64 + 30 * k, 64 + 40 * k, 64, 64 + 40 * k); x.bezierCurveTo(64 - 30 * k, 64 + 40 * k, 64 - 40 * k, 64 - 10 * k, 64, 64 - 44 * k - 6); x.fill(); } } },
+    admin: { bg: '#8a0a0a', draw: (x) => shield(x, '#ffd23a', 'A') },
+    mod: { bg: '#0a2a7a', draw: (x) => shield(x, '#d8e8ff', 'M') },
     crown: { bg: '#7a0a10', draw: (x) => { x.fillStyle = '#ffd23a'; x.beginPath(); x.moveTo(26, 88); x.lineTo(26, 46); x.lineTo(46, 66); x.lineTo(64, 36); x.lineTo(82, 66); x.lineTo(102, 46); x.lineTo(102, 88); x.closePath(); x.fill(); } }
 };
+function shield(x, col, letter) {
+    x.fillStyle = col; x.beginPath(); x.moveTo(64, 20); x.lineTo(100, 32); x.lineTo(96, 76); x.quadraticCurveTo(64, 110, 64, 110); x.quadraticCurveTo(64, 110, 32, 76); x.lineTo(28, 32); x.closePath(); x.fill();
+    x.fillStyle = '#1a0a0a'; x.font = 'bold 50px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(letter, 64, 66);
+}
 function star(x, cx, cy, ro, ri, col) {
     x.fillStyle = col; x.beginPath();
     for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? ri : ro; if (i === 0) x.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); else x.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
@@ -358,7 +364,20 @@ export function placeArm(arm, torso, side, hand) {
     arm.position.copy(_sh); arm.quaternion.setFromUnitVectors(_Y, _dir.normalize()); arm.scale.set(1, len, 1);
     arm.updateMatrixWorld(true);
 }
-export function lookKey(look) { return [look.name, look.color, look.skin, look.badge, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
+// Młotki ekipy: Kick (żółty) i Ban (czerwony, świecący). Trzymane w prawej dłoni, główka ok. 0.42 m przed dłonią.
+export function buildHammer(tool) {
+    if (tool !== 'kick' && tool !== 'ban') return null;
+    const g = new THREE.Group(), ban = tool === 'ban';
+    const handle = meshAt(new THREE.CylinderGeometry(0.018, 0.022, 0.42, 10), mat({ color: 0x3a2414, roughness: 0.7 }), 0, 0, -0.18); handle.rotation.x = Math.PI / 2; g.add(handle);
+    const head = meshAt(new THREE.BoxGeometry(0.22, 0.11, 0.11), new THREE.MeshStandardMaterial({ color: ban ? 0xc01010 : 0xe8c020, emissive: ban ? 0x800000 : 0x403000, emissiveIntensity: ban ? 0.9 : 0.4, metalness: 0.5, roughness: 0.35 }), 0, 0, -0.42);
+    g.add(head);
+    const c = makeCanvas(256, 128), x = c.getContext('2d');
+    x.fillStyle = ban ? '#c01010' : '#e8c020'; x.fillRect(0, 0, 256, 128); x.font = 'bold 70px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffffff'; x.fillText(ban ? 'BAN' : 'KICK', 128, 68);
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.1), new THREE.MeshBasicMaterial({ map: toTex(c, false) })); label.position.set(0, 0.0, -0.364); label.rotation.y = Math.PI; g.add(label);
+    g.userData.headOffset = new THREE.Vector3(0, 0, -0.42);
+    return g;
+}
+export function lookKey(look) { return [look.name, look.color, look.skin, look.badge, look.tool, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
 // Awatar innego gracza: głowa i tułów goryla, długie ramiona i dłonie
 export function createAvatar(look) {
     const group = new THREE.Group();
@@ -367,6 +386,7 @@ export function createAvatar(look) {
     const handL = createRealHand(true, look), handR = createRealHand(false, look);
     const armL = createGorillaArm(look), armR = createGorillaArm(look);
     group.add(handL, handR, armL, armR);
+    const hammer = buildHammer(look.tool); if (hammer) handR.add(hammer);   // inni gracze widzą młotek w dłoni
     // Ramiona dociągane do dłoni tuż przed rysowaniem
     torso.userData.chest.onBeforeRender = () => { placeArm(armL, torso, -1, handL); placeArm(armR, torso, 1, handR); };
     return { group, torso, head, handL, handR, key: lookKey(look) };
