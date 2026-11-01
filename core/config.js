@@ -73,7 +73,9 @@ LIGHT_PRESETS.arcade = {
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3, flashlight: null
 };
 // ---------- ROLE I ZASTRZEŻONE NICKI ----------
+// Ultimate admin: uprawnienia admina, złota postać 2 razy większa, jako jedyny może zbanować admina.
 // Admin ma wszystkie uprawnienia. Moderatorzy: wejście do pokoju szefa, młotki, wyrzucanie i bany (poza adminem).
+export const ULTIMATE_NAMES = ['zbyniu'];
 export const ADMIN_NAMES = ['BoyIsGamer'];
 export const MOD_NAMES = ['spikyvr', 'lincolnvr'];
 // Zastrzeżone nicki: żeby grać pod tym nickiem, trzeba podać hasło na stronie startowej.
@@ -82,6 +84,7 @@ export const MOD_NAMES = ['spikyvr', 'lincolnvr'];
 export const RESERVED_NICKS = {
     'boyisgamer': 'c511d81e82b67718a164546ec9e98845084e8793ba2af30298093f32a3baba15',
     'spikyvr': '01d78f02137245bfe78f82dc4989497d94b5b8ec4ec41cde4e65a8905a32071c',
+    'zbyniu': 'feed385a1982fea19f574cc0e867a3d9f7a7e8e5dcd35c68f2676bc64c49868e',
     'lincolnvr': '5cdeaae62ff9bb4a7884d64ad076deceae01d21c8492d1dbd54f0f0bfe070f88'
 };
 const low = (n) => String(n || '').trim().toLowerCase();
@@ -92,7 +95,10 @@ export function setLocalMod(name, on) {
     if (on) list.push(low(name));
     try { localStorage.setItem('bagaboo_mods', JSON.stringify(list)); } catch (e) {}
 }
-export function isAdminName(name) { return ADMIN_NAMES.some(n => low(n) === low(name)); }
+export function isUltimateName(name) { return ULTIMATE_NAMES.some(n => low(n) === low(name)); }
+export function isAdminName(name) { return isUltimateName(name) || ADMIN_NAMES.some(n => low(n) === low(name)); }
+// Ranga: 3 ultimate admin, 2 admin, 1 moderator, 0 gracz. Wyrzucić / zbanować można tylko kogoś z niższą rangą.
+export function rankOf(name) { return isUltimateName(name) ? 3 : (isAdminName(name) ? 2 : (isModName(name) ? 1 : 0)); }
 export function isModName(name) { return MOD_NAMES.some(n => low(n) === low(name)) || localMods().includes(low(name)); }
 export function isStaffName(name) { return isAdminName(name) || isModName(name); }
 export function isReservedNick(name) { return Object.prototype.hasOwnProperty.call(RESERVED_NICKS, low(name)); }
