@@ -59,7 +59,12 @@ function buildHall() {
     addCrispBlock(0, 12, -64.5, 30, 24, 5, wc, 0x300800);
     addCrispBlock(0, 0.6, 3, 6, 1.2, 4, 0x6a5a50, 0x300800);                          // platforma startowa
     // Pomarańczowe światło od lawy
-    for (let z = 0; z >= -56; z -= 14) { const l = new THREE.PointLight(0xff5a1a, 26, 20, 1.8); l.position.set(0, 1.4, z - 4); L.root.add(l); }
+    for (let z = 0; z >= -56; z -= 12) { const l = new THREE.PointLight(0xff6a2a, 50, 26, 1.6); l.position.set(0, 1.6, z - 3); L.root.add(l); }
+    // Dodatkowe ciepłe lampy pod sufitem, żeby było lepiej widać trasę
+    for (let z = 0; z >= -60; z -= 12) for (const x of [0]) {   // 6 lamp: więcej światła, ale bez przeciążania gogli
+        const l = new THREE.PointLight(0xffd0a0, 45, 30, 1.4); l.position.set(x, 14, z - 2); L.root.add(l);
+        const b = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffe0b0 })); b.position.copy(l.position); L.root.add(b);
+    }
     // Iskry unoszące się nad lawą
     const n = 450, pos = new Float32Array(n * 3), R = T.mkRng(5);
     for (let i = 0; i < n; i++) { pos[i * 3] = (R() * 2 - 1) * 9.5; pos[i * 3 + 1] = R() * 14; pos[i * 3 + 2] = 3 - R() * 64; }
