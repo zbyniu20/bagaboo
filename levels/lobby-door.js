@@ -7,7 +7,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP, GFX, isStaffName } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { toast } from '../core/terminal.js';
-import { createHead, createGorillaTorso, createGorillaArm, placeArm, buildHat } from '../core/avatar.js';
+import { createHead, createGorillaTorso, createGorillaArm, placeArm, buildHat, ultimateLabel, ULTIMATE_SCALE } from '../core/avatar.js';
 import { getLook, onLookChange, unlockItem, recordTime, unlockAchievement } from '../core/economy.js';
 import { hands } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -74,8 +74,11 @@ function buildMirror() {
 function buildMe(look) {
     if (me) for (const o of [me.head, me.torso, me.armL, me.armR]) L.root.remove(o);
     const head = createHead(look, false), torso = createGorillaTorso(look), armL = createGorillaArm(look), armR = createGorillaArm(look);
+    const sc = look.skin === 'ultimate' ? ULTIMATE_SCALE : 1;   // ultimate admin w lustrze też jest 2 razy większy
+    head.scale.setScalar(sc); torso.scale.setScalar(sc);
+    if (sc > 1) { const lab = ultimateLabel(); lab.position.set(0, 0.62, 0); head.add(lab); for (const a of [armL, armR]) a.geometry = a.geometry.clone().scale(sc, 1, sc); }
     for (const o of [head, torso, armL, armR]) { o.traverse(c => c.layers.set(MIRROR_LAYER)); L.root.add(o); }
-    me = { head: head, torso: torso, armL: armL, armR: armR };
+    me = { head: head, torso: torso, armL: armL, armR: armR, drop: 0.35 * sc };
 }
 
 // ---------- CZERWONA TRASA "PARKOUR KING" ----------
@@ -200,7 +203,7 @@ export function update(dt, t, ctx) {
     if (me && mirror.visible) {
         me.head.position.copy(_p); me.head.quaternion.copy(_q);
         _e.setFromQuaternion(_q, 'YXZ');
-        me.torso.position.set(_p.x, _p.y - 0.35, _p.z); me.torso.rotation.set(0, _e.y, 0);
+        me.torso.position.set(_p.x, _p.y - me.drop, _p.z); me.torso.rotation.set(0, _e.y, 0);
         me.torso.updateMatrixWorld(true);
         if (hands.L) { placeArm(me.armL, me.torso, -1, hands.L); placeArm(me.armR, me.torso, 1, hands.R); }
     }
