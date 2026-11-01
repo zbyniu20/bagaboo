@@ -60,14 +60,19 @@ const SKINS = {
     albino: { fur: 0xeee8de, face: 0xc8a8a0 },
     shadow: { fur: 0x0b0b0d, glowEyes: true },
     king: { fur: 0xd4a640, metal: true, cape: true },
-    bloodmoon: { fur: 0x5a0a0c, face: 0x2a0606, glowEyes: true }
+    bloodmoon: { fur: 0x5a0a0c, face: 0x2a0606, glowEyes: true },
+    ultimate: { fur: 0xe0b040, face: 0xb8902a, metal: true }   // ultimate admin: cały złoty
 };
 export function furColor(look) { const k = SKINS[look.skin]; return new THREE.Color(k ? k.fur : (look.color || '#3d2314')); }
 function furMat(look, shade) {
     const k = SKINS[look.skin], f = furTexture();
     return new THREE.MeshStandardMaterial({ map: f, bumpMap: f, bumpScale: 3, color: furColor(look).multiplyScalar(shade || 1), roughness: k && k.metal ? 0.35 : 0.95, metalness: k && k.metal ? 0.65 : 0, envMapIntensity: k && k.metal ? Math.max(0.8, ENV) : ENV });
 }
-function faceMat(look) { const k = SKINS[look.skin]; return new THREE.MeshStandardMaterial({ color: k && k.face ? k.face : 0x2a2422, roughness: 0.55, bumpMap: tex.skin, bumpScale: 0.5, envMapIntensity: ENV }); }
+function faceMat(look) {
+    const k = SKINS[look.skin];
+    if (k && k.metal && k.face) return new THREE.MeshStandardMaterial({ color: k.face, metalness: 0.9, roughness: 0.3, envMapIntensity: Math.max(0.8, ENV) });
+    return new THREE.MeshStandardMaterial({ color: k && k.face ? k.face : 0x2a2422, roughness: 0.55, bumpMap: tex.skin, bumpScale: 0.5, envMapIntensity: ENV });
+}
 function skinMaterial(look) {
     if (look.gloves === 'neon') return new THREE.MeshStandardMaterial({ color: 0x20ff70, emissive: 0x10ff60, emissiveIntensity: 1.3, roughness: 0.3 });
     if (look.gloves === 'mannequin') return new THREE.MeshStandardMaterial({ map: tex.plaster, bumpMap: tex.plaster, bumpScale: 0.7, color: 0xd8d0c2, roughness: 0.55, envMapIntensity: ENV });
@@ -306,6 +311,7 @@ const BADGES = {
     eye: { bg: '#5a0a0a', draw: (x) => { x.fillStyle = '#f4ecdc'; x.beginPath(); x.ellipse(64, 64, 42, 24, 0, 0, 7); x.fill(); x.fillStyle = '#b01010'; x.beginPath(); x.arc(64, 64, 16, 0, 7); x.fill(); x.fillStyle = '#000'; x.beginPath(); x.arc(64, 64, 7, 0, 7); x.fill(); } },
     moon: { bg: '#0e1430', draw: (x) => { x.fillStyle = '#d01818'; x.beginPath(); x.arc(64, 64, 36, 0, 7); x.fill(); x.fillStyle = '#0e1430'; x.beginPath(); x.arc(80, 54, 32, 0, 7); x.fill(); } },
     flame: { bg: '#3a0a02', draw: (x) => { for (const [c, k] of [['#ff5a10', 1], ['#ffb020', 0.65], ['#fff0a0', 0.35]]) { x.fillStyle = c; x.beginPath(); x.moveTo(64, 64 - 44 * k - 6); x.bezierCurveTo(64 + 40 * k, 64 - 10 * k, 64 + 30 * k, 64 + 40 * k, 64, 64 + 40 * k); x.bezierCurveTo(64 - 30 * k, 64 + 40 * k, 64 - 40 * k, 64 - 10 * k, 64, 64 - 44 * k - 6); x.fill(); } } },
+    ultimate: { bg: '#2a1a00', draw: (x) => { star(x, 64, 60, 46, 20, '#ffd23a'); x.fillStyle = '#2a1a00'; x.font = 'bold 34px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('U', 64, 64); } },
     admin: { bg: '#8a0a0a', draw: (x) => shield(x, '#ffd23a', 'A') },
     mod: { bg: '#0a2a7a', draw: (x) => shield(x, '#d8e8ff', 'M') },
     crown: { bg: '#7a0a10', draw: (x) => { x.fillStyle = '#ffd23a'; x.beginPath(); x.moveTo(26, 88); x.lineTo(26, 46); x.lineTo(46, 66); x.lineTo(64, 36); x.lineTo(82, 66); x.lineTo(102, 46); x.lineTo(102, 88); x.closePath(); x.fill(); } }
@@ -367,27 +373,46 @@ export function placeArm(arm, torso, side, hand) {
 // Młotki ekipy: Kick (żółty) i Ban (czerwony, świecący). Trzymane w prawej dłoni, główka ok. 0.42 m przed dłonią.
 export function buildHammer(tool) {
     if (tool !== 'kick' && tool !== 'ban') return null;
-    const g = new THREE.Group(), ban = tool === 'ban';
-    const handle = meshAt(new THREE.CylinderGeometry(0.018, 0.022, 0.42, 10), mat({ color: 0x3a2414, roughness: 0.7 }), 0, 0, -0.18); handle.rotation.x = Math.PI / 2; g.add(handle);
-    const head = meshAt(new THREE.BoxGeometry(0.22, 0.11, 0.11), new THREE.MeshStandardMaterial({ color: ban ? 0xc01010 : 0xe8c020, emissive: ban ? 0x800000 : 0x403000, emissiveIntensity: ban ? 0.9 : 0.4, metalness: 0.5, roughness: 0.35 }), 0, 0, -0.42);
-    g.add(head);
+    const g = new THREE.Group(), ban = tool === 'ban', col = ban ? 0xc01010 : 0xe8c020;
+    const handle = meshAt(new THREE.CylinderGeometry(0.02, 0.025, 0.44, 12), mat({ color: 0x3a2414, roughness: 0.7 }), 0, 0, -0.19); handle.rotation.x = Math.PI / 2; g.add(handle);
+    // Pełna, nieprzezroczysta główka. Napis jest nadrukowany na zewnętrznych ściankach (góra, dół, przód, tył), więc zawsze widać go z zewnątrz.
     const c = makeCanvas(256, 128), x = c.getContext('2d');
-    x.fillStyle = ban ? '#c01010' : '#e8c020'; x.fillRect(0, 0, 256, 128); x.font = 'bold 70px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#ffffff'; x.fillText(ban ? 'BAN' : 'KICK', 128, 68);
-    const label = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.1), new THREE.MeshBasicMaterial({ map: toTex(c, false) })); label.position.set(0, 0.0, -0.364); label.rotation.y = Math.PI; g.add(label);
-    g.userData.headOffset = new THREE.Vector3(0, 0, -0.42);
+    x.fillStyle = ban ? '#c01010' : '#e8c020'; x.fillRect(0, 0, 256, 128);
+    x.strokeStyle = 'rgba(0,0,0,0.35)'; x.lineWidth = 8; x.strokeRect(4, 4, 248, 120);
+    x.font = 'bold 76px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = ban ? '#ffffff' : '#1a1000'; x.fillText(ban ? 'BAN' : 'KICK', 128, 68);
+    const labelTex = toTex(c, false);
+    const plain = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: ban ? 0.35 : 0.15, metalness: 0.4, roughness: 0.4 });
+    const label = new THREE.MeshStandardMaterial({ map: labelTex, emissive: 0xffffff, emissiveMap: labelTex, emissiveIntensity: 0.35, metalness: 0.2, roughness: 0.5 });
+    // Kolejność ścianek BoxGeometry: +x, -x, +y, -y, +z, -z
+    const head = meshAt(new THREE.BoxGeometry(0.26, 0.13, 0.13), [plain, plain, label, label, label, label], 0, 0, -0.44);
+    g.add(head);
+    g.userData.headOffset = new THREE.Vector3(0, 0, -0.44);
     return g;
 }
 export function lookKey(look) { return [look.name, look.color, look.skin, look.badge, look.tool, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
 // Awatar innego gracza: głowa i tułów goryla, długie ramiona i dłonie
+// Napis nad głową ultimate admina
+export function ultimateLabel() {
+    const c = makeCanvas(512, 96), x = c.getContext('2d');
+    x.font = 'bold 60px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.shadowColor = '#ffb000'; x.shadowBlur = 20; x.fillStyle = '#ffe070'; x.fillText('ULTIMATE ADMIN', 256, 50);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: toTex(c, false), transparent: true, depthWrite: false }));
+    sp.scale.set(1.0, 0.19, 1);
+    return sp;
+}
+export const ULTIMATE_SCALE = 2;
 export function createAvatar(look) {
-    const group = new THREE.Group();
-    const torso = createGorillaTorso(look); group.add(torso);
-    const head = createHead(look, true); group.add(head);
+    const group = new THREE.Group(), ult = look.skin === 'ultimate', sc = ult ? ULTIMATE_SCALE : 1;
+    const torso = createGorillaTorso(look); torso.scale.setScalar(sc); group.add(torso);
+    const head = createHead(look, true); head.scale.setScalar(sc); group.add(head);
+    if (ult) { const lab = ultimateLabel(); lab.position.set(0, 0.62, 0); head.add(lab); }   // stały napis nad głową
     const handL = createRealHand(true, look), handR = createRealHand(false, look);
+    handL.scale.setScalar(sc); handR.scale.setScalar(sc);
     const armL = createGorillaArm(look), armR = createGorillaArm(look);
+    if (ult) for (const a of [armL, armR]) a.geometry = a.geometry.clone().scale(sc, 1, sc);
     group.add(handL, handR, armL, armR);
     const hammer = buildHammer(look.tool); if (hammer) handR.add(hammer);   // inni gracze widzą młotek w dłoni
     // Ramiona dociągane do dłoni tuż przed rysowaniem
     torso.userData.chest.onBeforeRender = () => { placeArm(armL, torso, -1, handL); placeArm(armR, torso, 1, handR); };
-    return { group, torso, head, handL, handR, key: lookKey(look) };
+    return { group, torso, head, handL, handR, key: lookKey(look), torsoDrop: 0.35 * sc };
 }
