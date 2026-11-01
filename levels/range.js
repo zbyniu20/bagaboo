@@ -7,7 +7,7 @@
 import { THREE, L, tex, camera, addCrispBlock, addCollider } from '../core/engine.js';
 import * as T from '../core/textures.js';
 import { levelReward, recordScore, SAVE } from '../core/economy.js';
-import { toast } from '../core/terminal.js';
+import { toast, Terminal } from '../core/terminal.js';
 import { hands } from '../core/player.js';
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
@@ -20,13 +20,23 @@ const MAX_ACTIVE = 3, SHOW_TIME = 3.5;
 // Miejsca, w których potwory wyskakują (x, y dołu, z): zza skrzyń, beczek i z okien w ścianach
 const SPOTS = [[-5, 1.1, -7.8], [-1, 1.1, -7.8], [4, 1.1, -8.8], [6.5, 0, -12.2], [-6.5, 0, -13.2], [0, 0, -13.2], [-3, 1.6, -15.9], [3, 1.6, -15.9],
     [-6, 0, -19.2], [6, 0, -19.2], [0, 2.2, -20.7], [-4, 0, -23.2], [4, 0, -23.2], [-7.3, 2.4, -14], [7.3, 2.4, -9], [0, 3.2, -24.7]];
-export const info = { id: 'range', name: 'Shooting Range', spawn: [0, 1.0, 3.2] };
+export const info = { id: 'range', name: 'Shooting Range', spawn: [0, 1.0, 1.15] };
+const BOOTHS = [0, -3, 3, -6, 6, -1.5, 1.5, -4.5, 4.5, 7];   // stanowiska strzeleckie (x), gracz stoi tuż za ladą
+// Przycisk wyjścia na ladzie (laserem albo kliknięciem): gracz stoi w miejscu, więc nie dojdzie do drzwi
+const exitPanel = new Terminal((t) => {
+    t.background();
+    t.btn('leave', 20, 20, 472, 216, 'Back to Games', () => { if (S && S.ctx) S.ctx.goto('games', ARRIVAL_FROM_RANGE); }, { size: 44, tone: 'gold' });
+}, 512, 256);
 let S = null;
 const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _q = new THREE.Quaternion();
 
 export function build() {
     L.spawn = info.spawn.slice();
-    L.bounds = { minX: -7.6, maxX: 7.6, minZ: 0.75, maxZ: 7.6, maxY: 5 };   // gracz zostaje za ladą
+    // Stanowisko strzeleckie: gracz stoi nieruchomo tuż za ladą (bez skakania), każdy przy swoim stanowisku
+    let bi = 0; if (N.NET.mode !== 'solo') { const id = N.myId() || ''; for (let i = 0; i < id.length; i++) bi = (bi * 31 + id.charCodeAt(i)) % BOOTHS.length; }
+    L.spawn = [BOOTHS[bi], 1.0, 1.15];
+    L.bounds = { minX: -7.6, maxX: 7.6, minZ: 0.75, maxZ: 7.6, maxY: 5 };
+    L.moveScale = 0; L.maxUp = 0.5;
     S = { clock: 0, phase: 'wait', t: WAIT, kills: 0, scores: {}, targets: [], spawnT: 1, lastHostMsg: -10, netT: 0, sendT: 0, introT: 10, hudT: 0, boardT: 0, rewarded: false, fx: [] };
     buildRoom();
     buildGun();
@@ -40,9 +50,9 @@ function buildRoom() {
     addCrispBlock(0, -0.5, -11, 18, 1, 38, 0x6a6a70, 0x101018, tex.floor, { rough: tex.floorRough });
     addCrispBlock(0, 6.5, -11, 18, 1, 38, 0x2a2a30, 0x101018);
     for (const [x, z, w, d] of [[-8.5, -11, 1, 38], [8.5, -11, 1, 38], [0, 8.5, 18, 1], [0, -30.5, 18, 1]]) addCrispBlock(x, 3, z, w, 6, d, 0x4a4a54, 0x101018);
-    // Lada strzelecka i niewidzialna ściana nad nią (nie da się wejść na strzelnicę)
-    addCrispBlock(0, 0.55, 0, 15, 1.1, 0.8, 0x5a3a24, 0x2a1a10, tex.wood, { uvMeters: 1.5 });
-    addCollider(-8, 1.1, -0.4, 8, 6, 0.4);
+    // Niska lada na wysokości bioder gracza (gracz stoi nieruchomo, więc nie wejdzie na strzelnicę)
+    addCrispBlock(0, 0.3, 0.2, 15, 0.6, 0.5, 0x5a3a24, 0x2a1a10, tex.wood, { uvMeters: 1.5 });
+    const ep = exitPanel.createMesh(0.5, 0.25); ep.position.set(-7.0, 0.75, 0.45); ep.rotation.x = -0.6; L.root.add(ep);
     // Osłony na strzelnicy: skrzynie, beczki, ścianki
     for (const [x, z, w, h, d] of [[-5, -7, 2, 1.1, 1], [-1, -7, 2, 1.1, 1], [4, -8, 2, 1.1, 1], [-3, -15, 1.6, 1.6, 1.6], [3, -15, 1.6, 1.6, 1.6], [0, -20, 3, 2.2, 1], [0, -24, 4, 3.2, 1]])
         addCrispBlock(x, h / 2, z, w, h, d, 0xffffff, 0x1a0a05, tex.wood, { uvMeters: 1.2 });
@@ -162,17 +172,18 @@ function think(dt) {
 // ---------- CO KLATKĘ ----------
 export function update(dt, t, ctx) {
     if (!S) return;
-    S.clock += dt;
+    S.clock += dt; S.ctx = ctx;
+    ctx.body.velocity.x = 0; ctx.body.velocity.z = 0;   // pozycja nieruchoma przy ladzie
     const auth = isAuthority();
     if (S.introT > 0) {
         S.introT -= dt;
         const sec = Math.max(0, Math.ceil(S.introT));
         if (sec !== S.intro.last) { S.intro.last = sec; drawInstructions(S.intro, 'Shooting Range', [
-            'You hold a pistol in your right hand. Pull the trigger to shoot.',
+            'You stand still at your booth. Aim with your right hand and pull the trigger to shoot.',
             'Monsters pop up behind crates, barrels and in the windows. Hit them before they hide.',
             'Each round lasts 2 minutes. The player with the most kills wins 200 Bagabucks.',
             'Playing alone? Get ' + SOLO_WIN + ' kills to win.',
-            'The GAMES door behind you takes you back.'], 'This closes in ' + sec + ' s', { bg: 'rgba(4,10,16,0.9)', border: '#60d0ff', title: '#d0f0ff', text: '#e0eef8', footer: '#ffb030', size: 30 }); }
+            'To leave, point at the "Back to Games" button on the counter and pull the trigger.'], 'This closes in ' + sec + ' s', { bg: 'rgba(4,10,16,0.9)', border: '#60d0ff', title: '#d0f0ff', text: '#e0eef8', footer: '#ffb030', size: 30 }); }
         S.intro.mesh.visible = S.introT > 0;
     }
     if (auth) {
@@ -236,7 +247,7 @@ function drawBoard() {
 }
 export function dispose() {
     if (S) { S.hud.dispose(); S.intro.dispose(); }
-    L.onTrigger = null;
+    L.onTrigger = null; L.moveScale = 1; L.maxUp = 99;
     N.onLevelMsg(null);
     S = null;
 }
