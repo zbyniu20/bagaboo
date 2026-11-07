@@ -5,7 +5,7 @@
 // ==========================================
 import { THREE, L, tex, addCrispBlock, addStaticBody, CANNON } from '../core/engine.js';
 import { LIGHT_PRESETS, isStaffName, isAdminName, isModName, isUltimateName, MOD_NAMES, localMods, setLocalMod } from '../core/config.js';
-import { SAVE, CATALOG, isOwned, buyItem, equipItem } from '../core/economy.js';
+import { SAVE, CATALOG, isOwned, buyItem, equipItem, setHideTag } from '../core/economy.js';
 import * as T from '../core/textures.js';
 import { toast, Terminal, AMBER, AMBER_DIM, GOLD, OK_COL } from '../core/terminal.js';
 import * as N from '../core/network.js';
@@ -58,11 +58,15 @@ const staffPC = new Terminal((t) => {
         t.text(isUltimateName(me) ? 'You are the ultimate admin. You can do everything, even ban admins.' : (admin ? 'You are the admin. You can do everything.' : 'You are a moderator.'), 40, 110, 24, GOLD, 'left', true);
         t.btn('mods', 40, 160, 450, 90, 'Moderators', () => { pc.page = 'mods'; }, { tone: 'gold', disabled: !admin });
         t.btn('bans', 534, 160, 450, 90, 'Bans', () => { pc.page = 'bans'; });
-        t.btn('ham', 40, 280, 944, 90, 'Hammers', () => { pc.page = 'hammers'; }, { tone: 'bad' });
-        t.text('Moderators can enter this room, kick and ban players (except the admin).', 40, 420, 20, AMBER, 'left');
-        t.text('Kick hammer: throws a player out of the room, they can come back.', 40, 456, 20, AMBER, 'left');
-        t.text('Ban hammer: the player cannot join any game for one day.', 40, 492, 20, AMBER, 'left');
-        t.text('Swing the hammer and hit a player on the head or body.', 40, 528, 20, AMBER_DIM, 'left');
+        t.btn('ham', 40, 274, 450, 80, 'Hammers', () => { pc.page = 'hammers'; }, { tone: 'bad' });
+        // Napis z rolą nad własną głową (OWNER, CO-ADMIN, MODERATOR...) można ukryć albo pokazać
+        const hidden = !!SAVE.profile.hideTag;
+        t.btn('tag', 534, 274, 450, 80, hidden ? 'Role tag: hidden' : 'Role tag: shown', () => setHideTag(!hidden), { tone: hidden ? undefined : 'ok', size: 26 });
+        t.text('Moderators can enter this room, kick and ban players with a lower rank.', 40, 410, 20, AMBER, 'left');
+        t.text('Kick hammer: throws a player out of the room, they can come back.', 40, 446, 20, AMBER, 'left');
+        t.text('Ban hammer: the player cannot join any game for one day.', 40, 482, 20, AMBER, 'left');
+        t.text('Swing the hammer and hit a player on the head or body. Grab it any time in the pause menu.', 40, 518, 20, AMBER_DIM, 'left');
+        t.text('Role tag: the sign with your role above your name, seen by everyone.', 40, 554, 20, AMBER_DIM, 'left');
     } else if (pc.page === 'mods') {
         t.header('Moderators', null, null, () => { pc.page = 'home'; });
         t.text('Fixed: ' + MOD_NAMES.join(', '), 40, 100, 22, AMBER_DIM, 'left');
