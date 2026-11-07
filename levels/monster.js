@@ -9,19 +9,21 @@ import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { levelReward } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
-import { hands } from '../core/player.js';
+import { hands, setPlayerPosition } from '../core/player.js';
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions } from '../core/levelkit.js';
 import { ARRIVAL_FROM_MONSTER } from './games.js';
 
-const A = 15, H = 10;                       // hala 30 x 30 m
+const A = 30, H = 12;                       // stacja kolejowa 60 x 60 m
+const MONSTER_SPAWN = [0, 1.0, -26];        // potwór zaczyna na torach w głębi stacji
+const SURVIVOR_SPAWN = [[-18, 2.2, 26], [18, 2.2, 26], [-12, 2.2, 24], [12, 2.2, 24], [-22, 2.2, 22], [22, 2.2, 22]];   // reszta na peronach przy wejściu
 const WAIT = 10, ROUND = 120, RESULTS = 8, REWARD = 200;
 const CATCH_DIST = 0.5;                     // dłoń potwora tak blisko głowy lub tułowia = złapany
 const BOT_SPEED = 3.0, BOT_SPEED_MAX = 4.2, BOT_REACH_Y = 2.8;
 const MONSTER_BOOST = 1.15;                 // potwór jest trochę szybszy
-export const info = { id: 'monster', name: 'Become the Monster', spawn: [0, 1.0, 12.5] };
+export const info = { id: 'monster', name: 'Become the Monster', spawn: [0, 1.0, 27.5] };
 let S = null;
 const _p = new THREE.Vector3(), _h = new THREE.Vector3();
 
@@ -46,16 +48,59 @@ export function build() {
     N.onLevelMsg(onNet);
 }
 
-// Hala magazynowa: kontenery, wieże i niskie murki do ucieczki i wspinaczki
+// Stacja kolejowa: dwa perony, tory z pociągiem, kładka nad torami, filary, ławki, kasa,
+// automaty i szyby wentylacyjne (puste w środku), którymi można się przeczołgać i uciec
 function buildArena() {
-    addCrispBlock(0, -0.5, 0, A * 2 + 2, 1, A * 2 + 2, 0x8a8a90, 0x101018, tex.floor, { rough: tex.floorRough });
+    const P = 1.2;   // wysokość peronu
+    addCrispBlock(0, -0.5, 0, A * 2 + 2, 1, A * 2 + 2, 0x6a6a6e, 0x101018, tex.floor, { rough: tex.floorRough });
     addCrispBlock(0, H + 0.5, 0, A * 2 + 2, 1, A * 2 + 2, 0x2a2a30, 0x101018);
-    for (const [x, z, w, d] of [[0, -A - 0.5, A * 2 + 2, 1], [0, A + 0.5, A * 2 + 2, 1], [-A - 0.5, 0, 1, A * 2], [A + 0.5, 0, 1, A * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x6a6e74, 0x101018);
-    const cont = [[-8, -6, 2.4, 6, 0x7a2a1a], [-8, -6, 2.4, 6, 0x2a4a7a, 2.6], [7, -8, 6, 2.4, 0x2a6a3a], [6, 4, 2.4, 6, 0x7a6a1a], [-6, 6, 6, 2.4, 0x5a2a6a], [0, -1, 2.4, 2.4, 0x4a4a52]];
-    for (const c of cont) addCrispBlock(c[0], (c[5] || 0) + 1.3, c[1], c[2], 2.6, c[3], c[4], 0x0a0a0a, tex.wall);
-    for (const [x, z, h] of [[11, 11, 3.5], [-11, -12, 4.5], [11, -2, 2.2], [-12, 1, 3]]) addCrispBlock(x, h / 2, z, 2, h, 2, 0x5a5a60, 0x101018);
-    for (const [x, z, w, d] of [[2, 8, 5, 0.4], [-2, -10, 0.4, 5], [10, 6, 0.4, 4]]) addCrispBlock(x, 0.6, z, w, 1.2, d, 0x6a6a70, 0x101018);
-    for (const [x, z, c] of [[-8, -8, 0x6080ff], [8, 8, 0x6080ff], [8, -8, 0xff8040], [-8, 8, 0xff8040], [0, 0, 0xffffff]]) { const l = new THREE.PointLight(c, 14, 16, 1.8); l.position.set(x, H - 1, z); L.root.add(l); }
+    for (const [x, z, w, d] of [[0, -A - 0.5, A * 2 + 2, 1], [0, A + 0.5, A * 2 + 2, 1], [-A - 0.5, 0, 1, A * 2], [A + 0.5, 0, 1, A * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0xd8d0b8, 0x2a2a20, tex.wall);
+    // Perony (żółta linia przy krawędzi) i tory w wykopie
+    for (const s of [-1, 1]) {
+        addCrispBlock(s * 19, P / 2, 0, 22, P, A * 2, 0x8a8a90, 0x101018, tex.floor, { rough: tex.floorRough });
+        const line = new THREE.Mesh(new THREE.PlaneGeometry(0.25, A * 2), new THREE.MeshBasicMaterial({ color: 0xf0c020 })); line.rotation.x = -Math.PI / 2; line.position.set(s * 8.4, P + 0.01, 0); L.root.add(line);
+    }
+    const rail = new THREE.MeshStandardMaterial({ color: 0x8a8a8a, metalness: 0.9, roughness: 0.3 }), tie = new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x4a3a2a, roughness: 0.9 });
+    for (const tx of [-4, 4]) {
+        for (const rx of [-0.72, 0.72]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, A * 2), rail); r.position.set(tx + rx, 0.07, 0); L.root.add(r); }
+        const ties = new THREE.InstancedMesh(new THREE.BoxGeometry(2.2, 0.08, 0.25), tie, 60);
+        const m4 = new THREE.Matrix4(); for (let i = 0; i < 60; i++) { m4.makeTranslation(tx, 0.04, -A + 0.5 + i); ties.setMatrixAt(i, m4); } L.root.add(ties);
+    }
+    // Pociąg na lewym torze: 3 wagony z oknami (dachy na 3,6 m, można na nie wejść)
+    const wc = T.makeCanvas(512, 256), wx = wc.getContext('2d');
+    wx.fillStyle = '#2a4a6a'; wx.fillRect(0, 0, 512, 256); wx.fillStyle = '#d8d0b0'; wx.fillRect(0, 170, 512, 20);
+    for (let i = 0; i < 4; i++) { wx.fillStyle = '#0a0e14'; wx.fillRect(30 + i * 122, 50, 92, 90); wx.fillStyle = 'rgba(120,160,200,0.25)'; wx.fillRect(34 + i * 122, 54, 40, 82); }
+    const wt = T.toTex(wc, false);
+    for (const z of [-20, -7, 6]) {
+        const car = addCrispBlock(-4, 1.9, z, 3.2, 3.4, 12, 0xffffff, 0x0a1018);
+        car.material.map = wt; car.material.needsUpdate = true;
+        addCrispBlock(-4, 3.65, z, 3.0, 0.15, 11.6, 0x3a3a40, 0x0a1018);
+    }
+    // Kładka nad torami ze schodami na obu peronach
+    addCrispBlock(0, 6.0, 16, 2 * A - 4, 0.3, 2.6, 0x5a5a62, 0x101018);
+    for (const s of [-1, 1]) for (let i = 0; i < 12; i++) addCrispBlock(s * 26, P + 0.2 + i * 0.4, 26.2 - i * 0.75, 2.6, 0.4, 0.75, 0x7a7a80, 0x101018);   // schody od strony wejścia
+    // Filary, ławki, kasa biletowa, automaty
+    for (const s of [-1, 1]) for (const z of [-22, -11, 0, 11, 22]) addCrispBlock(s * 12, P + (H - P) / 2, z, 0.8, H - P, 0.8, 0x9a9488, 0x202020);
+    for (const s of [-1, 1]) for (const z of [-16, -5, 5]) addCrispBlock(s * 17, P + 0.25, z, 2.2, 0.5, 0.6, 0x7a4a2a, 0x201010, tex.wood);
+    addCrispBlock(22, P + 1.3, -2, 4, 2.6, 3, 0x3a5a7a, 0x101820);
+    for (const z of [-20, -18]) addCrispBlock(-28.6, P + 1.0, z, 1.2, 2.0, 1.4, 0xc02020, 0x200808);
+    // Szyby wentylacyjne: puste w środku (1,3 m), wejścia z obu końców
+    duct(-20, P, -26, 16, 'x');           // w głębi lewego peronu
+    duct(21, P, 20, 12, 'z');             // wzdłuż prawego peronu
+    duct(0, 4.4, -10, 26, 'x');           // wysoko nad torami: z dachu wagonu na drugi peron
+    for (const s of [-1, 1]) for (let i = 0; i < 6; i++) addCrispBlock(s * 14.4, 1.8 + i * 0.5, -10 + (i % 2 ? 0.5 : -0.5), 0.7, 0.18, 0.5, 0x5a5a5a, 0x101010);   // półki do wysokiego szybu
+    // Świetlówki i światła
+    for (const s of [-1, 1]) for (const z of [-20, 0, 20]) { const l = new THREE.PointLight(0xe8f0ff, 22, 26, 1.6); l.position.set(s * 16, H - 1.5, z); L.root.add(l); }
+    for (const s of [-1, 0, 1]) for (let z = -A + 4; z < A; z += 8) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 2.4), new THREE.MeshBasicMaterial({ color: 0xe8f0ff })); f.position.set(s * 16, H - 0.1, z); L.root.add(f); }
+}
+// Pusty w środku szyb wentylacyjny o długości len wzdłuż osi 'x' albo 'z'; (x, y, z) = środek podłogi
+function duct(x, y, z, len, axis) {
+    const W = 1.5, Hh = 1.4, t = 0.12, col = 0x8a9098, edge = 0x202428, along = axis === 'x';
+    const box = (dx, dy, dz, w, h, d) => addCrispBlock(x + dx, y + dy, z + dz, along ? len : w, h, along ? d : len, col, edge);
+    box(0, Hh + t / 2, 0, W + 2 * t, t, W + 2 * t);                          // sufit
+    if (y > 0.5) box(0, -t / 2, 0, W + 2 * t, t, W + 2 * t);                 // podłoga (gdy szyb wisi wyżej)
+    if (along) { box(0, Hh / 2, -(W / 2 + t / 2), 0, Hh, t); box(0, Hh / 2, W / 2 + t / 2, 0, Hh, t); }
+    else { box(-(W / 2 + t / 2), Hh / 2, 0, t, Hh, 0); box(W / 2 + t / 2, Hh / 2, 0, t, Hh, 0); }
 }
 
 // ---------- SIEĆ I ROLA ----------
@@ -87,6 +132,9 @@ function broadcast() {
 }
 function startedRound() {
     S.rewarded = false;
+    // Potwór i uciekający startują w różnych końcach stacji
+    if (S.mon === 'me') setPlayerPosition(MONSTER_SPAWN[0], MONSTER_SPAWN[1], MONSTER_SPAWN[2]);
+    else { const sp = SURVIVOR_SPAWN[(Math.random() * SURVIVOR_SPAWN.length) | 0]; setPlayerPosition(sp[0] + (Math.random() - 0.5) * 2, sp[1], sp[2]); }
     if (S.mon === 'me') { toast('You are the MONSTER! Catch everyone!', '#ff4a2a'); SFX.roar(0.8); buzz('both', 0.8, 400); }
     else if (S.mon === 'bot') toast('The mannequin is hunting you. Survive 2 minutes!', '#ff6a4a');
     else toast('Run! Do not let the monster touch you!', '#ff6a4a');
@@ -107,7 +155,7 @@ function think(dt, p) {
             const parts = participants();
             S.mon = parts.length >= 2 ? parts[(Math.random() * parts.length) | 0] : 'bot';
             S.caught = new Set(); S.surv = []; S.phase = 'play'; S.t = ROUND;
-            if (S.mon === 'bot') { S.bot = { x: 0, z: -12, speed: BOT_SPEED }; }
+            if (S.mon === 'bot') { S.bot = { x: MONSTER_SPAWN[0], z: MONSTER_SPAWN[2], speed: BOT_SPEED }; }
             startedRound();
         }
     } else if (S.phase === 'play') {
