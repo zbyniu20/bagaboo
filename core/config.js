@@ -67,6 +67,16 @@ LIGHT_PRESETS.staff = {
     hemiSky: 0xffe0c0, hemiGround: 0x3a2a20, hemiIntensity: 1.3,
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.4, flashlight: null
 };
+LIGHT_PRESETS.laundry = {
+    background: 0xb8bcc0, fogColor: 0xb8bcc0, fogDensity: 0.085, exposure: 1.05,   // gęsta para: widać ok. 10-12 m
+    hemiSky: 0xe0e8f0, hemiGround: 0x4a4440, hemiIntensity: 1.5,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.4, flashlight: { color: 0xfff4e0, intensity: 40, distance: 18, angle: 0.5, penumbra: 0.7, decay: 2 }
+};
+LIGHT_PRESETS.station = {
+    background: 0x0a0c10, fogColor: 0x10141a, fogDensity: 0.02, exposure: 1.15,
+    hemiSky: 0x9ab0d0, hemiGround: 0x2a2620, hemiIntensity: 1.2,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3, flashlight: null
+};
 LIGHT_PRESETS.arcade = {
     background: 0x08060c, fogColor: 0x0c0814, fogDensity: 0.012, exposure: 1.1,
     hemiSky: 0x8a6aff, hemiGround: 0x200a20, hemiIntensity: 0.9,
@@ -77,8 +87,9 @@ LIGHT_PRESETS.arcade = {
 // Admin ma wszystkie uprawnienia. Moderatorzy: wejście do pokoju szefa, młotki, wyrzucanie i bany (poza adminem).
 export const ULTIMATE_NAMES = ['zbyniu'];
 export const ADMIN_NAMES = ['BoyIsGamer'];
+export const COADMIN_NAMES = ['spikyvr'];   // co-admin: uprawnienia admina, własny napis CO-ADMIN i odznaka
 export const OWNER_NAMES = ['BoyIsGamer'];   // właściciel gry: napis OWNER nad głową i odznaka Owner
-export const MOD_NAMES = ['spikyvr', 'lincolnvr'];
+export const MOD_NAMES = ['lincolnvr'];
 // Zastrzeżone nicki: żeby grać pod tym nickiem, trzeba podać hasło na stronie startowej.
 // Wartość to skrót SHA-256 z tekstu "bagaboo:" + nick małymi literami + ":" + hasło.
 // Nowy skrót wygenerujesz narzędziem na stronie z plikami do wgrania (sekcja "Hasła do nicków").
@@ -98,7 +109,17 @@ export function setLocalMod(name, on) {
 }
 export function isOwnerName(name) { return OWNER_NAMES.some(n => low(n) === low(name)); }
 export function isUltimateName(name) { return ULTIMATE_NAMES.some(n => low(n) === low(name)); }
-export function isAdminName(name) { return isUltimateName(name) || ADMIN_NAMES.some(n => low(n) === low(name)); }
+export function isCoAdminName(name) { return COADMIN_NAMES.some(n => low(n) === low(name)); }
+export function isAdminName(name) { return isUltimateName(name) || isCoAdminName(name) || ADMIN_NAMES.some(n => low(n) === low(name)); }
+// Napis z rolą nad głową (null = brak). Gracz z ekipy może go ukryć w pokoju szefa.
+export function roleTagFor(name) {
+    if (isUltimateName(name)) return { text: 'ULTIMATE ADMIN', color: '#ffe070', glow: '#ffb000' };
+    if (isOwnerName(name)) return { text: 'OWNER', color: '#ff5a7a', glow: '#ff1a40' };
+    if (isCoAdminName(name)) return { text: 'CO-ADMIN', color: '#5af0ff', glow: '#00b0ff' };
+    if (isAdminName(name)) return { text: 'ADMIN', color: '#ff8a5a', glow: '#ff4a10' };
+    if (isModName(name)) return { text: 'MODERATOR', color: '#8ab8ff', glow: '#3a6aff' };
+    return null;
+}
 // Ranga: 3 ultimate admin, 2 admin, 1 moderator, 0 gracz. Wyrzucić / zbanować można tylko kogoś z niższą rangą.
 export function rankOf(name) { return isUltimateName(name) ? 3 : (isAdminName(name) ? 2 : (isModName(name) ? 1 : 0)); }
 export function isModName(name) { return MOD_NAMES.some(n => low(n) === low(name)) || localMods().includes(low(name)); }
