@@ -9,6 +9,7 @@ let ctx = null, master = null, droneGain = null, scareBus = null, shaper = null;
 const DRONE = 0.07;
 const hb = { next: 0 };
 
+export function getAudioContext() { return ctx; }
 export function initAudio() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -266,4 +267,46 @@ export function splat(pos) {
     const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth';
     o.frequency.setValueAtTime(900, t0); o.frequency.exponentialRampToValueAtTime(140, t0 + 0.35);
     env(g, t0, 0.4, 0.005, 0.35); o.connect(g); g.connect(dst); o.start(t0); o.stop(t0 + 0.4);
+}
+
+// ---------- PRALNIA ----------
+// Wysoki, przeszywający pisk Szmaciarza, gdy zauważy gracza (głośny, przez kanał straszaków)
+export function screech(pos) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, dst = pos ? outAt(pos, scareBus) : scareBus;
+    for (const [f0, f1, d] of [[1500, 3400, 0.9], [2100, 4200, 0.75], [900, 1900, 1.0]]) {
+        const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth';
+        o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(f1, t0 + d * 0.6); o.frequency.exponentialRampToValueAtTime(f0 * 0.8, t0 + d);
+        env(g, t0, 0.35, 0.01, d); o.connect(g); g.connect(dst); o.start(t0); o.stop(t0 + d + 0.05);
+    }
+    const n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.8);
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3000;
+    const ng = ctx.createGain(); env(ng, t0, 0.5, 0.005, 0.7); n.connect(hp); hp.connect(ng); ng.connect(dst); n.start(t0);
+    duckDrone(t0); lastLoud = t0;
+    buzz('both', 0.8, 400);
+}
+// Syk gorącej pary z rury
+export function hiss(pos, vol) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, n = ctx.createBufferSource(); n.buffer = noiseBuffer(2.2);
+    const bp = ctx.createBiquadFilter(); bp.type = 'highpass'; bp.frequency.value = 2200;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(0.6 * (vol || 1), t0 + 0.05); g.gain.exponentialRampToValueAtTime(0.001, t0 + 2.0);
+    n.connect(bp); bp.connect(g); g.connect(pos ? outAt(pos) : master); n.start(t0);
+}
+// Pisk mokrych dłoni na mydlinach
+export function squeak(pos) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'square';
+    o.frequency.setValueAtTime(900 + Math.random() * 400, t0); o.frequency.linearRampToValueAtTime(1600 + Math.random() * 600, t0 + 0.18);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
+    env(g, t0, 0.35, 0.01, 0.22); o.connect(lp); lp.connect(g); g.connect(pos ? outAt(pos) : master); o.start(t0); o.stop(t0 + 0.3);
+}
+// Dzwonek: brama otwarta
+export function bell() {
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    for (let k = 0; k < 3; k++) for (const f of [880, 1320, 2210]) {
+        const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f;
+        env(g, t0 + k * 0.45, 0.25 / (f / 880), 0.003, 1.4); o.connect(g); g.connect(master); o.start(t0 + k * 0.45); o.stop(t0 + k * 0.45 + 1.5);
+    }
 }
