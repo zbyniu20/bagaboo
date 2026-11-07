@@ -8,6 +8,7 @@ import { createAvatar, poseHand, lookKey } from './avatar.js';
 import { getLook, SESSION, SAVE } from './economy.js';
 import { markAllDirty, toast } from './terminal.js';
 import { rankOf, setLocalMod } from './config.js';
+import { getAudioContext } from './audio.js';
 
 /* global Peer */
 export const GAME_PREFIX = 'bagaboo-vr-v3-';
@@ -85,7 +86,7 @@ const statusDiv = document.getElementById('status');
 export async function initMic() {
     try {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            voice.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            voice.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
             statusDiv.innerText = 'Mic access granted. Ready to play.';
         } else statusDiv.innerText = 'Mic not supported (HTTPS required). Voice disabled.';
     } catch (e) { statusDiv.innerText = 'Mic access denied. Voice chat disabled.'; }
@@ -94,12 +95,63 @@ export function sanitizeCode(c) { return String(c || '').toUpperCase().replace(/
 export function setStatus(msg) { NET.status = msg; statusDiv.innerText = msg; markAllDirty(); }
 export function isHostId(id) { return id === GAME_PREFIX + NET.code; }
 
+// ---------- GŁOS ----------
+// Głos gracza gra przez kontekst dźwięku gry (odblokowany kliknięciem w menu), więc przeglądarka go nie blokuje.
+// Element <audio> (wyciszony) jest potrzebny, bo bez niego Chrome nie oddaje dźwięku ze strumienia WebRTC.
+const voiceGain = {}, voiceCalls = {};
+let meshT = 0;
+let silent = null;
+// Cisza zamiast mikrofonu: gracz bez mikrofonu (albo bez zgody) nadal słyszy innych
+function outStream() {
+    if (voice.stream) return voice.stream;
+    if (silent) return silent;
+    const ac = getAudioContext(); if (!ac) return null;
+    const dst = ac.createMediaStreamDestination(); silent = dst.stream; return silent;
+}
 function playAudioStream(stream, peerId) {
     removeAudio(peerId);
-    const a = document.createElement('audio'); a.srcObject = stream; a.autoplay = true; a.muted = mutedPeers.has(peerId);
-    document.getElementById('audio-container').appendChild(a); audioEls[peerId] = a; markAllDirty();
+    const a = document.createElement('audio'); a.srcObject = stream; a.autoplay = true; a.muted = true; a.playsInline = true;
+    document.getElementById('audio-container').appendChild(a); audioEls[peerId] = a;
+    a.play().catch(() => {});
+    const ac = getAudioContext();
+    if (ac) {
+        try {
+            const src = ac.createMediaStreamSource(stream), g = ac.createGain();
+            g.gain.value = mutedPeers.has(peerId) ? 0 : 1.6;
+            src.connect(g); g.connect(ac.destination); voiceGain[peerId] = { src: src, g: g };
+            if (ac.state !== 'running') ac.resume().catch(() => {});
+        } catch (e) { a.muted = mutedPeers.has(peerId); }
+    } else a.muted = mutedPeers.has(peerId);
+    markAllDirty();
 }
-function removeAudio(id) { if (audioEls[id]) { audioEls[id].srcObject = null; audioEls[id].remove(); delete audioEls[id]; } }
+function removeAudio(id) {
+    if (voiceGain[id]) { try { voiceGain[id].src.disconnect(); voiceGain[id].g.disconnect(); } catch (e) {} delete voiceGain[id]; }
+    if (voiceCalls[id]) { try { voiceCalls[id].close(); } catch (e) {} delete voiceCalls[id]; }
+    if (audioEls[id]) { audioEls[id].srcObject = null; audioEls[id].remove(); delete audioEls[id]; }
+}
+function answerCall(call) {
+    const s = outStream(); if (s) call.answer(s); else call.answer();
+    voiceCalls[call.peer] = call;
+    call.on('stream', (st) => playAudioStream(st, call.peer));
+    call.on('close', () => { if (voiceCalls[call.peer] === call) delete voiceCalls[call.peer]; });
+}
+function callPeer(id) {
+    if (!peer || voiceCalls[id]) return;
+    const s = outStream(); if (!s) return;
+    const call = peer.call(id, s); if (!call) return;
+    voiceCalls[id] = call;
+    call.on('stream', (st) => playAudioStream(st, id));
+    call.on('close', () => { if (voiceCalls[id] === call) delete voiceCalls[id]; });
+    call.on('error', () => { if (voiceCalls[id] === call) delete voiceCalls[id]; });
+}
+// Gość łączy się głosowo z każdym innym gościem (każdą parę łączy ten z "mniejszym" id), więc wszyscy słyszą wszystkich
+function meshVoice() {
+    if (NET.mode !== 'guest') return;
+    for (const id in playersState) {
+        if (id === myPeerId || isHostId(id) || voiceCalls[id]) continue;
+        if (myPeerId < id) callPeer(id);
+    }
+}
 
 // --- Awatary innych graczy ---
 function updateRemote(id, st) {
@@ -162,7 +214,7 @@ export function startHost(code, cb) {
         if (cb.fail) cb.fail();
     });
     p.on('connection', handleGuest);
-    p.on('call', (call) => { if (voice.stream) call.answer(voice.stream); else call.answer(); call.on('stream', (s) => playAudioStream(s, call.peer)); });
+    p.on('call', answerCall);
 }
 function handleGuest(conn) {
     conn.on('open', () => {
@@ -211,6 +263,7 @@ export function startJoin(code, cb) {
     resetPeer(); NET.busy = true; NET.code = code; setStatus('Looking for the host of room ' + code + '...');
     const p = new Peer(); peer = p;
     const to = setTimeout(() => { if (peer === p && NET.busy) { leaveNetwork('No host is online in room ' + code + '. The host has to log in first.'); if (cb.fail) cb.fail(); } }, 9000);
+    p.on('call', answerCall);   // inni goście dzwonią do nas głosowo
     p.on('open', (id) => {
         myPeerId = id;
         const conn = p.connect(GAME_PREFIX + code, { reliable: true }); hostConnection = conn;
@@ -218,7 +271,7 @@ export function startJoin(code, cb) {
             clearTimeout(to); NET.busy = false; NET.mode = 'guest';
             setStatus('Joined room ' + code + ' as a guest.');
             if (cb.ok) cb.ok();
-            if (voice.stream) { const call = p.call(GAME_PREFIX + code, voice.stream); if (call) call.on('stream', (s) => playAudioStream(s, call.peer)); }
+            callPeer(GAME_PREFIX + code);   // głos z hostem (także bez mikrofonu, żeby słyszeć innych)
         });
         conn.on('data', (data) => {
             if (!data) return;
@@ -234,11 +287,11 @@ export function startJoin(code, cb) {
             if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, 'host'); return; }
             if (data.type === 'follow') { if (followHandler) followHandler(data.level, data.data || {}); return; }
             if (data.type === 'invite') { if (inviteHandler) inviteHandler(data.level); return; }
-            if (data.type === 'gameState') {
+            if (data.type === 'gameState') { if (performance.now() - (meshT || 0) > 2000) { meshT = performance.now(); setTimeout(meshVoice, 0); }
                 const pl = data.payload.players || {};
                 for (const pId in pl) { if (pId === myPeerId) continue; playersState[pId] = pl[pId]; updateRemote(pId, pl[pId]); }
                 for (const pId in remoteAvatars) if (!pl[pId]) removeRemote(pId);
-                for (const pId in playersState) if (!pl[pId]) delete playersState[pId];
+                for (const pId in playersState) if (!pl[pId]) { delete playersState[pId]; removeAudio(pId); }
                 const objs = data.payload.objects || {};
                 for (const objId in objs) if (L.heldId !== objId) syncObject(objId, objs[objId]);
             }
@@ -263,7 +316,11 @@ export function sendReport(target, reason) {
         setStatus('Report saved for ' + target.name + '.');
     }
 }
-export function toggleMute(id) { if (mutedPeers.has(id)) mutedPeers.delete(id); else mutedPeers.add(id); if (audioEls[id]) audioEls[id].muted = mutedPeers.has(id); }
+export function toggleMute(id) {
+    if (mutedPeers.has(id)) mutedPeers.delete(id); else mutedPeers.add(id);
+    if (voiceGain[id]) voiceGain[id].g.gain.value = mutedPeers.has(id) ? 0 : 1.6;
+    else if (audioEls[id]) audioEls[id].muted = mutedPeers.has(id);
+}
 export function toggleVoice() {
     voice.on = !voice.on;
     if (voice.stream) voice.stream.getAudioTracks().forEach(t => t.enabled = voice.on);
