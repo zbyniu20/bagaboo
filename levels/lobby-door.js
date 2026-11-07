@@ -4,10 +4,10 @@
 import { THREE, L, tex, camera, addStaticBody, CANNON } from '../core/engine.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { LP, GFX, isStaffName, isOwnerName } from '../core/config.js';
+import { LP, GFX, isStaffName } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { toast } from '../core/terminal.js';
-import { createHead, createGorillaTorso, createGorillaArm, placeArm, buildHat, ultimateLabel, ownerLabel, ULTIMATE_SCALE } from '../core/avatar.js';
+import { createHead, createGorillaTorso, createGorillaArm, placeArm, buildHat, addRoleTag, ULTIMATE_SCALE } from '../core/avatar.js';
 import { getLook, onLookChange, unlockItem, recordTime, unlockAchievement } from '../core/economy.js';
 import { hands } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -19,7 +19,9 @@ export const ARRIVAL = [DOOR_X, 1.2, 13.2];          // tu pojawia się gracz po
 export const ARRIVAL_SILENCE = [SILENCE_X, 1.2, 13.2];   // ...po powrocie z trybu Cisza
 export const ARRIVAL_WELL = [WELL_X, 1.2, 13.2];         // ...po powrocie ze Studni
 export const ARRIVAL_GAMES = [LAVA_X, 1.2, 13.2];        // ...z salonu BagaBoo Games
-export const ARRIVAL_STAFF = [-13.2, 1.2, STAFF_Z];      // ...i z pokoju szefa
+export const ARRIVAL_STAFF = [-13.2, 1.2, STAFF_Z];      // ...z pokoju szefa
+const LAUNDRY_Z = 1.5;   // drzwi do Pralni we wschodniej ścianie
+export const ARRIVAL_LAUNDRY = [13.2, 1.2, LAUNDRY_Z];   // ...i z Pralni
 const MIRROR = { x: -14.93, z: 3.2, w: 1.6, h: 2.3 };   // lustro na zachodniej ścianie, obok sklepu
 const MIRROR_LAYER = 5;                          // warstwa widoczna tylko w lustrze (twoja głowa i tułów)
 const ENV = LP.envIntensity;
@@ -28,7 +30,7 @@ const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Eule
 
 // Wołane przed budową lobby: manekiny nie staną przed drzwiami ani przed lustrem
 export function prebuild() {
-    L.reserved.push([DOOR_X, 13.4, 3.0], [SILENCE_X, 13.4, 3.0], [WELL_X, 13.4, 3.0], [LAVA_X, 13.4, 2.6], [-13.4, STAFF_Z, 2.6], [-13.6, MIRROR.z, 2.6], [12, -13.4, 2.2]);
+    L.reserved.push([DOOR_X, 13.4, 3.0], [SILENCE_X, 13.4, 3.0], [WELL_X, 13.4, 3.0], [LAVA_X, 13.4, 2.6], [-13.4, STAFF_Z, 2.6], [13.4, LAUNDRY_Z, 2.6], [-13.6, MIRROR.z, 2.6], [12, -13.4, 2.2]);
 }
 
 export function build() {
@@ -37,6 +39,9 @@ export function build() {
     buildDoor(WELL_X, 'THE WELL', '#b8ffcf', 0x30ff90, 'well', 'Do not look down...');
     buildDoor3({ x: LAVA_X, z: WALL_Z, rotY: Math.PI, label: 'BAGABOO GAMES', font: 'bold 54px serif', color: '#d080ff', glow: 0xa040ff, rust: true, signY: 3.5, signZ: 0.32, hanging: true, collider: true, ao: true,
         portal: { target: 'games', onEnter: () => toast('Welcome to BagaBoo Games', '#d080ff') } });
+    // Pralnia Przemysłowa: drzwi we wschodniej ścianie
+    buildDoor3({ x: 14.97, z: LAUNDRY_Z, rotY: -Math.PI / 2, label: 'LAUNDROMAT', color: '#ff7ac0', glow: 0xff3aa0, rust: true, signY: 3.5, signZ: 0.32, hanging: true, collider: true, ao: true,
+        portal: { target: 'laundry', onEnter: () => toast('Something is walking between the washers...', '#ff7ac0') } });
     // Pokój szefa: wchodzi tylko gracz z nickiem z listy STAFF_NAMES (config.js); inni tylko na zaproszenie
     buildDoor3({ x: -14.97, z: STAFF_Z, rotY: Math.PI / 2, label: 'STAFF ONLY', color: '#ffd27a', glow: 0xffb040, wood: 0x4a3020, signY: 2.7, collider: true, ao: true,
         portal: { target: 'staff', opts: { noFollow: true }, cond: () => isStaffName(getLook().name), deny: 'Staff only. Ask the game owner for an invite.', onEnter: () => toast('Welcome to the staff room', '#ffd27a') } });
@@ -76,8 +81,8 @@ function buildMe(look) {
     const head = createHead(look, false), torso = createGorillaTorso(look), armL = createGorillaArm(look), armR = createGorillaArm(look);
     const sc = look.skin === 'ultimate' ? ULTIMATE_SCALE : 1;   // ultimate admin w lustrze też jest 2 razy większy
     head.scale.setScalar(sc); torso.scale.setScalar(sc);
-    if (sc > 1) { const lab = ultimateLabel(); lab.position.set(0, 0.62, 0); head.add(lab); for (const a of [armL, armR]) a.geometry = a.geometry.clone().scale(sc, 1, sc); }
-    if (isOwnerName(look.name)) { const lab = ownerLabel(); lab.position.set(0, 0.62, 0); head.add(lab); }   // napis OWNER widać też w lustrze
+    if (sc > 1) for (const a of [armL, armR]) a.geometry = a.geometry.clone().scale(sc, 1, sc);
+    addRoleTag(head, look);   // napis z rolą widać też w lustrze
     for (const o of [head, torso, armL, armR]) { o.traverse(c => c.layers.set(MIRROR_LAYER)); L.root.add(o); }
     me = { head: head, torso: torso, armL: armL, armR: armR, drop: 0.35 * sc };
 }
