@@ -7,6 +7,8 @@ import { THREE, scene, camera, renderer } from './engine.js';
 import { Terminal, AMBER, AMBER_DIM, GOLD, OK_COL } from './terminal.js';
 import { SETTINGS, saveSettings } from './settings.js';
 import * as SFX from './audio.js';
+import { SAVE, CATALOG, isOwned, equipItem } from './economy.js';
+import { isStaffName } from './config.js';
 
 export const PAUSE = { on: false, onLobby: null, inLobby: true };
 const prev = new Map();
@@ -32,9 +34,15 @@ export const pauseMenu = new Terminal((t) => {
     t.text('Comfort vignette', 60, 486, 28, AMBER, 'left', true);
     t.btn('vig', 380, 460, 260, 56, SETTINGS.vignette ? 'On' : 'Off', () => { SETTINGS.vignette = !SETTINGS.vignette; saveSettings(); }, { tone: SETTINGS.vignette ? 'ok' : undefined });
     t.btn('hap', 680, 460, 280, 56, SETTINGS.haptics ? 'Vibration on' : 'Vibration off', () => { SETTINGS.haptics = !SETTINGS.haptics; saveSettings(); }, { tone: SETTINGS.haptics ? 'ok' : undefined, size: 24 });
-    t.text('Vignette darkens the edges of your view when you move fast.', 60, 540, 20, AMBER_DIM, 'left');
-    t.text('Graphics quality: ' + SETTINGS.quality + ' (change it in the main menu).', 60, 580, 20, AMBER_DIM, 'left');
-    t.text('Press Y, B or the stick again to resume.', 60, 614, 20, OK_COL, 'left');
+    // Młotek do ręki w każdej chwili (tylko ekipa: moderatorzy i admini)
+    if (isStaffName(SAVE.profile.name)) {
+        const tool = SAVE.equipped.tool, item = (id) => CATALOG.find(it => it.slot === 'tool' && it.id === id);
+        t.text('Hammer', 60, 562, 28, AMBER, 'left', true);
+        t.btn('hNone', 300, 536, 200, 52, 'None', () => equipItem(item('none')), { size: 24, active: tool === 'none' });
+        t.btn('hKick', 520, 536, 200, 52, 'Kick', () => equipItem(item('kick')), { size: 24, tone: 'gold', active: tool === 'kick', disabled: !isOwned(item('kick')) });
+        t.btn('hBan', 740, 536, 220, 52, isOwned(item('ban')) ? 'Ban' : 'Ban (staff room)', () => equipItem(item('ban')), { size: isOwned(item('ban')) ? 24 : 18, tone: 'bad', active: tool === 'ban', disabled: !isOwned(item('ban')) });
+    } else t.text('Vignette darkens the edges of your view when you move fast.', 60, 552, 20, AMBER_DIM, 'left');
+    t.text('Graphics: ' + SETTINGS.quality + ' (main menu).  Press Y, B or the stick again to resume.', 60, 614, 20, OK_COL, 'left');
     t.scanlines();
 });
 const mesh = pauseMenu.createMesh(0.96, 0.6);
