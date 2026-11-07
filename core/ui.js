@@ -124,8 +124,12 @@ export const shop = new Terminal((t) => {
     if (shopUi.tab === 'shop') {
         E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * 139, 152, 131, 46, s.name, () => { shopUi.slot = s.id; }, { size: 19, tone: 'gold', active: shopUi.slot === s.id }));
         const items = E.CATALOG.filter(it => it.slot === shopUi.slot);
-        const step = items.length > 9 ? 42 : (items.length > 8 ? 47 : 50);   // przy dłuższych listach wiersze są niższe
-        items.forEach((it, i) => {
+        // Długie listy dzielone na strony po 8 przedmiotów
+        const PER = 8, pages = Math.max(1, Math.ceil(items.length / PER));
+        if (shopUi.pageSlot !== shopUi.slot) { shopUi.pageSlot = shopUi.slot; shopUi.pg = 0; }
+        shopUi.pg = Math.min(shopUi.pg || 0, pages - 1);
+        const step = 47;
+        items.slice(shopUi.pg * PER, shopUi.pg * PER + PER).forEach((it, i) => {
             const y = 208 + i * step, owned = E.isOwned(it), worn = E.isEquipped(it), trying = shopUi.tryItem === it;
             c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, step - 6);
             t.text(it.name, 40, y + 22, 24, worn ? OK_COL : GOLD, 'left', true);
@@ -137,7 +141,11 @@ export const shop = new Terminal((t) => {
             else if (locked) t.btn('lock' + it.id, 790, y + 4, 200, 36, 'Locked', null, { size: 20, disabled: true });
             else t.btn('buy' + it.id, 790, y + 4, 200, 36, E.SAVE.wallet >= it.price ? 'Buy' : 'Need ' + (it.price - E.SAVE.wallet), () => { E.buyItem(it); }, { size: 20, tone: 'gold', disabled: E.SAVE.wallet < it.price });
         });
-        if (items.length <= 8) t.text('Look at the stand next to the machine to see the item on a head.', 40, 626, 18, AMBER_DIM, 'left');
+        if (pages > 1) {
+            t.btn('pgPrev', 40, 590, 180, 40, 'Previous', () => { shopUi.pg--; }, { size: 20, disabled: shopUi.pg === 0 });
+            t.text('Page ' + (shopUi.pg + 1) + ' of ' + pages, 512, 610, 20, AMBER, 'center');
+            t.btn('pgNext', 804, 590, 180, 40, 'Next', () => { shopUi.pg++; }, { size: 20, disabled: shopUi.pg >= pages - 1 });
+        } else t.text('Look at the stand next to the machine to see the item on a head.', 40, 610, 18, AMBER_DIM, 'left');
     } else if (shopUi.tab === 'daily') {
         t.text('Login reward every 6 hours', 40, 176, 30, GOLD, 'left', true);
         t.text('Current streak: ' + login.streak + '   Next reward: ' + login.nextAmount + ' ' + E.CURRENCY, 40, 222, 24, AMBER, 'left');
