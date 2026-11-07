@@ -7,7 +7,7 @@
 // rzadkie (2200-3500) w 3-5 dni, a legendarne (6000) w około tydzień regularnej gry.
 // ==========================================
 import { toast, markAllDirty } from './terminal.js';
-import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName } from './config.js';
+import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName } from './config.js';
 
 const SAVE_KEY = 'bagaboo_save_v1';
 export const LOGIN_INTERVAL = 6 * 3600 * 1000;      // nagroda za logowanie co 6 godzin
@@ -25,6 +25,7 @@ export const CATALOG = [
     { slot: 'hat', id: 'cowboy', name: 'Dusty cowboy hat', price: 1000 },
     { slot: 'hat', id: 'horns', name: 'Demon horns', price: 2500 },
     { slot: 'hat', id: 'crown', name: 'Rotten crown', price: 3000 },
+    { slot: 'hat', id: 'ushanka', name: 'Ushanka (earflap hat)', price: 1000 },
     { slot: 'hat', id: 'halo', name: 'Broken halo', price: 4500 },
     { slot: 'hat', id: 'miner', name: "Miner's helmet", price: 0, locked: true, hint: 'Achievement' },
     { slot: 'glasses', id: 'none', name: 'No glasses', price: 0 },
@@ -65,6 +66,7 @@ export const CATALOG = [
     { slot: 'badge', id: 'crown', name: 'Parkour King', price: 0, locked: true, hint: 'Red route' },
     { slot: 'badge', id: 'owner', name: 'Owner', price: 0, locked: true, hint: 'Owner' },
     { slot: 'badge', id: 'ultimate', name: 'Ultimate admin', price: 0, locked: true, hint: 'Ultimate' },
+    { slot: 'badge', id: 'coadmin', name: 'Co-admin', price: 0, locked: true, hint: 'Co-admin' },
     { slot: 'badge', id: 'admin', name: 'Admin', price: 0, locked: true, hint: 'Admin' },
     { slot: 'badge', id: 'mod', name: 'Moderator', price: 0, locked: true, hint: 'Moderator' },
     // Młotki (kupowane i zakładane na komputerze w pokoju szefa, nie w sklepie)
@@ -113,7 +115,7 @@ export const ACHIEVEMENTS = [
     { id: 'completionist', name: 'Completionist', desc: 'Beat all three levels and become Parkour King', reward: ['skin', 'bloodmoon'], rewardName: 'Bloodmoon skin' }
 ];
 export const RECORDS = [
-    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'route', name: 'Red route' }, { id: 'range', name: 'Shooting range (kills)', score: true }
+    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'route', name: 'Red route' }, { id: 'range', name: 'Shooting range (kills)', score: true }
 ];
 export const HEIGHT_RECORD_BONUS = 10;   // za każdy nowy metr rekordu wysokości
 export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dnia
@@ -195,17 +197,20 @@ export function onLookChange(fn) { lookListeners.push(fn); }
 function notifyLook() { const l = getLook(); lookListeners.forEach(f => f(l)); markAllDirty(); }
 export function getLook() {
     // Ultimate admin jest zawsze cały złoty
-    return { name: SAVE.profile.name, skin: isUltimateName(SAVE.profile.name) ? 'ultimate' : SAVE.equipped.skin, badge: SAVE.equipped.badge, tool: SAVE.equipped.tool, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
+    return { name: SAVE.profile.name, hideTag: !!SAVE.profile.hideTag, skin: isUltimateName(SAVE.profile.name) ? 'ultimate' : SAVE.equipped.skin, badge: SAVE.equipped.badge, tool: SAVE.equipped.tool, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
 }
+// Ukrywanie własnego napisu z rolą nad głową (przełącznik w pokoju szefa)
+export function setHideTag(on) { SAVE.profile.hideTag = !!on; saveGame(); notifyLook(); }
 export function setProfile(p) { Object.assign(SAVE.profile, p); refreshStaffItems(); saveGame(); notifyLook(); }
 // Odznaki Admin / Moderator i młotek Kick należą się tylko ekipie (wg nicku); reszcie są zabierane
 export function refreshStaffItems() {
     const n = SAVE.profile.name, give = (key, on) => { const has = SAVE.owned.includes(key); if (on && !has) SAVE.owned.push(key); if (!on && has) SAVE.owned.splice(SAVE.owned.indexOf(key), 1); };
-    give('badge:owner', isOwnerName(n)); give('badge:ultimate', isUltimateName(n)); give('badge:admin', isAdminName(n)); give('badge:mod', isModName(n) && !isAdminName(n)); give('tool:kick', isStaffName(n));
+    give('badge:owner', isOwnerName(n)); give('badge:coadmin', isCoAdminName(n)); give('badge:ultimate', isUltimateName(n)); give('badge:admin', isAdminName(n)); give('badge:mod', isModName(n) && !isAdminName(n)); give('tool:kick', isStaffName(n));
     if (!isStaffName(n)) { if (SAVE.equipped.tool !== 'none') SAVE.equipped.tool = 'none'; }
     if (SAVE.equipped.badge === 'admin' && !isAdminName(n)) SAVE.equipped.badge = 'none';
     if (SAVE.equipped.badge === 'ultimate' && !isUltimateName(n)) SAVE.equipped.badge = 'none';
     if (SAVE.equipped.badge === 'owner' && !isOwnerName(n)) SAVE.equipped.badge = 'none';
+    if (SAVE.equipped.badge === 'coadmin' && !isCoAdminName(n)) SAVE.equipped.badge = 'none';
     if (SAVE.equipped.badge === 'mod' && !isModName(n)) SAVE.equipped.badge = 'none';
 }
 export function isOwned(item) { return SAVE.owned.includes(item.slot + ':' + item.id); }
@@ -307,69 +312,4 @@ export function ensureDaily() {
     if (SAVE.daily && SAVE.daily.date === k) return SAVE.daily;
     let h = hashStr(k);
     const pool = QUEST_POOL.slice(), picks = [];
-    while (picks.length < 3) { h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; picks.push(pool.splice(h % pool.length, 1)[0]); }
-    SAVE.daily = {
-        date: k, quests: picks.map(q => ({ id: q.id, p: 0, done: false })), bonus: false,
-        caps: { tramp: 0, rope: 0, throw: 0, play: 0, social: 0 }, acc: { play: 0, social: 0, playMin: 0, socialMin: 0 }, highBonus: false
-    };
-    saveGame(); markAllDirty();
-    return SAVE.daily;
-}
-export function questDef(id) { return QUEST_POOL.find(q => q.id === id); }
-function questProgress(id, value, isMax) {
-    const d = ensureDaily();
-    for (const q of d.quests) {
-        if (q.id !== id || q.done) continue;
-        const def = questDef(id);
-        q.p = isMax ? Math.max(q.p, value) : q.p + value;
-        if (q.p >= def.target) {
-            q.p = def.target; q.done = true;
-            addBones(def.reward, 'daily quest done');
-            if (d.quests.every(x => x.done) && !d.bonus) { d.bonus = true; addBones(QUEST_ALL_BONUS, 'all daily quests'); }
-            saveGame();
-        }
-        markAllDirty();
-    }
-}
-function capped(key, amount) {
-    const d = ensureDaily(), a = ACTIVITY[key], give = Math.min(amount, a.cap - d.caps[key]);
-    if (give > 0) { d.caps[key] += give; addBones(give, a.label.toLowerCase()); }
-}
-
-// Zdarzenia z gry: 'tramp', 'rope', 'throw', 'shop', 'top', 'height' (v = metry nad podłogą)
-export function track(ev, v) {
-    if (ev === 'height') {
-        if (v > SESSION.maxH) SESSION.maxH = v;
-        const m = Math.floor(v);
-        if (m <= SESSION.lastM) return;
-        SESSION.lastM = m;
-        questProgress('height', m, true);
-        const prevBest = Math.floor(SAVE.best.height);
-        if (m > prevBest) { SAVE.best.height = m; addBones((m - prevBest) * HEIGHT_RECORD_BONUS, 'new height record ' + m + ' m'); }
-        const d = ensureDaily();
-        if (m >= 15 && !d.highBonus) { d.highBonus = true; addBones(HIGH_DAILY_BONUS, 'reached 15 m today'); }
-        return;
-    }
-    if (ev === 'tramp') { SESSION.jumps++; SAVE.best.jumps++; capped('tramp', ACTIVITY.tramp.each); questProgress('tramp', 1); }
-    else if (ev === 'rope') { capped('rope', ACTIVITY.rope.each); questProgress('rope', 1); }
-    else if (ev === 'throw') { capped('throw', ACTIVITY.throw.each); questProgress('throw', 1); }
-    else if (ev === 'shop') questProgress('shop', 1);
-    else if (ev === 'top') { const d = ensureDaily(); if (d.quests.some(q => q.id === 'top' && !q.done)) questProgress('top', 1, true); }
-}
-
-// Wywoływane co klatkę: czas gry i czas z innymi graczami
-export function tick(dt, othersCount) {
-    const d = ensureDaily(), a = d.acc;
-    a.play += dt; a.playMin += dt;
-    if (a.playMin >= 60) { a.playMin -= 60; questProgress('play', 1); }
-    if (a.play >= ACTIVITY.play.every) { a.play -= ACTIVITY.play.every; capped('play', ACTIVITY.play.each); }
-    if (othersCount > 0) {
-        a.social += dt; a.socialMin += dt;
-        if (a.socialMin >= 60) { a.socialMin -= 60; questProgress('social', 1); }
-        if (a.social >= ACTIVITY.social.every) { a.social -= ACTIVITY.social.every; capped('social', ACTIVITY.social.each); }
-    }
-}
-export function fmtDuration(ms) {
-    const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
-    return h > 0 ? h + 'h ' + (m < 10 ? '0' : '') + m + 'm' : m + 'm ' + (ss < 10 ? '0' : '') + ss + 's';
-}
+    while (picks.length < 3) { h = Math.imu
