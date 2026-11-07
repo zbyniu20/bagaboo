@@ -7,7 +7,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP } from './config.js';
 import { makeCanvas, toTex, mkRng } from './textures.js';
-import { isOwnerName } from './config.js';
+import { roleTagFor } from './config.js';
 
 const ENV = LP.envIntensity;
 const NAIL_GEO = new THREE.SphereGeometry(1, 12, 8);
@@ -164,6 +164,17 @@ export function buildHat(id) {
         const c = mat({ color: 0x6a1a14 });
         const dome = meshAt(new THREE.SphereGeometry(0.137, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), c, 0, 0.03, 0); dome.scale.y = 0.8; g.add(dome);
         g.add(meshAt(new THREE.BoxGeometry(0.19, 0.012, 0.12), c, 0, 0.035, -0.16));
+    } else if (id === 'ushanka') {
+        // Uszatka: futrzana czapa z podwiniętym daszkiem z przodu i nausznikami opadającymi po bokach
+        const fur = new THREE.MeshStandardMaterial({ map: furTexture(), color: 0x6a5040, roughness: 0.95 });
+        const crown = new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.8 });
+        const top = meshAt(new RoundedBoxGeometry(0.29, 0.1, 0.28, 3, 0.04), crown, 0, 0.17, 0.0); g.add(top);
+        const band = meshAt(new RoundedBoxGeometry(0.3, 0.07, 0.29, 3, 0.03), fur, 0, 0.12, 0.0); g.add(band);
+        const flap = meshAt(new RoundedBoxGeometry(0.26, 0.09, 0.04, 3, 0.02), fur, 0, 0.15, -0.155); flap.rotation.x = -0.25; g.add(flap);
+        for (const sx of [-1, 1]) {
+            const ear = meshAt(new RoundedBoxGeometry(0.05, 0.17, 0.15, 3, 0.022), fur, sx * 0.155, 0.02, 0.0); ear.rotation.z = sx * 0.08; g.add(ear);
+            const tie = meshAt(new THREE.CylinderGeometry(0.004, 0.004, 0.07, 5), crown, sx * 0.158, -0.09, 0.0); g.add(tie);
+        }
     } else if (id === 'beanie') {
         const k = mat({ color: 0x2d4a3a, roughness: 0.95, bumpMap: tex.plaster, bumpScale: 2 });
         const dome = meshAt(new THREE.SphereGeometry(0.142, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), k, 0, 0.03, 0); dome.scale.y = 1.05; g.add(dome);
@@ -275,13 +286,22 @@ export function buildMask(id) {
     }
     return g;
 }
+// Napis z nickiem: ciemna plakietka, biały pogrubiony tekst z obrysem, zawsze cały widoczny
+// (rysowany na wierzchu, nie chowa się w czapce ani za ścianą; długie nicki dostają mniejszą czcionkę)
 function createNameSprite(message) {
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.roundRect(0, 0, 512, 128, 20); ctx.fill();
-    ctx.strokeStyle = '#880000'; ctx.lineWidth = 6; ctx.roundRect(0, 0, 512, 128, 20); ctx.stroke();
-    ctx.font = 'bold 60px sans-serif'; ctx.fillStyle = '#111111'; ctx.textAlign = 'center'; ctx.fillText(message, 256, 85);
-    return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas) }));
+    ctx.fillStyle = 'rgba(10,8,8,0.82)'; ctx.beginPath(); ctx.roundRect(4, 4, 504, 120, 28); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 5; ctx.stroke();
+    let size = 66; ctx.font = 'bold ' + size + 'px sans-serif';
+    while (ctx.measureText(message).width > 460 && size > 26) { size -= 2; ctx.font = 'bold ' + size + 'px sans-serif'; }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 8; ctx.strokeStyle = '#000000'; ctx.strokeText(message, 256, 68);
+    ctx.fillStyle = '#ffffff'; ctx.fillText(message, 256, 68);
+    const tx = new THREE.CanvasTexture(canvas); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, depthTest: false, depthWrite: false, transparent: true }));
+    sp.renderOrder = 950;
+    return sp;
 }
 // Głowa goryla: kwadratowa, cała w futrze, tylko twarz bez owłosienia (dla innych graczy, lustra i sklepu)
 export function createHead(look, withName) {
@@ -301,7 +321,10 @@ export function createHead(look, withName) {
         for (const s of [-1, 1]) head.add(meshAt(new THREE.SphereGeometry(0.014, 12, 8), eyeMat, s * 0.045, 0.02, -0.132));
     }
     head.add(buildMask(look.mask)); head.add(buildHat(look.hat)); head.add(buildGlasses(look.glasses));
-    if (withName) { const tag = createNameSprite(String(look.name || 'Player').slice(0, 16)); tag.position.set(0, 0.45, 0); tag.scale.set(2, 0.5, 1); head.add(tag); }
+    if (withName) {
+        const tag = createNameSprite(String(look.name || 'Player').slice(0, 16)); tag.position.set(0, 0.5, 0); tag.scale.set(0.72, 0.18, 1); head.add(tag);
+        addRoleTag(head, look);
+    }
     return head;
 }
 // Odznaki (jak w Gorilla Tag): okrągła przypinka ze złotą obwódką na piersi
@@ -313,6 +336,7 @@ const BADGES = {
     moon: { bg: '#0e1430', draw: (x) => { x.fillStyle = '#d01818'; x.beginPath(); x.arc(64, 64, 36, 0, 7); x.fill(); x.fillStyle = '#0e1430'; x.beginPath(); x.arc(80, 54, 32, 0, 7); x.fill(); } },
     flame: { bg: '#3a0a02', draw: (x) => { for (const [c, k] of [['#ff5a10', 1], ['#ffb020', 0.65], ['#fff0a0', 0.35]]) { x.fillStyle = c; x.beginPath(); x.moveTo(64, 64 - 44 * k - 6); x.bezierCurveTo(64 + 40 * k, 64 - 10 * k, 64 + 30 * k, 64 + 40 * k, 64, 64 + 40 * k); x.bezierCurveTo(64 - 30 * k, 64 + 40 * k, 64 - 40 * k, 64 - 10 * k, 64, 64 - 44 * k - 6); x.fill(); } } },
     owner: { bg: '#3a0612', draw: (x) => { x.fillStyle = '#ffd23a'; x.beginPath(); x.moveTo(30, 82); x.lineTo(30, 44); x.lineTo(47, 60); x.lineTo(64, 32); x.lineTo(81, 60); x.lineTo(98, 44); x.lineTo(98, 82); x.closePath(); x.fill(); x.fillRect(30, 86, 68, 10); x.fillStyle = '#c01030'; for (const cx of [47, 64, 81]) { x.beginPath(); x.arc(cx, 72, 5, 0, 7); x.fill(); } } },
+    coadmin: { bg: '#04303a', draw: (x) => { shield(x, '#5af0ff', ''); x.fillStyle = '#04303a'; x.font = 'bold 40px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('CA', 64, 66); } },
     ultimate: { bg: '#2a1a00', draw: (x) => { star(x, 64, 60, 46, 20, '#ffd23a'); x.fillStyle = '#2a1a00'; x.font = 'bold 34px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('U', 64, 64); } },
     admin: { bg: '#8a0a0a', draw: (x) => shield(x, '#ffd23a', 'A') },
     mod: { bg: '#0a2a7a', draw: (x) => shield(x, '#d8e8ff', 'M') },
@@ -455,25 +479,29 @@ export function buildHammer(tool) {
     g.userData.headOffset = new THREE.Vector3(0, 0, -0.44);
     return g;
 }
-export function lookKey(look) { return [look.name, look.color, look.skin, look.badge, look.tool, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
+export function lookKey(look) { return [look.name, look.hideTag ? 1 : 0, look.color, look.skin, look.badge, look.tool, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
 // Stały napis nad głową (ULTIMATE ADMIN, OWNER)
 export function roleLabel(text, color, glow) {
     const c = makeCanvas(512, 96), x = c.getContext('2d');
     x.font = 'bold 60px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillStyle = 'rgba(8,6,6,0.7)'; x.beginPath(); x.roundRect(10, 8, 492, 80, 24); x.fill();
     x.shadowColor = glow; x.shadowBlur = 20; x.fillStyle = color; x.fillText(text, 256, 50);
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: toTex(c, false), transparent: true, depthWrite: false }));
-    sp.scale.set(1.0, 0.19, 1);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: toTex(c, false), transparent: true, depthWrite: false, depthTest: false }));
+    sp.scale.set(0.8, 0.15, 1); sp.renderOrder = 951;
     return sp;
 }
-export function ultimateLabel() { return roleLabel('ULTIMATE ADMIN', '#ffe070', '#ffb000'); }
-export function ownerLabel() { return roleLabel('OWNER', '#ff5a7a', '#ff1a40'); }
+// Napis z rolą (OWNER, ULTIMATE ADMIN, CO-ADMIN, ADMIN, MODERATOR) nad nickiem, chyba że gracz go ukrył
+export function addRoleTag(head, look) {
+    const r = roleTagFor(look.name);
+    if (!r || look.hideTag) return null;
+    const lab = roleLabel(r.text, r.color, r.glow); lab.position.set(0, 0.67, 0); head.add(lab);
+    return lab;
+}
 export const ULTIMATE_SCALE = 2;
 export function createAvatar(look) {
     const group = new THREE.Group(), ult = look.skin === 'ultimate', sc = ult ? ULTIMATE_SCALE : 1;
     const torso = createGorillaTorso(look); torso.scale.setScalar(sc); group.add(torso);
     const head = createHead(look, true); head.scale.setScalar(sc); group.add(head);
-    if (ult) { const lab = ultimateLabel(); lab.position.set(0, 0.62, 0); head.add(lab); }   // stały napis nad głową
-    if (isOwnerName(look.name)) { const lab = ownerLabel(); lab.position.set(0, ult ? 0.74 : 0.62, 0); head.add(lab); }
     const handL = createRealHand(true, look), handR = createRealHand(false, look);
     handL.scale.setScalar(sc); handR.scale.setScalar(sc);
     const armL = createGorillaArm(look), armR = createGorillaArm(look);
