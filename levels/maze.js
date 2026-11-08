@@ -14,7 +14,7 @@ import { levelReward, recordTime, unlockAchievement } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import * as SFX from '../core/audio.js';
 import * as NET from '../core/network.js';
-import { ARRIVAL } from './lobby-door.js';
+import { ARRIVAL_FROM_MAZE as ARRIVAL } from './levels.js';
 import { buildDoor, createJumpscare } from '../core/levelkit.js';
 
 const NP = LIGHT_PRESETS.night;
@@ -173,8 +173,8 @@ function addLamp(x, z, color, intensity) {
 function buildRooms() {
     addLamp(2, 57, 0xff8a50, 22);
     addLamp(2, -55, 0x60ff90, 30);
-    buildDoor({ x: 2, z: 59.68, rotY: Math.PI, label: 'LOBBY', color: '#ffb070', wood: 0x8a6a5a, portal: { target: 'lobby', spawn: ARRIVAL, onEnter: () => toast('Back to the lobby') } });
-    buildDoor({ x: 2, z: -59.68, rotY: 0, label: 'EXIT', color: '#70ff90', wood: 0x8a6a5a, portal: { target: 'lobby', spawn: ARRIVAL, onEnter: () => toast('Back to the lobby') } });
+    buildDoor({ x: 2, z: 59.68, rotY: Math.PI, label: 'LEVELS', color: '#ffb070', wood: 0x8a6a5a, portal: { target: 'levels', spawn: ARRIVAL, onEnter: () => toast('Back to the levels') } });
+    buildDoor({ x: 2, z: -59.68, rotY: 0, label: 'EXIT', color: '#70ff90', wood: 0x8a6a5a, portal: { target: 'levels', spawn: ARRIVAL, onEnter: () => toast('Back to the levels') } });
     buildHole();
 }
 // Zapadnia w pokoju końcowym: otwiera się po dotarciu do końca, prowadzi na poziom Cisza
