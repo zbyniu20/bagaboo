@@ -312,4 +312,69 @@ export function ensureDaily() {
     if (SAVE.daily && SAVE.daily.date === k) return SAVE.daily;
     let h = hashStr(k);
     const pool = QUEST_POOL.slice(), picks = [];
-    while (picks.length < 3) { h = Math.imu
+    while (picks.length < 3) { h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; picks.push(pool.splice(h % pool.length, 1)[0]); }
+    SAVE.daily = {
+        date: k, quests: picks.map(q => ({ id: q.id, p: 0, done: false })), bonus: false,
+        caps: { tramp: 0, rope: 0, throw: 0, play: 0, social: 0 }, acc: { play: 0, social: 0, playMin: 0, socialMin: 0 }, highBonus: false
+    };
+    saveGame(); markAllDirty();
+    return SAVE.daily;
+}
+export function questDef(id) { return QUEST_POOL.find(q => q.id === id); }
+function questProgress(id, value, isMax) {
+    const d = ensureDaily();
+    for (const q of d.quests) {
+        if (q.id !== id || q.done) continue;
+        const def = questDef(id);
+        q.p = isMax ? Math.max(q.p, value) : q.p + value;
+        if (q.p >= def.target) {
+            q.p = def.target; q.done = true;
+            addBones(def.reward, 'daily quest done');
+            if (d.quests.every(x => x.done) && !d.bonus) { d.bonus = true; addBones(QUEST_ALL_BONUS, 'all daily quests'); }
+            saveGame();
+        }
+        markAllDirty();
+    }
+}
+function capped(key, amount) {
+    const d = ensureDaily(), a = ACTIVITY[key], give = Math.min(amount, a.cap - d.caps[key]);
+    if (give > 0) { d.caps[key] += give; addBones(give, a.label.toLowerCase()); }
+}
+
+// Zdarzenia z gry: 'tramp', 'rope', 'throw', 'shop', 'top', 'height' (v = metry nad podłogą)
+export function track(ev, v) {
+    if (ev === 'height') {
+        if (v > SESSION.maxH) SESSION.maxH = v;
+        const m = Math.floor(v);
+        if (m <= SESSION.lastM) return;
+        SESSION.lastM = m;
+        questProgress('height', m, true);
+        const prevBest = Math.floor(SAVE.best.height);
+        if (m > prevBest) { SAVE.best.height = m; addBones((m - prevBest) * HEIGHT_RECORD_BONUS, 'new height record ' + m + ' m'); }
+        const d = ensureDaily();
+        if (m >= 15 && !d.highBonus) { d.highBonus = true; addBones(HIGH_DAILY_BONUS, 'reached 15 m today'); }
+        return;
+    }
+    if (ev === 'tramp') { SESSION.jumps++; SAVE.best.jumps++; capped('tramp', ACTIVITY.tramp.each); questProgress('tramp', 1); }
+    else if (ev === 'rope') { capped('rope', ACTIVITY.rope.each); questProgress('rope', 1); }
+    else if (ev === 'throw') { capped('throw', ACTIVITY.throw.each); questProgress('throw', 1); }
+    else if (ev === 'shop') questProgress('shop', 1);
+    else if (ev === 'top') { const d = ensureDaily(); if (d.quests.some(q => q.id === 'top' && !q.done)) questProgress('top', 1, true); }
+}
+
+// Wywoływane co klatkę: czas gry i czas z innymi graczami
+export function tick(dt, othersCount) {
+    const d = ensureDaily(), a = d.acc;
+    a.play += dt; a.playMin += dt;
+    if (a.playMin >= 60) { a.playMin -= 60; questProgress('play', 1); }
+    if (a.play >= ACTIVITY.play.every) { a.play -= ACTIVITY.play.every; capped('play', ACTIVITY.play.each); }
+    if (othersCount > 0) {
+        a.social += dt; a.socialMin += dt;
+        if (a.socialMin >= 60) { a.socialMin -= 60; questProgress('social', 1); }
+        if (a.social >= ACTIVITY.social.every) { a.social -= ACTIVITY.social.every; capped('social', ACTIVITY.social.each); }
+    }
+}
+export function fmtDuration(ms) {
+    const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+    return h > 0 ? h + 'h ' + (m < 10 ? '0' : '') + m + 'm' : m + 'm ' + (ss < 10 ? '0' : '') + ss + 's';
+}
