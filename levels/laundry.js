@@ -18,7 +18,7 @@ import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare } fr
 
 // ---------- USTAWIENIA ----------
 const X0 = -16, X1 = 16, Z0 = 6, Z1 = -54, H = 9;   // hala 32 x 60 m, 9 m wysokości
-const WALK = 1.7, INVESTIGATE = 3.6, SPRINT = 7.6, RAGE = 6.6;   // prędkości Szmaciarza (m/s): w sprincie szybszy od gracza
+const WALK = 3.4, INVESTIGATE = 5.2, SPRINT = 8.8, RAGE = 8.0;   // prędkości Szmaciarza (m/s): w sprincie szybszy od gracza
 const SEE_DIST = 14, CATCH_DIST = 1.3, SAFE_HEIGHT = 2.6;       // widzi na 14 m (para), nie sięga wyżej niż 2,6 m
 const LOSE_TIME = 7;                                            // tyle sekund szuka cię po stracie z oczu
 const BLACKOUT_MIN = 28, BLACKOUT_MAX = 50;                     // co ile sekund gasną światła
@@ -245,7 +245,7 @@ function buildThreadman() {
     const limb = (len, r) => { const p = new THREE.Group(), m = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.6, r, len, 6, 4), cloth); m.position.y = -len / 2; p.add(m); const tip = new THREE.Mesh(new THREE.ConeGeometry(r * 1.4, 0.25, 6), cloth); tip.position.y = -len; tip.rotation.x = Math.PI; p.add(tip); return p; };
     const armL = limb(1.7, 0.05), armR = limb(1.7, 0.05); armL.position.set(-0.2, 1.25, 0); armR.position.set(0.2, 1.25, 0); torso.add(armL, armR);
     const legL = limb(1.65, 0.07), legR = limb(1.65, 0.07); legL.position.set(-0.12, 0, 0); legR.position.set(0.12, 0, 0); hips.add(legL, legR);
-    S.tm = { root: root, hips: hips, torso: torso, armL: armL, armR: armR, legL: legL, legR: legR, x: 0, z: -48, dir: Math.PI, mode: 'patrol', target: null, path: [], pathT: 0, wp: 0, lostT: 0, screechT: -99, investigate: null, stepT: 0, crawl: 0, waitT: 0 };
+    S.tm = { y: 0, climb: false, root: root, hips: hips, torso: torso, armL: armL, armR: armR, legL: legL, legR: legR, x: 0, z: -48, dir: Math.PI, mode: 'patrol', target: null, path: [], pathT: 0, wp: 0, lostT: 0, screechT: -99, investigate: null, stepT: 0, crawl: 0, waitT: 0 };
     root.position.set(0, 0, -48);
 }
 
@@ -446,7 +446,11 @@ function thinkMonster(dt, t, p) {
     tm.pathT -= dt;
     if (tm.pathT <= 0) { tm.pathT = tm.mode === 'chase' ? 0.3 : 1.0; tm.path = findPath(tm.x, tm.z, target[0], target[1]); }
     while (tm.path.length && Math.hypot(tm.path[0][0] - tm.x, tm.path[0][1] - tm.z) < 0.4) tm.path.shift();
-    const next = tm.path.length ? tm.path[0] : null;
+    // Gracz stoi na pralce (albo innym niskim podwyższeniu) blisko potwora: Szmaciarz wspina się do niego wprost
+    const feet = p.y - 0.35, nearH = Math.hypot(p.x - tm.x, p.z - tm.z);
+    tm.climb = tm.mode === 'chase' && feet > 0.4 && feet <= SAFE_HEIGHT && nearH < 3.0;
+    tm.y += ((tm.climb ? feet : 0) - tm.y) * Math.min(1, dt * (tm.climb ? 5 : 3));
+    const next = tm.climb ? [p.x, p.z] : (tm.path.length ? tm.path[0] : null);
     if (next) {
         const dx = next[0] - tm.x, dz = next[1] - tm.z, d = Math.hypot(dx, dz);
         tm.x += dx / d * Math.min(d, speed * dt); tm.z += dz / d * Math.min(d, speed * dt);
@@ -457,14 +461,14 @@ function thinkMonster(dt, t, p) {
     tm.stepT -= dt * (tm.crawl > 0.5 ? 3 : 1);
     if (tm.stepT <= 0) { tm.stepT = 0.7; SFX.step(tm.crawl > 0.5 ? 0.7 : 0.35, { x: tm.x, y: 0, z: tm.z }); }
     // Złapanie
-    if (!safe && Math.hypot(p.x - tm.x, p.z - tm.z) < CATCH_DIST) caught();
+    if (!safe && Math.hypot(p.x - tm.x, p.z - tm.z) < CATCH_DIST && Math.abs(feet - tm.y) < 1.0) caught();
     // Bicie serca, gdy jest blisko
     const dist = Math.hypot(p.x - tm.x, p.z - tm.z);
     if (dist < 14) SFX.heartbeat(Math.max(0, 1 - dist / 14));
 }
 function animateMonster(dt, t) {
     const tm = S.tm, k = tm.crawl, sp = k > 0.5 ? 12 : 3.2, ph = t * sp;
-    tm.root.position.set(tm.x, 0, tm.z); tm.root.rotation.y = tm.dir;
+    tm.root.position.set(tm.x, tm.y, tm.z); tm.root.rotation.y = tm.dir;
     // Chód: kołysanie; sprint: tułów pochylony do przodu, ręce jak przednie łapy
     tm.hips.position.y = 1.65 - k * 0.75;
     tm.torso.rotation.x = k * 1.25; tm.torso.rotation.z = Math.sin(ph * 0.5) * 0.12 * (1 - k);
