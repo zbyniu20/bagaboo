@@ -16,7 +16,7 @@ import { toast } from '../core/terminal.js';
 import { hands, setPlayerPosition } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import * as N from '../core/network.js';
-import { ARRIVAL_WELL } from './lobby-door.js';
+import { ARRIVAL_FROM_WELL as ARRIVAL_WELL } from './levels.js';
 import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA (trudność) ----------
@@ -204,7 +204,7 @@ function buildHatch() {
 }
 function buildLobbyDoor() {
     buildDoor({ x: 0, z: HS - 0.02, rotY: Math.PI, label: 'LOBBY', color: '#70ff90', wood: 0x6a7a6a, signY: 2.5,
-        portal: { target: 'lobby', spawn: ARRIVAL_WELL, onEnter: () => toast('Back to the lobby') } });
+        portal: { target: 'levels', spawn: ARRIVAL_WELL, onEnter: () => toast('Back to the levels') } });
 }
 
 // Maź z rękami
@@ -399,7 +399,7 @@ function win() {
     levelReward('well', REWARD_FIRST, REWARD_REPEAT, 'escape from the well');
     recordTime('well', S.playT);
     if (S.playT < 270) unlockAchievement('well_climber');
-    S.ctx.goto('lobby', ARRIVAL_WELL);
+    S.ctx.goto('levels', ARRIVAL_WELL);
 }
 
 export function update(dt, t, ctx) {
