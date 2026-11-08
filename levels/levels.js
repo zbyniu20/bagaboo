@@ -51,16 +51,56 @@ export function build() {
         x.fillStyle = '#f0e6dc'; x.font = '32px sans-serif'; d.desc.forEach((l, i) => x.fillText(l, 256, 120 + i * 42));
         const rec = SAVE.records[d.rec];
         x.fillStyle = '#ffd27a'; x.font = 'bold 32px sans-serif'; x.fillText(rec !== undefined ? 'Your record: ' + fmtDuration(rec * 1000) : 'Not finished yet', 256, 286);
-        addCrispBlock(d.x, 0.5, -3.6, 0.5, 1.0, 0.4, 0x3a2a24, 0x100808);
-        const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.69), new THREE.MeshBasicMaterial({ map: T.toTex(c, false), toneMapped: false }));
-        screen.position.set(d.x, 1.2, -3.55); screen.rotation.x = -0.5; L.root.add(screen);
+        // Tablica na słupku, podniesiona na wysokość oczu i lekko pochylona (cała widoczna)
+        addCrispBlock(d.x, 0.75, -3.6, 0.16, 1.5, 0.16, 0x3a2a24, 0x100808);
+        addCrispBlock(d.x, 0.04, -3.6, 0.6, 0.08, 0.6, 0x3a2a24, 0x100808);
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.84, 0.05), new THREE.MeshStandardMaterial({ color: 0x2a1a14, roughness: 0.6 }));
+        frame.position.set(d.x, 1.95, -3.64); frame.rotation.x = -0.18; L.root.add(frame);
+        const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.75), new THREE.MeshBasicMaterial({ map: T.toTex(c, false), toneMapped: false }));
+        screen.position.set(d.x, 1.95, -3.61); screen.rotation.x = -0.18; L.root.add(screen);
     }
+    buildWarnings();
     buildDoor({ x: 0, z: D - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x4a3a30, portal: { target: 'lobby', spawn: ARRIVAL_LEVELS, onEnter: () => toast('Back to the lobby') } });
     // Migoczące świece i lampy
     for (const [x, z] of [[-9, 4], [9, 4], [-9, -1], [9, -1], [0, 2]]) {
         const l = new THREE.PointLight(0xffa060, 6, 9, 1.8); l.position.set(x, 3.6, z); L.root.add(l); S.lights.push({ l: l, base: 6, ph: Math.random() * 9 });
         const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffb060, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); f.scale.set(0.5, 0.5, 1); f.position.set(x, 3.6, z); L.root.add(f);
     }
+}
+// Czaszki na ścianach i ostrzeżenia namalowane czerwoną farbą
+function skullTexture(seed) {
+    const c = T.makeCanvas(256, 256), x = c.getContext('2d'), R = T.mkRng(seed);
+    x.clearRect(0, 0, 256, 256);
+    x.fillStyle = '#e8dcc4'; x.beginPath(); x.ellipse(128, 104, 78, 82, 0, 0, 7); x.fill();
+    x.beginPath(); x.roundRect(78, 150, 100, 62, 14); x.fill();
+    x.fillStyle = '#120808'; for (const ex of [96, 160]) { x.beginPath(); x.ellipse(ex, 110, 22, 26, ex < 128 ? 0.2 : -0.2, 0, 7); x.fill(); }
+    x.beginPath(); x.moveTo(128, 136); x.lineTo(116, 160); x.lineTo(140, 160); x.closePath(); x.fill();
+    for (let i = 0; i < 6; i++) x.fillRect(88 + i * 14, 176, 8, 26);
+    x.strokeStyle = 'rgba(60,40,30,0.8)'; x.lineWidth = 2; x.beginPath(); x.moveTo(128, 24); for (let k = 0; k < 5; k++) x.lineTo(118 + R() * 30, 36 + k * 14); x.stroke();
+    x.fillStyle = 'rgba(120,0,0,0.75)'; for (let i = 0; i < 4; i++) { const sx = 80 + R() * 100; x.fillRect(sx, 200, 4 + R() * 4, 20 + R() * 40); }
+    return T.toTex(c, false);
+}
+function warningTexture(text, w, h, size) {
+    const c = T.makeCanvas(w, h), x = c.getContext('2d'), R = T.mkRng(text.length * 31);
+    x.clearRect(0, 0, w, h);
+    x.font = 'bold ' + size + 'px Creepster, serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.shadowColor = '#ff0000'; x.shadowBlur = 14; x.fillStyle = '#9a0808'; x.fillText(text, w / 2, h / 2);
+    x.shadowBlur = 0; x.fillStyle = 'rgba(140,8,8,0.85)';
+    const tw = x.measureText(text).width;
+    for (let i = 0; i < text.length * 2; i++) x.fillRect(w / 2 - tw / 2 + R() * tw, h / 2 + size * 0.3, 3 + R() * 3, 10 + R() * size * 0.5);   // ściekająca farba
+    return T.toTex(c, false);
+}
+function buildWarnings() {
+    const decal = (map, w, h, x, y, z, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: map, transparent: true, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2 })); m.position.set(x, y, z); m.rotation.y = ry; L.root.add(m); return m; };
+    // Czaszki: między drzwiami nad wejściami i na ścianach bocznych
+    for (const x of [-10, -5, 0, 5, 10]) decal(skullTexture(x + 40), 0.9, 0.9, x, 3.6, -D + 0.05, 0);
+    for (const z of [-3.5, 0.5, 4.5]) { decal(skullTexture(z * 7 + 3), 1.1, 1.1, -W + 0.05, 3.6, z, Math.PI / 2); decal(skullTexture(z * 9 + 5), 1.1, 1.1, W - 0.05, 3.6, z, -Math.PI / 2); }
+    // Napisy ostrzegawcze
+    decal(warningTexture('ENTER AT YOUR OWN RISK', 1024, 160, 88), 6, 0.94, -W + 0.06, 2.0, 0.5, Math.PI / 2);
+    decal(warningTexture('NO ONE CAME BACK', 1024, 160, 96), 5, 0.78, W - 0.06, 2.0, 0.5, -Math.PI / 2);
+    decal(warningTexture('TURN BACK NOW', 1024, 160, 96), 5, 0.78, 0, 4.4, D - 0.06, Math.PI);
+    decal(warningTexture('THEY ARE WATCHING YOU', 1024, 160, 80), 4.2, 0.66, -6, 1.6, D - 0.06, Math.PI);
+    decal(warningTexture('YOU HAVE BEEN WARNED', 1024, 160, 80), 4.2, 0.66, 6, 1.6, D - 0.06, Math.PI);
 }
 export function update(dt, t) {
     if (!S) return;
