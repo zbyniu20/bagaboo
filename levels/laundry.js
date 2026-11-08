@@ -13,13 +13,15 @@ import { hands, releaseAll } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { DESKTOP } from '../core/desktop.js';
-import { ARRIVAL_LAUNDRY } from './lobby-door.js';
+import { ARRIVAL_FROM_LAUNDRY as ARRIVAL_LAUNDRY } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA ----------
 const X0 = -16, X1 = 16, Z0 = 6, Z1 = -54, H = 9;   // hala 32 x 60 m, 9 m wysokości
-const WALK = 1.2, INVESTIGATE = 2.6, SPRINT = 6.2, RAGE = 5.0;   // prędkości Szmaciarza (m/s)
-const SEE_DIST = 12, CATCH_DIST = 1.1, SAFE_HEIGHT = 2.6;       // widzi na 12 m (para), nie sięga wyżej niż 2,6 m
+const WALK = 1.7, INVESTIGATE = 3.6, SPRINT = 7.6, RAGE = 6.6;   // prędkości Szmaciarza (m/s): w sprincie szybszy od gracza
+const SEE_DIST = 14, CATCH_DIST = 1.3, SAFE_HEIGHT = 2.6;       // widzi na 14 m (para), nie sięga wyżej niż 2,6 m
+const LOSE_TIME = 7;                                            // tyle sekund szuka cię po stracie z oczu
+const BLACKOUT_MIN = 28, BLACKOUT_MAX = 50;                     // co ile sekund gasną światła
 const STEAM_MIN = 20, STEAM_MAX = 40;                           // co ile sekund bucha para
 const TURNS = [3, 2, 2, 2];                                      // ile obrotów trzeba zakręcić każdy zawór
 const REWARD_FIRST = 2000, REWARD_REPEAT = 200, INTRO_TIME = 10;
@@ -34,7 +36,7 @@ export function build() {
     L.bounds = { minX: X0 + 0.4, maxX: X1 - 0.4, minZ: Z1 + 0.4, maxZ: Z0 - 0.4, maxY: H - 0.4 };
     L.onNoise = onNoise;
     S = { clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', valves: [], safe: [], soap: null, vents: [], drums: [], nextSteam: 25, steam: 0,
-          machT: 2, hudT: 0, caughtT: -1, leaving: false, done: 0, rage: false, fx: [] };
+          machT: 2, hudT: 0, caughtT: -1, leaving: false, done: 0, rage: false, fx: [], lamps: [], blackout: 0, nextBlackout: 35, glimpseT: 18, rumbleT: 12 };
     buildHall();
     buildMachines();
     buildDryer();
@@ -43,8 +45,9 @@ export function build() {
     buildPipes();
     buildValves();
     buildGate();
-    buildDoor({ x: 0, z: Z0 - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x5a6a7a, portal: { target: 'lobby', spawn: ARRIVAL_LAUNDRY, onEnter: () => toast('Back to the lobby') } });
+    buildDoor({ x: 0, z: Z0 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#ffd27a', wood: 0x5a6a7a, portal: { target: 'levels', spawn: ARRIVAL_LAUNDRY, onEnter: () => toast('Back to the levels') } });
     buildThreadman();
+    buildGlimpse();
     buildGrid();
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
@@ -59,7 +62,12 @@ function buildHall() {
     for (const [x, z, w, d] of [[0, Z1 - 0.5, X1 - X0 + 2, 1], [0, Z0 + 0.5, X1 - X0 + 2, 1], [X0 - 0.5, (Z0 + Z1) / 2, 1, Z0 - Z1], [X1 + 0.5, (Z0 + Z1) / 2, 1, Z0 - Z1]])
         addCrispBlock(x, H / 2, z, w, H, d, 0x8a8478, 0x1a1a1a, tex.wall);
     // Przemysłowe lampy w parze
-    for (const z of [-2, -14, -26, -38, -50]) for (const x of [-8, 8]) { const l = new THREE.PointLight(0xfff0d8, 16, 16, 1.6); l.position.set(x, H - 1.2, z); L.root.add(l); }
+    // Przemysłowe lampy w parze: słabe, migoczą i czasem gasną
+    for (const z of [-2, -14, -26, -38, -50]) for (const x of [-8, 8]) {
+        const l = new THREE.PointLight(0xffe8c8, 10, 15, 1.7); l.position.set(x, H - 1.2, z); L.root.add(l);
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffe8c8 })); bulb.position.copy(l.position); L.root.add(bulb);
+        S.lamps.push({ l: l, bulb: bulb, ph: Math.random() * 10, bad: Math.random() < 0.35 });
+    }
 }
 // Pralka: kolorowa plastikowa obudowa z okrągłymi drzwiczkami od strony alejki
 function machine(x, z, face, col) {
@@ -331,7 +339,7 @@ function openGate() {
     const d = S.exitDoor; addPortal(d);
 }
 function addPortal(d) {
-    L.portals.push({ box3: new THREE.Box3(new THREE.Vector3(d.x - 0.7, -0.5, d.z), new THREE.Vector3(d.x + 0.7, 2.6, d.z + 0.9)), target: 'lobby', spawn: ARRIVAL_LAUNDRY, onEnter: finish });
+    L.portals.push({ box3: new THREE.Box3(new THREE.Vector3(d.x - 0.7, -0.5, d.z), new THREE.Vector3(d.x + 0.7, 2.6, d.z + 0.9)), target: 'levels', spawn: ARRIVAL_LAUNDRY, onEnter: finish });
 }
 function finish() {
     if (S.leaving) return; S.leaving = true;
@@ -411,7 +419,8 @@ export function update(dt, t, ctx) {
     for (const f of S.fx) { f.t -= dt; for (let i = 0; i < f.vel.length; i++) { f.pos[i * 3] += f.vel[i].x * dt; f.pos[i * 3 + 1] += f.vel[i].y * dt; f.pos[i * 3 + 2] += f.vel[i].z * dt; } f.pts.geometry.attributes.position.needsUpdate = true; f.pts.material.opacity = Math.max(0, f.t / 2.2) * 0.7; if (f.t <= 0) L.root.remove(f.pts); }
     S.fx = S.fx.filter(f => f.t > 0);
     if (!S.rage) { const pos = S.gateSteam.geometry.attributes.position; for (let i = 0; i < pos.count; i++) { let y = pos.getY(i) + dt * 1.5; if (y > 2.8) y = 0; pos.setY(i, y); } pos.needsUpdate = true; }
-    if (S.phase === 'play') thinkMonster(dt, t, p);
+    if (S.phase === 'play') { thinkMonster(dt, t, p); scares(dt, t, p); }
+    lampsUpdate(dt, t);
     animateMonster(dt, t);
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.15; drawHud(p); }
 }
@@ -423,7 +432,7 @@ function thinkMonster(dt, t, p) {
         if (S.clock - tm.screechT > 6) { SFX.screech({ x: tm.x, y: 2.5, z: tm.z }); tm.screechT = S.clock; }   // audio-jumpscare
         tm.mode = 'chase'; tm.pathT = 0;
     }
-    if (tm.mode === 'chase') { if (sees) { tm.lostT = 0; tm.investigate = p.clone(); } else { tm.lostT += dt; if (tm.lostT > 4 || safe) { tm.mode = S.rage ? 'rage' : 'investigate'; tm.pathT = 0; } } }
+    if (tm.mode === 'chase') { if (sees) { tm.lostT = 0; tm.investigate = p.clone(); } else { tm.lostT += dt; if (!safe) tm.investigate = p.clone(); if (tm.lostT > LOSE_TIME || safe) { tm.mode = S.rage ? 'rage' : 'investigate'; tm.pathT = 0; } } }
     // Cel ruchu zależnie od trybu
     let target = null, speed = WALK;
     if (tm.mode === 'chase') { target = [p.x, p.z]; speed = SPRINT; }
@@ -462,6 +471,47 @@ function animateMonster(dt, t) {
     tm.legL.rotation.x = Math.sin(ph) * (0.35 + k * 0.5) - k * 0.6; tm.legR.rotation.x = -Math.sin(ph) * (0.35 + k * 0.5) - k * 0.6;
     tm.armL.rotation.x = -Math.sin(ph) * (0.3 + k * 0.7) - k * 1.0; tm.armR.rotation.x = Math.sin(ph) * (0.3 + k * 0.7) - k * 1.0;
     tm.armL.rotation.z = 0.15 * (1 - k); tm.armR.rotation.z = -0.15 * (1 - k);
+}
+// Światła: część lamp migocze, co jakiś czas wszystkie gasną na chwilę (z zgrzytem w ciemności)
+function lampsUpdate(dt, t) {
+    if (S.phase === 'play') { S.nextBlackout -= dt; if (S.nextBlackout <= 0) { S.nextBlackout = BLACKOUT_MIN + Math.random() * (BLACKOUT_MAX - BLACKOUT_MIN); S.blackout = 1.6 + Math.random(); SFX.creak(1, { x: S.tm.x, y: 1, z: S.tm.z }); } }
+    if (S.blackout > 0) S.blackout -= dt;
+    for (const lp of S.lamps) {
+        let k = lp.bad ? (Math.sin(t * 23 + lp.ph) > 0.6 || Math.random() < 0.04 ? 0.1 : 1) : 0.9 + 0.1 * Math.sin(t * 3 + lp.ph);
+        if (S.blackout > 0) k = 0.03;
+        lp.l.intensity = 10 * k; lp.bulb.visible = k > 0.3;
+    }
+}
+// Zjawa: nieruchoma sylwetka Szmaciarza na granicy mgły. Znika, gdy na nią spojrzysz.
+function buildGlimpse() {
+    const g = new THREE.Group(), cloth = new THREE.MeshBasicMaterial({ color: 0x3a3632, transparent: true, opacity: 0.85, fog: true });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 2.0, 6), cloth); body.position.y = 2.2; g.add(body);
+    for (const s of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.07, 1.4, 5), cloth); leg.position.set(s * 0.12, 0.7, 0); g.add(leg); const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 1.8, 5), cloth); arm.position.set(s * 0.25, 2.0, 0); arm.rotation.z = s * 0.08; g.add(arm); }
+    const mask = buildMask(); mask.position.set(0, 3.4, 0); g.add(mask);
+    g.visible = false; L.root.add(g);
+    S.glimpse = { g: g, t: 0, lookT: 0 };
+}
+function scares(dt, t, p) {
+    // Zjawy w mgle (tylko gdy prawdziwy Szmaciarz jest daleko)
+    const gl = S.glimpse, tm = S.tm, farFromMonster = Math.hypot(p.x - tm.x, p.z - tm.z) > 18;
+    camera.getWorldDirection(_v); _v.y = 0; _v.normalize();
+    if (!gl.g.visible) {
+        S.glimpseT -= dt;
+        if (S.glimpseT <= 0 && farFromMonster && !S.rage) {
+            S.glimpseT = 22 + Math.random() * 20;
+            const ang = Math.atan2(_v.x, _v.z) + (Math.random() - 0.5) * 1.2, r = 11 + Math.random() * 2;
+            const gx = Math.max(X0 + 1, Math.min(X1 - 1, p.x + Math.sin(ang) * r)), gz = Math.max(Z1 + 1, Math.min(Z0 - 1, p.z + Math.cos(ang) * r));
+            gl.g.position.set(gx, 0, gz); gl.g.rotation.y = Math.atan2(p.x - gx, p.z - gz); gl.g.visible = true; gl.t = 6; gl.lookT = 0;
+        }
+    } else {
+        gl.t -= dt;
+        const dx = gl.g.position.x - p.x, dz = gl.g.position.z - p.z, d = Math.hypot(dx, dz), look = (dx * _v.x + dz * _v.z) / d;
+        if (look > 0.93) gl.lookT += dt;
+        if (gl.lookT > 0.35 || d < 7 || gl.t <= 0) { if (gl.lookT > 0.35 || d < 7) { SFX.stinger({ x: gl.g.position.x, y: 2, z: gl.g.position.z }); buzz('both', 0.5, 120); } gl.g.visible = false; }
+    }
+    // Daleki, niski pomruk i zgrzyt gdzieś w hali
+    S.rumbleT -= dt;
+    if (S.rumbleT <= 0) { S.rumbleT = 14 + Math.random() * 14; SFX.roar(0.25, { x: p.x + (Math.random() - 0.5) * 30, y: 1, z: p.z + (Math.random() - 0.5) * 30 }); }
 }
 function fmt(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function drawHud(p) {
