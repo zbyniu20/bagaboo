@@ -68,13 +68,18 @@ LIGHT_PRESETS.staff = {
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.4, flashlight: null
 };
 LIGHT_PRESETS.laundry = {
-    background: 0xb8bcc0, fogColor: 0xb8bcc0, fogDensity: 0.085, exposure: 1.05,   // gęsta para: widać ok. 10-12 m
-    hemiSky: 0xe0e8f0, hemiGround: 0x4a4440, hemiIntensity: 1.5,
+    background: 0x6a706a, fogColor: 0x6a706a, fogDensity: 0.085, exposure: 0.95,   // gęsta, brudna para: widać ok. 10-12 m
+    hemiSky: 0xb8c4c0, hemiGround: 0x2a2624, hemiIntensity: 0.85,
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.4, flashlight: { color: 0xfff4e0, intensity: 40, distance: 18, angle: 0.5, penumbra: 0.7, decay: 2 }
 };
 LIGHT_PRESETS.station = {
     background: 0x0a0c10, fogColor: 0x10141a, fogDensity: 0.02, exposure: 1.15,
     hemiSky: 0x9ab0d0, hemiGround: 0x2a2620, hemiIntensity: 1.2,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3, flashlight: null
+};
+LIGHT_PRESETS.levels = {
+    background: 0x0c0606, fogColor: 0x140808, fogDensity: 0.03, exposure: 1.1,
+    hemiSky: 0xffb090, hemiGround: 0x200808, hemiIntensity: 0.9,
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3, flashlight: null
 };
 LIGHT_PRESETS.arcade = {
