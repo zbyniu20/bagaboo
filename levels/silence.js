@@ -14,7 +14,7 @@ import { toast } from '../core/terminal.js';
 import { setPlayerPosition, releaseRope, isOnRope, hands } from '../core/player.js';
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
-import { ARRIVAL_SILENCE } from './lobby-door.js';
+import { ARRIVAL_FROM_SILENCE as ARRIVAL_SILENCE } from './levels.js';
 import { buildDoor, addDoorPortal, createJumpscare, cameraPanel, panelBg, drawInstructions } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA ----------
@@ -209,7 +209,7 @@ function drawBoard() {
 // Drzwi do lobby za plecami gracza na starcie (wyjście w każdej chwili)
 function buildExitDoor() {
     buildDoor({ x: 0, z: 14.97, rotY: Math.PI, label: 'LOBBY', color: '#70ff90', glow: 0x60ff90, wood: 0x6a7a8a, light: true,
-        portal: { target: 'lobby', spawn: ARRIVAL_SILENCE, onEnter: () => toast('Back to the lobby') } });
+        portal: { target: 'levels', spawn: ARRIVAL_SILENCE, onEnter: () => toast('Back to the levels') } });
 }
 // Drzwi do Studni pod zegarem: zamknięte kratą, otwierają się po wygranej
 function buildWellDoor() {
