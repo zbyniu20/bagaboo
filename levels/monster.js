@@ -21,7 +21,8 @@ const MONSTER_SPAWN = [0, 1.0, -26];        // potwór zaczyna na torach w głę
 const SURVIVOR_SPAWN = [[-18, 2.2, 26], [18, 2.2, 26], [-12, 2.2, 24], [12, 2.2, 24], [-22, 2.2, 22], [22, 2.2, 22]];   // reszta na peronach przy wejściu
 const WAIT = 10, ROUND = 120, RESULTS = 8, REWARD = 200;
 const CATCH_DIST = 0.5;                     // dłoń potwora tak blisko głowy lub tułowia = złapany
-const BOT_SPEED = 3.0, BOT_SPEED_MAX = 4.2, BOT_REACH_Y = 2.8;
+const BOT_SPEED = 5.0, BOT_SPEED_MAX = 6.0;   // bot jest trochę szybszy od gracza i przyspiesza w trakcie rundy
+const BOT_GRAVITY = 18, BOT_JUMP_MAX = 4.2;    // bot skacze na perony, wagony i schody (do 4,2 m w górę)
 const MONSTER_BOOST = 1.15;                 // potwór jest trochę szybszy
 export const info = { id: 'monster', name: 'Become the Monster', spawn: [0, 1.0, 27.5] };
 let S = null;
@@ -155,7 +156,7 @@ function think(dt, p) {
             const parts = participants();
             S.mon = parts.length >= 2 ? parts[(Math.random() * parts.length) | 0] : 'bot';
             S.caught = new Set(); S.surv = []; S.phase = 'play'; S.t = ROUND;
-            if (S.mon === 'bot') { S.bot = { x: MONSTER_SPAWN[0], z: MONSTER_SPAWN[2], speed: BOT_SPEED }; }
+            if (S.mon === 'bot') { S.bot = { x: MONSTER_SPAWN[0], y: 0, z: MONSTER_SPAWN[2], vy: 0, speed: BOT_SPEED, ground: true, stuck: 0, lastD: 99, side: 0 }; }
             startedRound();
         }
     } else if (S.phase === 'play') {
@@ -188,20 +189,44 @@ function catchPlayer(id) {
     if (S.mon === 'me') { SFX.stinger(); buzz('both', 0.7, 150); toast('Caught one!', '#ff6a4a'); }
 }
 function localCaught() { SFX.scare(); toast('You were caught! Watch the others.', '#e0533f'); }
+// Bot: biegnie prosto do gracza, wpada na przeszkody, wskakuje na nie (perony, wagony, schody, szyby)
+// i zeskakuje w dół. Stoi na górnych ściankach pudełek kolizji.
 function moveBot(dt, p) {
-    const b = S.bot; b.speed = Math.min(BOT_SPEED_MAX, b.speed + dt * 0.01);
-    const dx = p.x - b.x, dz = p.z - b.z, d = Math.hypot(dx, dz);
-    if (d > 0.05) { b.x += dx / d * b.speed * dt; b.z += dz / d * b.speed * dt; }
-    // Bot omija przeszkody (wypychanie z pudełek kolizji)
+    const b = S.bot, R = 0.4, TALL = 1.2;
+    b.speed = Math.min(BOT_SPEED_MAX, b.speed + dt * 0.015);
+    let dx = p.x - b.x, dz = p.z - b.z; const d = Math.hypot(dx, dz);
+    if (d > 0.05) { dx /= d; dz /= d; } else { dx = 0; dz = 0; }
+    if (b.side) { const sx = -dz * b.side, sz = dx * b.side; dx = dx * 0.4 + sx; dz = dz * 0.4 + sz; b.sideT -= dt; if (b.sideT <= 0) b.side = 0; }   // obejście, gdy utknie
+    const ox = b.x, oz = b.z;
+    b.x += dx * b.speed * dt; b.z += dz * b.speed * dt;
+    b.vy -= BOT_GRAVITY * dt; b.y += b.vy * dt;
+    let blockedTop = null; b.ground = false;
     for (const o of L.obstacles) {
-        const bb = o.box3; if (bb.max.y < 0.5 || bb.min.y > 2) continue;
-        const r = 0.5;
-        if (b.x > bb.min.x - r && b.x < bb.max.x + r && b.z > bb.min.z - r && b.z < bb.max.z + r) {
-            const ex = Math.min(b.x - (bb.min.x - r), bb.max.x + r - b.x), ez = Math.min(b.z - (bb.min.z - r), bb.max.z + r - b.z);
-            if (ex < ez) b.x = b.x < (bb.min.x + bb.max.x) / 2 ? bb.min.x - r : bb.max.x + r; else b.z = b.z < (bb.min.z + bb.max.z) / 2 ? bb.min.z - r : bb.max.z + r;
+        const bb = o.box3;
+        if (b.x < bb.min.x - R || b.x > bb.max.x + R || b.z < bb.min.z - R || b.z > bb.max.z + R) continue;
+        if (b.y + TALL <= bb.min.y || b.y >= bb.max.y) {
+            // Lądowanie na górze pudełka
+            if (b.vy <= 0 && b.y < bb.max.y + 0.05 && b.y > bb.max.y - 0.5 && b.x > bb.min.x - R * 0.5 && b.x < bb.max.x + R * 0.5 && b.z > bb.min.z - R * 0.5 && b.z < bb.max.z + R * 0.5) { b.y = bb.max.y; b.vy = 0; b.ground = true; }
+            continue;
         }
+        // Wejście w bok przeszkody: niska krawędź (do 0,45 m) pokonuje krokiem, wyższą zapamiętuje do skoku
+        const step = bb.max.y - b.y;
+        if (step <= 0.45 && b.vy <= 0) { b.y = bb.max.y; b.vy = 0; b.ground = true; continue; }
+        if (b.ground || b.vy <= 0) blockedTop = Math.max(blockedTop || 0, bb.max.y);
+        const ex = Math.min(b.x - (bb.min.x - R), bb.max.x + R - b.x), ez = Math.min(b.z - (bb.min.z - R), bb.max.z + R - b.z);
+        if (ex < ez) b.x = b.x < (bb.min.x + bb.max.x) / 2 ? bb.min.x - R : bb.max.x + R; else b.z = b.z < (bb.min.z + bb.max.z) / 2 ? bb.min.z - R : bb.max.z + R;
     }
-    if (d < 0.9 && p.y < BOT_REACH_Y && !S.caught.has('me')) catchPlayer('me');
+    if (b.y <= 0) { b.y = 0; b.vy = 0; b.ground = true; }
+    // Skok: na przeszkodę przed nim albo do gracza, który jest wyżej
+    const wantUp = p.y - 0.35 > b.y + 0.8 && d < 3.5;
+    if (b.ground && (blockedTop !== null || wantUp)) {
+        const h = Math.min(BOT_JUMP_MAX, Math.max(0.6, (blockedTop !== null ? blockedTop : p.y - 0.35) - b.y + 0.35));
+        b.vy = Math.sqrt(2 * BOT_GRAVITY * h); b.ground = false;
+    }
+    // Utknął (nie zbliża się): obejście w bok
+    const moved = Math.hypot(b.x - ox, b.z - oz);
+    if (moved < b.speed * dt * 0.3 && b.ground) { b.stuck += dt; if (b.stuck > 0.8) { b.stuck = 0; b.side = Math.random() < 0.5 ? -1 : 1; b.sideT = 1.0; b.vy = Math.sqrt(2 * BOT_GRAVITY * 1.2); b.ground = false; } } else b.stuck = 0;
+    if (!S.caught.has('me') && Math.hypot(p.x - b.x, p.z - b.z) < 1.0 && Math.abs(p.y - (b.y + 1.0)) < 1.5) catchPlayer('me');
 }
 
 // ---------- CO KLATKĘ ----------
@@ -216,7 +241,7 @@ export function update(dt, t, ctx) {
             'One player becomes the monster. Everyone else runs and climbs to stay out of reach.',
             'The monster catches you by touching your head or body with a hand.',
             'Not caught after 2 minutes = 200 Bagabucks. The monster wins 200 if it catches everyone.',
-            'Playing alone? A mannequin hunts you instead. It cannot climb high.',
+            'Playing alone? A fast mannequin hunts you instead. It can jump, so keep moving!',
             'The GAMES door behind you takes you back.'], 'This closes in ' + sec + ' s', { bg: 'rgba(16,4,4,0.9)', border: '#ff4a4a', title: '#ffd0c8', text: '#f4e0dc', footer: '#ffb030', size: 30 }); }
         S.intro.mesh.visible = S.introT > 0;
     }
@@ -229,8 +254,8 @@ export function update(dt, t, ctx) {
     let mpos = null;
     if (mon === 'bot') {
         const b = S.bot, m = S.botMesh; m.group.visible = true;
-        m.group.position.set(b.x, Math.abs(Math.sin(t * 7)) * 0.05, b.z); m.group.rotation.y = Math.atan2(p.x - b.x, p.z - b.z);
-        mpos = new THREE.Vector3(b.x, 2.3, b.z);
+        m.group.position.set(b.x, b.y + (b.ground ? Math.abs(Math.sin(t * 9)) * 0.06 : 0), b.z); m.group.rotation.y = Math.atan2(p.x - b.x, p.z - b.z);
+        mpos = new THREE.Vector3(b.x, b.y + 2.3, b.z);
         if (Math.floor(t * 2.2) !== S.step) { S.step = Math.floor(t * 2.2); SFX.step(0.8, { x: b.x, y: 0, z: b.z }); }
     } else S.botMesh.group.visible = false;
     if (mon && mon !== 'bot') mpos = headOf(mon);
