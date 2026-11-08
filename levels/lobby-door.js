@@ -20,6 +20,7 @@ export const ARRIVAL_SILENCE = [SILENCE_X, 1.2, 13.2];   // ...po powrocie z try
 export const ARRIVAL_WELL = [WELL_X, 1.2, 13.2];         // ...po powrocie ze Studni
 export const ARRIVAL_GAMES = [LAVA_X, 1.2, 13.2];        // ...z salonu BagaBoo Games
 export const ARRIVAL_STAFF = [-13.2, 1.2, STAFF_Z];      // ...z pokoju szefa
+export const ARRIVAL_LEVELS = [DOOR_X, 1.2, 13.2];       // ...z pokoju LEVELS
 const LAUNDRY_Z = 1.5;   // drzwi do Pralni we wschodniej ścianie
 export const ARRIVAL_LAUNDRY = [13.2, 1.2, LAUNDRY_Z];   // ...i z Pralni
 const MIRROR = { x: -14.93, z: 3.2, w: 1.6, h: 2.3 };   // lustro na zachodniej ścianie, obok sklepu
@@ -34,14 +35,10 @@ export function prebuild() {
 }
 
 export function build() {
-    buildDoor(DOOR_X, 'THE MAZE', '#ff6a40', 0xff3010, 'maze', 'You open the door...');
-    buildDoor(SILENCE_X, 'SILENCE', '#9fc8ff', 0x3a7aff, 'silence', 'Shhh...');
-    buildDoor(WELL_X, 'THE WELL', '#b8ffcf', 0x30ff90, 'well', 'Do not look down...');
+    // Wszystkie poziomy mają wejście w pokoju LEVELS
+    buildDoor(DOOR_X, 'LEVELS', '#ff6a40', 0xff3010, 'levels', 'Choose your nightmare...');
     buildDoor3({ x: LAVA_X, z: WALL_Z, rotY: Math.PI, label: 'BAGABOO GAMES', font: 'bold 54px serif', color: '#d080ff', glow: 0xa040ff, rust: true, signY: 3.5, signZ: 0.32, hanging: true, collider: true, ao: true,
         portal: { target: 'games', onEnter: () => toast('Welcome to BagaBoo Games', '#d080ff') } });
-    // Pralnia Przemysłowa: drzwi we wschodniej ścianie
-    buildDoor3({ x: 14.97, z: LAUNDRY_Z, rotY: -Math.PI / 2, label: 'LAUNDROMAT', color: '#ff7ac0', glow: 0xff3aa0, rust: true, signY: 3.5, signZ: 0.32, hanging: true, collider: true, ao: true,
-        portal: { target: 'laundry', onEnter: () => toast('Something is walking between the washers...', '#ff7ac0') } });
     // Pokój szefa: wchodzi tylko gracz z nickiem z listy STAFF_NAMES (config.js); inni tylko na zaproszenie
     buildDoor3({ x: -14.97, z: STAFF_Z, rotY: Math.PI / 2, label: 'STAFF ONLY', color: '#ffd27a', glow: 0xffb040, wood: 0x4a3020, signY: 2.7, collider: true, ao: true,
         portal: { target: 'staff', opts: { noFollow: true }, cond: () => isStaffName(getLook().name), deny: 'Staff only. Ask the game owner for an invite.', onEnter: () => toast('Welcome to the staff room', '#ffd27a') } });
