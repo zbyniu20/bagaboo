@@ -21,7 +21,7 @@ const MONSTER_SPAWN = [0, 1.0, -26];        // potwór zaczyna na torach w głę
 const SURVIVOR_SPAWN = [[-18, 2.2, 26], [18, 2.2, 26], [-12, 2.2, 24], [12, 2.2, 24], [-22, 2.2, 22], [22, 2.2, 22]];   // reszta na peronach przy wejściu
 const WAIT = 10, ROUND = 120, RESULTS = 8, REWARD = 200;
 const CATCH_DIST = 0.5;                     // dłoń potwora tak blisko głowy lub tułowia = złapany
-const BOT_SPEED = 5.0, BOT_SPEED_MAX = 6.0;   // bot jest trochę szybszy od gracza i przyspiesza w trakcie rundy
+const BOT_SPEED = 6.2, BOT_SPEED_MAX = 7.4;   // bot jest trochę szybszy od gracza i przyspiesza w trakcie rundy
 const BOT_GRAVITY = 18, BOT_JUMP_MAX = 4.2;    // bot skacze na perony, wagony i schody (do 4,2 m w górę)
 const MONSTER_BOOST = 1.15;                 // potwór jest trochę szybszy
 export const info = { id: 'monster', name: 'Become the Monster', spawn: [0, 1.0, 27.5] };
