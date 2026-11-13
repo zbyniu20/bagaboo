@@ -12,7 +12,7 @@ import { hands } from '../core/player.js';
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions , introSeen } from '../core/levelkit.js';
 import { ARRIVAL_FROM_RANGE } from './games.js';
 
 const WAIT = 8, ROUND = 120, RESULTS = 8, REWARD = 200, SOLO_WIN = 25;
@@ -175,6 +175,7 @@ export function update(dt, t, ctx) {
     S.clock += dt; S.ctx = ctx;
     ctx.body.velocity.x = 0; ctx.body.velocity.z = 0;   // pozycja nieruchoma przy ladzie
     const auth = isAuthority();
+    if (S.introSkip === undefined) { S.introSkip = introSeen('range'); if (S.introSkip) S.introT = Math.min(S.introT, 3); }   // samouczek tylko za pierwszym razem
     if (S.introT > 0) {
         S.introT -= dt;
         const sec = Math.max(0, Math.ceil(S.introT));
@@ -184,7 +185,7 @@ export function update(dt, t, ctx) {
             'Each round lasts 2 minutes. The player with the most kills wins 200 Bagabucks.',
             'Playing alone? Get ' + SOLO_WIN + ' kills to win.',
             'To leave, point at the "Back to Games" button on the counter and pull the trigger.'], 'This closes in ' + sec + ' s', { bg: 'rgba(4,10,16,0.9)', border: '#60d0ff', title: '#d0f0ff', text: '#e0eef8', footer: '#ffb030', size: 30 }); }
-        S.intro.mesh.visible = S.introT > 0;
+        S.intro.mesh.visible = S.introT > 0 && !S.introSkip;
     }
     if (auth) {
         think(dt);
