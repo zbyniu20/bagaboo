@@ -66,7 +66,7 @@ export function applyLighting(P) {
 applyLighting(LP);
 
 // Fizyka (gracz nie ma kontaktów w Cannonie, jego kolizje liczy player.js)
-export const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -12.0, 0) });
+export const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.81, 0) });
 world.broadphase = new CANNON.SAPBroadphase(world);
 export const physicsMat = new CANNON.Material('env');
 world.addContactMaterial(new CANNON.ContactMaterial(physicsMat, physicsMat, { friction: 1.0, restitution: 0.0, contactEquationStiffness: 1e9, contactEquationRelaxation: 4 }));

@@ -8,6 +8,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP } from './config.js';
 import { makeCanvas, toTex, mkRng } from './textures.js';
 import { roleTagFor } from './config.js';
+import { rimify } from './visuals.js';
 
 const ENV = LP.envIntensity;
 const NAIL_GEO = new THREE.SphereGeometry(1, 12, 8);
@@ -62,7 +63,8 @@ const SKINS = {
     shadow: { fur: 0x0b0b0d, glowEyes: true },
     king: { fur: 0xd4a640, metal: true, cape: true },
     bloodmoon: { fur: 0x5a0a0c, face: 0x2a0606, glowEyes: true },
-    ultimate: { fur: 0xe0b040, face: 0xb8902a, metal: true }   // ultimate admin: cały złoty
+    ultimate: { fur: 0xe0b040, face: 0xb8902a, metal: true },   // ultimate admin: cały złoty
+    cheater: { fur: 0x39ff14, face: 0xff00aa, glowEyes: true }   // przyłapany haker: jaskrawozielony z różową twarzą, na zawsze
 };
 export function furColor(look) { const k = SKINS[look.skin]; return new THREE.Color(k ? k.fur : (look.color || '#3d2314')); }
 function furMat(look, shade) {
@@ -142,6 +144,7 @@ export function createRealHand(isLeft, look) {
     }
     outer.userData.rig = { fingers: fingers, thumb: thumb, grip: 0.22, target: 0.22 };
     poseHand(outer.userData.rig, 1);
+    rimify(outer, 0xffc890, 0.45, 0);   // ciepła obwódka Fresnela: dłonie widać wyraźnie także w ciemnych poziomach
     return outer;
 }
 export function poseHand(rig, dt) {
@@ -310,15 +313,18 @@ export function createHead(look, withName) {
     const skull = meshAt(new RoundedBoxGeometry(0.26, 0.26, 0.25, 4, 0.045), fur, 0, 0.005, 0.0); head.add(skull);
     // Twarz: płaska, ciemna, bez futra, z futrzanym daszkiem brwi nad nią
     const plate = meshAt(new RoundedBoxGeometry(0.19, 0.16, 0.03, 3, 0.012), face, 0, -0.025, -0.118); head.add(plate);
-    head.add(meshAt(new RoundedBoxGeometry(0.22, 0.035, 0.05, 2, 0.012), fur, 0, 0.065, -0.115));
+    const brow = meshAt(new RoundedBoxGeometry(0.22, 0.035, 0.05, 2, 0.012), fur, 0, 0.065, -0.115); head.add(brow);
+    head.userData.face = { brow: brow, mouth: null, eyes: [], level: 0 };
     for (const s of [-1, 1]) head.add(meshAt(new RoundedBoxGeometry(0.03, 0.05, 0.04, 2, 0.01), fur, s * 0.135, 0.0, -0.01));   // uszy
     if (!masked) {
         const dark = new THREE.MeshBasicMaterial({ color: 0x0a0605 });
         const muzzle = meshAt(new RoundedBoxGeometry(0.11, 0.06, 0.03, 2, 0.012), face, 0, -0.065, -0.135); head.add(muzzle);
         for (const s of [-1, 1]) head.add(meshAt(new THREE.SphereGeometry(0.009, 8, 6), dark, s * 0.018, -0.05, -0.151));
-        head.add(meshAt(new THREE.BoxGeometry(0.07, 0.006, 0.006), dark, 0, -0.085, -0.15));
+        // Usta: ciemny owal, który otwiera się w rytm głosu (rozmowa przez mikrofon)
+        const mouth = meshAt(new THREE.SphereGeometry(0.035, 14, 8), new THREE.MeshBasicMaterial({ color: 0x1a0606 }), 0, -0.085, -0.145);
+        mouth.scale.set(1, 0.12, 0.35); head.add(mouth); head.userData.face.mouth = mouth;
         const eyeMat = k.glowEyes ? new THREE.MeshBasicMaterial({ color: 0xff2a10 }) : new THREE.MeshPhysicalMaterial({ color: 0x2a160c, roughness: 0.1, clearcoat: 1 });
-        for (const s of [-1, 1]) head.add(meshAt(new THREE.SphereGeometry(0.014, 12, 8), eyeMat, s * 0.045, 0.02, -0.132));
+        for (const s of [-1, 1]) { const e = meshAt(new THREE.SphereGeometry(0.014, 12, 8), eyeMat, s * 0.045, 0.02, -0.132); head.add(e); head.userData.face.eyes.push(e); }
     }
     head.add(buildMask(look.mask)); head.add(buildHat(look.hat)); head.add(buildGlasses(look.glasses));
     if (withName) {
@@ -492,8 +498,8 @@ export function roleLabel(text, color, glow) {
 }
 // Napis z rolą (OWNER, ULTIMATE ADMIN, CO-ADMIN, ADMIN, MODERATOR) nad nickiem, chyba że gracz go ukrył
 export function addRoleTag(head, look) {
-    const r = roleTagFor(look.name);
-    if (!r || look.hideTag) return null;
+    const r = look.cheater ? { text: 'CHEATER', color: '#ff2a2a', glow: '#ff0000' } : roleTagFor(look.name);   // napisu CHEATER nie da się ukryć
+    if (!r || (look.hideTag && !look.cheater)) return null;
     const lab = roleLabel(r.text, r.color, r.glow); lab.position.set(0, 0.67, 0); head.add(lab);
     return lab;
 }
@@ -511,4 +517,15 @@ export function createAvatar(look) {
     // Ramiona dociągane do dłoni tuż przed rysowaniem
     torso.userData.chest.onBeforeRender = () => { placeArm(armL, torso, -1, handL); placeArm(armR, torso, 1, handR); };
     return { group, torso, head, handL, handR, key: lookKey(look), torsoDrop: 0.35 * sc };
+}
+
+// Mimika przy rozmowie: level 0..1 (głośność), pitch 0..1 (wysokość głosu).
+// Głośniej = szerzej otwarte usta, uniesione brwi i większe oczy; wyższy głos = węższe, bardziej okrągłe usta.
+export function animateFace(head, level, pitch, dt) {
+    const f = head && head.userData.face; if (!f) return;
+    f.level += (level - f.level) * Math.min(1, dt * (level > f.level ? 22 : 10));
+    const L = f.level, p = pitch || 0.5;
+    if (f.mouth) { f.mouth.scale.y = 0.12 + L * 0.95; f.mouth.scale.x = 1.15 - p * 0.45 + L * 0.15; }
+    if (f.brow) f.brow.position.y = 0.065 + L * 0.018 + (p - 0.5) * 0.008;
+    for (const e of f.eyes) e.scale.setScalar(1 + L * 0.35);
 }

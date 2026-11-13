@@ -4,10 +4,10 @@
 // zostać hostem tego samego pokoju, a gość nie połączy się, dopóki host nie jest online.
 // ==========================================
 import { THREE, camera, scene, L, CANNON, containBall } from './engine.js';
-import { createAvatar, poseHand, lookKey } from './avatar.js';
+import { createAvatar, poseHand, lookKey, animateFace } from './avatar.js';
 import { getLook, SESSION, SAVE } from './economy.js';
 import { markAllDirty, toast } from './terminal.js';
-import { rankOf, setLocalMod } from './config.js';
+import { rankOf, setLocalMod, isStaffName } from './config.js';
 import { getAudioContext } from './audio.js';
 
 /* global Peer */
@@ -39,6 +39,23 @@ export function bannedNamesList() { const b = banList(), now = Date.now(); retur
 export function unbanName(name) { const b = banList(); delete b[String(name).toLowerCase()]; saveBanList(b); markAllDirty(); }
 function isBannedName(name) { const b = banList(), u = b[String(name || '').toLowerCase()]; return u && u > Date.now(); }
 // Czy to urządzenie ma bana (sprawdzane na stronie startowej)
+// ---------- WŁAMANIE DO POKOJU SZEFA ----------
+// Host pilnuje, kto jest w pokoju szefa. Gość bez roli i bez zaproszenia = haker: skórka CHEATER na zawsze i ban na tydzień.
+const WEEK = 7 * DAY, invitedToStaff = new Set();
+let myInvited = false;
+export function setInvitedToStaff(on) { myInvited = on; }
+export function isInvitedToStaff() { return myInvited; }
+export function selfBan(ms) { try { localStorage.setItem(MY_BAN_KEY, String(Date.now() + ms)); } catch (e) {} }
+function checkIntruder(id, st) {
+    if (NET.mode !== 'host' || !st || st.lvl !== 'staff' || !st.profile) return;
+    if (isStaffName(st.profile.name) || invitedToStaff.has(id)) return;
+    const conn = connById(id); if (!conn || conn.cheaterSent) return;
+    conn.cheaterSent = true;
+    const b = banList(); b[st.profile.name.toLowerCase()] = Date.now() + WEEK; saveBanList(b);
+    try { conn.send({ type: 'cheater', until: Date.now() + WEEK }); } catch (e) {}
+    setTimeout(() => { try { conn.close(); } catch (e) {} }, 400);
+    setStatus(st.profile.name + ' broke into the staff room: CHEATER skin and a one-week ban.');
+}
 export function myBanUntil() { try { const u = +localStorage.getItem(MY_BAN_KEY) || 0; return u > Date.now() ? u : 0; } catch (e) { return 0; } }
 function nameOf(id) { const st = playersState[id]; return st && st.profile ? st.profile.name : ''; }
 
@@ -58,7 +75,7 @@ function performMod(action, targetId, byName, extra) {
         try { conn.send({ type: 'banned', until: Date.now() + DAY, by: byName }); } catch (e) {}
         setTimeout(() => { try { conn.close(); } catch (e) {} }, 300);
         setStatus(targetName + ' was banned for one day by ' + byName + '.');
-    } else if (action === 'invite' && conn) conn.send({ type: 'invite', level: extra || 'staff' });
+    } else if (action === 'invite' && conn) { if ((extra || 'staff') === 'staff') invitedToStaff.add(targetId); conn.send({ type: 'invite', level: extra || 'staff' }); }
     else if (action === 'mod') {
         setLocalMod(targetName, !!extra);
         if (conn) conn.send({ type: 'role', mod: !!extra, name: targetName });
@@ -99,6 +116,31 @@ export function isHostId(id) { return id === GAME_PREFIX + NET.code; }
 // Głos gracza gra przez kontekst dźwięku gry (odblokowany kliknięciem w menu), więc przeglądarka go nie blokuje.
 // Element <audio> (wyciszony) jest potrzebny, bo bez niego Chrome nie oddaje dźwięku ze strumienia WebRTC.
 const voiceGain = {}, voiceCalls = {};
+// Analiza głosu (głośność i wysokość) do ruchu ust awatarów
+const voiceAn = {}, faceBuf = new Uint8Array(256);
+let myAn = null;
+let cheaterHandler = null;
+export function onCheater(fn) { cheaterHandler = fn; }
+function makeAnalyser(ac, src) { const an = ac.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.3; src.connect(an); return an; }
+function readVoice(an) {
+    if (!an) return { level: 0, pitch: 0.5 };
+    an.getByteFrequencyData(faceBuf);
+    let sum = 0, wsum = 0;
+    for (let i = 2; i < 120; i++) { sum += faceBuf[i]; wsum += faceBuf[i] * i; }   // pasmo mowy
+    const level = Math.max(0, Math.min(1, (sum / 118 - 18) / 70));
+    const pitch = sum > 0 ? Math.max(0, Math.min(1, (wsum / sum - 8) / 30)) : 0.5;
+    return { level: level, pitch: pitch };
+}
+// Mój własny głos (do odbicia w lustrze)
+export function myVoice() {
+    const ac = getAudioContext();
+    if (!myAn && ac && voice.stream) { try { myAn = makeAnalyser(ac, ac.createMediaStreamSource(voice.stream)); } catch (e) {} }
+    return voice.on ? readVoice(myAn) : { level: 0, pitch: 0.5 };
+}
+// Co klatkę: usta i mimika innych graczy w rytm ich głosu
+export function animateFaces(dt) {
+    for (const id in remoteAvatars) { const v = mutedPeers.has(id) ? { level: 0, pitch: 0.5 } : readVoice(voiceAn[id]); animateFace(remoteAvatars[id].head, v.level, v.pitch, dt); }
+}
 let meshT = 0;
 let silent = null;
 // Cisza zamiast mikrofonu: gracz bez mikrofonu (albo bez zgody) nadal słyszy innych
@@ -119,6 +161,7 @@ function playAudioStream(stream, peerId) {
             const src = ac.createMediaStreamSource(stream), g = ac.createGain();
             g.gain.value = mutedPeers.has(peerId) ? 0 : 1.6;
             src.connect(g); g.connect(ac.destination); voiceGain[peerId] = { src: src, g: g };
+            voiceAn[peerId] = makeAnalyser(ac, src);
             if (ac.state !== 'running') ac.resume().catch(() => {});
         } catch (e) { a.muted = mutedPeers.has(peerId); }
     } else a.muted = mutedPeers.has(peerId);
@@ -126,6 +169,7 @@ function playAudioStream(stream, peerId) {
 }
 function removeAudio(id) {
     if (voiceGain[id]) { try { voiceGain[id].src.disconnect(); voiceGain[id].g.disconnect(); } catch (e) {} delete voiceGain[id]; }
+    delete voiceAn[id];
     if (voiceCalls[id]) { try { voiceCalls[id].close(); } catch (e) {} delete voiceCalls[id]; }
     if (audioEls[id]) { audioEls[id].srcObject = null; audioEls[id].remove(); delete audioEls[id]; }
 }
@@ -170,6 +214,8 @@ function updateRemote(id, st) {
     p.group.visible = (st.lvl || 'lobby') === L.levelId;   // widać tylko graczy na tym samym poziomie
 }
 function removeRemote(id) { if (remoteAvatars[id]) { scene.remove(remoteAvatars[id].group); delete remoteAvatars[id]; } }
+// Tryb Become the Monster: chowa awatar gracza, który wygląda jak wybrany potwór
+export function setAvatarHidden(id, hidden) { const a = remoteAvatars[id]; if (a) a.group.visible = !hidden; }
 export function poseRemoteHands(dt) { for (const id in remoteAvatars) { poseHand(remoteAvatars[id].handL.userData.rig, dt); poseHand(remoteAvatars[id].handR.userData.rig, dt); } }
 
 function syncObject(id, data) {
@@ -227,7 +273,7 @@ function handleGuest(conn) {
         if (data.type === 'playerUpdate') {
             const nm = data.payload && data.payload.profile && data.payload.profile.name;
             if (nm && (bannedNames.has(nm) || isBannedName(nm))) { try { conn.send({ type: 'banned', until: banList()[nm.toLowerCase()] || Date.now() + DAY }); } catch (e) {} kickConn(conn, null); return; }
-            playersState[conn.peer] = data.payload; updateRemote(conn.peer, data.payload);
+            playersState[conn.peer] = data.payload; updateRemote(conn.peer, data.payload); checkIntruder(conn.peer, data.payload);
         } else if (data.type === 'objectMove') { sharedObjectsState[data.id] = data.payload; syncObject(data.id, data.payload); }
         else if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, conn.peer); }
         else if (data.type === 'modreq') performMod(data.action, data.target === myPeerId ? null : data.target, nameOf(conn.peer), data.extra);
@@ -283,6 +329,8 @@ export function startJoin(code, cb) {
                 setTimeout(() => location.reload(), 2500);
                 return;
             }
+            if (data.type === 'cheater') { if (cheaterHandler) cheaterHandler(data.until); return; }
+            if (data.type === 'invite' && data.level === 'staff') myInvited = true;
             if (data.type === 'role') { setLocalMod(data.name, data.mod); toast(data.mod ? 'You are now a moderator!' : 'You are no longer a moderator', '#ffd27a'); markAllDirty(); return; }
             if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, 'host'); return; }
             if (data.type === 'follow') { if (followHandler) followHandler(data.level, data.data || {}); return; }

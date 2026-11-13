@@ -122,7 +122,7 @@ export const shop = new Terminal((t) => {
     if (login.ready) { c.fillStyle = OK_COL; c.beginPath(); c.arc(28 + 246 + 218, 92, 9, 0, 7); c.fill(); }
 
     if (shopUi.tab === 'shop') {
-        E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * 139, 152, 131, 46, s.name, () => { shopUi.slot = s.id; }, { size: 19, tone: 'gold', active: shopUi.slot === s.id }));
+        E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * 122, 152, 116, 46, s.name, () => { shopUi.slot = s.id; }, { size: s.name.length > 9 ? 14 : 17, tone: s.id === 'mskin' ? 'bad' : 'gold', active: shopUi.slot === s.id }));
         const items = E.CATALOG.filter(it => it.slot === shopUi.slot);
         // Długie listy dzielone na strony po 8 przedmiotów
         const PER = 8, pages = Math.max(1, Math.ceil(items.length / PER));
@@ -142,10 +142,11 @@ export const shop = new Terminal((t) => {
             else t.btn('buy' + it.id, 790, y + 4, 200, 36, E.SAVE.wallet >= it.price ? 'Buy' : 'Need ' + (it.price - E.SAVE.wallet), () => { E.buyItem(it); }, { size: 20, tone: 'gold', disabled: E.SAVE.wallet < it.price });
         });
         if (pages > 1) {
+            if (shopUi.slot === 'mskin') t.text('Only in Become the Monster', 512, 586, 16, AMBER_DIM, 'center');
             t.btn('pgPrev', 40, 590, 180, 40, 'Previous', () => { shopUi.pg--; }, { size: 20, disabled: shopUi.pg === 0 });
             t.text('Page ' + (shopUi.pg + 1) + ' of ' + pages, 512, 610, 20, AMBER, 'center');
             t.btn('pgNext', 804, 590, 180, 40, 'Next', () => { shopUi.pg++; }, { size: 20, disabled: shopUi.pg >= pages - 1 });
-        } else t.text('Look at the stand next to the machine to see the item on a head.', 40, 610, 18, AMBER_DIM, 'left');
+        } else t.text(shopUi.slot === 'mskin' ? 'Monster skins show only in Become the Monster, when you are the monster.' : 'Look at the stand next to the machine to see the item on a head.', 40, 610, 18, AMBER_DIM, 'left');
     } else if (shopUi.tab === 'daily') {
         t.text('Login reward every 6 hours', 40, 176, 30, GOLD, 'left', true);
         t.text('Current streak: ' + login.streak + '   Next reward: ' + login.nextAmount + ' ' + E.CURRENCY, 40, 222, 24, AMBER, 'left');

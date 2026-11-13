@@ -56,6 +56,14 @@ export const CATALOG = [
     { slot: 'skin', id: 'shadow', name: 'Shadow (glowing eyes)', price: 3800 },
     { slot: 'skin', id: 'king', name: 'Parkour King', price: 0, locked: true, hint: 'Red route' },   // tylko za czerwoną trasę w lobby
     { slot: 'skin', id: 'bloodmoon', name: 'Bloodmoon', price: 0, locked: true, hint: 'Achievement' },
+    { slot: 'skin', id: 'cheater', name: 'CHEATER', price: 0, locked: true, hint: 'For hackers' },   // nadawana za włamanie do pokoju szefa, nie da się jej zdjąć
+    // Skórki potworów: zakładka "BagaBoo Games", działają tylko w trybie Become the Monster
+    { slot: 'mskin', id: 'none', name: 'Classic monster', price: 0 },
+    { slot: 'mskin', id: 'mannequin', name: 'Mannequin (The Maze)', price: 1500 },
+    { slot: 'mskin', id: 'blind', name: 'The Blind One (Silence)', price: 2000 },
+    { slot: 'mskin', id: 'ooze', name: 'Tar Crawler (The Well)', price: 2500 },
+    { slot: 'mskin', id: 'thread', name: 'Threadman (Laundromat)', price: 3000 },
+    { slot: 'mskin', id: 'lava', name: 'Lava Beast (Burning Memory)', price: 3500 },
     { slot: 'badge', id: 'none', name: 'No badge', price: 0 },
     { slot: 'badge', id: 'early', name: 'Early player', price: 0 },
     { slot: 'badge', id: 'skull', name: 'Skull pin', price: 500 },
@@ -81,7 +89,7 @@ export const CATALOG = [
     { slot: 'mask', id: 'skull', name: 'Skull mask', price: 3200 },
     { slot: 'mask', id: 'blind', name: 'Face of the Blind One', price: 5000 }
 ];
-export const SLOTS = [{ id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badges' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }];
+export const SLOTS = [{ id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badges' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }, { id: 'mskin', name: 'BagaBoo Games' }];
 
 // Pula zadań dziennych: każdego dnia losowane są 3 (takie same dla wszystkich graczy danego dnia)
 export const QUEST_POOL = [
@@ -115,7 +123,7 @@ export const ACHIEVEMENTS = [
     { id: 'completionist', name: 'Completionist', desc: 'Beat all three levels and become Parkour King', reward: ['skin', 'bloodmoon'], rewardName: 'Bloodmoon skin' }
 ];
 export const RECORDS = [
-    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'route', name: 'Red route' }, { id: 'range', name: 'Shooting range (kills)', score: true }
+    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'route', name: 'Red route' }, { id: 'range', name: 'Shooting range (kills)', score: true }
 ];
 export const HEIGHT_RECORD_BONUS = 10;   // za każdy nowy metr rekordu wysokości
 export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dnia
@@ -123,8 +131,8 @@ export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dni
 function defaultSave() {
     return {
         v: 1, wallet: START_BONES, earned: 0,
-        owned: ['skin:none', 'badge:none', 'tool:none', 'hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none'],
-        equipped: { skin: 'none', badge: 'none', tool: 'none', hat: 'none', glasses: 'none', mask: 'none', sleeve: 'cloth', gloves: 'none' },
+        owned: ['skin:none', 'badge:none', 'tool:none', 'mskin:none', 'hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none'],
+        equipped: { skin: 'none', badge: 'none', tool: 'none', mskin: 'none', hat: 'none', glasses: 'none', mask: 'none', sleeve: 'cloth', gloves: 'none' },
         profile: { name: 'Acrobat', color: '#3d2314' },
         best: { height: 0, jumps: 0 },
         login: { last: 0, streak: 0 },
@@ -197,14 +205,19 @@ export function onLookChange(fn) { lookListeners.push(fn); }
 function notifyLook() { const l = getLook(); lookListeners.forEach(f => f(l)); markAllDirty(); }
 export function getLook() {
     // Ultimate admin jest zawsze cały złoty
-    return { name: SAVE.profile.name, hideTag: !!SAVE.profile.hideTag, skin: isUltimateName(SAVE.profile.name) ? 'ultimate' : SAVE.equipped.skin, badge: SAVE.equipped.badge, tool: SAVE.equipped.tool, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
+    // Ultimate admin jest zawsze cały złoty, a przyłapany na włamaniu ma na zawsze skórkę CHEATER
+    return { name: SAVE.profile.name, hideTag: !!SAVE.profile.hideTag && !SAVE.cheater, cheater: !!SAVE.cheater, mskin: SAVE.equipped.mskin || 'none',
+        skin: SAVE.cheater ? 'cheater' : (isUltimateName(SAVE.profile.name) ? 'ultimate' : SAVE.equipped.skin), badge: SAVE.equipped.badge, tool: SAVE.equipped.tool, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
 }
 // Ukrywanie własnego napisu z rolą nad głową (przełącznik w pokoju szefa)
 export function setHideTag(on) { SAVE.profile.hideTag = !!on; saveGame(); notifyLook(); }
+// Włamanie do pokoju szefa: skórka CHEATER na zawsze (zapisana w save, nie do zdjęcia)
+export function markCheater() { if (!SAVE.cheater) { SAVE.cheater = true; if (!SAVE.owned.includes('skin:cheater')) SAVE.owned.push('skin:cheater'); SAVE.equipped.skin = 'cheater'; saveGame(); notifyLook(); } }
 export function setProfile(p) { Object.assign(SAVE.profile, p); refreshStaffItems(); saveGame(); notifyLook(); }
 // Odznaki Admin / Moderator i młotek Kick należą się tylko ekipie (wg nicku); reszcie są zabierane
 export function refreshStaffItems() {
     const n = SAVE.profile.name, give = (key, on) => { const has = SAVE.owned.includes(key); if (on && !has) SAVE.owned.push(key); if (!on && has) SAVE.owned.splice(SAVE.owned.indexOf(key), 1); };
+    if ((isOwnerName(n) || isUltimateName(n)) && !SAVE.owned.includes('tool:ban')) SAVE.owned.push('tool:ban');   // Ban hammer za darmo dla właściciela i ultimate admina
     give('badge:owner', isOwnerName(n)); give('badge:coadmin', isCoAdminName(n)); give('badge:ultimate', isUltimateName(n)); give('badge:admin', isAdminName(n)); give('badge:mod', isModName(n) && !isAdminName(n)); give('tool:kick', isStaffName(n));
     if (!isStaffName(n)) { if (SAVE.equipped.tool !== 'none') SAVE.equipped.tool = 'none'; }
     if (SAVE.equipped.badge === 'admin' && !isAdminName(n)) SAVE.equipped.badge = 'none';

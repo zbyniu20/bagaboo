@@ -125,8 +125,9 @@ export function roleTagFor(name) {
     if (isModName(name)) return { text: 'MODERATOR', color: '#8ab8ff', glow: '#3a6aff' };
     return null;
 }
-// Ranga: 3 ultimate admin, 2 admin, 1 moderator, 0 gracz. Wyrzucić / zbanować można tylko kogoś z niższą rangą.
-export function rankOf(name) { return isUltimateName(name) ? 3 : (isAdminName(name) ? 2 : (isModName(name) ? 1 : 0)); }
+// Ranga: 4 ultimate admin (zbyniu), 3 właściciel (BoyIsGamer), 2 admin / co-admin, 1 moderator, 0 gracz.
+// Wyrzucić / zbanować można tylko kogoś z niższą rangą, więc właściciel może wszystko poza ultimate adminem.
+export function rankOf(name) { return isUltimateName(name) ? 4 : (isOwnerName(name) ? 3 : (isAdminName(name) ? 2 : (isModName(name) ? 1 : 0))); }
 export function isModName(name) { return MOD_NAMES.some(n => low(n) === low(name)) || localMods().includes(low(name)); }
 export function isStaffName(name) { return isAdminName(name) || isModName(name); }
 export function isReservedNick(name) { return Object.prototype.hasOwnProperty.call(RESERVED_NICKS, low(name)); }

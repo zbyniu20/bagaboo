@@ -9,14 +9,19 @@ import { sendObjectMove } from './network.js';
 import { buzz } from './haptics.js';
 
 const radius = 0.35, gorillaStanceOffset = 0.6;
-const POWER = 1.2;            // siła odepchnięcia i skoku (1.0 = oryginał)
+const POWER = 1.0;            // siła trampolin i limit prędkości (1.0 = normalnie)
+// Ruch w stylu Gorilla Tag: dłoń dotykająca powierzchni jest "przyklejona", a ciało przesuwa się
+// o tyle, o ile przesuniesz dłoń. Po oderwaniu dłoni ciało leci z prędkością ostatnich ruchów ręki.
+const JUMP_MULT = 1.1;        // mnożnik prędkości po oderwaniu dłoni
+const MAX_JUMP_SPEED = 6.5;   // maksymalna prędkość wyrzutu (m/s): skok na ok. 2 m, nie wyżej
+const MIN_JUMP_SPEED = 0.3;   // wolniejsze ruchy nie wyrzucają gracza
+const VEL_HISTORY = 3;        // z ilu ostatnich klatek liczona jest prędkość wyrzutu
+const SLIDE_SPEED = 1.6;      // jak szybko zjeżdżasz po śliskiej ścianie (przy przyczepności 0)
 const HEAD_RADIUS = 0.18;     // kolizja głowy
 const FRICTION_IDLE = 0.15;   // hamowanie, gdy stoisz (mniej = mocniej)
-const FRICTION_PUSH = 0.85;   // hamowanie w trakcie odpychania się ręką
 const FRICTION_RUN = 0.93;    // krótki rozpęd między machnięciami podczas biegu
 const MOMENTUM_TIME = 0.15;   // ile sekund trwa rozpęd po mocnym machnięciu
 const RUN_MIN_SPEED = 0.7;    // minimalna prędkość ręki (m/s), żeby liczyć to jako bieg
-const RUN_BOOST_RATE = 0.7, RUN_BOOST_MAX = 1.0;
 const HAND_DEADZONE = 0.006;  // drżenie ręki poniżej tej wartości nie popycha gracza
 
 export const playerBody = new CANNON.Body({ mass: 50, shape: new CANNON.Sphere(radius), material: physicsMat, position: new CANNON.Vec3(0, 2, 0), fixedRotation: true, collisionFilterGroup: GROUP.PLAYER, collisionFilterMask: 0 });
@@ -38,6 +43,8 @@ export function setPlayerPosition(x, y, z) {
     prevLocal[0].set(0, 0, 0); prevLocal[1].set(0, 0, 0);
 }
 
+const anchorVel = [null, null], velHist = [];   // prędkości od "przyklejonych" dłoni i historia do wyrzutu
+let wasAnchored = false;
 let grounded = false, handPushing = false, stepped = false, simTime = 0, lastPushTime = -10, lastTrampTime = -10;
 let grabbed = null, grabbingIndex = -1, ropeConstraint = null, ropeHand = -1;
 const wasTouch = [false, false], lastSpd = [0, 0], lastScrape = [0, 0];
@@ -142,17 +149,14 @@ world.addEventListener('postStep', () => {
     }
     grounded = false;
     for (const o of L.obstacles) if (sphereVsBox(p.x, p.y, p.z, radius + 0.03, o.box3) && hit.ny > 0.5) { grounded = true; break; }
-    if (grounded && !ropeConstraint && !external.move) {
-        let k;
-        if (handPushing) k = FRICTION_PUSH;
-        else if (simTime - lastPushTime < MOMENTUM_TIME) k = FRICTION_RUN;
-        else k = FRICTION_IDLE;
+    if (grounded && !ropeConstraint && !external.move && !handPushing) {   // dłoń na powierzchni steruje ruchem sama, bez tarcia
+        const k = simTime - lastPushTime < MOMENTUM_TIME ? FRICTION_RUN : FRICTION_IDLE;   // krótki poślizg po biegu, potem hamowanie
         v.x *= k; v.z *= k;
         if (k === FRICTION_IDLE) { if (Math.abs(v.x) < 0.08) v.x = 0; if (Math.abs(v.z) < 0.08) v.z = 0; }
     }
     const maxUp = L.maxUp || 99; if (v.y > maxUp && simTime - lastTrampTime > 0.5) v.y = maxUp;   // limit prędkości w górę (trampoliny nadal wybijają wysoko)
     if (L.maxSpeedXZ) { const h2 = v.x * v.x + v.z * v.z, m = L.maxSpeedXZ; if (h2 > m * m) { const k = m / Math.sqrt(h2); v.x *= k; v.z *= k; } }   // limit prędkości poziomej
-    const maxV = 12 * POWER, s2 = v.lengthSquared();
+    const maxV = 11 * POWER, s2 = v.lengthSquared();
     if (s2 > maxV * maxV) v.scale(maxV / Math.sqrt(s2), v);
     for (const ball of L.throwables) if (ball.userData.body.type === CANNON.Body.DYNAMIC) containBall(ball.userData.body);
 });
@@ -189,7 +193,7 @@ function handleMovement(i, dt) {
         }
         for (const t of L.trampolines) {
             if (t.box3.distanceToPoint(hw) <= 0.25) {
-                playerBody.velocity.y = 12 * POWER; ground = false; wall = false;
+                playerBody.velocity.y = 11 * POWER; ground = false; wall = false; velHist.length = 0; wasAnchored = false;
                 if (simTime - lastTrampTime > 0.6) { lastTrampTime = simTime; track('tramp'); if (L.tramp) L.tramp.k = 1; buzz('both', 0.5, 90); }
                 break;
             }
@@ -198,17 +202,17 @@ function handleMovement(i, dt) {
         const dl = delta.length();
         if (touching && dl > HAND_DEADZONE) {
             const handSpeed = dl / Math.max(dt, 1 / 120);
-            const boost = 1 + Math.min(RUN_BOOST_MAX, Math.max(0, (handSpeed - 0.8) * RUN_BOOST_RATE)), vBoost = 1 + (boost - 1) * 0.5;
             delta.multiplyScalar((dl - HAND_DEADZONE) / dl);
             const dw = delta.applyQuaternion(playerRig.quaternion);
-            if (dw.length() > 0.4 * POWER) dw.normalize().multiplyScalar(0.4 * POWER);
-            const k = grip * (L.moveScale || 1);   // poziom może osłabić ruch (np. Studnia)
-            let fXZ = -650 * POWER * boost * k, fY = -650 * POWER * vBoost * k;
-            if (wall) { fY = -800 * POWER * vBoost * k; fXZ = -700 * POWER * boost * k; }
-            playerBody.applyImpulse(new CANNON.Vec3(dw.x * fXZ, dw.y * fY, dw.z * fXZ), playerBody.position);
+            if (dw.length() > 0.25) dw.normalize().multiplyScalar(0.25);   // ochrona przed skokiem śledzenia
+            // Dłoń "przyklejona" do powierzchni: ciało porusza się przeciwnie do ruchu dłoni (śliska powierzchnia oddaje mniej)
+            const k = grip * (L.moveScale || 1);
+            anchorVel[i] = new THREE.Vector3(-dw.x, -dw.y, -dw.z).multiplyScalar(k / Math.max(dt, 1 / 120));
+            if (wall && grip < 1) anchorVel[i].y -= (1 - grip) * SLIDE_SPEED;   // zjeżdżanie po śliskiej ścianie
             handPushing = true;
             if (handSpeed > RUN_MIN_SPEED) lastPushTime = simTime;
-        }
+        } else if (touching) anchorVel[i] = new THREE.Vector3(0, wall && grip < 1 ? -(1 - grip) * SLIDE_SPEED : 0, 0);
+        if (!touching) anchorVel[i] = null;
     }
     // Wibracja przy dotknięciu powierzchni: mocniejsza przy mocniejszym uderzeniu
     if (touching && !wasTouch[i]) buzz(i, 0.12 + Math.min(0.6, Math.max(spd, lastSpd[i]) * 0.15), 30);
@@ -228,6 +232,24 @@ function handTarget(rig, i, touching) {
     else rig.target = 0.22;
 }
 
+// Dłoń na powierzchni ustala prędkość ciała; po oderwaniu wszystkich dłoni gracz leci z prędkością ostatnich ruchów
+function applyAnchors() {
+    if (ropeConstraint) { velHist.length = 0; wasAnchored = false; return; }
+    const a = anchorVel.filter(v => v);
+    const v = playerBody.velocity;
+    if (a.length) {
+        const avg = new THREE.Vector3(); a.forEach(x => avg.add(x)); avg.multiplyScalar(1 / a.length);
+        v.set(avg.x, avg.y, avg.z);
+        velHist.push(avg.clone()); if (velHist.length > VEL_HISTORY) velHist.shift();
+        wasAnchored = true;
+    } else if (wasAnchored) {
+        // Wyrzut: średnia z ostatnich klatek razy mnożnik, z limitem prędkości
+        const out = new THREE.Vector3(); velHist.forEach(x => out.add(x)); if (velHist.length) out.multiplyScalar(JUMP_MULT / velHist.length);
+        const sp = out.length(), maxJ = MAX_JUMP_SPEED * (L.moveScale || 1);
+        if (sp > MIN_JUMP_SPEED) { if (sp > maxJ) out.multiplyScalar(maxJ / sp); v.set(out.x, out.y, out.z); }
+        velHist.length = 0; wasAnchored = false;
+    }
+}
 // Wywoływane co klatkę z main.js
 export function updatePlayer(dt, t) {
     simTime = t;
@@ -244,6 +266,7 @@ export function updatePlayer(dt, t) {
         clampHand(controllers[0], hands.L); clampHand(controllers[1], hands.R);
         handTarget(hands.L.userData.rig, 0, handleMovement(0, dt));
         handTarget(hands.R.userData.rig, 1, handleMovement(1, dt));
+        applyAnchors();
     }
     if (hands.L) { poseHand(hands.L.userData.rig, dt); poseHand(hands.R.userData.rig, dt); }
     if (ropeConstraint && ropeHand >= 0) { ropeConstraint.pivotA.copy(ropePivot(ropeHand)); hands[ropeHand === 0 ? 'L' : 'R'].userData.rig.target = 1.0; }
