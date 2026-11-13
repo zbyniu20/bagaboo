@@ -14,7 +14,7 @@ import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { DESKTOP } from '../core/desktop.js';
 import { ARRIVAL_FROM_LAUNDRY as ARRIVAL_LAUNDRY } from './levels.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare , introSeen } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA ----------
 const X0 = -16, X1 = 16, Z0 = 6, Z1 = -54, H = 9;   // hala 32 x 60 m, 9 m wysokości
@@ -376,11 +376,12 @@ export function update(dt, t, ctx) {
     if (!S || S.leaving) return;
     S.clock += dt; S.ctx = ctx; S.body = ctx.body;
     const p = ctx.body.position;
+    if (S.introSkip === undefined) { S.introSkip = introSeen('laundry'); if (S.introSkip) S.introT = Math.min(S.introT, 3); }   // samouczek tylko za pierwszym razem
     if (S.introT > 0) {
         S.introT -= dt;
         const sec = Math.max(0, Math.ceil(S.introT));
         if (sec !== S.intro.last) { S.intro.last = sec; drawInstructions(S.intro, 'The Industrial Laundromat', INTRO, 'He wakes up in ' + sec + ' s', { bg: 'rgba(12,14,16,0.9)', border: '#ff5aa8', title: '#fff0f6', text: '#e8eef2', footer: '#ffb030', size: 27 }); }
-        S.intro.mesh.visible = S.introT > 0;
+        S.intro.mesh.visible = S.introT > 0 && !S.introSkip;
         if (S.introT <= 0) { S.phase = 'play'; toast('Find the 4 red valves. Stay quiet.', '#ff5aa8'); }
     }
     if (S.phase === 'play') S.runT += dt;
