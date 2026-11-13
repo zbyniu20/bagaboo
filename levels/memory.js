@@ -32,7 +32,7 @@ const SLOW_DELAY = 0.35, SLOW_SPEED = 0.45;              // powolny kwadrat: zac
 const FAST_SPEED = 5;                                    // szybki: wpada od razu
 const HEAD_START = 10, INTRO_TIME = 10;                  // 10 s instrukcji (tylko za pierwszym razem) + 10 s przewagi
 const PREVIEW_TIME = 10;                                 // 10 s podglądu z góry: jasno, dobre kamienie świecą na zielono, gracz stoi w miejscu
-const SCARE_EVERY = 3;                                   // jumpscare co 3 linie kamieni
+const SCARE_MIN = 5, SCARE_MAX = 8;                      // jumpscare losowo co 5-8 linii (ok. 3 na całą trasę)
 const BEAST_SPEED = 1.8, BEAST_MAX = 2.9, BEAST_RAMP = 40;   // Bestia: m/s, przyspiesza przez 40 s
 const CATCH_DIST = 1.7, ARRIVE_TIME = 1.0;               // po wpadnięciu do lawy Bestia jest przy tobie w 1 s
 // Ograniczony skok (ok. 2,3 m lotu): każdy kamień następnej linii w zasięgu, linia dalej już nie
@@ -49,7 +49,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -9.4, maxX: 9.4, minZ: BACK_Z + 0.4, maxZ: 7.6, maxY: 13 };
     L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.maxSpeedXZ = MAX_SPEED_XZ;
-    S = { seed: seed, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', previewT: PREVIEW_TIME, nextScareRow: SCARE_EVERY, chaseT: -HEAD_START, rows: [], row: -1, dead: null, hudT: 0, leaving: false, fx: [], flick: [] };
+    S = { seed: seed, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', previewT: PREVIEW_TIME, nextScareRow: SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1)), chaseT: -HEAD_START, rows: [], row: -1, dead: null, hudT: 0, leaving: false, fx: [], flick: [] };
     buildCave(R);
     buildLava();
     buildTrack(R);
@@ -61,7 +61,7 @@ export function build() {
     buildBurnFx();
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
-    // Jumpscare z paszczą Bestii (co 3 linie)
+    // Jumpscare z paszczą Bestii (co 5-8 linii)
     S.scare = createJumpscare({ head: lavaBeast().group, scale: 0.9, y: -0.25, restZ: -0.55, fromZ: -2.6, eyes: false });
     // Mocne światło na czas podglądu z góry
     S.previewLight = new THREE.PointLight(0xffe0c0, 0, 70, 1.2); S.previewLight.position.set(0, 13, (START_EDGE + LAST_Z) / 2); L.root.add(S.previewLight);
@@ -256,7 +256,7 @@ export function update(dt, t, ctx) {
             else if (s.kind === 'slow') { s.state = 'wait'; s.t = 0; }
             if (standing && r > S.row) {
                 S.row = r;
-                if (r + 1 >= S.nextScareRow) { S.nextScareRow += SCARE_EVERY; S.scare.trigger(); buzz('both', 1, 400); }   // jumpscare co 3 linie
+                if (r + 1 >= S.nextScareRow) { S.nextScareRow += SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1)); S.scare.trigger(); buzz('both', 1, 400); }   // jumpscare co 5-8 linii
             }
         }
         if (s.state === 'wait') { s.t += dt; s.m.position.x = s.x + (Math.random() - 0.5) * 0.03; if (s.t > SLOW_DELAY) { s.state = 'sinking'; s.speed = SLOW_SPEED; SFX.creak(0.5, { x: s.x, y: 1, z: s.z }); } }
