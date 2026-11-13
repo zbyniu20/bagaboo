@@ -17,8 +17,8 @@ const MAX_JUMP_SPEED = 6.5;   // maksymalna prędkość wyrzutu (m/s): skok na o
 const MIN_JUMP_SPEED = 0.3;   // wolniejsze ruchy nie wyrzucają gracza
 const VEL_HISTORY = 3;        // z ilu ostatnich klatek liczona jest prędkość wyrzutu
 const SLIDE_SPEED = 1.6;      // jak szybko zjeżdżasz po śliskiej ścianie (przy przyczepności 0)
-const WALL_HOLD = 0.6;        // jak mocno dłoń "trzyma" ścianę lub przeszkodę z boku (1 = przyklejona, 0 = wcale); podłoga zawsze 1
-const WALL_SLIP = 0.9;        // ciało powoli zsuwa się po ścianie, gdy dłoń tylko się o nią opiera (m/s)
+const WALL_HOLD_RATE = 9;     // jak szybko ruch ręki po ścianie przechodzi na ciało (na sekundę); mniej = słabsze "klejenie"
+const WALL_SLIP = 1.2;        // podczas wspinaczki ciało zsuwa się po ścianie (m/s), więc trzeba aktywnie ciągnąć
 const HEAD_RADIUS = 0.18;     // kolizja głowy
 const FRICTION_IDLE = 0.15;   // hamowanie, gdy stoisz (mniej = mocniej)
 const FRICTION_RUN = 0.93;    // krótki rozpęd między machnięciami podczas biegu
@@ -46,7 +46,7 @@ export function setPlayerPosition(x, y, z) {
 }
 
 const anchorVel = [null, null], anchorWall = [false, false], velHist = [];   // prędkości od "przyklejonych" dłoni i historia do wyrzutu
-let wasAnchored = false;
+let wasAnchored = false, lastDt = 1 / 72;
 let grounded = false, handPushing = false, stepped = false, simTime = 0, lastPushTime = -10, lastTrampTime = -10;
 let grabbed = null, grabbingIndex = -1, ropeConstraint = null, ropeHand = -1;
 const wasTouch = [false, false], lastSpd = [0, 0], lastScrape = [0, 0];
@@ -191,7 +191,8 @@ function handleMovement(i, dt) {
             // Najlepszy chwyt spośród dotykanych powierzchni (śliskie ściany mają grip < 1)
             let best = null, bestGrip = -1;
             for (const o of L.obstacles) if (o.box3.distanceToPoint(hw) <= 0.3) { const g = o.grip === undefined ? 1 : o.grip; if (g > bestGrip) { best = o; bestGrip = g; } }
-            if (best) { if (hw.y > best.box3.min.y + 0.15) wall = true; else ground = true; grip = bestGrip; }
+            // Górna ścianka przeszkody (podłoga, półka, kamień) to podłoże; bok i spód to ściana
+            if (best) { if (hw.y >= best.box3.max.y - 0.06) ground = true; else wall = true; grip = bestGrip; }
         }
         for (const t of L.trampolines) {
             if (t.box3.distanceToPoint(hw) <= 0.25) {
@@ -214,7 +215,8 @@ function handleMovement(i, dt) {
             anchorWall[i] = wall;
             handPushing = true;
             if (handSpeed > RUN_MIN_SPEED) lastPushTime = simTime;
-        } else if (touching) { anchorVel[i] = new THREE.Vector3(0, wall && grip < 1 ? -(1 - grip) * SLIDE_SPEED : 0, 0); anchorWall[i] = wall; }
+        } else if (touching && ground) { anchorVel[i] = new THREE.Vector3(0, 0, 0); anchorWall[i] = false; }   // dłoń stoi na podłożu: ciało stoi
+        else anchorVel[i] = null;   // dłoń tylko opiera się o ścianę (bez ruchu) albo nic nie dotyka: brak "klejenia"
         if (!touching) anchorVel[i] = null;
     }
     // Wibracja przy dotknięciu powierzchni: mocniejsza przy mocniejszym uderzeniu
@@ -245,7 +247,8 @@ function applyAnchors() {
         // Ściana i bok przeszkody trzymają słabiej niż podłoga: ruch ręki działa, ale ciało nie "przykleja się" i lekko zsuwa
         const onWall = anchorVel.every((x, i) => !x || anchorWall[i]);
         if (onWall) {
-            v.set(v.x + (avg.x - v.x) * WALL_HOLD, v.y + (avg.y - WALL_SLIP - v.y) * WALL_HOLD, v.z + (avg.z - v.z) * WALL_HOLD);
+            const k = 1 - Math.exp(-WALL_HOLD_RATE * lastDt);   // płynne przejęcie ruchu ręki, niezależne od liczby klatek
+            v.set(v.x + (avg.x - v.x) * k, v.y + (avg.y - WALL_SLIP - v.y) * k, v.z + (avg.z - v.z) * k);
             avg.set(v.x, v.y, v.z);
         } else v.set(avg.x, avg.y, avg.z);
         velHist.push(avg.clone()); if (velHist.length > VEL_HISTORY) velHist.shift();
@@ -260,7 +263,7 @@ function applyAnchors() {
 }
 // Wywoływane co klatkę z main.js
 export function updatePlayer(dt, t) {
-    simTime = t;
+    simTime = t; lastDt = Math.min(dt, 0.05);
     world.step(1 / 90, dt, 10);
     if (stepped) { handPushing = false; stepped = false; }
     const bp = playerBody.position, bv = playerBody.velocity, B = L.bounds;   // granice ustawia poziom
