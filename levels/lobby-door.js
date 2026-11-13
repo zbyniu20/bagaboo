@@ -7,7 +7,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP, GFX, isStaffName } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { toast } from '../core/terminal.js';
-import { createHead, createGorillaTorso, createGorillaArm, placeArm, buildHat, addRoleTag, ULTIMATE_SCALE } from '../core/avatar.js';
+import { createHead, createGorillaTorso, createGorillaArm, placeArm, buildHat, addRoleTag, ULTIMATE_SCALE, animateFace } from '../core/avatar.js';
+import { myVoice } from '../core/network.js';
 import { getLook, onLookChange, unlockItem, recordTime, unlockAchievement } from '../core/economy.js';
 import { hands } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -207,6 +208,7 @@ export function update(dt, t, ctx) {
         me.head.position.copy(_p); me.head.quaternion.copy(_q);
         _e.setFromQuaternion(_q, 'YXZ');
         me.torso.position.set(_p.x, _p.y - me.drop, _p.z); me.torso.rotation.set(0, _e.y, 0);
+        const v = myVoice(); animateFace(me.head, v.level, v.pitch, 1 / 60);   // w lustrze usta ruszają się, gdy mówisz
         me.torso.updateMatrixWorld(true);
         if (hands.L) { placeArm(me.armL, me.torso, -1, hands.L); placeArm(me.armR, me.torso, 1, hands.R); }
     }
