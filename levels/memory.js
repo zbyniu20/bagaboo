@@ -7,32 +7,36 @@
 // Lawowa Bestia wynurza się na starcie i po 10 sekundach przewagi rusza w pościg.
 // Dotknięcie lawy = Bestia pojawia się obok w 1 sekundę i spala gracza na popiół.
 // ==========================================
-import { THREE, L, tex, camera, addCrispBlock } from '../core/engine.js';
+import { THREE, L, tex, camera, addCrispBlock, lighting } from '../core/engine.js';
 import * as T from '../core/textures.js';
 import { levelReward, recordTime } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
-import { hands, releaseAll } from '../core/player.js';
+import { hands, releaseAll, setPlayerPosition } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { lavaBeast } from '../core/monsterskins.js';
 import { ARRIVAL_FROM_MEMORY } from './levels.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA ----------
-const ROWS = 20, COL_X = [-1.2, 0, 1.2], SQ = 1.0, ROW_DZ = 2.2, TOP = 1.0;   // 20 rzędów po 3 kwadraty 1 x 1 m
-const FIRST_Z = -2.6, LAVA_Y = 0.2;
-const LAST_Z = FIRST_Z - (ROWS - 1) * ROW_DZ;           // ostatni rząd
-const START_EDGE = FIRST_Z + SQ / 2 + 1.2;               // ląd startowy kończy się 1,2 m przed pierwszym rzędem
+// 6 ścieżek po 20 kamieni. Każda linia to zwarta grupa 3 x 2 kamieni (kamień 0,55 m, odstęp 0,1 m),
+// dzięki czemu z każdego kamienia da się doskoczyć do każdego z 6 kamieni następnej linii, ale nie dalej.
+const ROWS = 20, COL_X = [-0.65, 0, 0.65], SUB_DZ = 0.65, SQ = 0.55, ROW_DZ = 1.9, TOP = 1.0;
+const FIRST_Z = -2.0, LAVA_Y = 0.2;
+const LAST_Z = FIRST_Z - (ROWS - 1) * ROW_DZ - SUB_DZ;  // najdalszy kamień
+const START_EDGE = FIRST_Z + SQ / 2 + 1.0;               // ląd startowy kończy się 1 m przed pierwszą linią
 const END_EDGE = LAST_Z - SQ / 2 - 1.0;                  // ląd końcowy zaczyna się 1 m za ostatnim rzędem
 const BACK_Z = END_EDGE - 5.8;                           // ściana z drzwiami EXIT
 const POOL_C = (8.5 + BACK_Z) / 2, POOL_L = 8.5 - BACK_Z;   // środek i długość jaskini
 const SLOW_DELAY = 0.35, SLOW_SPEED = 0.45;              // powolny kwadrat: zaczyna tonąć po chwili, ok. 2 s do lawy
 const FAST_SPEED = 5;                                    // szybki: wpada od razu
-const HEAD_START = 10, INTRO_TIME = 10;                  // 10 s instrukcji (Bestia się wynurza) + 10 s przewagi
+const HEAD_START = 10, INTRO_TIME = 10;                  // 10 s instrukcji (tylko za pierwszym razem) + 10 s przewagi
+const PREVIEW_TIME = 10;                                 // 10 s podglądu z góry: jasno, dobre kamienie świecą na zielono, gracz stoi w miejscu
+const SCARE_EVERY = 3;                                   // jumpscare co 3 linie kamieni
 const BEAST_SPEED = 1.8, BEAST_MAX = 2.9, BEAST_RAMP = 40;   // Bestia: m/s, przyspiesza przez 40 s
 const CATCH_DIST = 1.7, ARRIVE_TIME = 1.0;               // po wpadnięciu do lawy Bestia jest przy tobie w 1 s
-// Ograniczony skok: da się przeskoczyć tylko jeden rząd (także na skos, na każdy z 3 kwadratów)
-const MOVE_SCALE = 0.95, MAX_UP = 4.0, MAX_SPEED_XZ = 3.4, EXTRA_GRAVITY = 4.0;
+// Ograniczony skok (ok. 2,3 m lotu): każdy kamień następnej linii w zasięgu, linia dalej już nie
+const MOVE_SCALE = 0.95, MAX_UP = 4.0, MAX_SPEED_XZ = 4.0, EXTRA_GRAVITY = 4.0;
 const REWARD_FIRST = 2200, REWARD_REPEAT = 220;
 export const info = { id: 'memory', name: 'Burning Memory', spawn: [0, 1.4, 3.0] };
 let S = null;
@@ -45,7 +49,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -9.4, maxX: 9.4, minZ: BACK_Z + 0.4, maxZ: 7.6, maxY: 13 };
     L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.maxSpeedXZ = MAX_SPEED_XZ;
-    S = { seed: seed, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', chaseT: -HEAD_START, rows: [], row: -1, dead: null, hudT: 0, leaving: false, fx: [], flick: [] };
+    S = { seed: seed, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', previewT: PREVIEW_TIME, nextScareRow: SCARE_EVERY, chaseT: -HEAD_START, rows: [], row: -1, dead: null, hudT: 0, leaving: false, fx: [], flick: [] };
     buildCave(R);
     buildLava();
     buildTrack(R);
@@ -57,6 +61,11 @@ export function build() {
     buildBurnFx();
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
+    // Jumpscare z paszczą Bestii (co 3 linie)
+    S.scare = createJumpscare({ head: lavaBeast().group, scale: 0.9, y: -0.25, restZ: -0.55, fromZ: -2.6, eyes: false });
+    // Mocne światło na czas podglądu z góry
+    S.previewLight = new THREE.PointLight(0xffe0c0, 0, 70, 1.2); S.previewLight.position.set(0, 13, (START_EDGE + LAST_Z) / 2); L.root.add(S.previewLight);
+    S.introSkip = introSeen('memory'); if (S.introSkip) S.introT = 0;   // samouczek tylko za pierwszym razem
 }
 function buildCave(R) {
     const rock = 0x3a2420, edge = 0x601808;
@@ -93,16 +102,19 @@ function buildLava() {
     pts.frustumCulled = false; L.root.add(pts); S.embers = { geo: geo, pos: pos, n: n };
 }
 // Tor: 20 rzędów, w każdym losowo: dobry, powoli tonący i od razu tonący kwadrat
+// W każdej linii losowo: 2 dobre, 2 tonące powoli i 2 wpadające od razu
 function buildTrack(R) {
     for (let r = 0; r < ROWS; r++) {
-        const kinds = ['solid', 'slow', 'fast'];
-        for (let i = 2; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [kinds[i], kinds[j]] = [kinds[j], kinds[i]]; }
-        const z = FIRST_Z - r * ROW_DZ, row = [];
-        COL_X.forEach((x, c) => {
-            const m = addCrispBlock(x, TOP / 2 - 0.5, z, SQ, TOP + 1, SQ, 0x5a4038, 0xff4a10, tex.floor);   // jednakowe z wyglądu: trzeba zapamiętać, który jest dobry
+        const kinds = ['solid', 'solid', 'slow', 'slow', 'fast', 'fast'];
+        for (let i = 5; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [kinds[i], kinds[j]] = [kinds[j], kinds[i]]; }
+        const z0 = FIRST_Z - r * ROW_DZ, row = [];
+        let k = 0;
+        for (const dz of [0, -SUB_DZ]) for (const x of COL_X) {
+            const z = z0 + dz;
+            const m = addCrispBlock(x, TOP / 2 - 0.5, z, SQ, TOP + 1, SQ, 0x5a4038, 0xff4a10, tex.floor);   // jednakowe z wyglądu: trzeba zapamiętać, które są dobre
             const ob = L.obstacles[L.obstacles.length - 1];
-            row.push({ m: m, ob: ob, kind: kinds[c], x: x, z: z, y: 0, t: 0, state: 'up' });
-        });
+            row.push({ m: m, ob: ob, kind: kinds[k++], x: x, z: z, y: 0, t: 0, state: 'up' });
+        }
         S.rows.push(row);
     }
 }
@@ -176,11 +188,11 @@ function finish() {
     recordTime('memory', S.runT);
 }
 const INTRO = [
-    'A lava beast lives in this pool. Cross 20 rows of stones to reach the EXIT.',
-    'In every row one stone stays, one sinks slowly and one drops at once. They all look the same.',
-    'You can jump only one row at a time, to any of the 3 stones of the next row.',
-    'If you fall, you start again on the same path. Remember the safe stones!',
-    'You get 10 seconds before the beast starts to hunt you. Touch the lava and it is on you in a second.'
+    'A lava beast lives in this pool. Cross 20 lines of stones to reach the EXIT.',
+    'Every line has 6 stones: 2 stay, 2 sink slowly and 2 drop at once. They all look the same.',
+    'First you see the path from above for 10 seconds: the green stones are safe. Remember them!',
+    'You can jump only one line at a time, to any of the 6 stones of the next line.',
+    'Then you get 10 seconds before the beast hunts you. Touch the lava and it is on you in a second.'
 ];
 
 // ---------- CO KLATKĘ ----------
@@ -199,12 +211,22 @@ export function update(dt, t, ctx) {
     if (S.dead) { updateDeath(dt, t); return; }
 
     // Instrukcja i wynurzanie się Bestii
-    if (S.introT > 0) {
+    S.scare.update(dt);
+    if (S.phase === 'intro') {
         S.introT -= dt;
         const sec = Math.max(0, Math.ceil(S.introT));
-        if (sec !== S.intro.last) { S.intro.last = sec; drawInstructions(S.intro, 'Burning Memory', INTRO, 'The beast wakes in ' + sec + ' s', { bg: 'rgba(20,4,2,0.9)', border: '#ff4a10', title: '#ffd0b0', text: '#f4e0d0', footer: '#ffb030', size: 30 }); }
-        S.intro.mesh.visible = S.introT > 0;
-        if (S.introT <= 0) { S.phase = 'run'; toast('RUN! The beast comes in 10 seconds!', '#ff6a2a'); }
+        if (sec !== S.intro.last && !S.introSkip) { S.intro.last = sec; drawInstructions(S.intro, 'Burning Memory', INTRO, 'Starting in ' + sec + ' s', { bg: 'rgba(20,4,2,0.9)', border: '#ff4a10', title: '#ffd0b0', text: '#f4e0d0', footer: '#ffb030', size: 29 }); }
+        S.intro.mesh.visible = S.introT > 0 && !S.introSkip;
+        if (S.introT <= 0) startPreview();
+    }
+    if (S.phase === 'preview') {
+        // Podgląd z góry: gracz wisi nad środkiem basenu i nie może się ruszać, dobre kamienie świecą na zielono
+        S.previewT -= dt;
+        ctx.body.position.set(0, 9.5, (START_EDGE + LAST_Z) / 2 + 6); ctx.body.velocity.set(0, 0, 0);
+        const k = Math.min(1, S.previewT / 1.5);   // ostatnie 1,5 s: przyciemnianie
+        S.previewLight.intensity = 140 * k; lighting.hemi.intensity = S.hemiBase * (1 + 2 * k);
+        for (const row of S.rows) for (const st of row) if (st.kind === 'solid') st.m.material.emissiveIntensity = 1.2 * k;
+        if (S.previewT <= 0) endPreview();
     }
     const B = S.beast;
     if (B.rising) { B.y = Math.min(-0.9, B.y + dt * 1.2); B.roarT -= dt; if (B.roarT <= 0) { B.roarT = 99; SFX.roar(1.0, { x: B.x, y: 1, z: B.z }); buzz('both', 0.6, 500); } if (B.y >= -0.9) B.rising = false; }
@@ -229,10 +251,13 @@ export function update(dt, t, ctx) {
         const b = s.ob.box3, over = Math.abs(p.x - s.x) < SQ / 2 + 0.2 && Math.abs(p.z - s.z) < SQ / 2 + 0.2;
         const standing = over && Math.abs(feet - b.max.y) < 0.25;
         const touched = standing || [hands.L, hands.R].some(h => h && b.distanceToPoint(h.position) < 0.12);
-        if (s.state === 'up' && touched && S.phase !== 'intro') {
+        if (s.state === 'up' && touched && S.phase === 'run') {
             if (s.kind === 'fast') { s.state = 'sinking'; s.speed = FAST_SPEED; SFX.creak(0.8, { x: s.x, y: 1, z: s.z }); }
             else if (s.kind === 'slow') { s.state = 'wait'; s.t = 0; }
-            if (standing && r > S.row) S.row = r;
+            if (standing && r > S.row) {
+                S.row = r;
+                if (r + 1 >= S.nextScareRow) { S.nextScareRow += SCARE_EVERY; S.scare.trigger(); buzz('both', 1, 400); }   // jumpscare co 3 linie
+            }
         }
         if (s.state === 'wait') { s.t += dt; s.m.position.x = s.x + (Math.random() - 0.5) * 0.03; if (s.t > SLOW_DELAY) { s.state = 'sinking'; s.speed = SLOW_SPEED; SFX.creak(0.5, { x: s.x, y: 1, z: s.z }); } }
         if (s.state === 'sinking') {
@@ -246,6 +271,20 @@ export function update(dt, t, ctx) {
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.15; drawHud(); }
 }
 // Śmierć: Bestia przy graczu w 1 s, płomienie, popiół, potem ten sam tor od nowa
+// Podgląd trasy z góry (po samouczku albo od razu po przegranej)
+function startPreview() {
+    S.phase = 'preview'; S.previewT = PREVIEW_TIME; S.hemiBase = lighting.hemi.intensity;
+    releaseAll();
+    for (const row of S.rows) for (const st of row) if (st.kind === 'solid') { st.m.material.emissive = new THREE.Color(0x30ff60); st.m.material.emissiveIntensity = 1.2; }
+    toast('Memorize the green stones! 10 seconds.', '#7fff90');
+}
+function endPreview() {
+    S.previewLight.intensity = 0; lighting.hemi.intensity = S.hemiBase;
+    for (const row of S.rows) for (const st of row) if (st.kind === 'solid') st.m.material.emissiveIntensity = 0;
+    setPlayerPosition(info.spawn[0], info.spawn[1], info.spawn[2]);
+    S.phase = 'run'; S.chaseT = -HEAD_START;
+    toast('RUN! The beast comes in 10 seconds!', '#ff6a2a');
+}
 function updateDeath(dt, t) {
     const d = S.dead, B = S.beast, bf = S.burn; d.t += dt;
     const k = Math.min(1, d.t / ARRIVE_TIME);
@@ -282,12 +321,13 @@ function drawHud() {
     x.font = 'bold 36px "Courier New", monospace'; x.fillStyle = '#ffb030'; x.fillText('Row ' + Math.max(0, S.row + 1) + '/' + ROWS, 330, 52);
     x.font = 'bold 28px "Courier New", monospace';
     if (S.phase === 'intro') { x.fillStyle = '#ffb070'; x.fillText('Watch the beast wake up...', 30, 162); }
+    else if (S.phase === 'preview') { x.fillStyle = '#7fff90'; x.fillText('Memorize the green path: ' + Math.ceil(S.previewT) + ' s', 30, 162); }
     else if (S.chaseT < 0) { x.fillStyle = '#ffd27a'; x.fillText('The beast hunts you in ' + Math.ceil(-S.chaseT) + ' s', 30, 162); }
     else { x.fillStyle = '#ff4a2a'; x.fillText('THE BEAST IS COMING! Do not stop!', 30, 162); }
     S.hud.update();
 }
 export function dispose() {
-    if (S) { S.hud.dispose(); S.intro.dispose(); for (const o of [S.burn.orange, S.burn.grey, S.burn.ash]) camera.remove(o); S.burn.flames.forEach(f => camera.remove(f.s)); }
+    if (S) { if (S.phase === 'preview') lighting.hemi.intensity = S.hemiBase; S.scare.dispose(); S.hud.dispose(); S.intro.dispose(); for (const o of [S.burn.orange, S.burn.grey, S.burn.ash]) camera.remove(o); S.burn.flames.forEach(f => camera.remove(f.s)); }
     L.moveScale = 1; L.maxUp = 99; L.maxSpeedXZ = 0;
     S = null;
 }
