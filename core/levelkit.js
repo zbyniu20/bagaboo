@@ -144,3 +144,7 @@ export function createJumpscare(o) {
         dispose() { camera.remove(g); }
     };
 }
+
+// Samouczek tylko za pierwszym razem: po przegranej (restart) albo ponownym wejściu instrukcji już nie ma
+const seenIntros = new Set();
+export function introSeen(id) { const seen = seenIntros.has(id); seenIntros.add(id); return seen; }
