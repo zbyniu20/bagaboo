@@ -186,13 +186,13 @@ function handleMovement(i, dt) {
         const delta = new THREE.Vector3().subVectors(current, prev);
         const hw = hand.position;
         let ground = false, wall = false, grip = 1;
-        if (hw.y <= 0.25) ground = true;
+        if (hw.y <= 0.1) ground = true;   // podłoga: tylko gdy dłoń naprawdę jej dotyka (opuszczone ręce nie łapią podłogi)
         else {
             // Najlepszy chwyt spośród dotykanych powierzchni (śliskie ściany mają grip < 1)
             let best = null, bestGrip = -1;
             for (const o of L.obstacles) if (o.box3.distanceToPoint(hw) <= 0.3) { const g = o.grip === undefined ? 1 : o.grip; if (g > bestGrip) { best = o; bestGrip = g; } }
             // Górna ścianka przeszkody (podłoga, półka, kamień) to podłoże; bok i spód to ściana
-            if (best) { if (hw.y >= best.box3.max.y - 0.06) ground = true; else wall = true; grip = bestGrip; }
+            if (best) { if (hw.y >= best.box3.max.y - 0.06) { if (hw.y - best.box3.max.y <= 0.12) ground = true; } else wall = true; grip = bestGrip; }
         }
         for (const t of L.trampolines) {
             if (t.box3.distanceToPoint(hw) <= 0.25) {
@@ -211,12 +211,12 @@ function handleMovement(i, dt) {
             // Dłoń "przyklejona" do powierzchni: ciało porusza się przeciwnie do ruchu dłoni (śliska powierzchnia oddaje mniej)
             const k = grip * (L.moveScale || 1);
             anchorVel[i] = new THREE.Vector3(-dw.x, -dw.y, -dw.z).multiplyScalar(k / Math.max(dt, 1 / 120));
+            if (ground && grounded && anchorVel[i].y < 0) anchorVel[i].y = 0;   // dłoń na podłodze nie wciska ciała w podłogę
             if (wall && grip < 1) anchorVel[i].y -= (1 - grip) * SLIDE_SPEED;   // zjeżdżanie po śliskiej ścianie
             anchorWall[i] = wall;
             handPushing = true;
             if (handSpeed > RUN_MIN_SPEED) lastPushTime = simTime;
-        } else if (touching && ground) { anchorVel[i] = new THREE.Vector3(0, 0, 0); anchorWall[i] = false; }   // dłoń stoi na podłożu: ciało stoi
-        else anchorVel[i] = null;   // dłoń tylko opiera się o ścianę (bez ruchu) albo nic nie dotyka: brak "klejenia"
+        } else anchorVel[i] = null;   // dłoń tylko leży na podłożu albo opiera się o ścianę bez ruchu: nie trzyma ciała
         if (!touching) anchorVel[i] = null;
     }
     // Wibracja przy dotknięciu powierzchni: mocniejsza przy mocniejszym uderzeniu
