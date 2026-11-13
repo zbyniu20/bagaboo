@@ -100,6 +100,8 @@ export function sendFollow(level, data) {
 export function hostState() { for (const id in playersState) if (isHostId(id)) return playersState[id]; return null; }
 const statusDiv = document.getElementById('status');
 
+// Mikrofon: pytamy przy starcie strony i jeszcze raz przy kliknięciu Host / Join / Solo, jeśli wcześniej się nie udało
+export async function ensureMic() { if (!voice.stream) await initMic(); }
 export async function initMic() {
     try {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -113,9 +115,7 @@ export function setStatus(msg) { NET.status = msg; statusDiv.innerText = msg; ma
 export function isHostId(id) { return id === GAME_PREFIX + NET.code; }
 
 // ---------- GŁOS ----------
-// Głos gracza gra przez kontekst dźwięku gry (odblokowany kliknięciem w menu), więc przeglądarka go nie blokuje.
-// Element <audio> (wyciszony) jest potrzebny, bo bez niego Chrome nie oddaje dźwięku ze strumienia WebRTC.
-const voiceGain = {}, voiceCalls = {};
+const voiceCalls = {};
 // Analiza głosu (głośność i wysokość) do ruchu ust awatarów
 const voiceAn = {}, faceBuf = new Uint8Array(256);
 let myAn = null;
@@ -138,7 +138,14 @@ export function myVoice() {
     return voice.on ? readVoice(myAn) : { level: 0, pitch: 0.5 };
 }
 // Co klatkę: usta i mimika innych graczy w rytm ich głosu
+const _cw = new THREE.Vector3(), _hw = new THREE.Vector3();
 export function animateFaces(dt) {
+    camera.getWorldPosition(_cw);
+    for (const id in remoteAvatars) {
+        const a = remoteAvatars[id]; a.head.getWorldPosition(_hw);
+        const close = _hw.distanceTo(_cw) < 0.9;   // inny gracz tuż przy tobie: widzisz tylko jego dłonie, a nie wnętrze jego ciała
+        for (const c of a.group.children) if (c !== a.handL && c !== a.handR) c.visible = !close;
+    }
     for (const id in remoteAvatars) { const v = mutedPeers.has(id) ? { level: 0, pitch: 0.5 } : readVoice(voiceAn[id]); animateFace(remoteAvatars[id].head, v.level, v.pitch, dt); }
 }
 let meshT = 0;
@@ -150,27 +157,27 @@ function outStream() {
     const ac = getAudioContext(); if (!ac) return null;
     const dst = ac.createMediaStreamDestination(); silent = dst.stream; return silent;
 }
+// Głos gra zwykłym elementem <audio> (najpewniejsza droga w przeglądarce gogli).
+// Kontekst dźwięku gry tylko analizuje głos (do ruchu ust), nie odtwarza go.
+const pendingPlay = new Set();
+function tryPlay(a) { const pr = a.play(); if (pr && pr.catch) pr.catch(() => pendingPlay.add(a)); }
+// Przeglądarka może wstrzymać dźwięk do pierwszego kliknięcia: przy każdym kliknięciu / spuście ponawiamy odtwarzanie
+export function unlockVoices() { for (const a of pendingPlay) { pendingPlay.delete(a); tryPlay(a); } for (const id in audioEls) if (audioEls[id].paused) tryPlay(audioEls[id]); const ac = getAudioContext(); if (ac && ac.state !== 'running') ac.resume().catch(() => {}); }
+window.addEventListener('pointerdown', unlockVoices);
+window.addEventListener('keydown', unlockVoices);
 function playAudioStream(stream, peerId) {
-    removeAudio(peerId);
-    const a = document.createElement('audio'); a.srcObject = stream; a.autoplay = true; a.muted = true; a.playsInline = true;
+    removeAudio(peerId, true);
+    const a = document.createElement('audio'); a.srcObject = stream; a.autoplay = true; a.playsInline = true;
+    a.muted = mutedPeers.has(peerId); a.volume = 1;
     document.getElementById('audio-container').appendChild(a); audioEls[peerId] = a;
-    a.play().catch(() => {});
+    tryPlay(a);
     const ac = getAudioContext();
-    if (ac) {
-        try {
-            const src = ac.createMediaStreamSource(stream), g = ac.createGain();
-            g.gain.value = mutedPeers.has(peerId) ? 0 : 1.6;
-            src.connect(g); g.connect(ac.destination); voiceGain[peerId] = { src: src, g: g };
-            voiceAn[peerId] = makeAnalyser(ac, src);
-            if (ac.state !== 'running') ac.resume().catch(() => {});
-        } catch (e) { a.muted = mutedPeers.has(peerId); }
-    } else a.muted = mutedPeers.has(peerId);
+    if (ac) { try { voiceAn[peerId] = makeAnalyser(ac, ac.createMediaStreamSource(stream)); } catch (e) {} }
     markAllDirty();
 }
-function removeAudio(id) {
-    if (voiceGain[id]) { try { voiceGain[id].src.disconnect(); voiceGain[id].g.disconnect(); } catch (e) {} delete voiceGain[id]; }
+function removeAudio(id, keepCall) {
     delete voiceAn[id];
-    if (voiceCalls[id]) { try { voiceCalls[id].close(); } catch (e) {} delete voiceCalls[id]; }
+    if (!keepCall && voiceCalls[id]) { try { voiceCalls[id].close(); } catch (e) {} delete voiceCalls[id]; }
     if (audioEls[id]) { audioEls[id].srcObject = null; audioEls[id].remove(); delete audioEls[id]; }
 }
 function answerCall(call) {
@@ -366,8 +373,7 @@ export function sendReport(target, reason) {
 }
 export function toggleMute(id) {
     if (mutedPeers.has(id)) mutedPeers.delete(id); else mutedPeers.add(id);
-    if (voiceGain[id]) voiceGain[id].g.gain.value = mutedPeers.has(id) ? 0 : 1.6;
-    else if (audioEls[id]) audioEls[id].muted = mutedPeers.has(id);
+    if (audioEls[id]) audioEls[id].muted = mutedPeers.has(id);
 }
 export function toggleVoice() {
     voice.on = !voice.on;
