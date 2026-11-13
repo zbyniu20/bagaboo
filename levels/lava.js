@@ -13,7 +13,7 @@ import { hands, setPlayerPosition, releaseAll } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { ARRIVAL_FROM_LAVA } from './games.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions , introSeen } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA ----------
 const LAVA_Y = 0.25, SURGE_UP = 0.55;        // poziom lawy i o ile podnosi się przy "wzbieraniu"
@@ -203,11 +203,12 @@ export function update(dt, t, ctx) {
     if (!S || S.leaving) return;
     S.clock += dt; S.ctx = ctx; S.body = ctx.body;
     const p = ctx.body.position;
+    if (S.introSkip === undefined) { S.introSkip = introSeen('lava'); if (S.introSkip) S.introT = Math.min(S.introT, 3); }   // samouczek tylko za pierwszym razem
     if (S.introT > 0) {
         S.introT -= dt;
         const sec = Math.max(0, Math.ceil(S.introT));
         if (sec !== S.intro.last) { S.intro.last = sec; drawInstructions(S.intro, 'Floor is Lava', INTRO, 'Go in ' + sec + ' s', { bg: 'rgba(20,6,2,0.9)', border: '#ff6a2a', title: '#ffd8b0', text: '#f4e0d0', footer: '#ffb030', size: 30 }); }
-        S.intro.mesh.visible = S.introT > 0;
+        S.intro.mesh.visible = S.introT > 0 && !S.introSkip;
         if (S.introT <= 0) { S.phase = 'play'; toast('Go! Do not touch the floor.', '#ffb070'); }
     }
     if (S.phase === 'play') S.runT += dt;
