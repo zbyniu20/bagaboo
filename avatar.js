@@ -1,0 +1,531 @@
+// ==========================================
+// DŁONIE (kciuk + dwa palce), GŁOWY I KOSMETYKI ZE SKLEPU
+// look = { name, skin, color, hat, glasses, sleeve, gloves }
+// ==========================================
+import { THREE, tex, seg, V3 } from './engine.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { LP } from './config.js';
+import { makeCanvas, toTex, mkRng } from './textures.js';
+import { roleTagFor } from './config.js';
+import { rimify } from './visuals.js';
+
+const ENV = LP.envIntensity;
+const NAIL_GEO = new THREE.SphereGeometry(1, 12, 8);
+const FINGER_DEFS = [
+    { x: -0.017, len: [0.05, 0.033, 0.026], r: 0.0135, splay: 0.06 },
+    { x: 0.018, len: [0.047, 0.031, 0.025], r: 0.013, splay: -0.1 }
+];
+
+// Tekstury nowych kosmetyków (tworzone raz, przy pierwszym użyciu)
+const cosTex = {};
+function burntTexture() {
+    if (cosTex.burnt) return cosTex.burnt;
+    const S = 256, c = makeCanvas(S, S), x = c.getContext('2d'), R = mkRng(616);
+    x.fillStyle = '#000000'; x.fillRect(0, 0, S, S);
+    x.strokeStyle = '#ff6a10'; x.lineCap = 'round';
+    for (let i = 0; i < 40; i++) {
+        let px = R() * S, py = R() * S; x.lineWidth = 1 + R() * 2.5; x.beginPath(); x.moveTo(px, py);
+        for (let k = 0; k < 6; k++) { px += (R() - 0.5) * 40; py += (R() - 0.5) * 40; x.lineTo(px, py); }
+        x.stroke();
+    }
+    return (cosTex.burnt = toTex(c, true));
+}
+function jacketTexture() {
+    if (cosTex.jacket) return cosTex.jacket;
+    const S = 256, c = makeCanvas(S, S), x = c.getContext('2d'), R = mkRng(717);
+    x.fillStyle = '#d6d0c0'; x.fillRect(0, 0, S, S);
+    for (let i = 0; i < 5000; i++) { x.fillStyle = 'rgba(90,80,60,' + (R() * 0.1) + ')'; x.fillRect(R() * S, R() * S, 2, 2); }
+    for (const y of [60, 170]) {
+        x.fillStyle = '#5a4030'; x.fillRect(0, y, S, 26);
+        x.fillStyle = '#b8a060'; x.fillRect(110, y - 4, 34, 34); x.fillStyle = '#5a4030'; x.fillRect(118, y + 4, 18, 18);
+    }
+    x.fillStyle = 'rgba(120,0,0,0.5)'; x.beginPath(); x.arc(200, 120, 18, 0, 7); x.fill();
+    return (cosTex.jacket = toTex(c, true));
+}
+// Futro goryla (jasna baza, kolor nadaje gracz albo skórka)
+function furTexture() {
+    if (cosTex.fur) return cosTex.fur;
+    const S = 256, c = makeCanvas(S, S), x = c.getContext('2d'), R = mkRng(828);
+    x.fillStyle = '#b8b8b8'; x.fillRect(0, 0, S, S);
+    x.lineCap = 'round';
+    for (let i = 0; i < 4200; i++) {
+        const px = R() * S, py = R() * S, len = 4 + R() * 9, a = Math.PI / 2 + (R() - 0.5) * 0.7, v = (R() * 120 + 90) | 0;
+        x.strokeStyle = 'rgba(' + v + ',' + v + ',' + v + ',' + (0.35 + R() * 0.4) + ')'; x.lineWidth = 0.8 + R() * 1.2;
+        x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(a) * len, py + Math.sin(a) * len); x.stroke();
+    }
+    return (cosTex.fur = toTex(c, true));
+}
+// Skórki (dział Skins w sklepie): zmieniają futro całej postaci i dłonie
+const SKINS = {
+    silverback: { fur: 0x2a2a2c, back: 0xb8b8bc },
+    albino: { fur: 0xeee8de, face: 0xc8a8a0 },
+    shadow: { fur: 0x0b0b0d, glowEyes: true },
+    king: { fur: 0xd4a640, metal: true, cape: true },
+    bloodmoon: { fur: 0x5a0a0c, face: 0x2a0606, glowEyes: true },
+    ultimate: { fur: 0xe0b040, face: 0xb8902a, metal: true },   // ultimate admin: cały złoty
+    cheater: { fur: 0x39ff14, face: 0xff00aa, glowEyes: true }   // przyłapany haker: jaskrawozielony z różową twarzą, na zawsze
+};
+export function furColor(look) { const k = SKINS[look.skin]; return new THREE.Color(k ? k.fur : (look.color || '#3d2314')); }
+function furMat(look, shade) {
+    const k = SKINS[look.skin], f = furTexture();
+    return new THREE.MeshStandardMaterial({ map: f, bumpMap: f, bumpScale: 3, color: furColor(look).multiplyScalar(shade || 1), roughness: k && k.metal ? 0.35 : 0.95, metalness: k && k.metal ? 0.65 : 0, envMapIntensity: k && k.metal ? Math.max(0.8, ENV) : ENV });
+}
+function faceMat(look) {
+    const k = SKINS[look.skin];
+    if (k && k.metal && k.face) return new THREE.MeshStandardMaterial({ color: k.face, metalness: 0.9, roughness: 0.3, envMapIntensity: Math.max(0.8, ENV) });
+    return new THREE.MeshStandardMaterial({ color: k && k.face ? k.face : 0x2a2422, roughness: 0.55, bumpMap: tex.skin, bumpScale: 0.5, envMapIntensity: ENV });
+}
+function skinMaterial(look) {
+    if (look.gloves === 'neon') return new THREE.MeshStandardMaterial({ color: 0x20ff70, emissive: 0x10ff60, emissiveIntensity: 1.3, roughness: 0.3 });
+    if (look.gloves === 'mannequin') return new THREE.MeshStandardMaterial({ map: tex.plaster, bumpMap: tex.plaster, bumpScale: 0.7, color: 0xd8d0c2, roughness: 0.55, envMapIntensity: ENV });
+    if (look.gloves === 'burnt') { const b = burntTexture(); return new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9, emissive: 0xff5a10, emissiveMap: b, emissiveIntensity: 1.4, bumpMap: tex.plaster, bumpScale: 2, envMapIntensity: ENV }); }
+    if (look.gloves === 'black') return new THREE.MeshStandardMaterial({ color: 0x151517, roughness: 0.5, metalness: 0.15, envMapIntensity: ENV });
+    if (look.gloves === 'bone') return new THREE.MeshStandardMaterial({ map: tex.plaster, bumpMap: tex.plaster, bumpScale: 1, color: 0xeadfc8, roughness: 0.7, envMapIntensity: ENV });
+    if (look.gloves === 'ghost') return new THREE.MeshStandardMaterial({ color: 0x9fe8ff, emissive: 0x2ab8ff, emissiveIntensity: 0.9, transparent: true, opacity: 0.55, roughness: 0.3, depthWrite: false });
+    // Gołe dłonie mają ten sam kolor co postać gracza (albo skórka)
+    const k = SKINS[look.skin];
+    if (k && k.metal) return new THREE.MeshStandardMaterial({ map: tex.skin, color: furColor(look), metalness: 0.7, roughness: 0.3, envMapIntensity: Math.max(0.8, ENV) });
+    return new THREE.MeshPhysicalMaterial({ map: tex.skin, bumpMap: tex.skin, bumpScale: 0.25, color: furColor(look), roughness: 0.5, sheen: 0.6, sheenColor: new THREE.Color(0xff8f70), sheenRoughness: 0.45, clearcoat: 0.06, clearcoatRoughness: 0.6, envMapIntensity: ENV });
+}
+function nailMaterial(look) {
+    if (look.gloves && look.gloves !== 'none') return null;
+    return new THREE.MeshPhysicalMaterial({ color: 0xe8ccc0, roughness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.2, envMapIntensity: ENV });
+}
+function sleeveMaterial(look) {
+    const base = { side: THREE.DoubleSide, envMapIntensity: ENV };
+    if (look.sleeve === 'leather') return new THREE.MeshStandardMaterial(Object.assign(base, { color: 0x3a2214, roughness: 0.35, metalness: 0.1 }));
+    if (look.sleeve === 'camo') return new THREE.MeshStandardMaterial(Object.assign(base, { map: tex.camo, roughness: 0.9 }));
+    if (look.sleeve === 'bandage') return new THREE.MeshStandardMaterial(Object.assign(base, { map: tex.bandage, bumpMap: tex.bandage, bumpScale: 1, roughness: 0.95 }));
+    if (look.sleeve === 'ghostcloth') return new THREE.MeshStandardMaterial(Object.assign(base, { color: 0xe8f4ff, emissive: 0x8ac8ff, emissiveIntensity: 0.8, transparent: true, opacity: 0.55, depthWrite: false }));
+    if (look.sleeve === 'straitjacket') return new THREE.MeshStandardMaterial(Object.assign(base, { map: jacketTexture(), roughness: 0.95 }));
+    if (look.sleeve === 'gold') return new THREE.MeshStandardMaterial(Object.assign(base, { color: 0xd4a640, metalness: 1, roughness: 0.25, envMapIntensity: Math.max(0.8, ENV) }));
+    return new THREE.MeshStandardMaterial(Object.assign(base, { map: furTexture(), color: furColor(look).multiplyScalar(0.7), roughness: 0.95, bumpMap: furTexture(), bumpScale: 2 }));
+}
+function fingerSeg(r, len) {
+    const g = new THREE.CapsuleGeometry(r, Math.max(0.002, len - r), 4, 12);
+    g.rotateX(Math.PI / 2); g.translate(0, 0, -len / 2);
+    return g;
+}
+
+export function createRealHand(isLeft, look) {
+    const side = isLeft ? -1 : 1, outer = new THREE.Group(), model = new THREE.Group();
+    model.position.set(0, -0.015, 0.075); model.rotation.set(-0.3, 0, -0.9 * side); outer.add(model);
+    const skin = skinMaterial(look), nailMat = nailMaterial(look);
+    const add = (geo, mat, parent) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+    add(new RoundedBoxGeometry(0.074, 0.028, 0.094, 3, 0.012), skin, model);
+    const thenar = add(new THREE.SphereGeometry(1, 14, 10), skin, model); thenar.scale.set(0.022, 0.014, 0.032); thenar.position.set(-0.027 * side, -0.007, 0.014);
+    const hypo = add(new THREE.SphereGeometry(1, 14, 10), skin, model); hypo.scale.set(0.016, 0.012, 0.03); hypo.position.set(0.028 * side, -0.006, 0.018);
+    const wrist = add(new THREE.CylinderGeometry(0.026, 0.024, 0.05, 16), skin, model); wrist.rotation.x = Math.PI / 2; wrist.position.set(0, 0, 0.068); wrist.scale.set(1.2, 1, 0.75);
+    const cuff = add(new THREE.CylinderGeometry(0.036, 0.04, 0.05, 20, 1, true), sleeveMaterial(look), model);
+    cuff.rotation.x = Math.PI / 2; cuff.position.set(0, 0, 0.11); cuff.scale.set(1.15, 1, 0.85);
+    const fingers = [];
+    for (const f of FINGER_DEFS) {
+        add(new THREE.SphereGeometry(f.r * 1.15, 10, 8), skin, model).position.set(f.x * side, 0.006, -0.044);
+        const base = new THREE.Group(); base.rotation.order = 'YXZ'; base.position.set(f.x * side, 0.003, -0.046); base.rotation.y = f.splay * side; model.add(base);
+        const joints = [base]; let parent = base, r = f.r;
+        for (let k = 0; k < 3; k++) {
+            const j = k === 0 ? base : new THREE.Group();
+            if (k > 0) { j.position.z = -f.len[k - 1]; parent.add(j); joints.push(j); }
+            add(fingerSeg(r, f.len[k]), skin, j);
+            if (k === 2 && nailMat) { const n = add(NAIL_GEO, nailMat, j); n.position.set(0, r * 0.62, -f.len[2] * 0.6); n.scale.set(r * 0.8, r * 0.25, f.len[2] * 0.33); }
+            parent = j; r *= 0.88;
+        }
+        fingers.push(joints);
+    }
+    const tb = new THREE.Group(); tb.rotation.order = 'YXZ'; tb.position.set(-0.033 * side, -0.008, 0.008); tb.rotation.set(-0.35, 0.85 * side, 0); model.add(tb);
+    const thumb = [tb], tl = [0.04, 0.032, 0.027]; let tp = tb, tr = 0.0138;
+    for (let k = 0; k < 3; k++) {
+        const j = k === 0 ? tb : new THREE.Group();
+        if (k > 0) { j.position.z = -tl[k - 1]; tp.add(j); thumb.push(j); }
+        add(fingerSeg(tr, tl[k]), skin, j);
+        if (k === 2 && nailMat) { const n = add(NAIL_GEO, nailMat, j); n.position.set(0, tr * 0.62, -tl[2] * 0.6); n.scale.set(tr * 0.8, tr * 0.25, tl[2] * 0.33); }
+        tp = j; tr *= 0.88;
+    }
+    outer.userData.rig = { fingers: fingers, thumb: thumb, grip: 0.22, target: 0.22 };
+    poseHand(outer.userData.rig, 1);
+    rimify(outer, 0xffc890, 0.45, 0);   // ciepła obwódka Fresnela: dłonie widać wyraźnie także w ciemnych poziomach
+    return outer;
+}
+export function poseHand(rig, dt) {
+    rig.grip += (rig.target - rig.grip) * Math.min(1, dt * 14);
+    const g = rig.grip;
+    for (let f = 0; f < rig.fingers.length; f++) {
+        const J = rig.fingers[f];
+        J[0].rotation.x = -(0.12 + g * (1.35 + f * 0.08)); J[1].rotation.x = -(0.18 + g * 1.55); J[2].rotation.x = -(0.1 + g * 0.95);
+    }
+    const T = rig.thumb;
+    T[0].rotation.x = -(0.35 + g * 0.4); T[1].rotation.x = -(0.15 + g * 0.55); T[2].rotation.x = -(0.15 + g * 0.75);
+}
+
+// --- Czapki i okulary (układ: głowa patrzy w -Z, środek głowy w 0,0,0) ---
+const mat = (o) => new THREE.MeshStandardMaterial(Object.assign({ envMapIntensity: ENV, roughness: 0.6 }, o));
+const meshAt = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o; };
+export function buildHat(id) {
+    const g = new THREE.Group();
+    if (id === 'cap') {
+        const c = mat({ color: 0x6a1a14 });
+        const dome = meshAt(new THREE.SphereGeometry(0.137, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), c, 0, 0.03, 0); dome.scale.y = 0.8; g.add(dome);
+        g.add(meshAt(new THREE.BoxGeometry(0.19, 0.012, 0.12), c, 0, 0.035, -0.16));
+    } else if (id === 'ushanka') {
+        // Uszatka: futrzana czapa z podwiniętym daszkiem z przodu i nausznikami opadającymi po bokach
+        const fur = new THREE.MeshStandardMaterial({ map: furTexture(), color: 0x6a5040, roughness: 0.95 });
+        const crown = new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.8 });
+        const top = meshAt(new RoundedBoxGeometry(0.29, 0.1, 0.28, 3, 0.04), crown, 0, 0.17, 0.0); g.add(top);
+        const band = meshAt(new RoundedBoxGeometry(0.3, 0.07, 0.29, 3, 0.03), fur, 0, 0.12, 0.0); g.add(band);
+        const flap = meshAt(new RoundedBoxGeometry(0.26, 0.09, 0.04, 3, 0.02), fur, 0, 0.15, -0.155); flap.rotation.x = -0.25; g.add(flap);
+        for (const sx of [-1, 1]) {
+            const ear = meshAt(new RoundedBoxGeometry(0.05, 0.17, 0.15, 3, 0.022), fur, sx * 0.155, 0.02, 0.0); ear.rotation.z = sx * 0.08; g.add(ear);
+            const tie = meshAt(new THREE.CylinderGeometry(0.004, 0.004, 0.07, 5), crown, sx * 0.158, -0.09, 0.0); g.add(tie);
+        }
+    } else if (id === 'beanie') {
+        const k = mat({ color: 0x2d4a3a, roughness: 0.95, bumpMap: tex.plaster, bumpScale: 2 });
+        const dome = meshAt(new THREE.SphereGeometry(0.142, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), k, 0, 0.03, 0); dome.scale.y = 1.05; g.add(dome);
+        g.add(meshAt(new THREE.CylinderGeometry(0.146, 0.146, 0.045, 20), k, 0, 0.04, 0));
+        g.add(meshAt(new THREE.SphereGeometry(0.035, 12, 8), mat({ color: 0xc8b89a, roughness: 1 }), 0, 0.19, 0));
+    } else if (id === 'tophat') {
+        const b = mat({ color: 0x0d0d0f, roughness: 0.8 });
+        g.add(meshAt(new THREE.CylinderGeometry(0.175, 0.175, 0.012, 28), b, 0, 0.11, 0));
+        g.add(meshAt(new THREE.CylinderGeometry(0.1, 0.105, 0.2, 24), b, 0, 0.21, 0));
+        g.add(meshAt(new THREE.CylinderGeometry(0.107, 0.107, 0.032, 24), mat({ color: 0x7a0a0a }), 0, 0.13, 0));
+    } else if (id === 'cowboy') {
+        const l = mat({ color: 0x6a4a2a, roughness: 0.85 });
+        const brim = meshAt(new THREE.CylinderGeometry(0.25, 0.25, 0.012, 32), l, 0, 0.1, 0); brim.scale.z = 0.85; g.add(brim);
+        g.add(meshAt(new THREE.CylinderGeometry(0.1, 0.125, 0.12, 24), l, 0, 0.165, 0));
+        g.add(meshAt(new THREE.CylinderGeometry(0.127, 0.127, 0.025, 24), mat({ color: 0x2a1a0e }), 0, 0.12, 0));
+    } else if (id === 'horns') {
+        const parts = [];
+        for (const s of [-1, 1]) {
+            const pts = [V3(s * 0.07, 0.09, -0.01), V3(s * 0.12, 0.16, 0.0), V3(s * 0.145, 0.24, 0.04), V3(s * 0.12, 0.31, 0.09)], rad = [0.03, 0.022, 0.013, 0.004];
+            for (let i = 0; i < 3; i++) parts.push(seg(pts[i], pts[i + 1], rad[i], rad[i + 1], 10));
+        }
+        g.add(meshAt(mergeGeometries(parts), mat({ color: 0x2a0606, roughness: 0.35, metalness: 0.2 }), 0, 0, 0));
+    } else if (id === 'crown') {
+        const gold = mat({ color: 0xc8a040, metalness: 1, roughness: 0.3, envMapIntensity: Math.max(0.8, ENV) });
+        g.add(meshAt(new THREE.CylinderGeometry(0.115, 0.11, 0.07, 16, 1, true), gold, 0, 0.15, 0));
+        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; g.add(meshAt(new THREE.ConeGeometry(0.022, 0.07, 8), gold, Math.cos(a) * 0.11, 0.215, Math.sin(a) * 0.11)); }
+        const gem = new THREE.MeshStandardMaterial({ color: 0xff2020, emissive: 0xaa0000, emissiveIntensity: 0.8 });
+        for (let i = 0; i < 3; i++) { const a = -Math.PI / 2 + (i - 1) * 0.6; g.add(meshAt(new THREE.SphereGeometry(0.014, 10, 8), gem, Math.cos(a) * 0.117, 0.15, Math.sin(a) * 0.117)); }
+    } else if (id === 'miner') {
+        const y = mat({ color: 0xd8a820, roughness: 0.4, metalness: 0.2 });
+        const dome = meshAt(new THREE.SphereGeometry(0.142, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), y, 0, 0.03, 0); dome.scale.y = 0.9; g.add(dome);
+        g.add(meshAt(new THREE.CylinderGeometry(0.17, 0.17, 0.012, 24), y, 0, 0.035, 0));
+        const lamp = meshAt(new THREE.CylinderGeometry(0.03, 0.035, 0.05, 14), mat({ color: 0x2a2a2a, metalness: 0.8 }), 0, 0.1, -0.13); lamp.rotation.x = Math.PI / 2; g.add(lamp);
+        const lens = meshAt(new THREE.CircleGeometry(0.028, 16), new THREE.MeshBasicMaterial({ color: 0xfff4c0 }), 0, 0.1, -0.156); lens.rotation.y = Math.PI; g.add(lens);
+        const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xfff0b0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.8 }));
+        glow.scale.set(0.18, 0.18, 1); glow.position.set(0, 0.1, -0.17); g.add(glow);
+    } else if (id === 'halo') {
+        const h = meshAt(new THREE.TorusGeometry(0.12, 0.012, 8, 40, Math.PI * 1.65), new THREE.MeshStandardMaterial({ color: 0xffe08a, emissive: 0xffc840, emissiveIntensity: 1.2, metalness: 0.6, roughness: 0.3 }), 0, 0.27, 0);
+        h.rotation.set(Math.PI / 2 + 0.15, 0, 0.6); h.castShadow = false; g.add(h);
+    }
+    return g;
+}
+export function buildGlasses(id) {
+    const g = new THREE.Group();
+    if (id === 'goldshades') g.add(meshAt(new THREE.BoxGeometry(0.2, 0.045, 0.02), mat({ color: 0xd4a640, metalness: 1, roughness: 0.15, envMapIntensity: Math.max(0.8, ENV) }), 0, 0.02, -0.132));
+    else if (id === 'sunglasses') g.add(meshAt(new THREE.BoxGeometry(0.2, 0.045, 0.02), mat({ color: 0x050505, metalness: 0.9, roughness: 0.1 }), 0, 0.02, -0.132));
+    else if (id === 'round') {
+        const m = mat({ color: 0xc8a040, metalness: 1, roughness: 0.3 });
+        for (const s of [-1, 1]) g.add(meshAt(new THREE.TorusGeometry(0.03, 0.005, 6, 20), m, s * 0.045, 0.02, -0.13));
+        g.add(meshAt(new THREE.BoxGeometry(0.03, 0.005, 0.005), m, 0, 0.025, -0.13));
+    } else if (id === 'eyepatch') {
+        const b = mat({ color: 0x080808, roughness: 0.8 });
+        const p = meshAt(new THREE.CylinderGeometry(0.034, 0.034, 0.01, 18), b, 0.045, 0.02, -0.128); p.rotation.x = Math.PI / 2; g.add(p);
+        const strap = meshAt(new THREE.TorusGeometry(0.136, 0.005, 6, 36), b, 0, 0.03, 0); strap.rotation.set(Math.PI / 2, 0.35, 0); g.add(strap);
+    } else if (id === 'weld') {
+        const strap = mat({ color: 0x1a1a1a, roughness: 0.8 }), lens = mat({ color: 0x1a4a2a, metalness: 0.6, roughness: 0.1, emissive: 0x0a2a10 });
+        for (const s of [-1, 1]) { const l = meshAt(new THREE.CylinderGeometry(0.034, 0.034, 0.04, 16), lens, s * 0.046, 0.025, -0.13); l.rotation.x = Math.PI / 2; g.add(l); }
+        const st = meshAt(new THREE.TorusGeometry(0.135, 0.008, 6, 36), strap, 0, 0.03, 0); st.rotation.x = Math.PI / 2; g.add(st);
+    } else if (id === 'thirdeye') {
+        const eye = meshAt(new THREE.SphereGeometry(0.03, 16, 12), new THREE.MeshStandardMaterial({ color: 0xfff0d0, emissive: 0xffa020, emissiveIntensity: 0.6, roughness: 0.2 }), 0, 0.075, -0.12);
+        eye.scale.set(1, 0.7, 0.6); g.add(eye);
+        g.add(meshAt(new THREE.SphereGeometry(0.012, 10, 8), new THREE.MeshBasicMaterial({ color: 0x200000 }), 0, 0.075, -0.139));
+    } else if (id === 'visor') {
+        const v = meshAt(new THREE.BoxGeometry(0.22, 0.035, 0.03), new THREE.MeshStandardMaterial({ color: 0xff2a1a, emissive: 0xff1a00, emissiveIntensity: 2.2, roughness: 0.2 }), 0, 0.02, -0.13);
+        v.castShadow = false; g.add(v);
+    }
+    return g;
+}
+// Maski zakładane na twarz (nowy dział sklepu)
+export function buildMask(id) {
+    const g = new THREE.Group();
+    const shell = (m, sx, sy, sz) => { const o = meshAt(new THREE.SphereGeometry(1, 24, 16, 0, Math.PI * 2, 0, Math.PI), m, 0, 0, -0.1); o.scale.set(sx, sy, sz); g.add(o); return o; };
+    const dark = new THREE.MeshBasicMaterial({ color: 0x050505 });
+    if (id === 'hockey') {
+        shell(mat({ color: 0xe8e4d8, roughness: 0.35 }), 0.125, 0.155, 0.06).position.z = -0.1;
+        for (const s of [-1, 1]) g.add(meshAt(new THREE.SphereGeometry(0.02, 10, 8), dark, s * 0.045, 0.025, -0.155));
+        for (let i = 0; i < 6; i++) g.add(meshAt(new THREE.SphereGeometry(0.006, 6, 4), dark, (i % 3 - 1) * 0.03, -0.06 - Math.floor(i / 3) * 0.025, -0.158));
+        for (const s of [-1, 1]) { const v = meshAt(new THREE.BoxGeometry(0.035, 0.008, 0.01), mat({ color: 0xaa1010 }), s * 0.06, 0.07, -0.152); v.rotation.z = s * 0.5; g.add(v); }
+    } else if (id === 'gas') {
+        const rubber = mat({ color: 0x1c1e1c, roughness: 0.7 });
+        shell(rubber, 0.13, 0.15, 0.065).position.z = -0.1;
+        for (const s of [-1, 1]) { const l = meshAt(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 16), mat({ color: 0x8aa0a0, metalness: 0.7, roughness: 0.05 }), s * 0.048, 0.025, -0.158); l.rotation.x = Math.PI / 2; g.add(l); }
+        const f = meshAt(new THREE.CylinderGeometry(0.035, 0.04, 0.07, 16), mat({ color: 0x4a5a3a, roughness: 0.6 }), 0, -0.07, -0.19); f.rotation.x = Math.PI / 2 - 0.4; g.add(f);
+    } else if (id === 'doll') {
+        shell(new THREE.MeshPhysicalMaterial({ color: 0xf4eee6, roughness: 0.15, clearcoat: 1 }), 0.125, 0.15, 0.062).position.z = -0.1;
+        for (const s of [-1, 1]) {
+            g.add(meshAt(new THREE.SphereGeometry(0.018, 10, 8), dark, s * 0.045, 0.03, -0.158));
+            const ch = meshAt(new THREE.SphereGeometry(0.022, 10, 8), new THREE.MeshStandardMaterial({ color: 0xe88a9a, roughness: 0.5 }), s * 0.065, -0.02, -0.15); ch.scale.z = 0.3; g.add(ch);
+        }
+        const lip = meshAt(new THREE.SphereGeometry(0.016, 10, 8), mat({ color: 0xaa0a1a, roughness: 0.3 }), 0, -0.065, -0.157); lip.scale.set(1.2, 0.5, 0.4); g.add(lip);
+        const crack = meshAt(new THREE.BoxGeometry(0.004, 0.09, 0.004), dark, 0.03, 0.07, -0.158); crack.rotation.z = 0.4; g.add(crack);
+    } else if (id === 'plague') {
+        const leather = mat({ color: 0x2a1c14, roughness: 0.6 });
+        shell(leather, 0.13, 0.15, 0.06).position.z = -0.1;
+        const beak = meshAt(new THREE.ConeGeometry(0.045, 0.24, 14), leather, 0, -0.03, -0.27); beak.rotation.x = -Math.PI / 2 - 0.35; g.add(beak);
+        for (const s of [-1, 1]) { const l = meshAt(new THREE.CylinderGeometry(0.024, 0.024, 0.015, 16), mat({ color: 0xa02010, metalness: 0.5, roughness: 0.1, emissive: 0x300000 }), s * 0.045, 0.035, -0.158); l.rotation.x = Math.PI / 2; g.add(l); }
+    } else if (id === 'skull') {
+        shell(mat({ color: 0xe0d6bc, roughness: 0.7, bumpMap: tex.plaster, bumpScale: 1 }), 0.13, 0.16, 0.065).position.z = -0.1;
+        for (const s of [-1, 1]) { const e = meshAt(new THREE.SphereGeometry(0.026, 10, 8), dark, s * 0.045, 0.025, -0.155); e.scale.z = 0.4; g.add(e); }
+        g.add(meshAt(new THREE.ConeGeometry(0.014, 0.025, 3), dark, 0, -0.015, -0.162));
+        for (let i = 0; i < 6; i++) g.add(meshAt(new THREE.BoxGeometry(0.012, 0.022, 0.006), mat({ color: 0xf0e8d0 }), (i - 2.5) * 0.015, -0.07, -0.16));
+    } else if (id === 'blind') {
+        const flesh = mat({ map: tex.skin, color: 0x8e7f7a, roughness: 0.4, bumpMap: tex.plaster, bumpScale: 2 });
+        shell(flesh, 0.135, 0.16, 0.07).position.z = -0.1;
+        for (const s of [-1, 1]) { const lid = meshAt(new THREE.SphereGeometry(0.03, 10, 8), flesh, s * 0.045, 0.03, -0.165); lid.scale.set(1.3, 0.35, 0.5); g.add(lid); }
+        const memb = new THREE.MeshStandardMaterial({ color: 0x9a5a5a, roughness: 0.5, side: THREE.DoubleSide });
+        for (const s of [-1, 1]) { const e = meshAt(new THREE.SphereGeometry(1, 12, 10), memb, s * 0.17, 0.08, 0.0); e.scale.set(0.02, 0.15, 0.1); e.rotation.set(0.2, s * 0.6, s * 0.5); g.add(e); }
+        for (let i = 0; i < 7; i++) { const t2 = meshAt(new THREE.ConeGeometry(0.008, 0.03, 5), mat({ color: 0xd8ccb0 }), (i - 3) * 0.014, -0.07, -0.165); t2.rotation.x = Math.PI; g.add(t2); }
+    }
+    return g;
+}
+// Napis z nickiem: ciemna plakietka, biały pogrubiony tekst z obrysem, zawsze cały widoczny
+// (rysowany na wierzchu, nie chowa się w czapce ani za ścianą; długie nicki dostają mniejszą czcionkę)
+function createNameSprite(message) {
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(10,8,8,0.82)'; ctx.beginPath(); ctx.roundRect(4, 4, 504, 120, 28); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 5; ctx.stroke();
+    let size = 66; ctx.font = 'bold ' + size + 'px sans-serif';
+    while (ctx.measureText(message).width > 460 && size > 26) { size -= 2; ctx.font = 'bold ' + size + 'px sans-serif'; }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 8; ctx.strokeStyle = '#000000'; ctx.strokeText(message, 256, 68);
+    ctx.fillStyle = '#ffffff'; ctx.fillText(message, 256, 68);
+    const tx = new THREE.CanvasTexture(canvas); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, depthTest: false, depthWrite: false, transparent: true }));
+    sp.renderOrder = 950;
+    return sp;
+}
+// Głowa goryla: kwadratowa, cała w futrze, tylko twarz bez owłosienia (dla innych graczy, lustra i sklepu)
+export function createHead(look, withName) {
+    const head = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
+    const masked = look.mask && look.mask !== 'none';
+    const skull = meshAt(new RoundedBoxGeometry(0.26, 0.26, 0.25, 4, 0.045), fur, 0, 0.005, 0.0); head.add(skull);
+    // Twarz: płaska, ciemna, bez futra, z futrzanym daszkiem brwi nad nią
+    const plate = meshAt(new RoundedBoxGeometry(0.19, 0.16, 0.03, 3, 0.012), face, 0, -0.025, -0.118); head.add(plate);
+    const brow = meshAt(new RoundedBoxGeometry(0.22, 0.035, 0.05, 2, 0.012), fur, 0, 0.065, -0.115); head.add(brow);
+    head.userData.face = { brow: brow, mouth: null, eyes: [], level: 0 };
+    for (const s of [-1, 1]) head.add(meshAt(new RoundedBoxGeometry(0.03, 0.05, 0.04, 2, 0.01), fur, s * 0.135, 0.0, -0.01));   // uszy
+    if (!masked) {
+        const dark = new THREE.MeshBasicMaterial({ color: 0x0a0605 });
+        const muzzle = meshAt(new RoundedBoxGeometry(0.11, 0.06, 0.03, 2, 0.012), face, 0, -0.065, -0.135); head.add(muzzle);
+        for (const s of [-1, 1]) head.add(meshAt(new THREE.SphereGeometry(0.009, 8, 6), dark, s * 0.018, -0.05, -0.151));
+        // Usta: ciemny owal, który otwiera się w rytm głosu (rozmowa przez mikrofon)
+        const mouth = meshAt(new THREE.SphereGeometry(0.035, 14, 8), new THREE.MeshBasicMaterial({ color: 0x1a0606 }), 0, -0.085, -0.145);
+        mouth.scale.set(1, 0.12, 0.35); head.add(mouth); head.userData.face.mouth = mouth;
+        const eyeMat = k.glowEyes ? new THREE.MeshBasicMaterial({ color: 0xff2a10 }) : new THREE.MeshPhysicalMaterial({ color: 0x2a160c, roughness: 0.1, clearcoat: 1 });
+        for (const s of [-1, 1]) { const e = meshAt(new THREE.SphereGeometry(0.014, 12, 8), eyeMat, s * 0.045, 0.02, -0.132); head.add(e); head.userData.face.eyes.push(e); }
+    }
+    head.add(buildMask(look.mask)); head.add(buildHat(look.hat)); head.add(buildGlasses(look.glasses));
+    if (withName) {
+        const tag = createNameSprite(String(look.name || 'Player').slice(0, 16)); tag.position.set(0, 0.5, 0); tag.scale.set(0.72, 0.18, 1); head.add(tag);
+        addRoleTag(head, look);
+    }
+    return head;
+}
+// Odznaki (jak w Gorilla Tag): okrągła przypinka ze złotą obwódką na piersi
+const BADGES = {
+    early: { bg: '#4a1a7a', draw: (x) => star(x, 64, 64, 40, 18, '#ffd23a') },
+    skull: { bg: '#141414', draw: (x) => { x.fillStyle = '#f0ece0'; x.beginPath(); x.arc(64, 56, 30, 0, 7); x.fill(); x.fillRect(46, 70, 36, 22); x.fillStyle = '#141414'; x.beginPath(); x.arc(52, 56, 9, 0, 7); x.arc(76, 56, 9, 0, 7); x.fill(); x.fillRect(54, 84, 4, 8); x.fillRect(62, 84, 4, 8); x.fillRect(70, 84, 4, 8); } },
+    bone: { bg: '#5a3a22', draw: (x) => { x.save(); x.translate(64, 64); x.rotate(-0.7); x.fillStyle = '#f0e8d4'; x.fillRect(-30, -7, 60, 14); for (const sx of [-1, 1]) for (const sy of [-1, 1]) { x.beginPath(); x.arc(sx * 32, sy * 8, 10, 0, 7); x.fill(); } x.restore(); } },
+    eye: { bg: '#5a0a0a', draw: (x) => { x.fillStyle = '#f4ecdc'; x.beginPath(); x.ellipse(64, 64, 42, 24, 0, 0, 7); x.fill(); x.fillStyle = '#b01010'; x.beginPath(); x.arc(64, 64, 16, 0, 7); x.fill(); x.fillStyle = '#000'; x.beginPath(); x.arc(64, 64, 7, 0, 7); x.fill(); } },
+    moon: { bg: '#0e1430', draw: (x) => { x.fillStyle = '#d01818'; x.beginPath(); x.arc(64, 64, 36, 0, 7); x.fill(); x.fillStyle = '#0e1430'; x.beginPath(); x.arc(80, 54, 32, 0, 7); x.fill(); } },
+    flame: { bg: '#3a0a02', draw: (x) => { for (const [c, k] of [['#ff5a10', 1], ['#ffb020', 0.65], ['#fff0a0', 0.35]]) { x.fillStyle = c; x.beginPath(); x.moveTo(64, 64 - 44 * k - 6); x.bezierCurveTo(64 + 40 * k, 64 - 10 * k, 64 + 30 * k, 64 + 40 * k, 64, 64 + 40 * k); x.bezierCurveTo(64 - 30 * k, 64 + 40 * k, 64 - 40 * k, 64 - 10 * k, 64, 64 - 44 * k - 6); x.fill(); } } },
+    owner: { bg: '#3a0612', draw: (x) => { x.fillStyle = '#ffd23a'; x.beginPath(); x.moveTo(30, 82); x.lineTo(30, 44); x.lineTo(47, 60); x.lineTo(64, 32); x.lineTo(81, 60); x.lineTo(98, 44); x.lineTo(98, 82); x.closePath(); x.fill(); x.fillRect(30, 86, 68, 10); x.fillStyle = '#c01030'; for (const cx of [47, 64, 81]) { x.beginPath(); x.arc(cx, 72, 5, 0, 7); x.fill(); } } },
+    coadmin: { bg: '#04303a', draw: (x) => { shield(x, '#5af0ff', ''); x.fillStyle = '#04303a'; x.font = 'bold 40px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('CA', 64, 66); } },
+    ultimate: { bg: '#2a1a00', draw: (x) => { star(x, 64, 60, 46, 20, '#ffd23a'); x.fillStyle = '#2a1a00'; x.font = 'bold 34px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('U', 64, 64); } },
+    admin: { bg: '#8a0a0a', draw: (x) => shield(x, '#ffd23a', 'A') },
+    mod: { bg: '#0a2a7a', draw: (x) => shield(x, '#d8e8ff', 'M') },
+    crown: { bg: '#7a0a10', draw: (x) => { x.fillStyle = '#ffd23a'; x.beginPath(); x.moveTo(26, 88); x.lineTo(26, 46); x.lineTo(46, 66); x.lineTo(64, 36); x.lineTo(82, 66); x.lineTo(102, 46); x.lineTo(102, 88); x.closePath(); x.fill(); } }
+};
+function shield(x, col, letter) {
+    x.fillStyle = col; x.beginPath(); x.moveTo(64, 20); x.lineTo(100, 32); x.lineTo(96, 76); x.quadraticCurveTo(64, 110, 64, 110); x.quadraticCurveTo(64, 110, 32, 76); x.lineTo(28, 32); x.closePath(); x.fill();
+    x.fillStyle = '#1a0a0a'; x.font = 'bold 50px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(letter, 64, 66);
+}
+function star(x, cx, cy, ro, ri, col) {
+    x.fillStyle = col; x.beginPath();
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? ri : ro; if (i === 0) x.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); else x.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+    x.closePath(); x.fill();
+}
+const badgeTex = {};
+export function buildBadge(id) {
+    const b = BADGES[id]; if (!b) return null;
+    if (!badgeTex[id]) {
+        const c = makeCanvas(128, 128), x = c.getContext('2d');
+        x.fillStyle = b.bg; x.beginPath(); x.arc(64, 64, 62, 0, 7); x.fill();
+        b.draw(x);
+        x.strokeStyle = 'rgba(255,255,255,0.25)'; x.lineWidth = 4; x.beginPath(); x.arc(64, 64, 56, Math.PI * 1.1, Math.PI * 1.6); x.stroke();   // połysk
+        badgeTex[id] = toTex(c, false);
+    }
+    const g = new THREE.Group();
+    const face = new THREE.Mesh(new THREE.CircleGeometry(0.042, 28), new THREE.MeshStandardMaterial({ map: badgeTex[id], roughness: 0.3, metalness: 0.1 }));
+    face.rotation.y = Math.PI; g.add(face);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.043, 0.005, 6, 28), new THREE.MeshStandardMaterial({ color: 0xd4a640, metalness: 1, roughness: 0.25 }));
+    g.add(rim);
+    return g;
+}
+// Tułów: zwykła sylwetka (nie gruba, nie chuda), cały w futrze, z łysym plackiem na brzuchu (środek = 0.35 m pod głową)
+export function createGorillaTorso(look) {
+    const g = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
+    g.userData.chest = meshAt(new RoundedBoxGeometry(0.42, 0.5, 0.24, 4, 0.08), fur, 0, -0.06, 0.0); g.add(g.userData.chest);
+    for (const s of [-1, 1]) g.add(meshAt(new THREE.SphereGeometry(0.085, 14, 10), fur, s * 0.21, 0.15, 0));   // barki
+    g.add(meshAt(new RoundedBoxGeometry(0.22, 0.24, 0.02, 3, 0.01), face, 0, -0.12, -0.12));                // łysy placek na brzuchu
+    if (k.back) g.add(meshAt(new RoundedBoxGeometry(0.34, 0.3, 0.02, 3, 0.01), new THREE.MeshStandardMaterial({ map: furTexture(), color: k.back, roughness: 0.9 }), 0, 0.0, 0.122));
+    const badge = buildBadge(look.badge);
+    if (badge) { badge.position.set(0.11, 0.09, -0.128); g.add(badge); }
+    if (k.cape) {
+        const cape = meshAt(new THREE.BoxGeometry(0.5, 0.62, 0.02), new THREE.MeshStandardMaterial({ color: 0x9a0a10, roughness: 0.7, side: THREE.DoubleSide }), 0, -0.14, 0.14);
+        cape.rotation.x = 0.12; g.add(cape);
+        for (const s of [-1, 1]) g.add(meshAt(new THREE.SphereGeometry(0.03, 10, 8), new THREE.MeshStandardMaterial({ color: 0xd4a640, metalness: 1, roughness: 0.25 }), s * 0.18, 0.15, -0.1));
+    }
+    return g;
+}
+// Ramię goryla: cylinder od barku do nadgarstka, ustawiany co klatkę
+const ARM_GEO = new THREE.CylinderGeometry(0.055, 0.075, 1, 12).translate(0, 0.5, 0);
+export function createGorillaArm(look) { const m = new THREE.Mesh(ARM_GEO, furMat(look)); m.castShadow = true; return m; }
+const _Y = new THREE.Vector3(0, 1, 0), _sh = new THREE.Vector3(), _hp = new THREE.Vector3(), _dir = new THREE.Vector3();
+export function placeArm(arm, torso, side, hand) {
+    _sh.set(side * 0.23, 0.15, 0.0); torso.localToWorld(_sh);
+    hand.getWorldPosition(_hp);
+    if (arm.parent) arm.parent.worldToLocal(_sh), arm.parent.worldToLocal(_hp);
+    _dir.subVectors(_hp, _sh); const len = Math.max(0.05, _dir.length());
+    arm.position.copy(_sh); arm.quaternion.setFromUnitVectors(_Y, _dir.normalize()); arm.scale.set(1, len, 1);
+    arm.updateMatrixWorld(true);
+}
+// Młotki ekipy: Ban (obsydian z czerwoną energią) i Kick (złoto z elektrycznie żółtą energią).
+// Metalowa główka z zaokrąglonymi krawędziami, świecące ścianki uderzeniowe, pierścienie energii,
+// pulsujący pas rdzenia, płytki z napisem na czterech bokach, owinięta rękojeść, klejnot na końcu,
+// poświata i iskry krążące wokół główki. Animuje się sam przy każdym rysowaniu (u ciebie i u innych).
+const hammerCache = {};
+function hammerTextures(ban) {
+    const key = ban ? 'ban' : 'kick';
+    if (hammerCache[key]) return hammerCache[key];
+    const glow = ban ? '#ff2a1a' : '#ffd21a', deep = ban ? '#1a0606' : '#2a1e04', text = ban ? 'BAN' : 'KICK';
+    // Płytka z napisem: ciemne tło, świecąca ramka z runami, jasny napis z poświatą
+    const c = makeCanvas(512, 224), x = c.getContext('2d');
+    x.fillStyle = deep; x.fillRect(0, 0, 512, 224);
+    const gr = x.createLinearGradient(0, 0, 0, 224); gr.addColorStop(0, 'rgba(255,255,255,0.10)'); gr.addColorStop(1, 'rgba(0,0,0,0.25)'); x.fillStyle = gr; x.fillRect(0, 0, 512, 224);
+    x.strokeStyle = glow; x.lineWidth = 10; x.shadowColor = glow; x.shadowBlur = 24; x.strokeRect(14, 14, 484, 196);
+    x.lineWidth = 3; x.strokeRect(30, 30, 452, 164);
+    x.font = 'bold 22px monospace'; x.fillStyle = glow; x.textAlign = 'center';
+    for (let i = 0; i < 9; i++) { x.fillText('ᚱᛟᚾᛞᛖᚷ'[i % 6], 56 + i * 50, 48); x.fillText('ᛋᛏᚨᚠᚠ'[i % 5], 56 + i * 50, 196); }
+    x.font = 'bold 104px sans-serif'; x.textBaseline = 'middle'; x.shadowBlur = 40; x.fillStyle = '#ffffff'; x.fillText(text, 256, 116);
+    x.shadowBlur = 0; x.fillStyle = glow; x.globalAlpha = 0.35; x.fillText(text, 256, 116); x.globalAlpha = 1;
+    // Owijka rękojeści: skośne paski skóry
+    const w = makeCanvas(128, 256), wx = w.getContext('2d');
+    wx.fillStyle = ban ? '#1a0e0a' : '#2a1a0a'; wx.fillRect(0, 0, 128, 256);
+    for (let y = -128; y < 384; y += 28) { wx.fillStyle = ban ? '#3a1410' : '#5a3a14'; wx.beginPath(); wx.moveTo(0, y); wx.lineTo(128, y + 40); wx.lineTo(128, y + 56); wx.lineTo(0, y + 16); wx.fill(); }
+    // Świecąca tarcza uderzeniowa: koncentryczne pierścienie energii
+    const d = makeCanvas(256, 256), dx = d.getContext('2d');
+    const rg = dx.createRadialGradient(128, 128, 4, 128, 128, 128);
+    rg.addColorStop(0, '#ffffff'); rg.addColorStop(0.25, glow); rg.addColorStop(0.7, deep); rg.addColorStop(1, '#000000');
+    dx.fillStyle = rg; dx.fillRect(0, 0, 256, 256);
+    dx.strokeStyle = glow; dx.lineWidth = 6; for (const r of [60, 92, 118]) { dx.beginPath(); dx.arc(128, 128, r, 0, 7); dx.stroke(); }
+    const label = toTex(c, false), wrap = toTex(w, true), disc = toTex(d, false);
+    wrap.repeat.set(1, 3);
+    return (hammerCache[key] = { label: label, wrap: wrap, disc: disc, glow: new THREE.Color(glow) });
+}
+export function buildHammer(tool) {
+    if (tool !== 'kick' && tool !== 'ban') return null;
+    const ban = tool === 'ban', tx = hammerTextures(ban), g = new THREE.Group();
+    const glowCol = tx.glow.getHex();
+    const metal = new THREE.MeshPhysicalMaterial({ color: ban ? 0x1c1c22 : 0xc8a030, metalness: 1, roughness: ban ? 0.22 : 0.18, clearcoat: 1, clearcoatRoughness: 0.15, envMapIntensity: Math.max(1.0, ENV * 2) });
+    const trim = new THREE.MeshPhysicalMaterial({ color: ban ? 0x8a1010 : 0xffe080, metalness: 1, roughness: 0.15, clearcoat: 1, envMapIntensity: Math.max(1.0, ENV * 2) });
+    const energy = new THREE.MeshStandardMaterial({ color: glowCol, emissive: glowCol, emissiveIntensity: 2.2, roughness: 0.3, toneMapped: false });
+    // Rękojeść z owijką, metalowe okucia i klejnot na końcu
+    const handle = meshAt(new THREE.CylinderGeometry(0.019, 0.023, 0.4, 16), new THREE.MeshStandardMaterial({ map: tx.wrap, roughness: 0.75, bumpMap: tx.wrap, bumpScale: 1.5 }), 0, 0, -0.2); handle.rotation.x = Math.PI / 2; g.add(handle);
+    for (const z of [-0.02, -0.38]) { const ring = meshAt(new THREE.TorusGeometry(0.026, 0.006, 10, 24), trim, 0, 0, z); g.add(ring); }
+    const pommel = meshAt(new THREE.SphereGeometry(0.03, 20, 14), metal, 0, 0, 0.02); g.add(pommel);
+    const gem = meshAt(new THREE.OctahedronGeometry(0.018, 0), energy, 0, 0, 0.05); g.add(gem);
+    // Główka: zaokrąglona metalowa bryła z kołnierzem
+    const head = meshAt(new RoundedBoxGeometry(0.28, 0.14, 0.14, 5, 0.025), metal, 0, 0, -0.44); g.add(head);
+    const collar = meshAt(new THREE.CylinderGeometry(0.04, 0.03, 0.05, 16), trim, 0, 0, -0.38); collar.rotation.x = Math.PI / 2; g.add(collar);
+    // Dwa pulsujące pasy energii przy końcach główki (środek zostaje wolny na napis) i obręcze przy ściankach uderzeniowych
+    for (const bx of [-0.112, 0.112]) g.add(meshAt(new THREE.BoxGeometry(0.014, 0.146, 0.146), energy, bx, 0, -0.44));
+    for (const sx of [-1, 1]) {
+        const rim = meshAt(new THREE.TorusGeometry(0.058, 0.007, 10, 32), energy, sx * 0.142, 0, -0.44); rim.rotation.y = Math.PI / 2; g.add(rim);
+        const face = meshAt(new THREE.CircleGeometry(0.055, 32), new THREE.MeshBasicMaterial({ map: tx.disc, toneMapped: false }), sx * 0.1415, 0, -0.44); face.rotation.y = sx * Math.PI / 2; g.add(face);
+        const trimRing = meshAt(new THREE.TorusGeometry(0.066, 0.006, 8, 32), trim, sx * 0.13, 0, -0.44); trimRing.rotation.y = Math.PI / 2; g.add(trimRing);
+    }
+    // Płytki z napisem na trzech bokach (góra, dół i czoło od strony przeciwnej do rękojeści), lekko nad powierzchnią
+    const plateMat = new THREE.MeshBasicMaterial({ map: tx.label, toneMapped: false });
+    const plates = [];
+    for (const [px, py, pz, rx, ry] of [[0, 0.0735, -0.44, -Math.PI / 2, 0], [0, -0.0735, -0.44, Math.PI / 2, 0], [0, 0, -0.5135, 0, Math.PI]]) {
+        const pl = meshAt(new THREE.PlaneGeometry(0.19, 0.083), plateMat, px, py, pz); pl.rotation.set(rx, ry, 0); pl.castShadow = false; g.add(pl); plates.push(pl);
+    }
+    // Poświata i iskry krążące wokół główki
+    const aura = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: glowCol, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.55 }));
+    aura.scale.set(0.55, 0.38, 1); aura.position.set(0, 0, -0.44); g.add(aura);
+    const sparkN = 24, sp = new Float32Array(sparkN * 3), sgeo = new THREE.BufferGeometry(); sgeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+    const sparks = new THREE.Points(sgeo, new THREE.PointsMaterial({ map: tex.dot, color: glowCol, size: 0.018, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    sparks.frustumCulled = false; g.add(sparks);
+    const seeds = Array.from({ length: sparkN }, () => [Math.random() * 6.28, 0.09 + Math.random() * 0.06, (Math.random() - 0.5) * 0.25, 1.5 + Math.random() * 2.5]);
+    // Animacja: pulsowanie energii, migotanie poświaty, obrót klejnotu, krążące iskry
+    head.onBeforeRender = () => {
+        const t = performance.now() / 1000, pulse = 0.5 + 0.5 * Math.sin(t * (ban ? 5 : 7));
+        energy.emissiveIntensity = 1.6 + pulse * 1.8;
+        aura.material.opacity = 0.35 + pulse * 0.35; aura.scale.set(0.5 + pulse * 0.12, 0.34 + pulse * 0.08, 1);
+        gem.rotation.y = t * 2; gem.rotation.x = t * 1.3;
+        for (let i = 0; i < sparkN; i++) {
+            const [a0, r, x0, sp2] = seeds[i], a = a0 + t * sp2;
+            sp[i * 3] = x0; sp[i * 3 + 1] = Math.cos(a) * r; sp[i * 3 + 2] = -0.44 + Math.sin(a) * r;
+        }
+        sgeo.attributes.position.needsUpdate = true;
+    };
+    g.userData.headOffset = new THREE.Vector3(0, 0, -0.44);
+    return g;
+}
+export function lookKey(look) { return [look.name, look.hideTag ? 1 : 0, look.color, look.skin, look.badge, look.tool, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
+// Stały napis nad głową (ULTIMATE ADMIN, OWNER)
+export function roleLabel(text, color, glow) {
+    const c = makeCanvas(512, 96), x = c.getContext('2d');
+    x.font = 'bold 60px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillStyle = 'rgba(8,6,6,0.7)'; x.beginPath(); x.roundRect(10, 8, 492, 80, 24); x.fill();
+    x.shadowColor = glow; x.shadowBlur = 20; x.fillStyle = color; x.fillText(text, 256, 50);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: toTex(c, false), transparent: true, depthWrite: false, depthTest: false }));
+    sp.scale.set(0.8, 0.15, 1); sp.renderOrder = 951;
+    return sp;
+}
+// Napis z rolą (OWNER, ULTIMATE ADMIN, CO-ADMIN, ADMIN, MODERATOR) nad nickiem, chyba że gracz go ukrył
+export function addRoleTag(head, look) {
+    const r = look.cheater ? { text: 'CHEATER', color: '#ff2a2a', glow: '#ff0000' } : roleTagFor(look.name);   // napisu CHEATER nie da się ukryć
+    if (!r || (look.hideTag && !look.cheater)) return null;
+    const lab = roleLabel(r.text, r.color, r.glow); lab.position.set(0, 0.67, 0); head.add(lab);
+    return lab;
+}
+export const ULTIMATE_SCALE = 2;
+export function createAvatar(look) {
+    const group = new THREE.Group(), ult = look.skin === 'ultimate', sc = ult ? ULTIMATE_SCALE : 1;
+    const torso = createGorillaTorso(look); torso.scale.setScalar(sc); group.add(torso);
+    const head = createHead(look, true); head.scale.setScalar(sc); group.add(head);
+    const handL = createRealHand(true, look), handR = createRealHand(false, look);
+    handL.scale.setScalar(sc); handR.scale.setScalar(sc);
+    const armL = createGorillaArm(look), armR = createGorillaArm(look);
+    if (ult) for (const a of [armL, armR]) a.geometry = a.geometry.clone().scale(sc, 1, sc);
+    group.add(handL, handR, armL, armR);
+    const hammer = buildHammer(look.tool); if (hammer) handR.add(hammer);   // inni gracze widzą młotek w dłoni
+    // Ramiona dociągane do dłoni tuż przed rysowaniem
+    torso.userData.chest.onBeforeRender = () => { placeArm(armL, torso, -1, handL); placeArm(armR, torso, 1, handR); };
+    return { group, torso, head, handL, handR, key: lookKey(look), torsoDrop: 0.35 * sc };
+}
+
+// Mimika przy rozmowie: level 0..1 (głośność), pitch 0..1 (wysokość głosu).
+// Głośniej = szerzej otwarte usta, uniesione brwi i większe oczy; wyższy głos = węższe, bardziej okrągłe usta.
+export function animateFace(head, level, pitch, dt) {
+    const f = head && head.userData.face; if (!f) return;
+    f.level += (level - f.level) * Math.min(1, dt * (level > f.level ? 22 : 10));
+    const L = f.level, p = pitch || 0.5;
+    if (f.mouth) { f.mouth.scale.y = 0.12 + L * 0.95; f.mouth.scale.x = 1.15 - p * 0.45 + L * 0.15; }
+    if (f.brow) f.brow.position.y = 0.065 + L * 0.018 + (p - 0.5) * 0.008;
+    for (const e of f.eyes) e.scale.setScalar(1 + L * 0.35);
+}

@@ -17,6 +17,8 @@ import { SETTINGS, saveSettings } from './core/settings.js';
 import { enableDesktop, updateDesktop } from './core/desktop.js';
 import { startPresence } from './core/presence.js';
 import { updateHammer } from './core/hammer.js';
+import { updateVrMenu, vrMenuTerminal } from './core/vrmenu.js';
+import { onLevelBuilt, updateVisuals } from './core/visuals.js';
 import { isReservedNick, checkNickPassword } from './core/config.js';
 
 // Lista poziomów. Nowy poziom = nowy plik w folderze levels/ + wpis tutaj.
@@ -29,6 +31,7 @@ const LEVELS = {
     games: { path: './levels/games.js', light: 'arcade', extras: [] },
     levels: { path: './levels/levels.js', light: 'levels', extras: [] },
     laundry: { path: './levels/laundry.js', light: 'laundry', extras: [] },
+    memory: { path: './levels/memory.js', light: 'lava', extras: [] },
     lava: { path: './levels/lava.js', light: 'lava', extras: [] },
     monster: { path: './levels/monster.js', light: 'station', extras: [] },
     range: { path: './levels/range.js', light: 'night', extras: [] },
@@ -41,7 +44,7 @@ export async function loadLevel(id, spawn) {
     releaseAll();
     if (level && level.dispose) level.dispose();
     for (const e of extras) if (e.dispose) e.dispose();
-    for (const t of terminals) if (t !== pauseMenu) t.mesh = null;   // ekrany starego poziomu przestają reagować na laser
+    for (const t of terminals) if (t !== pauseMenu && t !== vrMenuTerminal) t.mesh = null;   // ekrany starego poziomu przestają reagować na laser
     clearLevel();
     applyLighting(LIGHT_PRESETS[cfg.light]);
     level = await import(cfg.path);
@@ -51,13 +54,14 @@ export async function loadLevel(id, spawn) {
     for (const e of extras) if (e.prebuild) e.prebuild();
     level.build();
     for (const e of extras) e.build();
+    onLevelBuilt(cfg.light, LIGHT_PRESETS[cfg.light]);   // warstwa wizualna (odbicia, szczegół, poświaty, cząsteczki)
     levelId = id; PAUSE.inLobby = id === 'lobby';
     const sp = spawn || L.spawn;
     setPlayerPosition(sp[0], sp[1], sp[2]);
     markAllDirty();
 }
 // Ekran ładowania przed oczami: zamiast zamrożonego obrazu gracz widzi czerń z napisem
-const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well', lava: 'Floor is Lava', staff: 'Staff room', games: 'BagaBoo Games', levels: 'Levels', laundry: 'The Industrial Laundromat', monster: 'Become the Monster', range: 'Shooting Range' };
+const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well', lava: 'Floor is Lava', staff: 'Staff room', games: 'BagaBoo Games', levels: 'Levels', laundry: 'The Industrial Laundromat', memory: 'Burning Memory', monster: 'Become the Monster', range: 'Shooting Range' };
 const fade = (() => {
     const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
@@ -79,7 +83,7 @@ function showLoading(name) {
 const frameWaiters = [];
 function nextFrames(n) { return new Promise(r => frameWaiters.push({ n: n, r: r })); }
 // Przejście przez drzwi do innego poziomu. opts: { seed (wspólny układ), noFollow (bez prowadzenia drużyny) }
-const SEEDED = { maze: true, well: true };
+const SEEDED = { maze: true, well: true, memory: true };   // poziomy z losowym układem, wspólnym dla drużyny
 async function goToLevel(id, spawn, opts) {
     if (switching) return;
     switching = true;
@@ -106,6 +110,13 @@ NETM.onFollow((level, data) => {
     goToLevel(level, null, { seed: data.seed, noFollow: true });
 });
 // Gość: zaproszenie od hosta (pokój szefa) albo odesłanie do lobby
+// Haker przyłapany w pokoju szefa: skórka CHEATER na zawsze i ban na tydzień
+NETM.onCheater((until) => {
+    ECO.markCheater(); NETM.selfBan(Math.max(0, (until || 0) - Date.now()) || 7 * 24 * 3600 * 1000);
+    toast('CHEATER! Breaking into the staff room = one-week ban.', '#ff2a2a');
+    NETM.leaveNetwork('You were caught cheating. Banned for one week.');
+    setTimeout(() => location.reload(), 3000);
+});
 NETM.onInvite((level) => {
     if (!started || level === levelId) return;
     toast(level === 'staff' ? 'The host invited you to the staff room' : 'The host sent you back to the lobby', '#ffd27a');
@@ -242,6 +253,7 @@ renderer.setAnimationLoop(() => {
         }
     }
     NETM.poseRemoteHands(dt);
+    NETM.animateFaces(dt);
     if (started && !frozen) ECO.tick(dt, NETM.otherPlayers().length);
     updateListener(camera);
     // Ekran ładowania znika płynnie
@@ -253,6 +265,8 @@ renderer.setAnimationLoop(() => {
     const vt = SETTINGS.vignette && renderer.xr.isPresenting ? Math.max(0, Math.min(0.85, (sp - 2.2) / 4)) : 0;
     vignette.material.opacity += (vt - vignette.material.opacity) * Math.min(1, dt * 6);
     vignette.visible = vignette.material.opacity > 0.02;
+    updateVrMenu(started);   // menu startowe w goglach, dopóki gra się nie zacznie
+    updateVisuals(dt, t);
     updatePointers(renderer.xr.isPresenting ? null : camera);
     updateDebug(dt);
     if (t - uiTimer > 1) { uiTimer = t; drawScoreboard(); markAllDirty(); }
@@ -270,7 +284,7 @@ lobbyButtons(false);
 loadLevel('lobby').then(() => {
     lobbyButtons(true); passVis(); drawScoreboard();
     const ban = NETM.myBanUntil();
-    $('status').innerText = ban ? 'You are banned until ' + new Date(ban).toLocaleString() + '.' : 'Ready. Put on your headset and press Enter VR after starting.';
+    $('status').innerText = ban ? 'You are banned until ' + new Date(ban).toLocaleString() + '.' : 'Ready. Press ENTER VR: the whole menu also works inside the headset.';
     if (ban) lobbyButtons(false);
 })
     .catch((e) => { console.error(e); $('status').innerText = 'Could not load the level: ' + e.message; });

@@ -25,8 +25,8 @@ button:disabled { background: #5a4848 !important; color: #b8a0a0 !important; bor
 #status { margin-top: 10px; font-weight: bold; font-size: 16px; color: #f2c8a8; text-align: center; max-width: 440px; text-shadow: 1px 1px 3px #000; }
 #rules { margin-top: 10px; font-size: 13px; color: #d8c0b0; max-width: 440px; text-align: center; }
 #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #fff; font-weight: bold; font-size: 18px; z-index: 100; text-shadow: 2px 2px 4px black; display: none; }
-#VRButton { display: none !important; }
-.connected #VRButton { display: block !important; border-color: #ff6a20 !important; color: #ff8a40 !important; background: rgba(40,20,20,0.85) !important; }
+/* Przycisk ENTER VR widoczny od razu: menu startowe działa też w goglach */
+#VRButton { display: block !important; z-index: 2000 !important; border-color: #ff6a20 !important; color: #ffd27a !important; background: rgba(138,26,10,0.9) !important; font-weight: bold !important; font-size: 18px !important; padding: 14px 26px !important; border-radius: 10px !important; }
 </style>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
@@ -34,7 +34,7 @@ button:disabled { background: #5a4848 !important; color: #b8a0a0 !important; bor
 // (nowy numer co 5 minut, więc po wgraniu zmian na GitHub nie trzeba już dopisywać ?v= do adresu).
 // Dodając nowy plik .js do gry, dopisz go do listy FILES.
 (function () {
-  var FILES = ["main.js", "core/audio.js", "core/avatar.js", "core/config.js", "core/debug.js", "core/desktop.js", "core/economy.js", "core/engine.js", "core/hammer.js", "core/haptics.js", "core/levelkit.js", "core/mannequin.js", "core/murals.js", "core/network.js", "core/pause.js", "core/player.js", "core/presence.js", "core/settings.js", "core/terminal.js", "core/textures.js", "core/ui.js", "levels/games.js", "levels/laundry.js", "levels/lava.js", "levels/levels.js", "levels/lobby-door.js", "levels/lobby.js", "levels/maze.js", "levels/monster.js", "levels/range.js", "levels/silence.js", "levels/staff.js", "levels/well.js"];
+  var FILES = ["main.js", "core/audio.js", "core/avatar.js", "core/config.js", "core/debug.js", "core/desktop.js", "core/economy.js", "core/engine.js", "core/hammer.js", "core/haptics.js", "core/levelkit.js", "core/mannequin.js", "core/monsterskins.js", "core/murals.js", "core/network.js", "core/pause.js", "core/player.js", "core/presence.js", "core/settings.js", "core/terminal.js", "core/textures.js", "core/ui.js", "core/visuals.js", "core/vrmenu.js", "levels/games.js", "levels/laundry.js", "levels/lava.js", "levels/levels.js", "levels/lobby-door.js", "levels/lobby.js", "levels/maze.js", "levels/memory.js", "levels/monster.js", "levels/range.js", "levels/silence.js", "levels/staff.js", "levels/well.js"];
   var VERSION = String(Math.floor(Date.now() / 300000));
   var imports = {
     "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
