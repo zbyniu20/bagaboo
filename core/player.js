@@ -17,6 +17,8 @@ const MAX_JUMP_SPEED = 6.5;   // maksymalna prędkość wyrzutu (m/s): skok na o
 const MIN_JUMP_SPEED = 0.3;   // wolniejsze ruchy nie wyrzucają gracza
 const VEL_HISTORY = 3;        // z ilu ostatnich klatek liczona jest prędkość wyrzutu
 const SLIDE_SPEED = 1.6;      // jak szybko zjeżdżasz po śliskiej ścianie (przy przyczepności 0)
+const WALL_HOLD = 0.6;        // jak mocno dłoń "trzyma" ścianę lub przeszkodę z boku (1 = przyklejona, 0 = wcale); podłoga zawsze 1
+const WALL_SLIP = 0.9;        // ciało powoli zsuwa się po ścianie, gdy dłoń tylko się o nią opiera (m/s)
 const HEAD_RADIUS = 0.18;     // kolizja głowy
 const FRICTION_IDLE = 0.15;   // hamowanie, gdy stoisz (mniej = mocniej)
 const FRICTION_RUN = 0.93;    // krótki rozpęd między machnięciami podczas biegu
@@ -43,7 +45,7 @@ export function setPlayerPosition(x, y, z) {
     prevLocal[0].set(0, 0, 0); prevLocal[1].set(0, 0, 0);
 }
 
-const anchorVel = [null, null], velHist = [];   // prędkości od "przyklejonych" dłoni i historia do wyrzutu
+const anchorVel = [null, null], anchorWall = [false, false], velHist = [];   // prędkości od "przyklejonych" dłoni i historia do wyrzutu
 let wasAnchored = false;
 let grounded = false, handPushing = false, stepped = false, simTime = 0, lastPushTime = -10, lastTrampTime = -10;
 let grabbed = null, grabbingIndex = -1, ropeConstraint = null, ropeHand = -1;
@@ -209,9 +211,10 @@ function handleMovement(i, dt) {
             const k = grip * (L.moveScale || 1);
             anchorVel[i] = new THREE.Vector3(-dw.x, -dw.y, -dw.z).multiplyScalar(k / Math.max(dt, 1 / 120));
             if (wall && grip < 1) anchorVel[i].y -= (1 - grip) * SLIDE_SPEED;   // zjeżdżanie po śliskiej ścianie
+            anchorWall[i] = wall;
             handPushing = true;
             if (handSpeed > RUN_MIN_SPEED) lastPushTime = simTime;
-        } else if (touching) anchorVel[i] = new THREE.Vector3(0, wall && grip < 1 ? -(1 - grip) * SLIDE_SPEED : 0, 0);
+        } else if (touching) { anchorVel[i] = new THREE.Vector3(0, wall && grip < 1 ? -(1 - grip) * SLIDE_SPEED : 0, 0); anchorWall[i] = wall; }
         if (!touching) anchorVel[i] = null;
     }
     // Wibracja przy dotknięciu powierzchni: mocniejsza przy mocniejszym uderzeniu
@@ -239,7 +242,12 @@ function applyAnchors() {
     const v = playerBody.velocity;
     if (a.length) {
         const avg = new THREE.Vector3(); a.forEach(x => avg.add(x)); avg.multiplyScalar(1 / a.length);
-        v.set(avg.x, avg.y, avg.z);
+        // Ściana i bok przeszkody trzymają słabiej niż podłoga: ruch ręki działa, ale ciało nie "przykleja się" i lekko zsuwa
+        const onWall = anchorVel.every((x, i) => !x || anchorWall[i]);
+        if (onWall) {
+            v.set(v.x + (avg.x - v.x) * WALL_HOLD, v.y + (avg.y - WALL_SLIP - v.y) * WALL_HOLD, v.z + (avg.z - v.z) * WALL_HOLD);
+            avg.set(v.x, v.y, v.z);
+        } else v.set(avg.x, avg.y, avg.z);
         velHist.push(avg.clone()); if (velHist.length > VEL_HISTORY) velHist.shift();
         wasAnchored = true;
     } else if (wasAnchored) {
