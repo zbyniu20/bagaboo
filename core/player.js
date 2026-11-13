@@ -8,12 +8,15 @@ import { initPointers, clickPointer } from './terminal.js';
 import { sendObjectMove } from './network.js';
 import { buzz } from './haptics.js';
 
-const radius = 0.35, gorillaStanceOffset = 0.6;
+const radius = 0.35, gorillaStanceOffset = 0.45;   // widok o 15 cm wyżej niż wcześniej (dłuższe ręce sięgają podłogi)
 const POWER = 1.0;            // siła trampolin i limit prędkości (1.0 = normalnie)
 // Ruch w stylu Gorilla Tag: dłoń dotykająca powierzchni jest "przyklejona", a ciało przesuwa się
 // o tyle, o ile przesuniesz dłoń. Po oderwaniu dłoni ciało leci z prędkością ostatnich ruchów ręki.
 const JUMP_MULT = 1.1;        // mnożnik prędkości po oderwaniu dłoni
-const MAX_JUMP_SPEED = 6.5;   // maksymalna prędkość wyrzutu (m/s): skok na ok. 2 m, nie wyżej
+const MAX_JUMP_SPEED = 7.5;   // maksymalna prędkość wyrzutu (m/s): szybki bieg, skok na ok. 2,5 m
+// Długie ręce goryla: dłoń w grze jest 1,3 raza dalej od barku niż kontroler w rzeczywistości.
+// Dzięki temu łatwo sięgasz podłogi i robisz dłuższe "kroki" rękami, więc biegasz szybciej.
+const ARM_SCALE = 1.3, SHOULDER_DROP = 0.25;
 const MIN_JUMP_SPEED = 0.3;   // wolniejsze ruchy nie wyrzucają gracza
 const VEL_HISTORY = 3;        // z ilu ostatnich klatek liczona jest prędkość wyrzutu
 const SLIDE_SPEED = 1.6;      // jak szybko zjeżdżasz po śliskiej ścianie (przy przyczepności 0)
@@ -92,7 +95,8 @@ function onSqueezeStart(i) {
 }
 // Punkt chwytu względem środka gracza, liczony z pozycji kontrolera
 function ropePivot(i) {
-    if (!renderer.xr.isPresenting) { const h = i === 0 ? hands.L : hands.R, b = playerBody.position; return new CANNON.Vec3(h.position.x - b.x, h.position.y - b.y, h.position.z - b.z); }
+    // Punkt chwytu liny = miejsce dłoni w grze (uwzględnia dłuższe ręce goryla)
+    { const h = i === 0 ? hands.L : hands.R, b = playerBody.position; if (h) return new CANNON.Vec3(h.position.x - b.x, h.position.y - b.y, h.position.z - b.z); }
     const c = controllers[i].position, cam = camera.position;
     return new CANNON.Vec3(c.x - cam.x, c.y - radius - gorillaStanceOffset, c.z - cam.z);
 }
@@ -163,8 +167,11 @@ world.addEventListener('postStep', () => {
     for (const ball of L.throwables) if (ball.userData.body.type === CANNON.Body.DYNAMIC) containBall(ball.userData.body);
 });
 
+const _shoulder = new THREE.Vector3(), _ctrl = new THREE.Vector3();
 function clampHand(controller, hand) {
-    controller.getWorldPosition(hand.position); controller.getWorldQuaternion(hand.quaternion);
+    controller.getWorldPosition(_ctrl); controller.getWorldQuaternion(hand.quaternion);
+    camera.getWorldPosition(_shoulder); _shoulder.y -= SHOULDER_DROP;   // przybliżony środek barków
+    hand.position.copy(_ctrl).sub(_shoulder).multiplyScalar(ARM_SCALE).add(_shoulder);
     const r = 0.08, hp = hand.position;
     for (const o of L.obstacles) {
         const b = o.box3;
@@ -205,9 +212,9 @@ function handleMovement(i, dt) {
         const dl = delta.length();
         if (touching && dl > HAND_DEADZONE) {
             const handSpeed = dl / Math.max(dt, 1 / 120);
-            delta.multiplyScalar((dl - HAND_DEADZONE) / dl);
+            delta.multiplyScalar((dl - HAND_DEADZONE) / dl * ARM_SCALE);   // dłuższe ręce = dłuższy ruch dłoni w grze
             const dw = delta.applyQuaternion(playerRig.quaternion);
-            if (dw.length() > 0.25) dw.normalize().multiplyScalar(0.25);   // ochrona przed skokiem śledzenia
+            if (dw.length() > 0.32) dw.normalize().multiplyScalar(0.32);   // ochrona przed skokiem śledzenia
             // Dłoń "przyklejona" do powierzchni: ciało porusza się przeciwnie do ruchu dłoni (śliska powierzchnia oddaje mniej)
             const k = grip * (L.moveScale || 1);
             anchorVel[i] = new THREE.Vector3(-dw.x, -dw.y, -dw.z).multiplyScalar(k / Math.max(dt, 1 / 120));
