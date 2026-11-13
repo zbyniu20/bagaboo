@@ -15,7 +15,7 @@ import { setPlayerPosition, releaseRope, isOnRope, hands } from '../core/player.
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
 import { ARRIVAL_FROM_SILENCE as ARRIVAL_SILENCE } from './levels.js';
-import { buildDoor, addDoorPortal, createJumpscare, cameraPanel, panelBg, drawInstructions } from '../core/levelkit.js';
+import { buildDoor, addDoorPortal, createJumpscare, cameraPanel, panelBg, drawInstructions , introSeen } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA ----------
 const NP = LIGHT_PRESETS.night;
@@ -540,11 +540,12 @@ export function update(dt, t, ctx) {
     if (S.alert > 0) S.alert -= dt;
 
     // Instrukcja przez pierwsze 30 s (w multiplayerze u gościa gra może już trwać)
+    if (S.introSkip === undefined) { S.introSkip = introSeen('silence'); if (S.introSkip) S.introT = Math.min(S.introT, 3); }   // samouczek tylko za pierwszym razem
     if (S.introT > 0) {
         S.introT -= dt;
         const sec = Math.max(0, Math.ceil(S.introT));
         if (sec !== S.intro.last) { S.intro.last = sec; drawIntro(sec, !auth && S.phase === 'play'); }
-        S.intro.mesh.visible = S.introT > 0;
+        S.intro.mesh.visible = S.introT > 0 && !S.introSkip;
     }
     if (auth && S.phase === 'intro' && S.introT <= 0) {
         S.phase = 'play'; setMode('patrol');
