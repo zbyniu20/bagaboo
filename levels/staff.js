@@ -5,7 +5,7 @@
 // ==========================================
 import { THREE, L, tex, addCrispBlock, addStaticBody, CANNON } from '../core/engine.js';
 import { LIGHT_PRESETS, isStaffName, isAdminName, isModName, isUltimateName, MOD_NAMES, localMods, setLocalMod } from '../core/config.js';
-import { SAVE, CATALOG, isOwned, buyItem, equipItem, setHideTag } from '../core/economy.js';
+import { SAVE, CATALOG, isOwned, buyItem, equipItem, setHideTag, markCheater } from '../core/economy.js';
 import * as T from '../core/textures.js';
 import { toast, Terminal, AMBER, AMBER_DIM, GOLD, OK_COL } from '../core/terminal.js';
 import * as N from '../core/network.js';
@@ -111,6 +111,13 @@ const staffPC = new Terminal((t) => {
 });
 
 export function build() {
+    // Kto tu wszedł bez roli i bez zaproszenia, musiał się włamać: skórka CHEATER na zawsze i ban na tydzień
+    if (!isStaffName(SAVE.profile.name) && !N.isInvitedToStaff()) {
+        markCheater(); N.selfBan(7 * 24 * 3600 * 1000);
+        toast('CHEATER! Breaking into the staff room = one-week ban.', '#ff2a2a');
+        N.leaveNetwork('You were caught cheating. Banned for one week.');
+        setTimeout(() => location.reload(), 3000);
+    }
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -W + 0.3, maxX: W - 0.3, minZ: -D + 0.3, maxZ: D - 0.3, maxY: H - 0.3 };
     S = { tvT: 0 };
