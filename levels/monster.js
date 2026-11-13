@@ -13,7 +13,8 @@ import { hands, setPlayerPosition } from '../core/player.js';
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare } from '../core/levelkit.js';
+import { buildMonsterSkin } from '../core/monsterskins.js';
 import { ARRIVAL_FROM_MONSTER } from './games.js';
 
 const A = 30, H = 12;                       // stacja kolejowa 60 x 60 m
@@ -24,6 +25,7 @@ const CATCH_DIST = 0.5;                     // dłoń potwora tak blisko głowy 
 const BOT_SPEED = 6.2, BOT_SPEED_MAX = 7.4;   // bot jest trochę szybszy od gracza i przyspiesza w trakcie rundy
 const BOT_GRAVITY = 18, BOT_JUMP_MAX = 4.2;    // bot skacze na perony, wagony i schody (do 4,2 m w górę)
 const MONSTER_BOOST = 1.15;                 // potwór jest trochę szybszy
+const SCARE_MIN = 25, SCARE_MAX = 55;       // co ile sekund (losowo) jumpscare
 export const info = { id: 'monster', name: 'Become the Monster', spawn: [0, 1.0, 27.5] };
 let S = null;
 const _p = new THREE.Vector3(), _h = new THREE.Vector3();
@@ -45,6 +47,14 @@ export function build() {
     for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.1, 0.1, 1); e.position.set(sx * 0.04, 0.152, 0.11); b.head.add(e); }
     S.botMesh = b;
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
+    // Jumpscare'y w losowych chwilach: twarz pod nosem albo postać, która wyskakuje zza rogu i rzuca się na gracza
+    S.scare = createJumpscare({ seed: 9911 });
+    S.nextScare = SCARE_MIN + Math.random() * (SCARE_MAX - SCARE_MIN);
+    const ap = buildMannequin(T.mkRng(31337)); ap.group.visible = false; L.root.add(ap.group);
+    ap.group.traverse(o => { if (o.isMesh && o.material && o.material.map) o.material = new THREE.MeshStandardMaterial({ color: 0x2a2420, roughness: 0.9 }); });
+    for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.09, 0.09, 1); e.position.set(sx * 0.04, 0.152, 0.11); ap.head.add(e); }
+    S.appar = { m: ap, t: -1 };
+    S.skins = {};   // modele potworów (skórki z zakładki BagaBoo Games)
     S.intro = cameraPanel(1280, 760, 1.0, 0.594, -0.04, -1.05, 995); S.intro.last = -1;
     N.onLevelMsg(onNet);
 }
@@ -259,6 +269,8 @@ export function update(dt, t, ctx) {
         if (Math.floor(t * 2.2) !== S.step) { S.step = Math.floor(t * 2.2); SFX.step(0.8, { x: b.x, y: 0, z: b.z }); }
     } else S.botMesh.group.visible = false;
     if (mon && mon !== 'bot') mpos = headOf(mon);
+    updateSkins(mon, mpos, t);
+    randomScares(dt, t, p);
     S.tag.visible = S.aura.visible = !!mpos && mon !== 'me';
     S.auraLight.intensity = mpos && mon !== 'me' ? 5 : 0;
     if (mpos) { S.tag.position.copy(mpos).y += 0.55; S.aura.position.copy(mpos); S.auraLight.position.copy(mpos); }
@@ -290,7 +302,50 @@ function drawHud() {
     x.fillStyle = '#ffd8d0'; x.fillText(S.phase === 'play' && S.mon !== 'bot' ? 'Caught ' + S.caught.size : (N.NET.mode === 'solo' ? 'Solo vs the mannequin' : 'Players here: ' + total), 330, 110);
     S.hud.update();
 }
+// Skórka potwora: gracz-potwór (u innych) wygląda jak wybrany potwór z jego zakładki BagaBoo Games
+function updateSkins(mon, mpos, t) {
+    for (const key in S.skins) S.skins[key].group.visible = false;
+    for (const id in N.playersState) N.setAvatarHidden(id, false);
+    if (!mon || mon === 'me' || mon === 'bot' || !mpos) return;
+    const st = N.playersState[mon], skin = st && st.profile ? st.profile.mskin : 'none';
+    if (!skin || skin === 'none') return;
+    const key = mon + ':' + skin;
+    if (!S.skins[key]) { const m = buildMonsterSkin(skin); if (!m) return; m.group.scale.setScalar(1.15); L.root.add(m.group); S.skins[key] = m; }
+    const m = S.skins[key]; m.group.visible = true; m.group.position.copy(mpos);
+    if (st.head && st.head.q) { const q = new THREE.Quaternion().fromArray(st.head.q), e = new THREE.Euler().setFromQuaternion(q, 'YXZ'); m.group.rotation.set(0, e.y, 0); }
+    m.animate(t);
+    N.setAvatarHidden(mon, true);
+    S.tag.visible = false;
+}
+// Losowe jumpscare'y w losowym czasie i miejscu (u każdego gracza osobno)
+function randomScares(dt, t, p) {
+    S.scare.update(dt);
+    const a = S.appar;
+    if (a.t >= 0) {
+        a.t += dt;
+        camera.getWorldPosition(_p);
+        const g = a.m.group;
+        if (a.t > 1.1) {   // rzuca się na gracza
+            const dx = _p.x - g.position.x, dz = _p.z - g.position.z, d = Math.hypot(dx, dz);
+            g.position.x += dx / d * Math.min(d, 14 * dt); g.position.z += dz / d * Math.min(d, 14 * dt);
+            if (d < 0.9) { g.visible = false; a.t = -1; S.scare.trigger(); buzz('both', 1, 400); }
+        } else a.m.head.rotation.z = Math.sin(t * 30) * 0.15;   // drga, zanim skoczy
+        g.rotation.y = Math.atan2(_p.x - g.position.x, _p.z - g.position.z);
+        return;
+    }
+    S.nextScare -= dt;
+    if (S.nextScare > 0 || S.scare.active()) return;
+    S.nextScare = SCARE_MIN + Math.random() * (SCARE_MAX - SCARE_MIN);
+    if (Math.random() < 0.4) { S.scare.trigger(); return; }   // twarz znikąd
+    // Postać pojawia się 4-7 m od gracza w losowym kierunku przed nim
+    camera.getWorldDirection(_h); _h.y = 0; _h.normalize();
+    const ang = Math.atan2(_h.x, _h.z) + (Math.random() - 0.5) * 1.6, r = 4 + Math.random() * 3;
+    const x = Math.max(-A + 1, Math.min(A - 1, p.x + Math.sin(ang) * r)), z = Math.max(-A + 1, Math.min(A - 1, p.z + Math.cos(ang) * r));
+    a.m.group.position.set(x, Math.max(0, p.y - 1.0), z); a.m.group.visible = true; a.t = 0;
+    SFX.stinger({ x: x, y: 1.5, z: z });
+}
 export function dispose() {
+    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); }
     if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); }
     L.moveScale = 1;
     N.onLevelMsg(null);
