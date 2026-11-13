@@ -13,7 +13,7 @@ import { hands, setPlayerPosition } from '../core/player.js';
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare , introSeen } from '../core/levelkit.js';
 import { buildMonsterSkin } from '../core/monsterskins.js';
 import { ARRIVAL_FROM_MONSTER } from './games.js';
 
@@ -22,7 +22,7 @@ const MONSTER_SPAWN = [0, 1.0, -26];        // potwór zaczyna na torach w głę
 const SURVIVOR_SPAWN = [[-18, 2.2, 26], [18, 2.2, 26], [-12, 2.2, 24], [12, 2.2, 24], [-22, 2.2, 22], [22, 2.2, 22]];   // reszta na peronach przy wejściu
 const WAIT = 10, ROUND = 120, RESULTS = 8, REWARD = 200;
 const CATCH_DIST = 0.5;                     // dłoń potwora tak blisko głowy lub tułowia = złapany
-const BOT_SPEED = 6.2, BOT_SPEED_MAX = 7.4;   // bot jest trochę szybszy od gracza i przyspiesza w trakcie rundy
+const BOT_SPEED = 4.2, BOT_SPEED_MAX = 5.4;   // trochę wolniej od szybkiego biegu gracza: da się uciec, ale z wysiłkiem   // bot jest trochę szybszy od gracza i przyspiesza w trakcie rundy
 const BOT_GRAVITY = 18, BOT_JUMP_MAX = 4.2;    // bot skacze na perony, wagony i schody (do 4,2 m w górę)
 const MONSTER_BOOST = 1.15;                 // potwór jest trochę szybszy
 const SCARE_MIN = 25, SCARE_MAX = 55;       // co ile sekund (losowo) jumpscare
@@ -146,6 +146,8 @@ function startedRound() {
     // Potwór i uciekający startują w różnych końcach stacji
     if (S.mon === 'me') setPlayerPosition(MONSTER_SPAWN[0], MONSTER_SPAWN[1], MONSTER_SPAWN[2]);
     else { const sp = SURVIVOR_SPAWN[(Math.random() * SURVIVOR_SPAWN.length) | 0]; setPlayerPosition(sp[0] + (Math.random() - 0.5) * 2, sp[1], sp[2]); }
+    // Start potwora: jumpscare u wszystkich uciekających (potwór dostaje ryk i wibrację)
+    if (S.mon !== 'me' && S.scare) S.scare.trigger();
     if (S.mon === 'me') { toast('You are the MONSTER! Catch everyone!', '#ff4a2a'); SFX.roar(0.8); buzz('both', 0.8, 400); }
     else if (S.mon === 'bot') toast('The mannequin is hunting you. Survive 2 minutes!', '#ff6a4a');
     else toast('Run! Do not let the monster touch you!', '#ff6a4a');
@@ -244,6 +246,7 @@ export function update(dt, t, ctx) {
     if (!S) return;
     S.clock += dt;
     const p = ctx.body.position, auth = isAuthority();
+    if (S.introSkip === undefined) { S.introSkip = introSeen('monster'); if (S.introSkip) S.introT = Math.min(S.introT, 3); }   // samouczek tylko za pierwszym razem
     if (S.introT > 0) {
         S.introT -= dt;
         const sec = Math.max(0, Math.ceil(S.introT));
@@ -253,7 +256,7 @@ export function update(dt, t, ctx) {
             'Not caught after 2 minutes = 200 Bagabucks. The monster wins 200 if it catches everyone.',
             'Playing alone? A fast mannequin hunts you instead. It can jump, so keep moving!',
             'The GAMES door behind you takes you back.'], 'This closes in ' + sec + ' s', { bg: 'rgba(16,4,4,0.9)', border: '#ff4a4a', title: '#ffd0c8', text: '#f4e0dc', footer: '#ffb030', size: 30 }); }
-        S.intro.mesh.visible = S.introT > 0;
+        S.intro.mesh.visible = S.introT > 0 && !S.introSkip;
     }
     if (auth) {
         think(dt, p);
