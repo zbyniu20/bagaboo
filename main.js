@@ -284,7 +284,7 @@ lobbyButtons(false);
 loadLevel('lobby').then(() => {
     lobbyButtons(true); passVis(); drawScoreboard();
     const ban = NETM.myBanUntil();
-    $('status').innerText = ban ? 'You are banned until ' + new Date(ban).toLocaleString() + '.' : 'Ready. Press ENTER VR: the whole menu also works inside the headset.';
+    $('status').innerText = ban ? 'You are banned until ' + new Date(ban).toLocaleString() + '.' : 'Ready. Put on your headset and press Enter VR after starting.';
     if (ban) lobbyButtons(false);
 })
     .catch((e) => { console.error(e); $('status').innerText = 'Could not load the level: ' + e.message; });
