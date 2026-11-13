@@ -57,7 +57,16 @@ export async function loadLevel(id, spawn) {
     onLevelBuilt(cfg.light, LIGHT_PRESETS[cfg.light]);   // warstwa wizualna (odbicia, szczegół, poświaty, cząsteczki)
     levelId = id; PAUSE.inLobby = id === 'lobby';
     const sp = spawn || L.spawn;
-    setPlayerPosition(sp[0], sp[1], sp[2]);
+    // W multiplayerze każdy gracz pojawia się w trochę innym miejscu (na okręgu 1,2 m wokół punktu startu),
+    // żeby nie stać w sobie nawzajem. Gdy to miejsce jest w ścianie, zostaje zwykły punkt startu.
+    let sx = sp[0], sz = sp[2];
+    if (NETM.NET.mode !== 'solo') {
+        const id = NETM.myId() || ''; let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+        const ang = (h % 360) * Math.PI / 180, ox = sp[0] + Math.cos(ang) * 1.2, oz = sp[2] + Math.sin(ang) * 1.2;
+        const probe = new THREE.Vector3(ox, sp[1], oz), B = L.bounds;
+        if (ox > B.minX && ox < B.maxX && oz > B.minZ && oz < B.maxZ && !L.obstacles.some(o => o.box3.distanceToPoint(probe) < 0.4)) { sx = ox; sz = oz; }
+    }
+    setPlayerPosition(sx, sp[1], sz);
     markAllDirty();
 }
 // Ekran ładowania przed oczami: zamiast zamrożonego obrazu gracz widzi czerń z napisem
@@ -181,6 +190,7 @@ function startGame(restorePosition) {
 
 // Przed startem: ban na dobę i hasło do zastrzeżonego nicku
 async function canStart() {
+    await NETM.ensureMic();   // jeśli przeglądarka nie dała mikrofonu przy wczytaniu strony, pytamy jeszcze raz przy kliknięciu
     const ban = NETM.myBanUntil();
     if (ban) { $('status').innerText = 'You are banned until ' + new Date(ban).toLocaleString() + '.'; return false; }
     const name = ($('playerName').value || '').trim();
@@ -278,6 +288,9 @@ renderer.setAnimationLoop(() => {
 // --- Start ---
 document.body.appendChild(VRButton.createButton(renderer));
 NETM.initMic();
+// Spust w goglach odblokowuje dźwięk głosów innych graczy (przeglądarka wymaga gestu użytkownika)
+for (const i of [0, 1]) renderer.xr.getController(i).addEventListener('selectstart', NETM.unlockVoices);
+renderer.xr.addEventListener('sessionstart', NETM.unlockVoices);
 fillMenu();
 $('status').innerText = 'Loading the lobby...';
 lobbyButtons(false);
