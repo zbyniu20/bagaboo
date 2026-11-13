@@ -17,7 +17,7 @@ import { hands, setPlayerPosition } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import * as N from '../core/network.js';
 import { ARRIVAL_FROM_WELL as ARRIVAL_WELL } from './levels.js';
-import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions } from '../core/levelkit.js';
+import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions , introSeen } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA (trudność) ----------
 const NP = LIGHT_PRESETS.night;
@@ -408,11 +408,12 @@ export function update(dt, t, ctx) {
     const body = ctx.body, p = body.position, h = p.y - 0.35;
     body.velocity.y -= EXTRA_GRAVITY * dt;   // studnia ciągnie w dół
 
+    if (S.introSkip === undefined) { S.introSkip = introSeen('well'); if (S.introSkip) S.introT = Math.min(S.introT, 3); }   // samouczek tylko za pierwszym razem
     if (S.introT > 0) {
         S.introT -= dt;
         const sec = Math.max(0, Math.ceil(S.introT));
         if (sec !== S.intro.last) { S.intro.last = sec; drawIntro(sec); }
-        S.intro.mesh.visible = S.introT > 0;
+        S.intro.mesh.visible = S.introT > 0 && !S.introSkip;
         if (S.introT <= 0) { S.phase = 'play'; SFX.roar(0.6, { x: 0, y: S.ooze, z: 0 }); toast('Climb!', '#b8ffcf'); }
     }
 
