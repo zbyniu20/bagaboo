@@ -16,7 +16,10 @@ export const info = { id: 'lobby', name: 'Lobby', spawn: [0, 2, 0] };
 const ENV = LP.envIntensity;
 let fx = null;   // stan animacji tego poziomu
 
+// W lobby gracz porusza się trochę szybciej (odepchnięcia i wyrzut o 15% mocniejsze)
+const LOBBY_MOVE_SCALE = 1.15;
 export function build() {
+    L.moveScale = LOBBY_MOVE_SCALE;
     fx = { flickers: [], muralMats: [], trampMats: [], lampSprites: [], shaftMats: [], mist: [], mannequins: [], meatSpots: [], bulbSpots: [], cloudTex: null, preview: null, previewHead: null };
     L.spawn = info.spawn.slice();
     const root = L.root;
@@ -547,3 +550,6 @@ export function update(dt, t, ctx) {
     const p = ctx.pos;
     if (p.y > 15.4 && Math.hypot(p.x + 7, p.z + 7) < 2.2) track('top');
 }
+
+// Po wyjściu z lobby zwykła prędkość (inne poziomy ustawiają własną)
+export function dispose() { L.moveScale = 1; }
