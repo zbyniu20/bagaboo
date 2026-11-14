@@ -84,14 +84,15 @@ const staffPC = new Terminal((t) => {
     } else if (pc.page === 'bans') {
         t.header('Bans (one day)', null, null, () => { pc.page = 'home'; });
         const bans = N.bannedNamesList();
-        t.text(N.NET.mode === 'host' ? 'Players banned in rooms you host:' : 'Bans are stored by the host of each room. This list shows bans from rooms you hosted.', 40, 100, 20, AMBER, 'left');
+        const canUn = N.canUnban();
+        t.text(canUn ? 'Host a room. Banned players who try to join appear here. Press Unban and they can join right away.' : 'Only the owner can unban players. Bans are stored by the host of each room.', 40, 100, 19, AMBER, 'left');
         if (!bans.length) t.text('No active bans.', 40, 150, 24, AMBER_DIM, 'left');
         bans.slice(0, 7).forEach((b, i) => {
             const y = 130 + i * 62;
             c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, 56);
             t.text(b.name, 40, y + 29, 26, GOLD, 'left', true);
             t.text('until ' + new Date(b.until).toLocaleString(), 360, y + 29, 20, AMBER, 'left');
-            t.btn('ub' + i, 810, y + 7, 180, 42, 'Unban', () => N.unbanName(b.name), { size: 22, tone: 'ok' });
+            t.btn('ub' + i, 810, y + 7, 180, 42, 'Unban', () => { N.unbanName(b.name); toast('Unbanned ' + b.name, '#9aff60'); }, { size: 22, tone: 'ok', disabled: !canUn });
         });
     } else {
         t.header('Hammers', null, null, () => { pc.page = 'home'; });
