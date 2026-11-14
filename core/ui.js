@@ -2,14 +2,23 @@
 // EKRANY: komputer sieciowy, automat sklepowy (sklep, nagroda dzienna, zadania) i tablica wyników
 // ==========================================
 import { THREE } from './engine.js';
-import { Terminal, wrapText, AMBER, AMBER_DIM, OK_COL, BAD_COL, GOLD, markAllDirty } from './terminal.js';
+import { Terminal, wrapText, AMBER, AMBER_DIM, OK_COL, BAD_COL, GOLD, markAllDirty, toast } from './terminal.js';
 import * as N from './network.js';
 import * as E from './economy.js';
 import { PRESENCE } from './presence.js';
 import { isStaffName, canPunish } from './config.js';
 
 // ---------- KOMPUTER (multiplayer) ----------
-const ui = { page: 'main', temp: '', target: null };
+const ui = { page: 'main', temp: '', target: null, pending: null, gpg: 0 };
+// Prezenty: obdarowany sprawdza i przyjmuje (albo odrzuca), darczyńca płaci po potwierdzeniu
+N.onRouted((msg, from) => {
+    if (msg.k === 'gift') { const ok = E.receiveGift(msg.item, N.nameOfPlayer(from)); N.sendRouted(from, { k: 'giftack', item: msg.item, ok: ok }); }
+    else if (msg.k === 'giftack' && ui.pending && ui.pending.item === msg.item && ui.pending.to === from) {
+        const nm = ui.pending.name; ui.pending = null;
+        if (msg.ok) E.confirmGift(msg.item, nm); else { toast(nm + ' could not take that gift (already owned?)', '#e0533f'); }
+        markAllDirty();
+    }
+});
 function modeName() { return N.NET.mode === 'host' ? 'Host' : (N.NET.mode === 'guest' ? 'Guest' : 'Solo, offline'); }
 export const computer = new Terminal((t) => {
     const c = t.ctx, solo = N.NET.mode === 'solo';
@@ -69,7 +78,8 @@ export const computer = new Terminal((t) => {
             c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, 52);
             t.text(p.name, 40, y + 27, 26, GOLD, 'left', true);
             const staff = isStaffName(E.SAVE.profile.name), isHost = N.NET.mode === 'host';
-            t.text(p.role, 290, y + 27, 22, p.role === 'Host' ? OK_COL : AMBER, 'left', true);
+            t.text(p.role, 205, y + 27, 22, p.role === 'Host' ? OK_COL : AMBER, 'left', true);
+            t.btn('g' + p.id, 296, y + 5, 84, 42, 'Gift', () => { ui.target = p; ui.gpg = 0; ui.page = 'gift'; }, { size: 19, tone: 'gold' });
             t.btn('m' + p.id, 390, y + 5, 112, 42, N.mutedPeers.has(p.id) ? 'Unmute' : 'Mute', () => N.toggleMute(p.id), { size: 19, disabled: !N.audioEls[p.id] });
             t.btn('r' + p.id, 510, y + 5, 112, 42, 'Report', () => { ui.target = p; ui.page = 'report'; }, { size: 19 });
             // Ekipa (admin i moderatorzy) może zapraszać, wyrzucać i banować nawet jako gość; host może wyrzucać
@@ -78,6 +88,25 @@ export const computer = new Terminal((t) => {
             if (staff || isHost) t.btn('x' + p.id, 750, y + 5, 112, 42, 'Kick', () => { if (staff) N.requestMod('kick', p.id); else N.kickPlayer(p.id); }, { size: 19, tone: 'bad', disabled: staff && !may });
             if (staff) t.btn('b' + p.id, 870, y + 5, 120, 42, 'Ban 1 day', () => N.requestMod('ban', p.id), { size: 17, tone: 'bad', disabled: !may });
         });
+    } else if (ui.page === 'gift') {
+        // Prezent dla gracza: wybierasz przedmiot, który da się teraz kupić; płacisz po potwierdzeniu odbioru
+        const tg = ui.target, items = E.CATALOG.filter(E.giftable), PER = 6, pages = Math.max(1, Math.ceil(items.length / PER));
+        ui.gpg = Math.min(ui.gpg || 0, pages - 1);
+        if (ui.pending && Date.now() - ui.pending.t > 15000) { ui.pending = null; }
+        t.header('Gift to ' + (tg ? tg.name : '?'), null, null, () => { ui.page = 'players'; });
+        t.text('Gifts left today: ' + E.giftsLeft() + ' / ' + E.GIFT_LIMIT + '.  You pay the price, they get the item.', 40, 104, 20, E.giftsLeft() ? AMBER : BAD_COL, 'left');
+        if (ui.pending) t.text('Waiting for ' + ui.pending.name + ' to accept...', 40, 134, 22, GOLD, 'left', true);
+        items.slice(ui.gpg * PER, ui.gpg * PER + PER).forEach((it, i) => {
+            const y = 150 + i * 58, price = E.priceOf(it), can = E.SAVE.wallet >= price && E.giftsLeft() > 0 && !ui.pending;
+            c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, 52);
+            t.text(it.name, 40, y + 27, 24, GOLD, 'left', true);
+            t.text(it.slot, 420, y + 27, 19, AMBER_DIM, 'left');
+            t.text(price + (E.isFeatured(it) ? ' (-20%)' : ''), 560, y + 27, 22, E.SAVE.wallet >= price ? AMBER : BAD_COL, 'left');
+            t.btn('give' + it.slot + it.id, 790, y + 5, 200, 42, 'Give', () => { ui.pending = { to: tg.id, item: it.slot + ':' + it.id, t: Date.now(), name: tg.name }; N.sendRouted(tg.id, { k: 'gift', item: it.slot + ':' + it.id }); N.setStatus('Gift sent to ' + tg.name + '...'); }, { size: 20, tone: 'gold', disabled: !can });
+        });
+        t.btn('gprev', 40, 560, 180, 44, 'Previous', () => { ui.gpg--; }, { size: 20, disabled: ui.gpg === 0 });
+        t.text('Page ' + (ui.gpg + 1) + ' of ' + pages, 512, 582, 20, AMBER, 'center');
+        t.btn('gnext', 804, 560, 180, 44, 'Next', () => { ui.gpg++; }, { size: 20, disabled: ui.gpg >= pages - 1 });
     } else if (ui.page === 'report') {
         t.header('Report a player', null, null, () => { ui.page = 'players'; });
         const tg = ui.target;

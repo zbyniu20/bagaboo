@@ -28,6 +28,14 @@ export function sendLevelMsg(payload) {
     else if (NET.mode === 'guest' && hostConnection && hostConnection.open) hostConnection.send({ type: 'lvl', payload: payload });
 }
 export function myId() { return myPeerId; }
+// Wiadomości adresowane do jednego gracza (prezenty): goście wysyłają przez hosta, host przekazuje dalej.
+let routedHandler = null;
+export function onRouted(fn) { routedHandler = fn; }
+export function sendRouted(to, msg) {
+    if (NET.mode === 'host') { const c = clientConnections.find(x => x.peer === to); if (c && c.open) c.send({ type: 'routed', from: myPeerId, msg: msg }); }
+    else if (NET.mode === 'guest' && hostConnection && hostConnection.open) hostConnection.send({ type: 'route', to: to, msg: msg });
+}
+const cleanRouted = (m) => (m && typeof m === 'object' && typeof m.k === 'string' && m.k.length < 16) ? { k: m.k, item: String(m.item || '').slice(0, 40), ok: !!m.ok } : null;
 // Drużyna idzie za hostem: host wysyła poziom (i ziarno układu), goście wchodzą tam za nim
 let followHandler = null, lastFollow = null, inviteHandler = null;
 
@@ -84,6 +92,7 @@ function checkIntruder(id, st) {
     setStatus(st.profile.name + ' broke into the staff room: CHEATER skin and a one-week ban.');
 }
 export function myBanUntil() { try { const u = +localStorage.getItem(MY_BAN_KEY) || 0; return u > Date.now() ? u : 0; } catch (e) { return 0; } }
+export function nameOfPlayer(id) { return nameOf(id) || 'Someone'; }
 function nameOf(id) { const st = playersState[id]; return st && st.profile ? st.profile.name : ''; }
 
 // Host wykonuje polecenie moderatora: kick, ban, invite, mod (nadanie / odebranie roli)
@@ -327,6 +336,11 @@ function handleGuest(conn) {
             playersState[conn.peer] = data.payload; updateRemote(conn.peer, data.payload); checkIntruder(conn.peer, data.payload);
         } else if (data.type === 'objectMove') { sharedObjectsState[data.id] = data.payload; syncObject(data.id, data.payload); }
         else if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, conn.peer); }
+        else if (data.type === 'route') {   // prezent od gościa do kogoś: host przekazuje albo odbiera sam
+            const m = cleanRouted(data.msg); if (!m) return;
+            if (data.to === myPeerId) { if (routedHandler) routedHandler(m, conn.peer); }
+            else { const c = clientConnections.find(x => x.peer === data.to); if (c && c.open) c.send({ type: 'routed', from: conn.peer, msg: m }); }
+        }
         else if (data.type === 'modreq') performMod(data.action, data.target === myPeerId ? null : data.target, nameOf(conn.peer), data.extra);
         else if (data.type === 'report' && data.payload) {
             const from = (playersState[conn.peer] && playersState[conn.peer].profile) ? playersState[conn.peer].profile.name : 'Guest';
@@ -385,6 +399,7 @@ export function startJoin(code, cb) {
             if (data.type === 'invite' && data.level === 'staff') myInvited = true;
             if (data.type === 'role') { setLocalMod(data.name, data.mod); toast(data.mod ? 'You are now a moderator!' : 'You are no longer a moderator', '#ffd27a'); markAllDirty(); return; }
             if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, 'host'); return; }
+            if (data.type === 'routed') { const m = cleanRouted(data.msg); if (m && routedHandler) routedHandler(m, data.from); return; }
             if (data.type === 'follow') { if (followHandler) followHandler(data.level, data.data || {}); return; }
             if (data.type === 'invite') { if (inviteHandler) inviteHandler(data.level); return; }
             if (data.type === 'gameState') { if (performance.now() - (meshT || 0) > 2000) { meshT = performance.now(); setTimeout(meshVoice, 0); }

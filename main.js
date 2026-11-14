@@ -38,6 +38,8 @@ const LEVELS = {
     hideseek: { path: './levels/hideseek.js', light: 'hideseek', extras: [] },
     banana: { path: './levels/banana.js', light: 'station', extras: [] },
     race: { path: './levels/race.js', light: 'arcade', extras: [] },
+    hospital: { path: './levels/hospital.js', light: 'hospital', extras: [] },
+    cemetery: { path: './levels/cemetery.js', light: 'cemetery', extras: [] },
     wardrobe: { path: './levels/wardrobe.js', light: 'staff', extras: [] },
     koth: { path: './levels/koth.js', light: 'station', extras: [] },
     infection: { path: './levels/infection.js', light: 'station', extras: [] },
@@ -77,7 +79,7 @@ export async function loadLevel(id, spawn) {
     markAllDirty();
 }
 // Ekran ładowania przed oczami: zamiast zamrożonego obrazu gracz widzi czerń z napisem
-const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well', lava: 'Floor is Lava', staff: 'Staff room', games: 'BagaBoo Games', levels: 'Levels', laundry: 'The Industrial Laundromat', memory: 'Burning Memory', monster: 'Become the Monster', range: 'Shooting Range', hideseek: 'Hide and Seek', banana: 'Capture the Banana', race: 'Parkour Race', wardrobe: 'Wardrobe', koth: 'King of the Hill', infection: 'Infection', dodgeball: 'Dodgeball' };
+const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well', lava: 'Floor is Lava', staff: 'Staff room', games: 'BagaBoo Games', levels: 'Levels', laundry: 'The Industrial Laundromat', memory: 'Burning Memory', monster: 'Become the Monster', range: 'Shooting Range', hideseek: 'Hide and Seek', banana: 'Capture the Banana', race: 'Parkour Race', hospital: 'The Hospital', cemetery: 'The Cemetery', wardrobe: 'Wardrobe', koth: 'King of the Hill', infection: 'Infection', dodgeball: 'Dodgeball' };
 const fade = (() => {
     const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;

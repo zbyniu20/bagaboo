@@ -102,6 +102,8 @@ export const CATALOG = [
     { slot: 'hat', id: 'cone', name: 'Traffic cone', price: 700, weekly: true },
     { slot: 'hat', id: 'headphones', name: 'Headphones', price: 0, locked: true, hint: 'Daily quests x5' },
     { slot: 'hat', id: 'laurel', name: 'Golden laurel', price: 0, locked: true, hint: 'All 3 quests, 7 days' },
+    { slot: 'hat', id: 'nursecap', name: 'Nurse cap', price: 0, locked: true, hint: 'Hospital on Nightmare' },
+    { slot: 'hat', id: 'lanternhat', name: 'Lantern hat', price: 0, locked: true, hint: 'Cemetery on Nightmare' },
     { slot: 'glasses', id: 'monocle', name: 'Gold monocle', price: 600, weekly: true },
     { slot: 'glasses', id: 'heart', name: 'Heart glasses', price: 700, season: 'spring' },
     { slot: 'glasses', id: 'shutter', name: 'Shutter shades', price: 800, weekly: true },
@@ -121,7 +123,7 @@ export const CATALOG = [
     { slot: 'skin', id: 'pumpkinape', name: 'Pumpkin ape', price: 2400, season: 'halloween' },
     { slot: 'skin', id: 'zombie', name: 'Zombie ape', price: 2800, season: 'halloween' },
     { slot: 'skin', id: 'jungle', name: 'Jungle ape', price: 1800, weekly: true },
-    { slot: 'skin', id: 'nightmare', name: 'Nightmare ape', price: 0, locked: true, hint: 'All 5 on Nightmare' },
+    { slot: 'skin', id: 'nightmare', name: 'Nightmare ape', price: 0, locked: true, hint: 'All 7 on Nightmare' },
     { slot: 'mask', id: 'jack', name: 'Jack-o-lantern', price: 2000, season: 'halloween' },
     { slot: 'mask', id: 'snowman', name: 'Snowman mask', price: 1800, season: 'winter' },
     { slot: 'mask', id: 'clown', name: 'Clown mask', price: 1500, weekly: true },
@@ -134,7 +136,8 @@ export const CATALOG = [
     { slot: 'badge', id: 'ghost', name: 'Ghost badge', price: 0, locked: true, hint: '10 Hide&Seek wins' },
     { slot: 'badge', id: 'banana', name: 'Banana badge', price: 0, locked: true, hint: '5 Banana wins' },
     { slot: 'badge', id: 'flag', name: 'Race flag', price: 0, locked: true, hint: '5 Race wins' },
-    { slot: 'badge', id: 'daily', name: 'Calendar badge', price: 0, locked: true, hint: '5 Daily Runs' }
+    { slot: 'badge', id: 'daily', name: 'Calendar badge', price: 0, locked: true, hint: '5 Daily Runs' },
+    { slot: 'badge', id: 'present', name: 'Present badge', price: 0, locked: true, hint: 'Gift 3 items' }
 ];
 
 // ---------- SEZONY I TYGODNIOWA ROTACJA SKLEPU ----------
@@ -226,16 +229,19 @@ export const ACHIEVEMENTS = [
     { id: 'nm_well', name: 'Tar-proof', desc: 'Climb out of The Well on Nightmare', reward: ['gloves', 'tar'], rewardName: 'Tar hands' },
     { id: 'nm_laundry', name: 'Clean getaway', desc: 'Escape the Laundromat on Nightmare', reward: ['sleeve', 'woven'], rewardName: 'Woven threads' },
     { id: 'nm_memory', name: 'Burning brain', desc: 'Cross Burning Memory on Nightmare', reward: ['sleeve', 'ember'], rewardName: 'Ember cloth' },
-    { id: 'nm_all', name: 'Nightmare master', desc: 'Clear all 5 levels on Nightmare', reward: ['skin', 'nightmare'], rewardName: 'Nightmare ape', goal: 5, val: () => Object.keys(SAVE.nmWins || {}).length },
+    { id: 'nm_hospital', name: 'Do not blink', desc: 'Escape The Hospital on Nightmare', reward: ['hat', 'nursecap'], rewardName: 'Nurse cap' },
+    { id: 'nm_cemetery', name: 'Rest in peace', desc: 'Escape The Cemetery on Nightmare', reward: ['hat', 'lanternhat'], rewardName: 'Lantern hat' },
+    { id: 'nm_all', name: 'Nightmare master', desc: 'Clear all 7 levels on Nightmare', reward: ['skin', 'nightmare'], rewardName: 'Nightmare ape', goal: 7, val: () => Object.keys(SAVE.nmWins || {}).length },
     // --- Tryby gry ---
     { id: 'hs_10', name: 'Ghost of the warehouse', desc: 'Win 10 rounds of Hide and Seek', reward: ['badge', 'ghost'], rewardName: 'Ghost badge', goal: 10, val: () => SAVE.hideseekWins || 0 },
     { id: 'banana_5', name: 'Top banana', desc: 'Win 5 rounds of Capture the Banana', reward: ['badge', 'banana'], rewardName: 'Banana badge', goal: 5, val: () => SAVE.bananaWins || 0 },
     { id: 'race_5', name: 'Fast lane', desc: 'Win 5 races', reward: ['badge', 'flag'], rewardName: 'Race flag', goal: 5, val: () => SAVE.raceWins || 0 },
+    { id: 'gift_3', name: 'Generous', desc: 'Give 3 gifts to other players', reward: ['badge', 'present'], rewardName: 'Present badge', goal: 3, val: () => SAVE.giftsSent || 0 },
     { id: 'daily_5', name: 'Daily habit', desc: 'Finish 5 Daily Runs (Maze, Well or Memory)', reward: ['badge', 'daily'], rewardName: 'Calendar badge', goal: 5, val: () => SAVE.dailyRuns || 0 }
 ];
 export const RECORDS = [
-    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'route', name: 'Red route' }, { id: 'race', name: 'Parkour race' }, { id: 'range', name: 'Shooting range (kills)', score: true },
-    { id: 'maze_nm', name: 'The Maze (Nightmare)' }, { id: 'silence_nm', name: 'Silence (Nightmare)' }, { id: 'well_nm', name: 'The Well (Nightmare)' }, { id: 'laundry_nm', name: 'Laundromat (Nightmare)' }, { id: 'memory_nm', name: 'Memory (Nightmare)' }
+    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'hospital', name: 'The Hospital' }, { id: 'cemetery', name: 'The Cemetery' }, { id: 'route', name: 'Red route' }, { id: 'race', name: 'Parkour race' }, { id: 'range', name: 'Shooting range (kills)', score: true },
+    { id: 'maze_nm', name: 'The Maze (Nightmare)' }, { id: 'silence_nm', name: 'Silence (Nightmare)' }, { id: 'well_nm', name: 'The Well (Nightmare)' }, { id: 'laundry_nm', name: 'Laundromat (Nightmare)' }, { id: 'memory_nm', name: 'Memory (Nightmare)' }, { id: 'hospital_nm', name: 'Hospital (Nightmare)' }, { id: 'cemetery_nm', name: 'Cemetery (Nightmare)' }
 ];
 
 // ---------- POZIOMY TRUDNOŚCI (poziomy z drzwi w sali Levels) ----------
@@ -247,7 +253,7 @@ export const DIFFS = {
     nightmare: { id: 'nightmare', name: 'Nightmare', color: '#ff4a3a', speed: 1.25, grace: 0.6, checkpoints: false, reward: 1.5, info: 'Faster monsters, no checkpoints. Reward x1.5, own records, first-clear bonus.' }
 };
 export const DIFF_ORDER = ['easy', 'normal', 'nightmare'];
-export const DIFF_LEVELS = ['maze', 'silence', 'well', 'laundry', 'memory'];
+export const DIFF_LEVELS = ['maze', 'silence', 'well', 'laundry', 'memory', 'hospital', 'cemetery'];
 
 // ---------- DAILY RUN: dzienny, wspólny układ dla poziomów z losową mapą ----------
 // Układ Maze, Well i Memory liczy się z daty UTC (ten sam dla wszystkich graczy na świecie), więc działa duch,
@@ -452,6 +458,31 @@ export function checkCounters() {
     if ((SAVE.bananaWins || 0) >= 5) unlockAchievement('banana_5');
     if ((SAVE.raceWins || 0) >= 5) unlockAchievement('race_5');
     if ((SAVE.dailyRuns || 0) >= 5) unlockAchievement('daily_5');
+    if ((SAVE.giftsSent || 0) >= 3) unlockAchievement('gift_3');
+}
+// ---------- PREZENTY ----------
+// Podarować można kosmetyk, który da się teraz kupić (nie nagrodę za osiągnięcie ani rzecz dla ekipy). Płaci darczyńca (cena z rabatem
+// tygodnia), a obdarowany dostaje przedmiot do szafy. Limit 3 prezentów dziennie.
+export const GIFT_LIMIT = 3;
+const GIFT_SLOTS = ['skin', 'hat', 'glasses', 'mask', 'sleeve', 'gloves', 'badge', 'mskin'];
+export function giftable(item) { return !!item && GIFT_SLOTS.includes(item.slot) && !item.locked && item.price > 0 && !isLocked(item); }
+export function giftsLeft() { const d = ensureDaily(); return Math.max(0, GIFT_LIMIT - (d.gifts || 0)); }
+export function findItem(key) { return CATALOG.find(i => i.slot + ':' + i.id === key); }
+// Obdarowany: przyjmuje tylko prawdziwy przedmiot z katalogu, który może jeszcze nie ma. Zwraca true, gdy przyjął.
+export function receiveGift(key, fromName) {
+    const it = findItem(key);
+    if (!it || !GIFT_SLOTS.includes(it.slot) || it.locked || SAVE.owned.includes(key)) return false;
+    SAVE.owned.push(key); saveGame(); markAllDirty();
+    toast(String(fromName || 'Someone') + ' gifted you ' + it.name + '!', '#ffd27a');
+    return true;
+}
+// Darczyńca: po potwierdzeniu odbioru płaci (nie zejdzie poniżej zera) i liczy prezent
+export function confirmGift(key, toName) {
+    const it = findItem(key); if (!it) return;
+    const price = priceOf(it), d = ensureDaily();
+    SAVE.wallet = Math.max(0, SAVE.wallet - price); d.gifts = (d.gifts || 0) + 1; SAVE.giftsSent = (SAVE.giftsSent || 0) + 1;
+    toast('Gift delivered to ' + String(toName || 'player') + ': ' + it.name + ' (-' + price + ')', '#7fc47f');
+    checkCounters(); saveGame(); markAllDirty();
 }
 export function unlockAchievement(id) {
     if (SAVE.achievements[id]) return false;
