@@ -11,7 +11,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LIGHT_PRESETS } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
-import { levelReward, recordTime, unlockAchievement } from '../core/economy.js';
+import { levelReward, recordTime, unlockAchievement, diffOf } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import { hands, setPlayerPosition } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -50,7 +50,7 @@ export function build() {
     L.bounds = { minX: -HS + 0.2, maxX: HS - 0.2, minZ: -HS + 0.2, maxZ: HS - 0.2, maxY: TOP + 2 };
     L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.noHeightTrack = true;
     S = {
-        clock: 0, playT: 0, introT: quick ? RESTART_INTRO : INTRO_TIME, phase: 'intro', ooze: -1.2, nextSurge: rnd(R, SURGE_MIN, SURGE_MAX), surge: 0,
+        df: diffOf('well'), clock: 0, playT: 0, introT: quick ? RESTART_INTRO : INTRO_TIME, phase: 'intro', ooze: -1.2, nextSurge: rnd(R, SURGE_MIN, SURGE_MAX), surge: 0,
         nextScare: rnd(R, SCARE_MIN, SCARE_MAX), scareT: -1, faller: null, reach: null, blackout: 0, caughtT: -1, leaving: false,
         grates: [], crumbles: [], hatch: null, hudT: 0, R: R, lastHand: [null, null],
         seed: seed, out: new Set(), spectator: false, lastHostMsg: -10, netT: 0, surgeNet: 0
@@ -66,6 +66,7 @@ export function build() {
     buildHud();
     buildIntro(quick);
     if (quick) toast('Again. Climb faster...', '#b8ffcf');
+    if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name, S.df.color);
 }
 function rnd(R, a, b) { return a + R() * (b - a); }
 function setGrip(g) { L.obstacles[L.obstacles.length - 1].grip = g; return L.obstacles[L.obstacles.length - 1]; }
@@ -371,7 +372,7 @@ function applyPull(gi) {
     for (const lv of g.chains) { lv.done = true; lv.handle.rotation.x = 0.7; lv.glow.visible = false; }
     g.pulls++; SFX.creak(0.6, { x: 0, y: g.y, z: 0 }); g.g.position.y = g.y + g.pulls * 0.03;
     if (g.pulls >= PULLS_PER_GRATE) {
-        g.open = true; SFX.bang({ x: 0, y: g.y, z: 0 }); toast('The grate slides open!', '#b8ffcf');
+        g.open = true; SFX.bang({ x: 0, y: g.y, z: 0 }); toast('The grate slides open!', '#b8ffcf'); if (S.df.checkpoints) toast('Checkpoint saved', '#7fc47f');
         const i = L.obstacles.indexOf(g.ob); if (i >= 0) L.obstacles.splice(i, 1);
         world.removeBody(g.body);
     }
@@ -422,7 +423,7 @@ export function update(dt, t, ctx) {
         if (auth) {
             S.playT += dt;
             // Maź: stały przyrost + nagłe skoki (liczy host albo gracz solo)
-            let rise = (OOZE_SPEED + OOZE_ACCEL * S.playT) * dt;
+            let rise = (OOZE_SPEED + OOZE_ACCEL * S.playT) * S.df.speed * dt;
             S.nextSurge -= dt;
             if (S.nextSurge <= 0) { S.nextSurge = rnd(S.R, SURGE_MIN, SURGE_MAX); S.surge = 2.5; SFX.roar(1.0, { x: 0, y: S.ooze, z: 0 }); }   // ryk spod nóg
             if (S.surge > 0) { S.surge -= dt; rise += SURGE_HEIGHT / 2.5 * dt; }
@@ -504,9 +505,9 @@ export function update(dt, t, ctx) {
             } else {
                 // Ułatwienie: jeśli otwarłeś już jakąś kratę, wracasz nad nią, a maź opada
                 const last = S.grates.filter(g => g.open).pop();
-                if (last && isAuthority()) {
+                if (last && S.df.checkpoints && isAuthority()) {
                     setPlayerPosition(-(HS - 0.6), last.y - 2.4, -(HS - 0.6) - 0.2);   // na półce pod łańcuchem tej kraty
-                    S.ooze = Math.max(-1.2, Math.min(S.ooze, last.y - 3) - SECOND_CHANCE_DROP);
+                    S.ooze = Math.max(-1.2, Math.min(S.ooze, last.y - 3) - SECOND_CHANCE_DROP * (S.df.id === 'easy' ? 1.5 : 1));
                     toast('The well spits you back out... Climb!', '#b8ffcf');
                 } else { S.leaving = true; restartFlag = true; ctx.goto('well', null, N.NET.mode === 'solo' ? undefined : { seed: S.seed, noFollow: true }); return; }
             }

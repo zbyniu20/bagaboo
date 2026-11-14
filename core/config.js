@@ -87,6 +87,12 @@ LIGHT_PRESETS.arcade = {
     hemiSky: 0x8a6aff, hemiGround: 0x200a20, hemiIntensity: 0.9,
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3, flashlight: null
 };
+LIGHT_PRESETS.hideseek = {   // ciemny magazyn: każdy ma latarkę
+    background: 0x050608, fogColor: 0x0a0c10, fogDensity: 0.028, exposure: 1.1,
+    hemiSky: 0x7088a8, hemiGround: 0x201814, hemiIntensity: 0.75,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.25,
+    flashlight: { color: 0xfff0d8, intensity: 75, distance: 30, angle: 0.55, penumbra: 0.6, decay: 2 }
+};
 // ---------- ROLE I ZASTRZEŻONE NICKI ----------
 // Ultimate admin: uprawnienia admina, złota postać 2 razy większa, jako jedyny może zbanować admina.
 // Admin ma wszystkie uprawnienia. Moderatorzy: wejście do pokoju szefa, młotki, wyrzucanie i bany (poza adminem).

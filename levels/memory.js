@@ -9,7 +9,7 @@
 // ==========================================
 import { THREE, L, tex, camera, addCrispBlock, lighting } from '../core/engine.js';
 import * as T from '../core/textures.js';
-import { levelReward, recordTime } from '../core/economy.js';
+import { levelReward, recordTime, diffOf } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import { hands, releaseAll, setPlayerPosition } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -51,7 +51,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -9.4, maxX: 9.4, minZ: BACK_Z + 0.4, maxZ: 7.6, maxY: 13.5 };
     L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.maxSpeedXZ = MAX_SPEED_XZ;
-    S = { seed: seed, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', previewT: PREVIEW_TIME, nextScareRow: SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1)), chaseT: -HEAD_START, rows: [], row: -1, dead: null, hudT: 0, leaving: false, fx: [], flick: [] };
+    S = { seed: seed, df: diffOf('memory'), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', previewT: PREVIEW_TIME * diffOf('memory').grace, nextScareRow: SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1)), chaseT: -HEAD_START * diffOf('memory').grace, rows: [], row: -1, dead: null, hudT: 0, leaving: false, fx: [], flick: [] };
     buildCave(R);
     buildLava();
     buildTrack(R);
@@ -62,6 +62,7 @@ export function build() {
     buildBeast();
     buildBurnFx();
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
+    if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name, S.df.color);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     // Jumpscare z paszczą Bestii (co 5-8 linii)
     // Paszcza Bestii na wysokości oczu, tuż przed twarzą, z ognistym błyskiem i świecącymi oczami
@@ -168,7 +169,7 @@ function buildBeast() {
     const b = lavaBeast(); b.group.scale.setScalar(2.6); L.root.add(b.group);
     const glow = new THREE.PointLight(0xff5010, 20, 10, 1.6); b.group.add(glow); glow.position.set(0, -0.6, 0.6);
     // Wynurza się z lawy z boku, między lądem startowym a pierwszym rzędem
-    S.beast = { m: b, x: 5.5, z: START_EDGE - 2.5, y: -6, speed: BEAST_SPEED, roarT: 3, rising: true };
+    S.beast = { m: b, x: 5.5, z: START_EDGE - 2.5, y: -6, speed: BEAST_SPEED * S.df.speed, roarT: 3, rising: true };
     b.group.position.set(5.5, -6, START_EDGE - 2.5);
 }
 // Efekty spalenia: pomarańczowy ekran, płomienie przed oczami, potem szary popiół
@@ -251,7 +252,7 @@ export function update(dt, t, ctx) {
         if (S.row >= 0) { S.runT += dt; S.chaseT += dt; }
         // Po 10 s przewagi Bestia brodzi przez lawę za graczem i przyspiesza
         if (S.chaseT > 0 && !onStartLand) {
-            B.speed = BEAST_SPEED + (BEAST_MAX - BEAST_SPEED) * Math.min(1, S.chaseT / BEAST_RAMP);
+            B.speed = (BEAST_SPEED + (BEAST_MAX - BEAST_SPEED) * Math.min(1, S.chaseT / BEAST_RAMP)) * S.df.speed;
             const dx = p.x - B.x, dz = p.z - B.z, d = Math.hypot(dx, dz);
             if (d > 0.1) { B.x += dx / d * Math.min(d, B.speed * dt); B.z += dz / d * Math.min(d, B.speed * dt); }
             if (d < CATCH_DIST && p.y < 4) die('beast');
@@ -290,17 +291,17 @@ export function update(dt, t, ctx) {
 // Śmierć: Bestia przy graczu w 1 s, płomienie, popiół, potem ten sam tor od nowa
 // Podgląd trasy z góry (po samouczku albo od razu po przegranej)
 function startPreview() {
-    S.phase = 'preview'; S.previewT = PREVIEW_TIME; S.hemiBase = lighting.hemi.intensity;
+    S.phase = 'preview'; S.previewT = PREVIEW_TIME * S.df.grace; S.hemiBase = lighting.hemi.intensity;
     releaseAll();
     for (const row of S.rows) for (const st of row) if (st.kind === 'solid') { st.m.material.emissive = new THREE.Color(0x30ff60); st.m.material.emissiveIntensity = 1.2; }
-    toast('Memorize the green stones! 10 seconds.', '#7fff90');
+    toast('Memorize the green stones! ' + Math.round(S.previewT) + ' seconds.', '#7fff90');
 }
 function endPreview() {
     S.previewLight.intensity = 0; lighting.hemi.intensity = S.hemiBase;
     for (const row of S.rows) for (const st of row) if (st.kind === 'solid') st.m.material.emissiveIntensity = 0;
     setPlayerPosition(info.spawn[0], info.spawn[1], info.spawn[2]);
-    S.phase = 'run'; S.chaseT = -HEAD_START;
-    toast('Jump on the stones. The beast starts 10 s after your first jump!', '#ff6a2a');
+    S.phase = 'run'; S.chaseT = -HEAD_START * S.df.grace;
+    toast('Jump on the stones. The beast starts ' + Math.round(HEAD_START * S.df.grace) + ' s after your first jump!', '#ff6a2a');
 }
 function updateDeath(dt, t) {
     const d = S.dead, B = S.beast, bf = S.burn; d.t += dt;
@@ -341,10 +342,10 @@ function respawn() {
         s.y = 0; s.t = 0; s.state = 'up';
     }
     const B = S.beast;
-    B.x = 5.5; B.z = START_EDGE - 2.5; B.y = -0.9; B.speed = BEAST_SPEED; B.rising = false; B.step = undefined;
+    B.x = 5.5; B.z = START_EDGE - 2.5; B.y = -0.9; B.speed = BEAST_SPEED * S.df.speed; B.rising = false; B.step = undefined;
     const bf = S.burn;
     bf.orange.material.opacity = 0; bf.flames.forEach(fl => { fl.s.material.opacity = 0; });
-    S.dead = null; S.runT = 0; S.row = -1; S.chaseT = -HEAD_START; S.hudT = 0;
+    S.dead = null; S.runT = 0; S.row = -1; S.chaseT = -HEAD_START * S.df.grace; S.hudT = 0;
     S.nextScareRow = SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1));
     S.attempt = (S.attempt || 1) + 1;
     startPreview();
@@ -354,6 +355,7 @@ function drawHud() {
     const x = S.hud.ctx; panelBg(S.hud, 'rgba(20,4,2,0.72)');
     x.textBaseline = 'middle'; x.textAlign = 'left';
     x.font = 'bold 78px "Courier New", monospace'; x.fillStyle = '#ffd8b0'; x.fillText(fmt(S.runT), 30, 74);
+    if (S.df.id !== 'normal') { x.font = 'bold 22px "Courier New", monospace'; x.fillStyle = S.df.color; x.fillText(S.df.name.toUpperCase(), 330, 18); }
     x.font = 'bold 36px "Courier New", monospace'; x.fillStyle = '#ffb030'; x.fillText('Row ' + Math.max(0, S.row + 1) + '/' + ROWS, 330, 52);
     if (S.attempt > 1) { x.font = 'bold 28px "Courier New", monospace'; x.fillStyle = '#ffd8b0'; x.fillText('Attempt ' + S.attempt, 330, 104); }
     x.font = 'bold 28px "Courier New", monospace';

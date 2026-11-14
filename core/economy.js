@@ -124,8 +124,20 @@ export const ACHIEVEMENTS = [
     { id: 'completionist', name: 'Completionist', desc: 'Beat all three levels and become Parkour King', reward: ['skin', 'bloodmoon'], rewardName: 'Bloodmoon skin' }
 ];
 export const RECORDS = [
-    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'route', name: 'Red route' }, { id: 'range', name: 'Shooting range (kills)', score: true }
+    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'route', name: 'Red route' }, { id: 'range', name: 'Shooting range (kills)', score: true },
+    { id: 'maze_nm', name: 'The Maze (Nightmare)' }, { id: 'silence_nm', name: 'Silence (Nightmare)' }, { id: 'well_nm', name: 'The Well (Nightmare)' }, { id: 'laundry_nm', name: 'Laundromat (Nightmare)' }, { id: 'memory_nm', name: 'Memory (Nightmare)' }
 ];
+
+// ---------- POZIOMY TRUDNOŚCI (poziomy z drzwi w sali Levels) ----------
+// speed: mnożnik prędkości potworów, grace: mnożnik czasu na reakcję/przewagi, checkpoints: czy działają punkty kontrolne,
+// reward: mnożnik nagrody za przejście. Easy nie liczy się do rekordów, Nightmare ma własne rekordy i bonus za pierwsze przejście.
+export const DIFFS = {
+    easy: { id: 'easy', name: 'Easy', color: '#7fc47f', speed: 0.8, grace: 1.5, checkpoints: true, reward: 0.5, info: 'Slower monsters, more time. Reward x0.5, no records.' },
+    normal: { id: 'normal', name: 'Normal', color: '#ffd27a', speed: 1, grace: 1, checkpoints: true, reward: 1, info: 'The original experience.' },
+    nightmare: { id: 'nightmare', name: 'Nightmare', color: '#ff4a3a', speed: 1.25, grace: 0.6, checkpoints: false, reward: 1.5, info: 'Faster monsters, no checkpoints. Reward x1.5, own records, first-clear bonus.' }
+};
+export const DIFF_ORDER = ['easy', 'normal', 'nightmare'];
+export const DIFF_LEVELS = ['maze', 'silence', 'well', 'laundry', 'memory'];
 export const HEIGHT_RECORD_BONUS = 10;   // za każdy nowy metr rekordu wysokości
 export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dnia
 
@@ -138,7 +150,7 @@ function defaultSave() {
         best: { height: 0, jumps: 0 },
         login: { last: 0, streak: 0 },
         daily: null, pos: null, savedAt: 0,
-        records: {}, achievements: {}
+        records: {}, achievements: {}, diff: {}, top: {}, nmWins: {}
     };
 }
 // Podpis zapisu: suma kontrolna z "solą". Wykrywa ręczne zmiany w przeglądarce (nie jest to pełne zabezpieczenie).
@@ -173,6 +185,7 @@ function load() {
             login: Object.assign(d.login, s.login || {}),
             records: Object.assign({}, s.records || {}),
             achievements: Object.assign({}, s.achievements || {}),
+            diff: Object.assign({}, s.diff || {}), top: Object.assign({}, s.top || {}), nmWins: Object.assign({}, s.nmWins || {}),
             owned: owned
         });
     } catch (e) { return d; }
@@ -233,9 +246,16 @@ export function refreshStaffItems() {
 export function isOwned(item) { return SAVE.owned.includes(item.slot + ':' + item.id); }
 export function isEquipped(item) { return SAVE.equipped[item.slot] === item.id; }
 export function isLocked(item) { return !!item.locked && !isOwned(item); }
-// Nagroda za przejście poziomu: pełna za pierwszym razem, potem mniejsza, maks. REPEAT_LIMIT razy dziennie
+// Trudność wybrana dla poziomu (zapisana w save, ustawiana przy drzwiach w sali Levels)
+export function getDiff(level) { const d = SAVE.diff && SAVE.diff[level]; return DIFFS[d] ? d : 'normal'; }
+export function diffOf(level) { return DIFFS[getDiff(level)]; }
+export function setDiff(level, d) { if (!DIFFS[d]) return; SAVE.diff = SAVE.diff || {}; SAVE.diff[level] = d; saveGame(); markAllDirty(); }
+// Klucz rekordu z uwzględnieniem trudności (Nightmare ma osobne rekordy, Easy żadnych)
+export function recordKey(level, diff) { diff = diff || getDiff(level); return diff === 'nightmare' ? level + '_nm' : level; }
+// Nagroda za przejście poziomu: pełna za pierwszym razem, potem mniejsza, maks. REPEAT_LIMIT razy dziennie.
+// Mnożnik trudności; pierwsze przejście na Nightmare daje jednorazowy bonus (poza dziennym limitem).
 export function levelReward(level, first, repeat, label) {
-    const key = level + 'Wins', wins = SAVE[key] || 0;
+    const key = level + 'Wins', wins = SAVE[key] || 0, df = diffOf(level);
     SAVE[key] = wins + 1;
     let amount = 0;
     if (wins === 0) amount = first;
@@ -244,23 +264,34 @@ export function levelReward(level, first, repeat, label) {
         const n = d.repeats[level] || 0;
         if (n < REPEAT_LIMIT) { d.repeats[level] = n + 1; amount = repeat; }
     }
-    if (amount > 0) addBones(amount, (wins === 0 ? 'first ' : '') + label);
+    amount = Math.round(amount * df.reward);
+    const tag = df.id === 'normal' ? '' : ' [' + df.name + ']';
+    if (amount > 0) addBones(amount, (wins === 0 ? 'first ' : '') + label + tag);
     else toast('Daily reward limit for this level reached. Come back tomorrow!', '#ffb030');
+    if (df.id === 'nightmare' && !SAVE.nmWins[level]) { SAVE.nmWins[level] = Date.now(); addBones(Math.round(first * 0.5), 'first Nightmare clear!'); }
     checkCompletionist();
     saveGame();
     return amount;
 }
 export function rewardActivity(key) { capped(key, ACTIVITY[key].each); }
-// Rekordy czasów (w sekundach). Zwraca true przy nowym rekordzie.
+// Rekordy czasów (w sekundach). Zwraca true przy nowym rekordzie. Easy nie liczy się do rekordów,
+// Nightmare zapisuje się pod kluczem "<poziom>_nm". Każdy zaliczony czas trafia też do listy top 5.
 export function recordTime(id, sec) {
-    const prev = SAVE.records[id];
+    const diff = getDiff(id);
+    if (diff === 'easy') { toast('Easy runs do not count for records', '#9aa0a0'); return false; }
+    const key = recordKey(id, diff), prev = SAVE.records[key];
+    SAVE.top = SAVE.top || {};
+    const list = (SAVE.top[key] || []).concat([Math.round(sec * 10) / 10]).sort((a, b) => a - b).slice(0, 5);
+    SAVE.top[key] = list;
     if (prev === undefined || sec < prev) {
-        SAVE.records[id] = Math.round(sec * 10) / 10; saveGame(); markAllDirty();
+        SAVE.records[key] = Math.round(sec * 10) / 10; saveGame(); markAllDirty();
         if (prev !== undefined) toast('New record: ' + fmtDuration(sec * 1000), '#ffd27a');
         return true;
     }
+    saveGame(); markAllDirty();
     return false;
 }
+export function topTimes(id, diff) { const l = SAVE.top && SAVE.top[recordKey(id, diff)]; return l ? l.slice() : []; }
 // Rekord punktowy (im więcej, tym lepiej), np. strzelnica
 export function recordScore(id, score) {
     const prev = SAVE.records[id];

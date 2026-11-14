@@ -9,7 +9,8 @@ import { THREE, CANNON, L, tex, camera, lighting, addBody, addConstraint, addCri
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LIGHT_PRESETS } from '../core/config.js';
 import * as T from '../core/textures.js';
-import { levelReward, rewardActivity, recordTime, unlockAchievement } from '../core/economy.js';
+import { levelReward, rewardActivity, recordTime, unlockAchievement, diffOf } from '../core/economy.js';
+import { createGhost } from '../core/runkit.js';
 import { toast } from '../core/terminal.js';
 import { setPlayerPosition, releaseRope, isOnRope, hands } from '../core/player.js';
 import * as N from '../core/network.js';
@@ -52,7 +53,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -14.6, maxX: 14.6, minZ: -14.6, maxZ: 14.6, maxY: CEIL - 0.4 };
     S = {
-        clock: 0, phase: 'intro', introT: quickStart ? RESTART_INTRO : INTRO_TIME, introLen: quickStart ? RESTART_INTRO : INTRO_TIME,
+        df: diffOf('silence'), ghost: createGhost('silence'), clock: 0, phase: 'intro', introT: quickStart ? RESTART_INTRO : INTRO_TIME, introLen: quickStart ? RESTART_INTRO : INTRO_TIME,
         t: GAME_TIME, nest: new Set(), localNested: false, caughtT: -1, rescueT: 0, grip: 0, exhausted: false,
         noiseShown: 0, alert: 0, lastMicSend: 0, lastHostMsg: -10, netT: 0, hudT: 0, boardT: 0, prevMode: 'sleep',
         fuseSeed: (Math.random() * 1e9) | 0, fuseGot: 0, fusePending: 0, leaving: false, won: false, balls: {}
@@ -68,6 +69,7 @@ export function build() {
     S.mon = buildMonster();
     buildScare();
     buildHud();
+    if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name, S.df.color);
     buildIntroPanel();
     pickFuses(S.fuseSeed);
     L.onNoise = (speed, pos) => {   // uderzenia dłoni z player.js
@@ -397,12 +399,12 @@ function think(dt, parts) {
     let tx = null, tz = null, speed = 0;
     const dist = (x, z) => Math.hypot(x - m.x, z - m.z);
     if (m.mode === 'patrol') {
-        const w = WAYPOINTS[m.wp]; tx = w[0]; tz = w[1]; speed = SPEED.patrol;
+        const w = WAYPOINTS[m.wp]; tx = w[0]; tz = w[1]; speed = (SPEED.patrol * S.df.speed);
         if (dist(tx, tz) < 1) { setMode('listen'); m.listenT = 2 + Math.random() * 2; }
     } else if (m.mode === 'listen') {
         if (m.timer > m.listenT) { m.wp = (m.wp + 1 + ((Math.random() * 3) | 0)) % WAYPOINTS.length; setMode('patrol'); }
     } else if (m.mode === 'investigate') {
-        tx = m.goal[0]; tz = m.goal[1]; speed = m.fast ? SPEED.decoy : SPEED.investigate;
+        tx = m.goal[0]; tz = m.goal[1]; speed = m.fast ? (SPEED.decoy * S.df.speed) : (SPEED.investigate * S.df.speed);
         if (dist(tx, tz) < 1.3) { setMode('listen'); m.listenT = 4; }
     } else if (m.mode === 'roar') {
         if (m.lastPos) m.yaw = lerpAngle(m.yaw, Math.atan2(m.lastPos[0] - m.x, m.lastPos[1] - m.z), dt * 6);
@@ -413,14 +415,14 @@ function think(dt, parts) {
         if (!tp || S.nest.has(m.target)) { setMode('listen'); m.listenT = 3; }
         else if (fresh && tp.y >= CATCH_Y && Math.hypot(tp.x - m.x, tp.z - m.z) < 4) setMode('camp');
         else {
-            const g = fresh ? [tp.x, tp.z] : m.lastPos; tx = g[0]; tz = g[1]; speed = SPEED.chase;
+            const g = fresh ? [tp.x, tp.z] : m.lastPos; tx = g[0]; tz = g[1]; speed = (SPEED.chase * S.df.speed);
             if ((!fresh && dist(tx, tz) < 1.3) || m.timer > 25) { setMode('listen'); m.listenT = 4; }
         }
     } else if (m.mode === 'camp') {
         const tp = parts.find(p => p.id === m.target);
         if (!tp) setMode('patrol');
         else {
-            tx = tp.x; tz = tp.z; speed = SPEED.camp;
+            tx = tp.x; tz = tp.z; speed = (SPEED.camp * S.df.speed);
             if (tp.y < CATCH_Y - 0.3) setMode('chase');
             else if (m.timer > CAMP_TIME) setMode('patrol');
         }
@@ -521,7 +523,7 @@ function win() {
     S.won = true; S.phase = 'won';
     toast('You survived!', '#7fc47f');
     levelReward('silence', REWARD_FIRST, REWARD_REPEAT, 'silent escape');
-    recordTime('silence', S.playT || GAME_TIME);
+    S.ghost.finish(recordTime('silence', S.playT || GAME_TIME), S.playT || GAME_TIME);
     if (!S.usedBall && !S.wasCaught) unlockAchievement('silent_ghost');
     setTimeout(() => toast('Choose a door: THE WELL or LOBBY', '#b8ffcf'), 2600);
     S.mon.mode = 'sleep'; S.mon.speedNow = 0;
@@ -536,6 +538,7 @@ export function update(dt, t, ctx) {
     const p = ctx.body.position, m = S.mon, auth = isAuthority();
     S.noiseShown = Math.max(0, S.noiseShown - dt * 0.8);
     if (S.phase === 'play') S.playT = (S.playT || 0) + dt;
+    S.ghost.tick(dt, p, S.phase === 'play' && S.caughtT < 0);
     if (L.heldId && String(L.heldId).startsWith('black')) S.usedBall = true;   // do osiągnięcia "Silent ghost"
     if (S.alert > 0) S.alert -= dt;
 
@@ -666,6 +669,7 @@ function animateMonster(dt, t, p) {
 // Sprzątanie przy wyjściu z poziomu
 export function dispose() {
     if (S) {
+        if (S.ghost) S.ghost.dispose();
         if (S.scare) S.scare.dispose();
         if (S.hud) S.hud.dispose();
         if (S.intro) S.intro.dispose();

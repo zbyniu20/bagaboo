@@ -170,9 +170,10 @@ export const shop = new Terminal((t) => {
         // Najlepsze czasy i osiągnięcia
         t.text('Best times', 40, 176, 28, GOLD, 'left', true);
         E.RECORDS.forEach((r, i) => {
-            const v = E.SAVE.records[r.id], y = 208 + i * 30;
-            t.text(r.name, 40, y, 22, AMBER, 'left');
-            t.text(v === undefined ? (r.score ? '-' : '--:--') : (r.score ? String(v) : E.fmtDuration(v * 1000)), 400, y, 22, v === undefined ? AMBER_DIM : GOLD, 'left', true);
+            const nm = r.id.endsWith('_nm'), j = nm ? i - E.RECORDS.findIndex(q => q.id.endsWith('_nm')) : i;   // rekordy Nightmare w drugiej kolumnie
+            const v = E.SAVE.records[r.id], y = (nm ? 240 : 208) + j * 28, x = nm ? 520 : 40;
+            t.text(r.name, x, y, nm ? 18 : 22, nm ? '#ff7a6a' : AMBER, 'left');
+            t.text(v === undefined ? (r.score ? '-' : '--:--') : (r.score ? String(v) : E.fmtDuration(v * 1000)), nm ? 900 : 400, y, nm ? 18 : 22, v === undefined ? AMBER_DIM : GOLD, 'left', true);
         });
         t.text('Wins: maze ' + (E.SAVE.mazeWins || 0) + ', silence ' + (E.SAVE.silenceWins || 0) + ', well ' + (E.SAVE.wellWins || 0) + ', lava ' + (E.SAVE.lavaWins || 0), 520, 208, 18, AMBER_DIM, 'left');
         t.text('Achievements', 40, 384, 26, GOLD, 'left', true);
@@ -232,4 +233,28 @@ export function drawScoreboard() {
     });
     board.tex.needsUpdate = true;
 }
+// ---------- TABLICA DNIA W LOBBY: zadania dzienne, seria logowań i nagroda za logowanie ----------
+export const dailyBoard = new Terminal((t) => {
+    const c = t.ctx, d = E.ensureDaily(), login = E.loginStatus();
+    t.background();
+    t.header('DAILY BOARD', 'new quests in ' + E.fmtDuration(E.msToMidnight()), AMBER_DIM);
+    // Seria i nagroda za logowanie
+    c.fillStyle = 'rgba(255,176,0,0.08)'; c.fillRect(24, 90, 976, 92);
+    t.text('Login streak: ' + login.streak + (login.streak === 1 ? ' day' : ' days'), 44, 118, 28, GOLD, 'left', true);
+    if (login.ready) t.text('Reward ready: +' + login.nextAmount + ' ' + E.CURRENCY + '! Take it at the vending machine.', 44, 156, 22, OK_COL, 'left', true);
+    else { t.text('Next login reward (+' + login.nextAmount + ') in ' + E.fmtDuration(login.msLeft), 44, 156, 22, AMBER, 'left', true); t.bar(660, 144, 320, 16, 1 - login.msLeft / E.LOGIN_INTERVAL, AMBER); }
+    // Trzy zadania z paskami postępu
+    d.quests.forEach((q, i) => {
+        const def = E.questDef(q.id), y = 200 + i * 104;
+        c.fillStyle = q.done ? 'rgba(127,196,127,0.12)' : 'rgba(255,176,0,0.07)'; c.fillRect(24, y, 976, 92);
+        t.text((q.done ? '✓ ' : '• ') + def.text, 44, y + 26, 26, q.done ? OK_COL : GOLD, 'left', true);
+        t.text(q.done ? 'Paid +' + def.reward : '+' + def.reward + ' ' + E.CURRENCY, 980, y + 26, 22, q.done ? OK_COL : AMBER, 'right', true);
+        t.bar(44, y + 56, 760, 18, q.p / def.target, q.done ? OK_COL : AMBER);
+        t.text(q.p + ' / ' + def.target, 830, y + 65, 22, AMBER, 'left', true);
+    });
+    const left = d.quests.filter(q => !q.done).length;
+    t.text(d.bonus ? 'All done! Bonus +' + E.QUEST_ALL_BONUS + ' paid. See you tomorrow.' : (left + ' left. Finish all three for a bonus of +' + E.QUEST_ALL_BONUS + ' ' + E.CURRENCY + '.'), 40, 538, 24, d.bonus ? OK_COL : GOLD, 'left', true);
+    t.text('Tip: pick NIGHTMARE at the Levels doors for x1.5 rewards and your own records.', 40, 580, 18, AMBER_DIM, 'left');
+    t.scanlines();
+}, 1024, 640);
 export { markAllDirty };

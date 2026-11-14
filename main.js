@@ -35,6 +35,7 @@ const LEVELS = {
     lava: { path: './levels/lava.js', light: 'lava', extras: [] },
     monster: { path: './levels/monster.js', light: 'station', extras: [] },
     range: { path: './levels/range.js', light: 'night', extras: [] },
+    hideseek: { path: './levels/hideseek.js', light: 'hideseek', extras: [] },
     staff: { path: './levels/staff.js', light: 'staff', extras: [] }
 };
 let level = null, extras = [], levelId = null, started = false, switching = false;
@@ -70,7 +71,7 @@ export async function loadLevel(id, spawn) {
     markAllDirty();
 }
 // Ekran ładowania przed oczami: zamiast zamrożonego obrazu gracz widzi czerń z napisem
-const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well', lava: 'Floor is Lava', staff: 'Staff room', games: 'BagaBoo Games', levels: 'Levels', laundry: 'The Industrial Laundromat', memory: 'Burning Memory', monster: 'Become the Monster', range: 'Shooting Range' };
+const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well', lava: 'Floor is Lava', staff: 'Staff room', games: 'BagaBoo Games', levels: 'Levels', laundry: 'The Industrial Laundromat', memory: 'Burning Memory', monster: 'Become the Monster', range: 'Shooting Range', hideseek: 'Hide and Seek' };
 const fade = (() => {
     const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
