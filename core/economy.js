@@ -27,6 +27,7 @@ export const CATALOG = [
     { slot: 'hat', id: 'crown', name: 'Rotten crown', price: 3000 },
     { slot: 'hat', id: 'ushanka', name: 'Ushanka (earflap hat)', price: 1000 },
     { slot: 'hat', id: 'halo', name: 'Broken halo', price: 4500 },
+    { slot: 'hat', id: 'eyeball', name: 'Eyeball cap', price: 2000 },
     { slot: 'hat', id: 'miner', name: "Miner's helmet", price: 0, locked: true, hint: 'Achievement' },
     { slot: 'glasses', id: 'none', name: 'No glasses', price: 0 },
     { slot: 'glasses', id: 'round', name: 'Round spectacles', price: 400 },
