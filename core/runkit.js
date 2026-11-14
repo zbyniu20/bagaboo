@@ -5,7 +5,7 @@
 // Easy nie liczy się do rekordów, więc nie ma tam ducha.
 // ==========================================
 import { THREE, L } from './engine.js';
-import { getDiff, recordKey, fmtDuration } from './economy.js';
+import { getDiff, recordKey, fmtDuration, isDaily, dailyKey, dailyDate } from './economy.js';
 import { toast } from './terminal.js';
 
 const KEY = 'bagaboo_ghosts_v1', STEP = 0.25, MAX_SAMPLES = 2400, Q = 20;   // maks. 10 minut, pozycje co 5 cm
@@ -15,9 +15,11 @@ function writeAll(m) { try { localStorage.setItem(KEY, JSON.stringify(m)); } cat
 const NOOP = { tick() {}, reset() {}, finish() {}, dispose() {} };
 
 // level: id poziomu (maze, well...). Zwraca obiekt z tick(dt, pozycja, active), reset(), finish(isRecord, czas), dispose().
-export function createGhost(level) {
-    if (getDiff(level) === 'easy') return NOOP;
-    const key = recordKey(level), best = readAll()[key];
+// opts.onlyDaily: poziomy z losowym układem (Maze, Well, Memory) dostają ducha tylko w Daily Run, bo wtedy układ jest wspólny z poprzednimi biegami tego dnia
+export function createGhost(level, opts) {
+    const daily = isDaily(level);
+    if (getDiff(level) === 'easy' || (opts && opts.onlyDaily && !daily)) return NOOP;
+    const key = daily ? dailyKey(level) : recordKey(level), best = readAll()[key];
     let rec = [], recT = 0, playT = 0, started = false, done = false, saved = false;
     let mesh = null, yaw = 0;
     if (best && best.d && best.d.length >= 6) {
@@ -56,7 +58,9 @@ export function createGhost(level) {
             done = true; if (mesh) mesh.visible = false;
             if (!isRecord || saved || rec.length < 6 || rec.length >= MAX_SAMPLES * 3) return;
             saved = true;
-            const m = readAll(); m[key] = { t: Math.round(sec * 10) / 10, d: rec }; writeAll(m);
+            const m = readAll(); m[key] = { t: Math.round(sec * 10) / 10, d: rec };
+            for (const k of Object.keys(m)) if (k.startsWith('daily:') && !k.includes(':' + dailyDate() + ':')) delete m[k];   // stare duchy dzienne znikają
+            writeAll(m);
         },
         dispose() { if (mesh) { L.root.remove(mesh); mesh = null; } }
     };

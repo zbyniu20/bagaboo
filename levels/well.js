@@ -11,7 +11,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LIGHT_PRESETS } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
-import { levelReward, recordTime, unlockAchievement, diffOf } from '../core/economy.js';
+import { levelReward, recordTime, unlockAchievement, diffOf, isDaily, dailyDate } from '../core/economy.js';
+import { createGhost } from '../core/runkit.js';
 import { toast } from '../core/terminal.js';
 import { hands, setPlayerPosition } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -51,7 +52,7 @@ export function build() {
     L.bounds = { minX: -HS + 0.2, maxX: HS - 0.2, minZ: -HS + 0.2, maxZ: HS - 0.2, maxY: TOP + 2 };
     L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.noHeightTrack = true;
     S = {
-        ev: createEvents('well'), df: diffOf('well'), clock: 0, playT: 0, introT: quick ? RESTART_INTRO : INTRO_TIME, phase: 'intro', ooze: -1.2, nextSurge: rnd(R, SURGE_MIN, SURGE_MAX), surge: 0,
+        ghost: createGhost('well', { onlyDaily: true }), ev: createEvents('well'), df: diffOf('well'), clock: 0, playT: 0, introT: quick ? RESTART_INTRO : INTRO_TIME, phase: 'intro', ooze: -1.2, nextSurge: rnd(R, SURGE_MIN, SURGE_MAX), surge: 0,
         nextScare: rnd(R, SCARE_MIN, SCARE_MAX), scareT: -1, faller: null, reach: null, blackout: 0, caughtT: -1, leaving: false,
         grates: [], crumbles: [], hatch: null, hudT: 0, R: R, lastHand: [null, null],
         seed: seed, out: new Set(), spectator: false, lastHostMsg: -10, netT: 0, surgeNet: 0
@@ -68,6 +69,7 @@ export function build() {
     buildIntro(quick);
     if (quick) toast('Again. Climb faster...', '#b8ffcf');
     if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name, S.df.color);
+    if (isDaily('well')) toast('Daily Run %s: same layout for everyone' % dailyDate(), '#7fe8ff');
 }
 function rnd(R, a, b) { return a + R() * (b - a); }
 function setGrip(g) { L.obstacles[L.obstacles.length - 1].grip = g; return L.obstacles[L.obstacles.length - 1]; }
@@ -399,7 +401,7 @@ function win() {
     S.leaving = true;
     toast('You climbed out!', '#7fc47f');
     levelReward('well', REWARD_FIRST, REWARD_REPEAT, 'escape from the well');
-    recordTime('well', S.playT);
+    S.ghost.finish(recordTime('well', S.playT), S.playT);
     if (S.playT < 270) unlockAchievement('well_climber');
     S.ctx.goto('levels', ARRIVAL_WELL);
 }
@@ -408,6 +410,7 @@ export function update(dt, t, ctx) {
     if (!S || S.leaving) return;
     S.ctx = ctx; S.clock += dt;
     S.ev.update(dt, S.phase === 'play' && S.caughtT < 0);
+    S.ghost.tick(dt, ctx.body.position, S.phase === 'play' && S.caughtT < 0 && !S.spectator);
     const body = ctx.body, p = body.position, h = p.y - 0.35;
     body.velocity.y -= EXTRA_GRAVITY * dt;   // studnia ciągnie w dół
 
@@ -427,8 +430,8 @@ export function update(dt, t, ctx) {
             // Maź: stały przyrost + nagłe skoki (liczy host albo gracz solo)
             let rise = (OOZE_SPEED + OOZE_ACCEL * S.playT) * S.df.speed * dt;
             S.nextSurge -= dt;
-            if (S.nextSurge <= 0) { S.nextSurge = rnd(S.R, SURGE_MIN, SURGE_MAX); S.surge = 2.5; SFX.roar(1.0, { x: 0, y: S.ooze, z: 0 }); }   // ryk spod nóg
-            if (S.surge > 0) { S.surge -= dt; rise += SURGE_HEIGHT / 2.5 * dt; }
+            if (S.nextSurge <= 0) { S.nextSurge = rnd(S.R, SURGE_MIN, SURGE_MAX) * (S.df.id === 'nightmare' ? 0.55 : 1); S.surge = 2.5; SFX.roar(1.0, { x: 0, y: S.ooze, z: 0 }); }   // ryk spod nóg
+            if (S.surge > 0) { S.surge -= dt; rise += SURGE_HEIGHT * (S.df.id === 'nightmare' ? 1.5 : 1) / 2.5 * dt; }   // Nightmare: fale częstsze (x0,55 czasu) i wyższe (x1,5)
             S.ooze = Math.min(TOP - 2, S.ooze + rise);
             if (N.NET.mode === 'host') { S.netT -= dt; if (S.netT <= 0) { S.netT = 0.2; broadcast(); } }
         } else if (S.oozeNet !== undefined) S.ooze += (S.oozeNet - S.ooze) * Math.min(1, dt * 6);   // maź od hosta
@@ -520,6 +523,7 @@ export function update(dt, t, ctx) {
 }
 
 export function dispose() {
+    if (S && S.ghost) S.ghost.dispose();
     if (S && S.ev) S.ev.dispose();
     if (S) for (const o of [S.face, S.hud, S.intro]) if (o) o.dispose();
     L.moveScale = 1; L.maxUp = 99; L.noHeightTrack = false;

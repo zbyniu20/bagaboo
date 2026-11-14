@@ -498,6 +498,7 @@ function lampsUpdate(dt, t) {
     for (const lp of S.lamps) {
         let k = lp.bad ? (Math.sin(t * 23 + lp.ph) > 0.6 || Math.random() < 0.04 ? 0.1 : 1) : 0.9 + 0.1 * Math.sin(t * 3 + lp.ph);
         if (S.blackout > 0) k = 0.03;
+        if (S.df.id === 'nightmare') k = Math.min(k, 0.06);   // Nightmare: hala w ciemności, tylko latarka
         lp.l.intensity = 10 * k; lp.bulb.visible = k > 0.3;
     }
 }

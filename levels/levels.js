@@ -5,7 +5,7 @@
 // ==========================================
 import { THREE, L, tex, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
-import { SAVE, fmtDuration, DIFFS, DIFF_ORDER, getDiff, setDiff, topTimes } from '../core/economy.js';
+import { SAVE, fmtDuration, DIFFS, DIFF_ORDER, getDiff, setDiff, topTimes, dailyOn, setDailyMode, dailyDate } from '../core/economy.js';
 import { Terminal, wrapText } from '../core/terminal.js';
 import { toast } from '../core/terminal.js';
 import { buildDoor } from '../core/levelkit.js';
@@ -20,11 +20,11 @@ export const ARRIVAL_FROM_WELL = [0, 1.2, -4.6];
 export const ARRIVAL_FROM_LAUNDRY = [4, 1.2, -4.6];
 export const ARRIVAL_FROM_MEMORY = [8, 1.2, -4.6];
 const DOORS = [
-    { x: -8, label: 'THE MAZE', color: '#ff6a40', glow: 0xff3010, target: 'maze', rec: 'maze', msg: 'You open the door...', desc: ['A huge random maze.', 'A mannequin hunts you.', 'Find the exit.'] },
+    { x: -8, label: 'THE MAZE', color: '#ff6a40', glow: 0xff3010, target: 'maze', rec: 'maze', daily: true, msg: 'You open the door...', desc: ['A huge random maze.', 'A mannequin hunts you.', 'Find the exit.'] },
     { x: -4, label: 'SILENCE', color: '#9fc8ff', glow: 0x3a7aff, target: 'silence', rec: 'silence', msg: 'Shhh...', desc: ['The Blind One hears', 'every move you make.', 'Survive 3 minutes.'] },
-    { x: 0, label: 'THE WELL', color: '#b8ffcf', glow: 0x30ff90, target: 'well', rec: 'well', msg: 'Do not look down...', desc: ['Climb a 64 m shaft', 'before the black', 'ooze takes you.'] },
+    { x: 0, label: 'THE WELL', color: '#b8ffcf', glow: 0x30ff90, target: 'well', rec: 'well', daily: true, msg: 'Do not look down...', desc: ['Climb a 64 m shaft', 'before the black', 'ooze takes you.'] },
     { x: 4, label: 'LAUNDROMAT', color: '#ff7ac0', glow: 0xff3aa0, target: 'laundry', rec: 'laundry', msg: 'Something is walking between the washers...', desc: ['Close 4 steam valves.', 'The Threadman', 'hunts in the steam.'] },
-    { x: 8, label: 'BURNING MEMORY', color: '#ff8a3a', glow: 0xff4a10, target: 'memory', rec: 'memory', msg: 'Remember or burn...', desc: ['Cross 20 rows of stones', 'over lava. Remember the', 'safe ones. Run!'] }
+    { x: 8, label: 'BURNING MEMORY', color: '#ff8a3a', glow: 0xff4a10, target: 'memory', rec: 'memory', daily: true, msg: 'Remember or burn...', desc: ['Cross 20 rows of stones', 'over lava. Remember the', 'safe ones. Run!'] }
 ];
 
 // Pulpit przy drzwiach: opis poziomu, wybór trudności (Easy / Normal / Nightmare) i najlepsze czasy.
@@ -44,17 +44,24 @@ function boardFor(d) {
             t.btn('diff-' + id, x, 200, bw, 62, q.name, () => setDiff(d.rec, id), { tone: id === 'easy' ? 'ok' : (id === 'normal' ? 'gold' : 'bad'), active: id === diff, size: 26 });
         });
         wrapText(df.info, 52).slice(0, 2).forEach((l, i) => t.text(l, t.W / 2, 290 + i * 26, 19, df.color, 'center', true));
-        c.fillStyle = 'rgba(255,176,0,0.25)'; c.fillRect(24, 345, t.W - 48, 2);
+        // Daily Run (Maze, Well, Memory): układ z daty, taki sam dla wszystkich, z własną listą czasów dnia i duchem
+        let off = 0; const dl = d.daily && diff !== 'easy', dm = dl && dailyOn(d.rec);
+        if (d.daily) {
+            off = 58;
+            t.btn('daily', 20, 346, 340, 50, dm ? 'Daily Run: ON' : 'Daily Run: off', () => setDailyMode(d.rec, !dailyOn(d.rec)), { tone: dm ? 'ok' : undefined, active: dm, size: 24, disabled: diff === 'easy' });
+            t.text(diff === 'easy' ? 'Not ranked on Easy' : (dm ? 'Layout of ' + dailyDate() + ' (UTC)' : 'Random layout each time'), 380, 371, 19, dm ? '#7fe8ff' : '#9a8a7a', 'left', true);
+        }
+        c.fillStyle = 'rgba(255,176,0,0.25)'; c.fillRect(24, 345 + off, t.W - 48, 2);
         if (diff === 'easy') {
-            t.text('Easy runs are not ranked.', t.W / 2, 410, 24, '#9aa0a0', 'center', true);
-            t.text('Switch to Normal or Nightmare', t.W / 2, 446, 20, '#9aa0a0', 'center');
-            t.text('to set records and see your ghost.', t.W / 2, 474, 20, '#9aa0a0', 'center');
+            t.text('Easy runs are not ranked.', t.W / 2, 410 + off, 24, '#9aa0a0', 'center', true);
+            t.text('Switch to Normal or Nightmare', t.W / 2, 446 + off, 20, '#9aa0a0', 'center');
+            t.text('to set records and see your ghost.', t.W / 2, 474 + off, 20, '#9aa0a0', 'center');
         } else {
-            t.text('Best times (' + df.name + ')', 40, 378, 24, '#ffd27a', 'left', true);
-            const top = topTimes(d.rec, diff);
-            if (!top.length) t.text('Not finished yet', 40, 424, 24, '#9a8a7a', 'left');
-            top.slice(0, 5).forEach((s, i) => { t.text((i + 1) + '.  ' + fmtDuration(s * 1000), 60, 418 + i * 34, 26, i === 0 ? '#ffd27a' : '#f0e6dc', 'left', i === 0); });
-            if (top.length) t.text('Ghost of #1 runs with you', t.W - 36, 418, 17, '#7fe8ff', 'right');
+            t.text(dm ? "Today's best times (" + df.name + ')' : 'Best times (' + df.name + ')', 40, 378 + off, 24, dm ? '#7fe8ff' : '#ffd27a', 'left', true);
+            const top = topTimes(d.rec, diff, dm), step = d.daily ? 28 : 34;
+            if (!top.length) t.text(dm ? 'Nobody has finished today. Be first!' : 'Not finished yet', 40, 424 + off, 22, '#9a8a7a', 'left');
+            top.slice(0, 5).forEach((s2, i) => { t.text((i + 1) + '.  ' + fmtDuration(s2 * 1000), 60, 414 + off + i * step, d.daily ? 24 : 26, i === 0 ? '#ffd27a' : '#f0e6dc', 'left', i === 0); });
+            if (top.length && (!d.daily || dm)) t.text(dm ? 'Ghost of today #1' : 'Ghost of #1 runs with you', t.W - 36, 414 + off, 17, '#7fe8ff', 'right');
         }
         t.scanlines();
     }, 768, 624);
