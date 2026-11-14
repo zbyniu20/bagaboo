@@ -188,6 +188,10 @@ export function buildHat(id) {
         g.add(meshAt(new THREE.CylinderGeometry(0.175, 0.175, 0.012, 28), b, 0, 0.11, 0));
         g.add(meshAt(new THREE.CylinderGeometry(0.1, 0.105, 0.2, 24), b, 0, 0.21, 0));
         g.add(meshAt(new THREE.CylinderGeometry(0.107, 0.107, 0.032, 24), mat({ color: 0x7a0a0a }), 0, 0.13, 0));
+    } else if (id === 'eyeball') {
+        // Piłka-oko z lobby jako czapka: źrenica patrzy do przodu, lekki czerwony blask
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.115, 28, 20), new THREE.MeshPhysicalMaterial({ map: tex.eye, emissive: 0x330000, roughness: 0.1, metalness: 0.1, clearcoat: 1.0, envMapIntensity: ENV }));
+        eye.position.set(0, 0.2, 0); eye.rotation.y = Math.PI / 2; g.add(eye);
     } else if (id === 'cowboy') {
         const l = mat({ color: 0x6a4a2a, roughness: 0.85 });
         const brim = meshAt(new THREE.CylinderGeometry(0.25, 0.25, 0.012, 32), l, 0, 0.1, 0); brim.scale.z = 0.85; g.add(brim);
