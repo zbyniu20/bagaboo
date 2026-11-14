@@ -6,7 +6,7 @@ import { Terminal, wrapText, AMBER, AMBER_DIM, OK_COL, BAD_COL, GOLD, markAllDir
 import * as N from './network.js';
 import * as E from './economy.js';
 import { PRESENCE } from './presence.js';
-import { isStaffName } from './config.js';
+import { isStaffName, canPunish } from './config.js';
 
 // ---------- KOMPUTER (multiplayer) ----------
 const ui = { page: 'main', temp: '', target: null };
@@ -74,8 +74,9 @@ export const computer = new Terminal((t) => {
             t.btn('r' + p.id, 510, y + 5, 112, 42, 'Report', () => { ui.target = p; ui.page = 'report'; }, { size: 19 });
             // Ekipa (admin i moderatorzy) może zapraszać, wyrzucać i banować nawet jako gość; host może wyrzucać
             if (staff) t.btn('i' + p.id, 630, y + 5, 112, 42, 'Invite', () => { N.requestMod('invite', p.id, 'staff'); N.setStatus('Invited ' + p.name + ' to the staff room.'); }, { size: 19, tone: 'gold' });
-            if (staff || isHost) t.btn('x' + p.id, 750, y + 5, 112, 42, 'Kick', () => { if (staff) N.requestMod('kick', p.id); else N.kickPlayer(p.id); }, { size: 19, tone: 'bad' });
-            if (staff) t.btn('b' + p.id, 870, y + 5, 120, 42, 'Ban 1 day', () => N.requestMod('ban', p.id), { size: 17, tone: 'bad' });
+            const may = canPunish(E.SAVE.profile.name, p.name);   // ekipa nie może wyrzucać ani banować ekipy; tylko zbyniu może wszystkich
+            if (staff || isHost) t.btn('x' + p.id, 750, y + 5, 112, 42, 'Kick', () => { if (staff) N.requestMod('kick', p.id); else N.kickPlayer(p.id); }, { size: 19, tone: 'bad', disabled: staff && !may });
+            if (staff) t.btn('b' + p.id, 870, y + 5, 120, 42, 'Ban 1 day', () => N.requestMod('ban', p.id), { size: 17, tone: 'bad', disabled: !may });
         });
     } else if (ui.page === 'report') {
         t.header('Report a player', null, null, () => { ui.page = 'players'; });
