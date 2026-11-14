@@ -3,6 +3,7 @@
 // Host rejestruje pokój pod stałym ID (prefiks + kod). Serwer PeerJS nie pozwoli drugiej osobie
 // zostać hostem tego samego pokoju, a gość nie połączy się, dopóki host nie jest online.
 // ==========================================
+import { emoteState, emotePose } from './emotes.js';
 import { THREE, camera, scene, L, CANNON, containBall, playerRig } from './engine.js';
 import { createAvatar, poseHand, lookKey, animateFace } from './avatar.js';
 import { getLook, SESSION, SAVE } from './economy.js';
@@ -253,6 +254,7 @@ function updateRemote(id, st) {
     p.handR.position.fromArray(st.h2.p); p.handR.quaternion.fromArray(st.h2.q);
     if (st.h1.g !== undefined) p.handL.userData.rig.target = st.h1.g;
     if (st.h2.g !== undefined) p.handR.userData.rig.target = st.h2.g;
+    if (st.em && typeof st.em.id === 'string' && typeof st.em.t === 'number') emotePose(p, st.em.id, st.em.t);   // emotka nadpisuje pozę dłoni i głowy
     const e = new THREE.Euler().setFromQuaternion(p.head.quaternion, 'YXZ');
     const drop = p.torsoDrop || 0.35;
     p.torso.rotation.order = 'YXZ';
@@ -464,6 +466,7 @@ export function networkTick(handL, handR) {
         h2: { p: l2p.toArray(), q: l2q.toArray(), g: handR.userData.rig.grip },
         sb: unbannedNow ? 0 : myBanUntil(),   // ban zapisany na tym urządzeniu (host może go zdjąć, jeśli właściciel odbanował gracza)
         sl: playerRig.userData.sliding ? 1 : 0,   // ślizg na brzuchu
+        em: emoteState(),                         // trwająca emotka {id, t}
         s: { h: SESSION.maxH, j: SESSION.jumps, e: (Date.now() - SESSION.since) / 1000 }
     };
     if (NET.mode === 'host') {

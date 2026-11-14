@@ -8,6 +8,15 @@ import { buzz } from './haptics.js';
 let ctx = null, master = null, droneGain = null, scareBus = null, shaper = null;
 const DRONE = 0.07;
 const hb = { next: 0 };
+// Haki dla muzyki i ambientu (music.js, ambience.js): zmiana głośności, wyciszenie przy jumpscare'ie, poziom zagrożenia
+export const hooks = { onVolumes: null, onDuck: null };
+let threat = { i: 0, until: 0 };
+// Zagrożenie 0..1: bicie serca (im bliżej potwór) i głośne zdarzenia podbijają je na krótko; muzyka robi się szybsza i gęstsza
+export function bumpThreat(i, secs) { if (!ctx) return; const t = ctx.currentTime; if (i >= threat.i || t > threat.until) threat = { i: i, until: t + (secs || 0.4) }; }
+export function threatLevel() { return ctx && ctx.currentTime < threat.until ? threat.i : 0; }
+export function audioBus() { return ctx ? { ctx: ctx, master: master } : null; }
+export function spatial(pos, dest) { return ctx ? outAt(pos, dest) : null; }
+export function noiseBuf(sec) { return ctx ? noiseBuffer(sec) : null; }
 
 export function getAudioContext() { return ctx; }
 export function initAudio() {
@@ -39,6 +48,7 @@ export function applyVolumes() {
     master.gain.setTargetAtTime(0.9 * SETTINGS.effects, t, 0.05);
     scareBus.gain.setTargetAtTime(2.2 * SETTINGS.scare, t, 0.05);
     droneGain.gain.setTargetAtTime(DRONE * SETTINGS.music, t, 0.05);
+    if (hooks.onVolumes) hooks.onVolumes();
 }
 // Słuchacz = głowa gracza (wołane co klatkę)
 const _f = { x: 0, y: 0, z: -1 }, _u = { x: 0, y: 1, z: 0 };
@@ -82,6 +92,7 @@ function distortionCurve(k) {
 }
 // Tło na chwilę cichnie, żeby uderzenie było mocniejsze
 function duckDrone(t0) {
+    if (hooks.onDuck) hooks.onDuck(t0);
     if (!droneGain) return;
     droneGain.gain.cancelScheduledValues(t0);
     droneGain.gain.setValueAtTime(0.0001, t0);
@@ -117,7 +128,7 @@ export function scream(pos) {
 export function scare() {
     if (!ctx) return;
     const t0 = ctx.currentTime;
-    duckDrone(t0); lastLoud = t0 + 1.2;
+    duckDrone(t0); lastLoud = t0 + 1.2; bumpThreat(1, 5);
     buzz('both', 1.0, 450);   // jumpscare: mocna wibracja obu kontrolerów
     const sub = ctx.createOscillator(), sg = ctx.createGain(); sub.type = 'sine';
     sub.frequency.setValueAtTime(110, t0); sub.frequency.exponentialRampToValueAtTime(26, t0 + 0.7);
@@ -182,6 +193,7 @@ export function heartbeat(intensity) {
     if (!ctx || intensity <= 0.02) return;
     const now = ctx.currentTime;
     if (now < hb.next) return;
+    bumpThreat(Math.min(1, intensity), 1.3);
     thump(now, 1.0 * intensity); thump(now + 0.17, 0.65 * intensity);
     buzz('both', 0.6 * intensity, 60); setTimeout(() => buzz('both', 0.4 * intensity, 50), 170);   // bicie serca w dłoniach
     hb.next = now + 60 / (55 + 95 * intensity);
@@ -192,7 +204,7 @@ let lastLoud = -10, micAnalyser = null, micBuf = null, micStream = null;
 // Ryk (vol 0..1, pos = pozycja potwora {x,y,z})
 export function roar(vol, pos) {
     if (!ctx) return;
-    const t0 = ctx.currentTime, dest = outAt(pos); lastLoud = t0;
+    const t0 = ctx.currentTime, dest = outAt(pos); lastLoud = t0; bumpThreat(0.9, 4);
     buzz('both', 0.35 * (vol || 1), 700);
     const g = ctx.createGain(); env(g, t0, Math.max(0.01, vol), 0.15, 1.6);
     const ws = ctx.createWaveShaper(); ws.curve = distortionCurve(80);
@@ -282,7 +294,7 @@ export function screech(pos) {
     const n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.8);
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3000;
     const ng = ctx.createGain(); env(ng, t0, 0.5, 0.005, 0.7); n.connect(hp); hp.connect(ng); ng.connect(dst); n.start(t0);
-    duckDrone(t0); lastLoud = t0;
+    duckDrone(t0); lastLoud = t0; bumpThreat(1, 4);
     buzz('both', 0.8, 400);
 }
 // Syk gorącej pary z rury

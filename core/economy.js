@@ -137,7 +137,14 @@ export const CATALOG = [
     { slot: 'badge', id: 'banana', name: 'Banana badge', price: 0, locked: true, hint: '5 Banana wins' },
     { slot: 'badge', id: 'flag', name: 'Race flag', price: 0, locked: true, hint: '5 Race wins' },
     { slot: 'badge', id: 'daily', name: 'Calendar badge', price: 0, locked: true, hint: '5 Daily Runs' },
-    { slot: 'badge', id: 'present', name: 'Present badge', price: 0, locked: true, hint: 'Gift 3 items' }
+    { slot: 'badge', id: 'present', name: 'Present badge', price: 0, locked: true, hint: 'Gift 3 items' },
+    // Emotki (widzą je inni gracze; klawisz G / przycisk A,X otwiera panel). Wear = ulubiona emotka.
+    { slot: 'emote', id: 'wave', name: 'Wave', price: 0 },
+    { slot: 'emote', id: 'cheer', name: 'Cheer', price: 0 },
+    { slot: 'emote', id: 'clap', name: 'Clap', price: 400 },
+    { slot: 'emote', id: 'bow', name: 'Bow', price: 500 },
+    { slot: 'emote', id: 'flex', name: 'Flex', price: 900 },
+    { slot: 'emote', id: 'dance', name: 'Dance', price: 1200 }
 ];
 
 // ---------- SEZONY I TYGODNIOWA ROTACJA SKLEPU ----------
@@ -185,7 +192,7 @@ export function lockText(item) {
     if (item.weekly && !isFeatured(item)) return 'Not in stock this week';
     return '';
 }
-export const SLOTS = [{ id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badges' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }, { id: 'mskin', name: 'BagaBoo Games' }];
+export const SLOTS = [{ id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badges' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }, { id: 'mskin', name: 'BagaBoo Games' }, { id: 'emote', name: 'Emotes' }];
 
 // Pula zadań dziennych: każdego dnia losowane są 3 (takie same dla wszystkich graczy danego dnia)
 export const QUEST_POOL = [
@@ -274,8 +281,8 @@ export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dni
 function defaultSave() {
     return {
         v: 1, wallet: START_BONES, earned: 0,
-        owned: ['skin:none', 'badge:none', 'tool:none', 'mskin:none', 'hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none'],
-        equipped: { skin: 'none', badge: 'none', tool: 'none', mskin: 'none', hat: 'none', glasses: 'none', mask: 'none', sleeve: 'cloth', gloves: 'none' },
+        owned: ['skin:none', 'badge:none', 'tool:none', 'mskin:none', 'hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none', 'emote:wave', 'emote:cheer'],
+        equipped: { skin: 'none', badge: 'none', tool: 'none', mskin: 'none', hat: 'none', glasses: 'none', mask: 'none', sleeve: 'cloth', gloves: 'none', emote: 'wave' },
         profile: { name: 'Acrobat', color: '#3d2314' },
         best: { height: 0, jumps: 0 },
         login: { last: 0, streak: 0 },
@@ -464,7 +471,7 @@ export function checkCounters() {
 // Podarować można kosmetyk, który da się teraz kupić (nie nagrodę za osiągnięcie ani rzecz dla ekipy). Płaci darczyńca (cena z rabatem
 // tygodnia), a obdarowany dostaje przedmiot do szafy. Limit 3 prezentów dziennie.
 export const GIFT_LIMIT = 3;
-const GIFT_SLOTS = ['skin', 'hat', 'glasses', 'mask', 'sleeve', 'gloves', 'badge', 'mskin'];
+const GIFT_SLOTS = ['skin', 'hat', 'glasses', 'mask', 'sleeve', 'gloves', 'badge', 'mskin', 'emote'];
 export function giftable(item) { return !!item && GIFT_SLOTS.includes(item.slot) && !item.locked && item.price > 0 && !isLocked(item); }
 export function giftsLeft() { const d = ensureDaily(); return Math.max(0, GIFT_LIMIT - (d.gifts || 0)); }
 export function findItem(key) { return CATALOG.find(i => i.slot + ':' + i.id === key); }

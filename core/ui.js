@@ -6,6 +6,7 @@ import { Terminal, wrapText, AMBER, AMBER_DIM, OK_COL, BAD_COL, GOLD, markAllDir
 import * as N from './network.js';
 import * as E from './economy.js';
 import { PRESENCE } from './presence.js';
+import { playEmote } from './emotes.js';
 import { isStaffName, canPunish } from './config.js';
 
 // ---------- KOMPUTER (multiplayer) ----------
@@ -153,7 +154,8 @@ function itemRow(t, c, it, i, y, step) {
         const tag = E.isFeatured(it) ? ' (-' + Math.round(E.WEEKLY_DISCOUNT * 100) + '%)' : (it.season ? ' ' + E.SEASONS[it.season].name : '');
         t.text(price === 0 ? 'Free' : price + tag, 430, y + 22, tag ? 18 : 22, E.SAVE.wallet >= price ? (E.isFeatured(it) ? OK_COL : AMBER) : BAD_COL, 'left');
     }
-    t.btn('try' + it.slot + it.id, 610, y + 4, 160, 36, trying ? 'Trying' : 'Try on', () => { shopUi.tryItem = trying ? null : it; refreshPreview(); }, { size: 20, active: trying });
+    if (it.slot === 'emote') t.btn('try' + it.slot + it.id, 610, y + 4, 160, 36, 'Play', () => { playEmote(it.id); toast(it.name + '! Others in the room see it', '#ffd27a'); }, { size: 20 });   // emotki: pokaz zamiast przymiarki
+    else t.btn('try' + it.slot + it.id, 610, y + 4, 160, 36, trying ? 'Trying' : 'Try on', () => { shopUi.tryItem = trying ? null : it; refreshPreview(); }, { size: 20, active: trying });
     if (worn) t.btn('worn' + it.slot + it.id, 790, y + 4, 200, 36, 'Wearing', null, { size: 20, disabled: true });
     else if (owned) t.btn('wear' + it.slot + it.id, 790, y + 4, 200, 36, 'Wear', () => { E.equipItem(it); }, { size: 20, tone: 'ok' });
     else if (locked) t.btn('lock' + it.slot + it.id, 790, y + 4, 200, 36, 'Locked', null, { size: 20, disabled: true });
@@ -171,7 +173,7 @@ export const shop = new Terminal((t) => {
     if (E.isFeatured && !shopUi.seenWeek) { c.fillStyle = GOLD; c.beginPath(); c.arc(28 + 164 + 146, 92, 9, 0, 7); c.fill(); }   // kropka: nowy asortyment (znika po wejściu w zakładkę)
 
     if (shopUi.tab === 'shop') {
-        E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * 122, 152, 116, 46, s.name, () => { shopUi.slot = s.id; }, { size: s.name.length > 9 ? 14 : 17, tone: s.id === 'mskin' ? 'bad' : 'gold', active: shopUi.slot === s.id }));
+        E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * 108, 152, 102, 46, s.name, () => { shopUi.slot = s.id; }, { size: s.name.length > 9 ? 14 : 17, tone: s.id === 'mskin' ? 'bad' : 'gold', active: shopUi.slot === s.id }));
         const items = E.CATALOG.filter(it => it.slot === shopUi.slot);
         // Długie listy dzielone na strony po 8 przedmiotów
         const PER = 8, pages = Math.max(1, Math.ceil(items.length / PER));
@@ -184,7 +186,7 @@ export const shop = new Terminal((t) => {
             t.btn('pgPrev', 40, 590, 180, 40, 'Previous', () => { shopUi.pg--; }, { size: 20, disabled: shopUi.pg === 0 });
             t.text('Page ' + (shopUi.pg + 1) + ' of ' + pages, 512, 610, 20, AMBER, 'center');
             t.btn('pgNext', 804, 590, 180, 40, 'Next', () => { shopUi.pg++; }, { size: 20, disabled: shopUi.pg >= pages - 1 });
-        } else t.text(shopUi.slot === 'mskin' ? 'Monster skins show only in Become the Monster, when you are the monster.' : 'Look at the stand next to the machine to see the item on a head.', 40, 610, 18, AMBER_DIM, 'left');
+        } else t.text(shopUi.slot === 'mskin' ? 'Monster skins show only in Become the Monster, when you are the monster.' : (shopUi.slot === 'emote' ? 'In game press G (computer) or A / X (VR) to play emotes. Others in the room see them.' : 'Look at the stand next to the machine to see the item on a head.'), 40, 610, 18, AMBER_DIM, 'left');
     } else if (shopUi.tab === 'daily') {
         t.text('Login reward every 6 hours', 40, 176, 30, GOLD, 'left', true);
         t.text('Current streak: ' + login.streak + '   Next reward: ' + login.nextAmount + ' ' + E.CURRENCY, 40, 222, 24, AMBER, 'left');
