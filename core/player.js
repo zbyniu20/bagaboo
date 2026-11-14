@@ -8,15 +8,23 @@ import { initPointers, clickPointer } from './terminal.js';
 import { sendObjectMove } from './network.js';
 import { buzz } from './haptics.js';
 
-const radius = 0.35, gorillaStanceOffset = 0.45;   // widok o 15 cm wyżej niż wcześniej (dłuższe ręce sięgają podłogi)
+const radius = 0.35, gorillaStanceOffset = 0.35;   // widok wyżej, bo długie ręce goryla i tak sięgają podłogi
 const POWER = 1.0;            // siła trampolin i limit prędkości (1.0 = normalnie)
 // Ruch w stylu Gorilla Tag: dłoń dotykająca powierzchni jest "przyklejona", a ciało przesuwa się
 // o tyle, o ile przesuniesz dłoń. Po oderwaniu dłoni ciało leci z prędkością ostatnich ruchów ręki.
 const JUMP_MULT = 1.1;        // mnożnik prędkości po oderwaniu dłoni
 const MAX_JUMP_SPEED = 7.5;   // maksymalna prędkość wyrzutu (m/s): szybki bieg, skok na ok. 2,5 m
-// Długie ręce goryla: dłoń w grze jest 1,3 raza dalej od barku niż kontroler w rzeczywistości.
+// Długie ręce goryla: dłoń w grze jest 1,55 raza dalej od barku niż kontroler w rzeczywistości.
 // Dzięki temu łatwo sięgasz podłogi i robisz dłuższe "kroki" rękami, więc biegasz szybciej.
-const ARM_SCALE = 1.3, SHOULDER_DROP = 0.25;
+const ARM_SCALE = 1.55, SHOULDER_DROP = 0.25;
+// Ślizg na brzuchu: rozpędź się, przykucnij nisko (głowa blisko podłogi) i jedziesz po podłodze, prawie bez hamowania.
+// W trakcie ślizgu możesz "wiosłować" dłońmi po podłodze, żeby przyspieszyć albo skręcić.
+const SLIDE_CROUCH = 0.4;     // przykucnięcie: głowa o tyle niżej niż zwykle (m) = pozycja do ślizgu (działa dla niskich i wysokich graczy)
+const SLIDE_MIN_SPEED = 2.2;  // minimalna prędkość, żeby zacząć ślizg (m/s)
+const SLIDE_STOP_SPEED = 0.7; // poniżej tej prędkości ślizg się kończy
+const SLIDE_BOOST = 1.2;      // przyspieszenie na wejściu w ślizg
+const SLIDE_DRAG = 0.35;      // hamowanie w ślizgu (ułamek prędkości na sekundę)
+const SLIDE_PADDLE = 0.25;    // ile ruchu dłoni po podłodze dodaje się w ślizgu
 const MIN_JUMP_SPEED = 0.3;   // wolniejsze ruchy nie wyrzucają gracza
 const VEL_HISTORY = 3;        // z ilu ostatnich klatek liczona jest prędkość wyrzutu
 const SLIDE_SPEED = 1.6;      // jak szybko zjeżdżasz po śliskiej ścianie (przy przyczepności 0)
@@ -50,6 +58,29 @@ export function setPlayerPosition(x, y, z) {
 
 const anchorVel = [null, null], anchorWall = [false, false], velHist = [];   // prędkości od "przyklejonych" dłoni i historia do wyrzutu
 let wasAnchored = false, lastDt = 1 / 72;
+let sliding = false, slideAir = 0, slideBuzz = 0, standRef = 0;
+export function isSliding() { return sliding; }
+// Ślizg: start, gdy gracz jest na podłodze, szybki i nisko przykucnięty; koniec, gdy wstanie, zwolni albo spadnie
+function updateSlide(p, v) {
+    if (!renderer.xr.isPresenting || ropeConstraint) { sliding = false; playerRig.userData.sliding = false; return; }
+    // Zwykła wysokość głowy gracza (najwyższa ostatnio, powoli maleje, więc dopasowuje się też do gry na siedząco)
+    const head = camera.position.y;
+    standRef = Math.max(standRef - 0.03 / 90, head);
+    const low = head < standRef - SLIDE_CROUCH;
+    const sp = Math.hypot(v.x, v.z);
+    if (!sliding) {
+        if (grounded && low && sp > SLIDE_MIN_SPEED) {
+            sliding = true; slideAir = 0;
+            const k = Math.min(SLIDE_BOOST, (MAX_JUMP_SPEED * 1.1) / sp); v.x *= k; v.z *= k;
+            buzz('both', 0.5, 120);
+        }
+    } else {
+        slideAir = grounded ? 0 : slideAir + 1 / 90;
+        if (head > standRef - SLIDE_CROUCH + 0.12 || sp < SLIDE_STOP_SPEED || slideAir > 0.35) sliding = false;
+        else if (simTime - slideBuzz > 0.15) { slideBuzz = simTime; buzz('both', 0.12 + Math.min(0.3, sp * 0.04), 60); }   // drżenie podłogi pod brzuchem
+    }
+    playerRig.userData.sliding = sliding;   // inni gracze widzą, że leżysz na brzuchu
+}
 let grounded = false, handPushing = false, stepped = false, simTime = 0, lastPushTime = -10, lastTrampTime = -10;
 let grabbed = null, grabbingIndex = -1, ropeConstraint = null, ropeHand = -1;
 const wasTouch = [false, false], lastSpd = [0, 0], lastScrape = [0, 0];
@@ -155,7 +186,9 @@ world.addEventListener('postStep', () => {
     }
     grounded = false;
     for (const o of L.obstacles) if (sphereVsBox(p.x, p.y, p.z, radius + 0.03, o.box3) && hit.ny > 0.5) { grounded = true; break; }
-    if (grounded && !ropeConstraint && !external.move && !handPushing) {   // dłoń na powierzchni steruje ruchem sama, bez tarcia
+    updateSlide(p, v);
+    if (sliding) { const k = Math.exp(-SLIDE_DRAG / 90); v.x *= k; v.z *= k; }   // ślizg: prawie bez tarcia
+    else if (grounded && !ropeConstraint && !external.move && !handPushing) {   // dłoń na powierzchni steruje ruchem sama, bez tarcia
         const k = simTime - lastPushTime < MOMENTUM_TIME ? FRICTION_RUN : FRICTION_IDLE;   // krótki poślizg po biegu, potem hamowanie
         v.x *= k; v.z *= k;
         if (k === FRICTION_IDLE) { if (Math.abs(v.x) < 0.08) v.x = 0; if (Math.abs(v.z) < 0.08) v.z = 0; }
@@ -249,6 +282,12 @@ function applyAnchors() {
     if (ropeConstraint) { velHist.length = 0; wasAnchored = false; return; }
     const a = anchorVel.filter(v => v);
     const v = playerBody.velocity;
+    if (a.length && sliding) {   // w ślizgu dłonie tylko dokładają prędkość (wiosłowanie), nie zatrzymują ciała
+        const avg = new THREE.Vector3(); a.forEach(x => avg.add(x)); avg.multiplyScalar(1 / a.length);
+        v.x += avg.x * SLIDE_PADDLE * lastDt * 10; v.z += avg.z * SLIDE_PADDLE * lastDt * 10;
+        velHist.length = 0; wasAnchored = false;
+        return;
+    }
     if (a.length) {
         const avg = new THREE.Vector3(); a.forEach(x => avg.add(x)); avg.multiplyScalar(1 / a.length);
         // Ściana i bok przeszkody trzymają słabiej niż podłoga: ruch ręki działa, ale ciało nie "przykleja się" i lekko zsuwa
