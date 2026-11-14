@@ -3,7 +3,7 @@
 // Host rejestruje pokój pod stałym ID (prefiks + kod). Serwer PeerJS nie pozwoli drugiej osobie
 // zostać hostem tego samego pokoju, a gość nie połączy się, dopóki host nie jest online.
 // ==========================================
-import { THREE, camera, scene, L, CANNON, containBall } from './engine.js';
+import { THREE, camera, scene, L, CANNON, containBall, playerRig } from './engine.js';
 import { createAvatar, poseHand, lookKey, animateFace } from './avatar.js';
 import { getLook, SESSION, SAVE } from './economy.js';
 import { markAllDirty, toast } from './terminal.js';
@@ -217,7 +217,13 @@ function updateRemote(id, st) {
     if (st.h1.g !== undefined) p.handL.userData.rig.target = st.h1.g;
     if (st.h2.g !== undefined) p.handR.userData.rig.target = st.h2.g;
     const e = new THREE.Euler().setFromQuaternion(p.head.quaternion, 'YXZ');
-    p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -(p.torsoDrop || 0.35), 0)); p.torso.rotation.set(0, e.y, 0);
+    const drop = p.torsoDrop || 0.35;
+    p.torso.rotation.order = 'YXZ';
+    if (st.sl) {   // ślizg na brzuchu: tułów leży poziomo za głową
+        const lean = 1.35, bx = Math.sin(e.y), bz = Math.cos(e.y);
+        p.torso.position.copy(p.head.position).add(new THREE.Vector3(bx * drop * Math.sin(lean), -drop * Math.cos(lean), bz * drop * Math.sin(lean)));
+        p.torso.rotation.set(-lean, e.y, 0);
+    } else { p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -drop, 0)); p.torso.rotation.set(0, e.y, 0); }
     p.group.visible = (st.lvl || 'lobby') === L.levelId;   // widać tylko graczy na tym samym poziomie
 }
 function removeRemote(id) { if (remoteAvatars[id]) { scene.remove(remoteAvatars[id].group); delete remoteAvatars[id]; } }
@@ -402,6 +408,7 @@ export function networkTick(handL, handR) {
         head: { p: hp.toArray(), q: hq.toArray() },
         h1: { p: l1p.toArray(), q: l1q.toArray(), g: handL.userData.rig.grip },
         h2: { p: l2p.toArray(), q: l2q.toArray(), g: handR.userData.rig.grip },
+        sl: playerRig.userData.sliding ? 1 : 0,   // ślizg na brzuchu
         s: { h: SESSION.maxH, j: SESSION.jumps, e: (Date.now() - SESSION.since) / 1000 }
     };
     if (NET.mode === 'host') {
