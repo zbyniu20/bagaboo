@@ -221,6 +221,9 @@ export function update(dt, t, ctx) {
     for (const f of S.flick) { if (f.light) { const k = 0.7 + 0.3 * Math.sin(t * 13 + f.ph) * Math.sin(t * 7 + f.ph); f.light.intensity = 18 * k; f.sprite.scale.y = 1.6 + 0.6 * k; } if (f.cage) f.cage.rotation.y = Math.sin(t * 0.4 + f.ph) * 0.3; }
     S.beast.m.animate(t);
     if (S.dead) { updateDeath(dt, t); return; }
+    // Po szybkim restarcie szary popiół przed oczami znika w ok. pół sekundy
+    const bf = S.burn;
+    if (bf.grey.material.opacity > 0) { bf.grey.material.opacity = Math.max(0, bf.grey.material.opacity - dt * 1.8); bf.ash.material.opacity = Math.max(0, bf.ash.material.opacity - dt * 2); }
 
     // Instrukcja i wynurzanie się Bestii
     S.scare.update(dt);
@@ -322,10 +325,29 @@ function updateDeath(dt, t) {
         for (let i = 0; i < bf.ashPos.length / 3; i++) { if (!d.ashInit) { bf.ashPos[i * 3] = (Math.random() - 0.5) * 1.6; bf.ashPos[i * 3 + 1] = Math.random() * 1.2 - 0.3; bf.ashPos[i * 3 + 2] = -0.4 - Math.random() * 0.4; } bf.ashPos[i * 3 + 1] -= dt * (0.1 + (i % 5) * 0.04); bf.ashPos[i * 3] += Math.sin(t * 2 + i) * dt * 0.05; }
         d.ashInit = true; bf.ash.geometry.attributes.position.needsUpdate = true;
     }
-    if (d.t > ARRIVE_TIME + 3.0 && !S.leaving) {
-        S.leaving = true; toast('Burned to ash. Same path, try again - remember it!', '#ff6a2a');
-        S.ctx.goto('memory', null, { seed: S.seed, noFollow: true });
+    if (d.t > ARRIVE_TIME + 3.0) {
+        toast('Burned to ash. Same path, try again - remember it!', '#ff6a2a');
+        respawn();
     }
+}
+// Szybki restart po śmierci: bez przeładowania poziomu i ekranu ładowania.
+// Kamienie wracają na miejsce, Bestia na start, popiół powoli znika i od razu rusza podgląd trasy z góry.
+function respawn() {
+    for (const row of S.rows) for (const s of row) {
+        const b = s.ob.box3;
+        s.m.position.y -= s.y; b.min.y -= s.y; b.max.y -= s.y;
+        if (s.ob.body) s.ob.body.position.y -= s.y;
+        s.m.position.x = s.x; s.m.visible = true;
+        s.y = 0; s.t = 0; s.state = 'up';
+    }
+    const B = S.beast;
+    B.x = 5.5; B.z = START_EDGE - 2.5; B.y = -0.9; B.speed = BEAST_SPEED; B.rising = false; B.step = undefined;
+    const bf = S.burn;
+    bf.orange.material.opacity = 0; bf.flames.forEach(fl => { fl.s.material.opacity = 0; });
+    S.dead = null; S.runT = 0; S.row = -1; S.chaseT = -HEAD_START; S.hudT = 0;
+    S.nextScareRow = SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1));
+    S.attempt = (S.attempt || 1) + 1;
+    startPreview();
 }
 function fmt(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function drawHud() {
@@ -333,6 +355,7 @@ function drawHud() {
     x.textBaseline = 'middle'; x.textAlign = 'left';
     x.font = 'bold 78px "Courier New", monospace'; x.fillStyle = '#ffd8b0'; x.fillText(fmt(S.runT), 30, 74);
     x.font = 'bold 36px "Courier New", monospace'; x.fillStyle = '#ffb030'; x.fillText('Row ' + Math.max(0, S.row + 1) + '/' + ROWS, 330, 52);
+    if (S.attempt > 1) { x.font = 'bold 28px "Courier New", monospace'; x.fillStyle = '#ffd8b0'; x.fillText('Attempt ' + S.attempt, 330, 104); }
     x.font = 'bold 28px "Courier New", monospace';
     if (S.phase === 'intro') { x.fillStyle = '#ffb070'; x.fillText('Watch the beast wake up...', 30, 162); }
     else if (S.phase === 'preview') { x.fillStyle = '#7fff90'; x.fillText('Memorize the green path: ' + Math.ceil(S.previewT) + ' s', 30, 162); }
