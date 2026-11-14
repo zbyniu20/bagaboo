@@ -315,7 +315,7 @@ function updateSkins(mon, mpos, t) {
     const key = mon + ':' + skin;
     if (!S.skins[key]) { const m = buildMonsterSkin(skin); if (!m) return; m.group.scale.setScalar(1.15); L.root.add(m.group); S.skins[key] = m; }
     const m = S.skins[key]; m.group.visible = true; m.group.position.copy(mpos);
-    if (st.head && st.head.q) { const q = new THREE.Quaternion().fromArray(st.head.q), e = new THREE.Euler().setFromQuaternion(q, 'YXZ'); m.group.rotation.set(0, e.y, 0); }
+    if (st.head && st.head.q) { const q = new THREE.Quaternion().fromArray(st.head.q), e = new THREE.Euler().setFromQuaternion(q, 'YXZ'); m.group.rotation.set(0, e.y + Math.PI, 0); }   // modele patrzą w stronę +Z, a kamera gracza w -Z, więc obrót o 180°
     m.animate(t);
     N.setAvatarHidden(mon, true);
     S.tag.visible = false;
