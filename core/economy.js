@@ -213,10 +213,12 @@ export function getLook() {
 // Ukrywanie własnego napisu z rolą nad głową (przełącznik w pokoju szefa)
 export function setHideTag(on) { SAVE.profile.hideTag = !!on; saveGame(); notifyLook(); }
 // Włamanie do pokoju szefa: skórka CHEATER na zawsze (zapisana w save, nie do zdjęcia)
-export function markCheater() { if (!SAVE.cheater) { SAVE.cheater = true; if (!SAVE.owned.includes('skin:cheater')) SAVE.owned.push('skin:cheater'); SAVE.equipped.skin = 'cheater'; saveGame(); notifyLook(); } }
+export function markCheater() { if (isStaffName(SAVE.profile.name)) return; if (!SAVE.cheater) { SAVE.cheater = true; if (!SAVE.owned.includes('skin:cheater')) SAVE.owned.push('skin:cheater'); SAVE.equipped.skin = 'cheater'; saveGame(); notifyLook(); } }
 export function setProfile(p) { Object.assign(SAVE.profile, p); refreshStaffItems(); saveGame(); notifyLook(); }
 // Odznaki Admin / Moderator i młotek Kick należą się tylko ekipie (wg nicku); reszcie są zabierane
 export function refreshStaffItems() {
+    // Ekipa (admin, moderator) nigdy nie jest CHEATEREM: skórka z błędnego włamania jest zdejmowana
+    if (SAVE.cheater && isStaffName(SAVE.profile.name)) { SAVE.cheater = false; const i = SAVE.owned.indexOf('skin:cheater'); if (i >= 0) SAVE.owned.splice(i, 1); if (SAVE.equipped.skin === 'cheater') SAVE.equipped.skin = 'none'; }
     const n = SAVE.profile.name, give = (key, on) => { const has = SAVE.owned.includes(key); if (on && !has) SAVE.owned.push(key); if (!on && has) SAVE.owned.splice(SAVE.owned.indexOf(key), 1); };
     if ((isOwnerName(n) || isUltimateName(n)) && !SAVE.owned.includes('tool:ban')) SAVE.owned.push('tool:ban');   // Ban hammer za darmo dla właściciela i ultimate admina
     give('badge:owner', isOwnerName(n)); give('badge:coadmin', isCoAdminName(n)); give('badge:ultimate', isUltimateName(n)); give('badge:admin', isAdminName(n)); give('badge:mod', isModName(n) && !isAdminName(n)); give('tool:kick', isStaffName(n));
