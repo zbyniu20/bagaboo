@@ -11,6 +11,9 @@ import * as NETM from './core/network.js';
 import { updatePlayer, setPlayerPosition, buildHands, hands, playerBody, releaseAll } from './core/player.js';
 import { redrawTerminals, updatePointers, updateToast, markAllDirty, toast, terminals } from './core/terminal.js';
 import { initAudio, updateListener } from './core/audio.js';
+import { setLevelMusic } from './core/music.js';
+import { pollEmoteButtons } from './core/emotepanel.js';
+import { setAmbience } from './core/ambience.js';
 import { drawScoreboard } from './core/ui.js';
 import { PAUSE, pauseMenu, pollPauseButtons, closePause } from './core/pause.js';
 import { SETTINGS, saveSettings } from './core/settings.js';
@@ -53,7 +56,7 @@ export async function loadLevel(id, spawn) {
     releaseAll();
     if (level && level.dispose) level.dispose();
     for (const e of extras) if (e.dispose) e.dispose();
-    for (const t of terminals) if (t !== pauseMenu && t !== vrMenuTerminal) t.mesh = null;   // ekrany starego poziomu przestają reagować na laser
+    for (const t of terminals) if (t !== pauseMenu && t !== vrMenuTerminal && !t.persistent) t.mesh = null;   // ekrany starego poziomu przestają reagować na laser
     clearLevel();
     applyLighting(LIGHT_PRESETS[cfg.light]);
     level = await import(cfg.path);
@@ -65,6 +68,7 @@ export async function loadLevel(id, spawn) {
     for (const e of extras) e.build();
     onLevelBuilt(cfg.light, LIGHT_PRESETS[cfg.light]);   // warstwa wizualna (odbicia, szczegół, poświaty, cząsteczki)
     levelId = id; PAUSE.inLobby = id === 'lobby';
+    setLevelMusic(id); setAmbience(id);   // dynamiczna muzyka i ambient 3D dla tego poziomu
     const sp = spawn || L.spawn;
     // W multiplayerze każdy gracz pojawia się w trochę innym miejscu (na okręgu 1,2 m wokół punktu startu),
     // żeby nie stać w sobie nawzajem. Gdy to miejsce jest w ścianie, zostaje zwykły punkt startu.
@@ -258,7 +262,7 @@ let uiTimer = 0;
 renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1), t = clock.elapsedTime;
     for (let i = frameWaiters.length - 1; i >= 0; i--) if (--frameWaiters[i].n <= 0) { frameWaiters[i].r(); frameWaiters.splice(i, 1); }
-    pollPauseButtons();
+    pollPauseButtons(); pollEmoteButtons();
     // Pauza zatrzymuje świat tylko w grze solo
     const frozen = PAUSE.on && NETM.NET.mode === 'solo';
     if (!frozen) { updatePlayer(dt, t); updateDesktop(dt); updateHammer(dt); }
