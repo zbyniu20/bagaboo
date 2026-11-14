@@ -11,6 +11,7 @@ import { LIGHT_PRESETS } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { levelReward, rewardActivity, recordTime, unlockAchievement, diffOf } from '../core/economy.js';
 import { createGhost } from '../core/runkit.js';
+import { createEvents } from '../core/events.js';
 import { toast } from '../core/terminal.js';
 import { setPlayerPosition, releaseRope, isOnRope, hands } from '../core/player.js';
 import * as N from '../core/network.js';
@@ -53,7 +54,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -14.6, maxX: 14.6, minZ: -14.6, maxZ: 14.6, maxY: CEIL - 0.4 };
     S = {
-        df: diffOf('silence'), ghost: createGhost('silence'), clock: 0, phase: 'intro', introT: quickStart ? RESTART_INTRO : INTRO_TIME, introLen: quickStart ? RESTART_INTRO : INTRO_TIME,
+        ev: createEvents('silence'), df: diffOf('silence'), ghost: createGhost('silence'), clock: 0, phase: 'intro', introT: quickStart ? RESTART_INTRO : INTRO_TIME, introLen: quickStart ? RESTART_INTRO : INTRO_TIME,
         t: GAME_TIME, nest: new Set(), localNested: false, caughtT: -1, rescueT: 0, grip: 0, exhausted: false,
         noiseShown: 0, alert: 0, lastMicSend: 0, lastHostMsg: -10, netT: 0, hudT: 0, boardT: 0, prevMode: 'sleep',
         fuseSeed: (Math.random() * 1e9) | 0, fuseGot: 0, fusePending: 0, leaving: false, won: false, balls: {}
@@ -539,6 +540,7 @@ export function update(dt, t, ctx) {
     S.noiseShown = Math.max(0, S.noiseShown - dt * 0.8);
     if (S.phase === 'play') S.playT = (S.playT || 0) + dt;
     S.ghost.tick(dt, p, S.phase === 'play' && S.caughtT < 0);
+    S.ev.update(dt, S.phase === 'play' && S.caughtT < 0);
     if (L.heldId && String(L.heldId).startsWith('black')) S.usedBall = true;   // do osiągnięcia "Silent ghost"
     if (S.alert > 0) S.alert -= dt;
 
@@ -669,6 +671,7 @@ function animateMonster(dt, t, p) {
 // Sprzątanie przy wyjściu z poziomu
 export function dispose() {
     if (S) {
+        if (S.ev) S.ev.dispose();
         if (S.ghost) S.ghost.dispose();
         if (S.scare) S.scare.dispose();
         if (S.hud) S.hud.dispose();

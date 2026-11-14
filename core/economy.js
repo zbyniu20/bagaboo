@@ -88,8 +88,99 @@ export const CATALOG = [
     { slot: 'mask', id: 'doll', name: 'Porcelain doll face', price: 1800 },
     { slot: 'mask', id: 'plague', name: 'Plague doctor', price: 2400 },
     { slot: 'mask', id: 'skull', name: 'Skull mask', price: 3200 },
-    { slot: 'mask', id: 'blind', name: 'Face of the Blind One', price: 5000 }
+    { slot: 'mask', id: 'blind', name: 'Face of the Blind One', price: 5000 },
+
+    // ===== NOWE KOSMETYKI =====
+    // season: kupisz tylko w trakcie sezonu (potem zostaje na zawsze), weekly: w sklepie tylko gdy jest "polecany" w tym tygodniu
+    // (4 z puli co tydzień, -20%), locked + hint: odblokowuje się za zadania dzienne albo wyzwania na poziomach (zakładka Awards)
+    { slot: 'hat', id: 'santa', name: 'Santa hat', price: 900, season: 'winter' },
+    { slot: 'hat', id: 'pumpkin', name: 'Pumpkin head', price: 1500, season: 'halloween' },
+    { slot: 'hat', id: 'witch', name: 'Witch hat', price: 1200, season: 'halloween' },
+    { slot: 'hat', id: 'bunny', name: 'Bunny ears', price: 800, season: 'spring' },
+    { slot: 'hat', id: 'party', name: 'Party hat', price: 500, weekly: true },
+    { slot: 'hat', id: 'wizard', name: 'Wizard hat', price: 1400, weekly: true },
+    { slot: 'hat', id: 'cone', name: 'Traffic cone', price: 700, weekly: true },
+    { slot: 'hat', id: 'headphones', name: 'Headphones', price: 0, locked: true, hint: 'Daily quests x5' },
+    { slot: 'hat', id: 'laurel', name: 'Golden laurel', price: 0, locked: true, hint: 'All 3 quests, 7 days' },
+    { slot: 'glasses', id: 'monocle', name: 'Gold monocle', price: 600, weekly: true },
+    { slot: 'glasses', id: 'heart', name: 'Heart glasses', price: 700, season: 'spring' },
+    { slot: 'glasses', id: 'shutter', name: 'Shutter shades', price: 800, weekly: true },
+    { slot: 'glasses', id: 'night', name: 'Night vision', price: 0, locked: true, hint: 'Silence on Nightmare' },
+    { slot: 'glasses', id: '3d', name: '3D glasses', price: 0, locked: true, hint: 'Daily quests x20' },
+    { slot: 'sleeve', id: 'sweater', name: 'Ugly sweater', price: 800, season: 'winter' },
+    { slot: 'sleeve', id: 'hawaii', name: 'Hawaiian shirt', price: 800, season: 'summer' },
+    { slot: 'sleeve', id: 'plaid', name: 'Plaid flannel', price: 500, weekly: true },
+    { slot: 'sleeve', id: 'ember', name: 'Ember cloth', price: 0, locked: true, hint: 'Memory on Nightmare' },
+    { slot: 'sleeve', id: 'woven', name: 'Woven threads', price: 0, locked: true, hint: 'Laundry on Nightmare' },
+    { slot: 'gloves', id: 'mittens', name: 'Knit mittens', price: 600, season: 'winter' },
+    { slot: 'gloves', id: 'boxing', name: 'Boxing gloves', price: 1000, weekly: true },
+    { slot: 'gloves', id: 'rubber', name: 'Rubber gloves', price: 600, weekly: true },
+    { slot: 'gloves', id: 'tar', name: 'Tar hands', price: 0, locked: true, hint: 'Well on Nightmare' },
+    { slot: 'gloves', id: 'golden', name: 'Golden gloves', price: 0, locked: true, hint: 'Login streak of 7' },
+    { slot: 'skin', id: 'snowape', name: 'Snow ape', price: 2600, season: 'winter' },
+    { slot: 'skin', id: 'pumpkinape', name: 'Pumpkin ape', price: 2400, season: 'halloween' },
+    { slot: 'skin', id: 'zombie', name: 'Zombie ape', price: 2800, season: 'halloween' },
+    { slot: 'skin', id: 'jungle', name: 'Jungle ape', price: 1800, weekly: true },
+    { slot: 'skin', id: 'nightmare', name: 'Nightmare ape', price: 0, locked: true, hint: 'All 5 on Nightmare' },
+    { slot: 'mask', id: 'jack', name: 'Jack-o-lantern', price: 2000, season: 'halloween' },
+    { slot: 'mask', id: 'snowman', name: 'Snowman mask', price: 1800, season: 'winter' },
+    { slot: 'mask', id: 'clown', name: 'Clown mask', price: 1500, weekly: true },
+    { slot: 'mask', id: 'oni', name: 'Oni mask', price: 2200, weekly: true },
+    { slot: 'mask', id: 'stitched', name: 'Stitched face', price: 0, locked: true, hint: 'Maze on Nightmare' },
+    { slot: 'badge', id: 'pumpkin', name: 'Pumpkin pin', price: 400, season: 'halloween' },
+    { slot: 'badge', id: 'snow', name: 'Snowflake pin', price: 400, season: 'winter' },
+    { slot: 'badge', id: 'sun', name: 'Sun pin', price: 400, season: 'summer' },
+    { slot: 'badge', id: 'nm', name: 'Nightmare pin', price: 0, locked: true, hint: '1st Nightmare clear' },
+    { slot: 'badge', id: 'ghost', name: 'Ghost badge', price: 0, locked: true, hint: '10 Hide&Seek wins' },
+    { slot: 'badge', id: 'banana', name: 'Banana badge', price: 0, locked: true, hint: '5 Banana wins' },
+    { slot: 'badge', id: 'flag', name: 'Race flag', price: 0, locked: true, hint: '5 Race wins' }
 ];
+
+// ---------- SEZONY I TYGODNIOWA ROTACJA SKLEPU ----------
+// Sezonowe przedmioty kupisz tylko w oknie czasowym (daty co roku te same), zdobyte zostają na zawsze.
+export const SEASONS = {
+    halloween: { name: 'Halloween', from: [10, 15], to: [11, 20] },
+    winter: { name: 'Winter', from: [12, 1], to: [1, 10] },
+    spring: { name: 'Spring', from: [3, 15], to: [5, 15] },
+    summer: { name: 'Summer', from: [6, 15], to: [8, 31] }
+};
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const mdVal = (m, d) => m * 100 + d;
+export function seasonActive(id) {
+    const z = SEASONS[id]; if (!z) return true;
+    const n = new Date(), v = mdVal(n.getMonth() + 1, n.getDate()), a = mdVal(z.from[0], z.from[1]), b = mdVal(z.to[0], z.to[1]);
+    return a <= b ? (v >= a && v <= b) : (v >= a || v <= b);
+}
+export function seasonText(id) {
+    const z = SEASONS[id]; if (!z) return '';
+    return seasonActive(id) ? 'until ' + MONTHS[z.to[0] - 1] + ' ' + z.to[1] : 'back ' + MONTHS[z.from[0] - 1] + ' ' + z.from[1];
+}
+const WEEK_MS = 7 * 86400000, WEEK_SHIFT = 3 * 86400000;   // tydzień od poniedziałku (epoka Unix zaczyna się w czwartek)
+export const WEEKLY_COUNT = 4, WEEKLY_DISCOUNT = 0.2;
+export function weekIndex() { return Math.floor((Date.now() + WEEK_SHIFT) / WEEK_MS); }
+export function weekMsLeft() { return (weekIndex() + 1) * WEEK_MS - WEEK_SHIFT - Date.now(); }
+let weeklyCache = { week: -1, keys: new Set() };
+export function weeklyKeys() {
+    const w = weekIndex();
+    if (weeklyCache.week === w) return weeklyCache.keys;
+    const pool = CATALOG.filter(i => i.weekly).map(i => i.slot + ':' + i.id);
+    let h = hashStr('week-' + w);
+    const keys = new Set();
+    while (keys.size < Math.min(WEEKLY_COUNT, pool.length)) { h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0; keys.add(pool.splice(h % pool.length, 1)[0]); }
+    weeklyCache = { week: w, keys: keys };
+    return keys;
+}
+export function isFeatured(item) { return !!item.weekly && weeklyKeys().has(item.slot + ':' + item.id); }
+// Cena z rabatem dla polecanych w tym tygodniu
+export function priceOf(item) { return isFeatured(item) ? Math.round(item.price * (1 - WEEKLY_DISCOUNT) / 10) * 10 : item.price; }
+// Dlaczego nie można teraz kupić (pusty tekst = można)
+export function lockText(item) {
+    if (isOwned(item)) return '';
+    if (item.locked) return item.hint || 'Locked';
+    if (item.season && !seasonActive(item.season)) return SEASONS[item.season].name + ' ' + seasonText(item.season);
+    if (item.weekly && !isFeatured(item)) return 'Not in stock this week';
+    return '';
+}
 export const SLOTS = [{ id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badges' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }, { id: 'mskin', name: 'BagaBoo Games' }];
 
 // Pula zadań dziennych: każdego dnia losowane są 3 (takie same dla wszystkich graczy danego dnia)
@@ -121,10 +212,27 @@ export const ACHIEVEMENTS = [
     { id: 'well_climber', name: 'Well climber', desc: 'Climb out of the well in under 4:30', reward: ['hat', 'miner'], rewardName: "Miner's helmet" },
     { id: 'route_rush', name: 'Route rush', desc: 'Finish the red route in under 1:30', reward: ['glasses', 'goldshades'], rewardName: 'Gold shades' },
     { id: 'lava_walker', name: 'Lava walker', desc: 'Finish Floor is Lava without burning even once', reward: ['badge', 'flame'], rewardName: 'Lava walker badge' },
-    { id: 'completionist', name: 'Completionist', desc: 'Beat all three levels and become Parkour King', reward: ['skin', 'bloodmoon'], rewardName: 'Bloodmoon skin' }
+    { id: 'completionist', name: 'Completionist', desc: 'Beat all three levels and become Parkour King', reward: ['skin', 'bloodmoon'], rewardName: 'Bloodmoon skin' },
+    // --- Zadania dzienne ---
+    { id: 'quest_5', name: 'Errand runner', desc: 'Finish 5 daily quests', reward: ['hat', 'headphones'], rewardName: 'Headphones', goal: 5, val: () => SAVE.questsDone || 0 },
+    { id: 'quest_20', name: 'Quest veteran', desc: 'Finish 20 daily quests', reward: ['glasses', '3d'], rewardName: '3D glasses', goal: 20, val: () => SAVE.questsDone || 0 },
+    { id: 'quest_days7', name: 'Perfect week', desc: 'Finish all 3 quests on 7 different days', reward: ['hat', 'laurel'], rewardName: 'Golden laurel', goal: 7, val: () => SAVE.bonusDays || 0 },
+    { id: 'streak_7', name: 'Regular', desc: 'Reach a login streak of 7', reward: ['gloves', 'golden'], rewardName: 'Golden gloves', goal: 7, val: () => SAVE.login.streak || 0 },
+    // --- Wyzwania na poziomach (Nightmare) ---
+    { id: 'nm_first', name: 'Into the dark', desc: 'Clear any level on Nightmare', reward: ['badge', 'nm'], rewardName: 'Nightmare pin' },
+    { id: 'nm_maze', name: 'Lost for real', desc: 'Escape The Maze on Nightmare', reward: ['mask', 'stitched'], rewardName: 'Stitched face' },
+    { id: 'nm_silence', name: 'Deaf to fear', desc: 'Survive Silence on Nightmare', reward: ['glasses', 'night'], rewardName: 'Night vision' },
+    { id: 'nm_well', name: 'Tar-proof', desc: 'Climb out of The Well on Nightmare', reward: ['gloves', 'tar'], rewardName: 'Tar hands' },
+    { id: 'nm_laundry', name: 'Clean getaway', desc: 'Escape the Laundromat on Nightmare', reward: ['sleeve', 'woven'], rewardName: 'Woven threads' },
+    { id: 'nm_memory', name: 'Burning brain', desc: 'Cross Burning Memory on Nightmare', reward: ['sleeve', 'ember'], rewardName: 'Ember cloth' },
+    { id: 'nm_all', name: 'Nightmare master', desc: 'Clear all 5 levels on Nightmare', reward: ['skin', 'nightmare'], rewardName: 'Nightmare ape', goal: 5, val: () => Object.keys(SAVE.nmWins || {}).length },
+    // --- Tryby gry ---
+    { id: 'hs_10', name: 'Ghost of the warehouse', desc: 'Win 10 rounds of Hide and Seek', reward: ['badge', 'ghost'], rewardName: 'Ghost badge', goal: 10, val: () => SAVE.hideseekWins || 0 },
+    { id: 'banana_5', name: 'Top banana', desc: 'Win 5 rounds of Capture the Banana', reward: ['badge', 'banana'], rewardName: 'Banana badge', goal: 5, val: () => SAVE.bananaWins || 0 },
+    { id: 'race_5', name: 'Fast lane', desc: 'Win 5 races', reward: ['badge', 'flag'], rewardName: 'Race flag', goal: 5, val: () => SAVE.raceWins || 0 }
 ];
 export const RECORDS = [
-    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'route', name: 'Red route' }, { id: 'range', name: 'Shooting range (kills)', score: true },
+    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'route', name: 'Red route' }, { id: 'race', name: 'Parkour race' }, { id: 'range', name: 'Shooting range (kills)', score: true },
     { id: 'maze_nm', name: 'The Maze (Nightmare)' }, { id: 'silence_nm', name: 'Silence (Nightmare)' }, { id: 'well_nm', name: 'The Well (Nightmare)' }, { id: 'laundry_nm', name: 'Laundromat (Nightmare)' }, { id: 'memory_nm', name: 'Memory (Nightmare)' }
 ];
 
@@ -150,7 +258,7 @@ function defaultSave() {
         best: { height: 0, jumps: 0 },
         login: { last: 0, streak: 0 },
         daily: null, pos: null, savedAt: 0,
-        records: {}, achievements: {}, diff: {}, top: {}, nmWins: {}
+        records: {}, achievements: {}, diff: {}, top: {}, nmWins: {}, questsDone: 0, bonusDays: 0
     };
 }
 // Podpis zapisu: suma kontrolna z "solą". Wykrywa ręczne zmiany w przeglądarce (nie jest to pełne zabezpieczenie).
@@ -245,7 +353,7 @@ export function refreshStaffItems() {
 }
 export function isOwned(item) { return SAVE.owned.includes(item.slot + ':' + item.id); }
 export function isEquipped(item) { return SAVE.equipped[item.slot] === item.id; }
-export function isLocked(item) { return !!item.locked && !isOwned(item); }
+export function isLocked(item) { return !isOwned(item) && !!lockText(item); }
 // Trudność wybrana dla poziomu (zapisana w save, ustawiana przy drzwiach w sali Levels)
 export function getDiff(level) { const d = SAVE.diff && SAVE.diff[level]; return DIFFS[d] ? d : 'normal'; }
 export function diffOf(level) { return DIFFS[getDiff(level)]; }
@@ -269,7 +377,7 @@ export function levelReward(level, first, repeat, label) {
     if (amount > 0) addBones(amount, (wins === 0 ? 'first ' : '') + label + tag);
     else toast('Daily reward limit for this level reached. Come back tomorrow!', '#ffb030');
     if (df.id === 'nightmare' && !SAVE.nmWins[level]) { SAVE.nmWins[level] = Date.now(); addBones(Math.round(first * 0.5), 'first Nightmare clear!'); }
-    checkCompletionist();
+    checkCompletionist(); checkCounters();
     saveGame();
     return amount;
 }
@@ -298,6 +406,20 @@ export function recordScore(id, score) {
     if (prev === undefined || score > prev) { SAVE.records[id] = score; saveGame(); markAllDirty(); if (prev !== undefined) toast('New record: ' + score, '#ffd27a'); return true; }
     return false;
 }
+// Osiągnięcia oparte na licznikach (zadania, seria logowań, Nightmare, wygrane w trybach); wywoływane po każdej takiej zmianie
+export function checkCounters() {
+    if ((SAVE.questsDone || 0) >= 5) unlockAchievement('quest_5');
+    if ((SAVE.questsDone || 0) >= 20) unlockAchievement('quest_20');
+    if ((SAVE.bonusDays || 0) >= 7) unlockAchievement('quest_days7');
+    if ((SAVE.login.streak || 0) >= 7) unlockAchievement('streak_7');
+    const nm = SAVE.nmWins || {};
+    if (Object.keys(nm).length) unlockAchievement('nm_first');
+    for (const l of DIFF_LEVELS) if (nm[l]) unlockAchievement('nm_' + l);
+    if (DIFF_LEVELS.every(l => nm[l])) unlockAchievement('nm_all');
+    if ((SAVE.hideseekWins || 0) >= 10) unlockAchievement('hs_10');
+    if ((SAVE.bananaWins || 0) >= 5) unlockAchievement('banana_5');
+    if ((SAVE.raceWins || 0) >= 5) unlockAchievement('race_5');
+}
 export function unlockAchievement(id) {
     if (SAVE.achievements[id]) return false;
     const a = ACHIEVEMENTS.find(x => x.id === id); if (!a) return false;
@@ -321,11 +443,12 @@ export function unlockItem(slot, id) {
 }
 export function buyItem(item) {
     if (isOwned(item)) return 'owned';
-    if (item.locked) return 'locked';
-    if (SAVE.wallet < item.price) { toast('Not enough ' + CURRENCY + ' for ' + item.name, '#e0533f'); return 'poor'; }
-    SAVE.wallet -= item.price; SAVE.owned.push(item.slot + ':' + item.id);
+    if (isLocked(item)) return 'locked';
+    const price = priceOf(item);
+    if (SAVE.wallet < price) { toast('Not enough ' + CURRENCY + ' for ' + item.name, '#e0533f'); return 'poor'; }
+    SAVE.wallet -= price; SAVE.owned.push(item.slot + ':' + item.id);
     SAVE.equipped[item.slot] = item.id;
-    toast('Bought ' + item.name + ' (-' + item.price + ')', '#7fc47f');
+    toast('Bought ' + item.name + ' (-' + price + ')', '#7fc47f');
     track('shop'); saveGame(); notifyLook();
     return 'ok';
 }
@@ -347,6 +470,7 @@ export function claimLoginReward() {
     if (!st.ready) return 0;
     SAVE.login.streak = st.nextStreak; SAVE.login.last = Date.now();
     addBones(st.nextAmount, 'login reward, streak ' + st.nextStreak);
+    checkCounters();
     saveGame();
     return st.nextAmount;
 }
@@ -377,8 +501,10 @@ function questProgress(id, value, isMax) {
         q.p = isMax ? Math.max(q.p, value) : q.p + value;
         if (q.p >= def.target) {
             q.p = def.target; q.done = true;
+            SAVE.questsDone = (SAVE.questsDone || 0) + 1;
             addBones(def.reward, 'daily quest done');
-            if (d.quests.every(x => x.done) && !d.bonus) { d.bonus = true; addBones(QUEST_ALL_BONUS, 'all daily quests'); }
+            if (d.quests.every(x => x.done) && !d.bonus) { d.bonus = true; SAVE.bonusDays = (SAVE.bonusDays || 0) + 1; addBones(QUEST_ALL_BONUS, 'all daily quests'); }
+            checkCounters();
             saveGame();
         }
         markAllDirty();

@@ -14,6 +14,8 @@ import { hands, setPlayerPosition } from '../core/player.js';
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
+import { createEvents } from '../core/events.js';
+import { createBot, stepBot } from '../core/botkit.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
 import { ARRIVAL_FROM_HIDESEEK } from './games.js';
 
@@ -22,7 +24,7 @@ const WAIT = 10, HIDE = 25, SEEK = 120, RESULTS = 8, REWARD = 200;
 const CATCH_DIST = 0.5;                       // dłoń szukającego tak blisko głowy lub tułowia = znaleziony
 const SEEKER_SPAWN = [0, 1.0, -17.5];         // tu stoi szukający podczas chowania
 const HIDER_SPAWNS = [[-17, 1.0, 17], [17, 1.0, 17], [-17, 1.0, 5], [17, 1.0, 5], [-17, 1.0, -8], [17, 1.0, -8], [-8, 1.0, 17.5], [8, 1.0, 17.5]];
-const BOT = { walk: 2.6, search: 3.6, chase: 5.0, see: 13, lose: 6, gravity: 18, jumpMax: 3.6 };   // bot: m/s, zasięg wzroku (m), sekundy do utraty śladu
+const BOT = { walk: 2.6, search: 3.6, chase: 5.0, see: 13, lose: 6 };   // bot: m/s, zasięg wzroku (m), sekundy do utraty śladu
 export const info = { id: 'hideseek', name: 'Hide and Seek', spawn: [0, 1.0, 18.5] };
 let S = null;
 const _p = new THREE.Vector3(), _q = new THREE.Vector3();
@@ -31,7 +33,7 @@ const WAYPOINTS = [];   // punkty patrolu bota w alejkach (wypełniane przy budo
 export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -A + 0.4, maxX: A - 0.4, minZ: -A + 0.4, maxZ: A - 0.4, maxY: H - 0.4 };
-    S = { clock: 0, phase: 'wait', t: WAIT, seeker: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, bot: null, step: -1 };
+    S = { ev: createEvents('hideseek'), clock: 0, phase: 'wait', t: WAIT, seeker: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, bot: null, step: -1 };
     buildArena();
     buildDoor({ x: 0, z: A - 0.03, rotY: Math.PI, label: 'GAMES', color: '#d080ff', wood: 0x3a3048, portal: { target: 'games', spawn: ARRIVAL_FROM_HIDESEEK, onEnter: () => toast('Back to BagaBoo Games') } });
     // Znacznik szukającego (poświata i napis nad głową)
@@ -144,7 +146,7 @@ function think(dt, p) {
             const parts = participants();
             S.seeker = parts.length >= 2 ? parts[(Math.random() * parts.length) | 0] : 'bot';
             S.caught = new Set(); S.surv = []; S.phase = 'hide'; S.t = HIDE;
-            if (S.seeker === 'bot') S.bot = { x: SEEKER_SPAWN[0], y: 0, z: SEEKER_SPAWN[2], vy: 0, ground: true, stuck: 0, side: 0, sideT: 0, mode: 'patrol', wp: 0, goal: null, lostT: 0, last: null, dir: 0, repath: 0 };
+            if (S.seeker === 'bot') S.bot = createBot(SEEKER_SPAWN[0], SEEKER_SPAWN[2]);
             startedHide();
         }
     } else if (S.phase === 'hide') {
@@ -205,45 +207,10 @@ function botThink(dt, p) {
         if (!b.goal || Math.hypot(b.goal[0] - b.x, b.goal[1] - b.z) < 1.3) { b.goal = WAYPOINTS.length ? WAYPOINTS[(Math.random() * WAYPOINTS.length) | 0] : [0, 0]; }
         tx = b.goal[0]; tz = b.goal[1];
     }
-    stepBot(dt, tx, tz, p.y - 0.35, speed);
+    stepBot(b, dt, tx, tz, p.y - 0.35, speed, b.mode === 'chase');
     if (!S.caught.has('me') && Math.hypot(p.x - b.x, p.z - b.z) < 1.0 && Math.abs(p.y - (b.y + 1.0)) < 1.5) catchPlayer('me');
     if (Math.hypot(p.x - b.x, p.z - b.z) < 12) SFX.heartbeat(Math.max(0, 1 - Math.hypot(p.x - b.x, p.z - b.z) / 12));
 }
-// Ruch po podłodze z kolizją o skrzynie (wejście na niskie krawędzie, skok na wyższe, obejście gdy utknie)
-function stepBot(dt, tx, tz, ty, speed) {
-    const b = S.bot, R = 0.4, TALL = 1.2;
-    let dx = tx - b.x, dz = tz - b.z; const d = Math.hypot(dx, dz);
-    if (d > 0.05) { dx /= d; dz /= d; } else { dx = 0; dz = 0; }
-    if (b.side) { const sx = -dz * b.side, sz = dx * b.side; dx = dx * 0.4 + sx; dz = dz * 0.4 + sz; b.sideT -= dt; if (b.sideT <= 0) b.side = 0; }
-    if (dx || dz) { const want = Math.atan2(dx, dz); let dd = want - b.dir; while (dd > Math.PI) dd -= Math.PI * 2; while (dd < -Math.PI) dd += Math.PI * 2; b.dir += dd * Math.min(1, dt * 6); }
-    const ox = b.x, oz = b.z;
-    b.x += dx * speed * dt; b.z += dz * speed * dt;
-    b.vy -= BOT.gravity * dt; b.y += b.vy * dt;
-    let blockedTop = null; b.ground = false;
-    for (const o of L.obstacles) {
-        const bb = o.box3;
-        if (b.x < bb.min.x - R || b.x > bb.max.x + R || b.z < bb.min.z - R || b.z > bb.max.z + R) continue;
-        if (b.y + TALL <= bb.min.y || b.y >= bb.max.y) {
-            if (b.vy <= 0 && b.y < bb.max.y + 0.05 && b.y > bb.max.y - 0.5 && b.x > bb.min.x - R * 0.5 && b.x < bb.max.x + R * 0.5 && b.z > bb.min.z - R * 0.5 && b.z < bb.max.z + R * 0.5) { b.y = bb.max.y; b.vy = 0; b.ground = true; }
-            continue;
-        }
-        const step = bb.max.y - b.y;
-        if (step <= 0.45 && b.vy <= 0) { b.y = bb.max.y; b.vy = 0; b.ground = true; continue; }
-        if (b.ground || b.vy <= 0) blockedTop = Math.max(blockedTop || 0, bb.max.y);
-        const ex = Math.min(b.x - (bb.min.x - R), bb.max.x + R - b.x), ez = Math.min(b.z - (bb.min.z - R), bb.max.z + R - b.z);
-        if (ex < ez) b.x = b.x < (bb.min.x + bb.max.x) / 2 ? bb.min.x - R : bb.max.x + R; else b.z = b.z < (bb.min.z + bb.max.z) / 2 ? bb.min.z - R : bb.max.z + R;
-    }
-    if (b.y <= 0) { b.y = 0; b.vy = 0; b.ground = true; }
-    // Skacze tylko za graczem (do pościgu), a w patrolu omija przeszkody w bok
-    const chasing = b.mode === 'chase';
-    if (b.ground && chasing && (blockedTop !== null || (ty > b.y + 0.8 && d < 3.5))) {
-        const h = Math.min(BOT.jumpMax, Math.max(0.6, (blockedTop !== null ? blockedTop : ty) - b.y + 0.35));
-        b.vy = Math.sqrt(2 * BOT.gravity * h); b.ground = false;
-    }
-    const moved = Math.hypot(b.x - ox, b.z - oz);
-    if (moved < speed * dt * 0.3 && b.ground) { b.stuck += dt; if (b.stuck > 0.7) { b.stuck = 0; b.side = Math.random() < 0.5 ? -1 : 1; b.sideT = 1.0; if (!chasing) b.goal = null; } } else b.stuck = 0;
-}
-
 // ---------- CO KLATKĘ ----------
 export function update(dt, t, ctx) {
     if (!S) return;
@@ -267,6 +234,7 @@ export function update(dt, t, ctx) {
         if (N.NET.mode === 'host') { S.netT -= dt; if (S.netT <= 0) { S.netT = 0.2; broadcast(); } }
     }
     S.scare.update(dt);
+    S.ev.update(dt, S.phase === 'seek');
     // Szukający: opaska i zamrożenie podczas chowania
     const blind = S.phase === 'hide' && S.seeker === 'me';
     S.blind.material.opacity += ((blind ? 1 : 0) - S.blind.material.opacity) * Math.min(1, dt * 8);
@@ -306,7 +274,7 @@ function drawHud() {
     S.hud.update();
 }
 export function dispose() {
-    if (S) { S.scare.dispose(); S.hud.dispose(); S.intro.dispose(); camera.remove(S.blind); }
+    if (S) { S.ev.dispose(); S.scare.dispose(); S.hud.dispose(); S.intro.dispose(); camera.remove(S.blind); }
     N.onLevelMsg(null);
     S = null;
 }

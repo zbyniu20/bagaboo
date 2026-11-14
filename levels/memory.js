@@ -11,6 +11,7 @@ import { THREE, L, tex, camera, addCrispBlock, lighting } from '../core/engine.j
 import * as T from '../core/textures.js';
 import { levelReward, recordTime, diffOf } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
+import { createEvents } from '../core/events.js';
 import { hands, releaseAll, setPlayerPosition } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
@@ -51,7 +52,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -9.4, maxX: 9.4, minZ: BACK_Z + 0.4, maxZ: 7.6, maxY: 13.5 };
     L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.maxSpeedXZ = MAX_SPEED_XZ;
-    S = { seed: seed, df: diffOf('memory'), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', previewT: PREVIEW_TIME * diffOf('memory').grace, nextScareRow: SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1)), chaseT: -HEAD_START * diffOf('memory').grace, rows: [], row: -1, dead: null, hudT: 0, leaving: false, fx: [], flick: [] };
+    S = { ev: createEvents('memory', { skip: ['red'] }), seed: seed, df: diffOf('memory'), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', previewT: PREVIEW_TIME * diffOf('memory').grace, nextScareRow: SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1)), chaseT: -HEAD_START * diffOf('memory').grace, rows: [], row: -1, dead: null, hudT: 0, leaving: false, fx: [], flick: [] };
     buildCave(R);
     buildLava();
     buildTrack(R);
@@ -212,6 +213,7 @@ const INTRO = [
 export function update(dt, t, ctx) {
     if (!S || S.leaving) return;
     S.clock += dt; S.ctx = ctx; S.body = ctx.body;
+    S.ev.update(dt, S.phase === 'run' && !S.dead);
     const p = ctx.body.position;
     ctx.body.velocity.y -= EXTRA_GRAVITY * dt;
     // Lawa i iskry
@@ -367,7 +369,7 @@ function drawHud() {
     S.hud.update();
 }
 export function dispose() {
-    if (S) { if (S.phase === 'preview') lighting.hemi.intensity = S.hemiBase; S.scare.dispose(); S.hud.dispose(); S.intro.dispose(); for (const o of [S.burn.orange, S.burn.grey, S.burn.ash]) camera.remove(o); S.burn.flames.forEach(f => camera.remove(f.s)); }
+    if (S) { S.ev.dispose(); if (S.phase === 'preview') lighting.hemi.intensity = S.hemiBase; S.scare.dispose(); S.hud.dispose(); S.intro.dispose(); for (const o of [S.burn.orange, S.burn.grey, S.burn.ash]) camera.remove(o); S.burn.flames.forEach(f => camera.remove(f.s)); }
     L.moveScale = 1; L.maxUp = 99; L.maxSpeedXZ = 0;
     S = null;
 }

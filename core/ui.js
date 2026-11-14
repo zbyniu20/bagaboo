@@ -102,7 +102,7 @@ export const computer = new Terminal((t) => {
 });
 
 // ---------- AUTOMAT SKLEPOWY (sklep, nagroda za logowanie, zadania dzienne) ----------
-const shopUi = { tab: 'shop', slot: 'skin', tryItem: null };
+const shopUi = { tab: 'shop', slot: 'skin', tryItem: null, apg: 0, seenWeek: false };
 const previewHandlers = [];
 export function onPreview(fn) { previewHandlers.push(fn); }
 export function previewLook() {
@@ -113,14 +113,33 @@ export function previewLook() {
 function refreshPreview() { const l = previewLook(); previewHandlers.forEach(f => f(l)); }
 E.onLookChange(() => { shopUi.tryItem = null; refreshPreview(); });
 
+// Jeden wiersz przedmiotu w sklepie: nazwa, cena (z rabatem tygodnia / okresem sezonu) albo powód blokady, przymierz, kup/załóż
+function itemRow(t, c, it, i, y, step) {
+    const owned = E.isOwned(it), worn = E.isEquipped(it), trying = shopUi.tryItem === it, locked = E.isLocked(it), lock = E.lockText(it), price = E.priceOf(it);
+    c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, step - 6);
+    t.text(it.name, 40, y + 22, 24, worn ? OK_COL : GOLD, 'left', true);
+    if (locked) t.text(lock, 430, y + 22, lock.length > 18 ? 15 : 17, lock.startsWith('Not in') || it.locked ? BAD_COL : AMBER_DIM, 'left');
+    else if (owned) t.text('Owned', 430, y + 22, 22, AMBER_DIM, 'left');
+    else {
+        const tag = E.isFeatured(it) ? ' (-' + Math.round(E.WEEKLY_DISCOUNT * 100) + '%)' : (it.season ? ' ' + E.SEASONS[it.season].name : '');
+        t.text(price === 0 ? 'Free' : price + tag, 430, y + 22, tag ? 18 : 22, E.SAVE.wallet >= price ? (E.isFeatured(it) ? OK_COL : AMBER) : BAD_COL, 'left');
+    }
+    t.btn('try' + it.slot + it.id, 610, y + 4, 160, 36, trying ? 'Trying' : 'Try on', () => { shopUi.tryItem = trying ? null : it; refreshPreview(); }, { size: 20, active: trying });
+    if (worn) t.btn('worn' + it.slot + it.id, 790, y + 4, 200, 36, 'Wearing', null, { size: 20, disabled: true });
+    else if (owned) t.btn('wear' + it.slot + it.id, 790, y + 4, 200, 36, 'Wear', () => { E.equipItem(it); }, { size: 20, tone: 'ok' });
+    else if (locked) t.btn('lock' + it.slot + it.id, 790, y + 4, 200, 36, 'Locked', null, { size: 20, disabled: true });
+    else t.btn('buy' + it.slot + it.id, 790, y + 4, 200, 36, E.SAVE.wallet >= price ? 'Buy' : 'Need ' + (price - E.SAVE.wallet), () => { E.buyItem(it); }, { size: 20, tone: 'gold', disabled: E.SAVE.wallet < price });
+}
+
 export const shop = new Terminal((t) => {
     const c = t.ctx;
     t.background();
     t.header('Bagabucks shop', E.CURRENCY + ': ' + E.SAVE.wallet, GOLD);
-    const tabs = [['shop', 'Shop'], ['daily', 'Daily reward'], ['quests', 'Daily quests'], ['records', 'Records']];
-    tabs.forEach((tb, i) => t.btn('tab' + tb[0], 28 + i * 246, 84, 232, 54, tb[1], () => { shopUi.tab = tb[0]; }, { size: 23, active: shopUi.tab === tb[0] }));
+    const tabs = [['shop', 'Shop'], ['featured', 'Featured'], ['daily', 'Daily reward'], ['quests', 'Daily quests'], ['records', 'Records'], ['awards', 'Awards']];
+    tabs.forEach((tb, i) => t.btn('tab' + tb[0], 28 + i * 164, 84, 158, 54, tb[1], () => { shopUi.tab = tb[0]; }, { size: 19, active: shopUi.tab === tb[0] }));
     const login = E.loginStatus();
-    if (login.ready) { c.fillStyle = OK_COL; c.beginPath(); c.arc(28 + 246 + 218, 92, 9, 0, 7); c.fill(); }
+    if (login.ready) { c.fillStyle = OK_COL; c.beginPath(); c.arc(28 + 2 * 164 + 146, 92, 9, 0, 7); c.fill(); }
+    if (E.isFeatured && !shopUi.seenWeek) { c.fillStyle = GOLD; c.beginPath(); c.arc(28 + 164 + 146, 92, 9, 0, 7); c.fill(); }   // kropka: nowy asortyment (znika po wejściu w zakładkę)
 
     if (shopUi.tab === 'shop') {
         E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * 122, 152, 116, 46, s.name, () => { shopUi.slot = s.id; }, { size: s.name.length > 9 ? 14 : 17, tone: s.id === 'mskin' ? 'bad' : 'gold', active: shopUi.slot === s.id }));
@@ -130,18 +149,7 @@ export const shop = new Terminal((t) => {
         if (shopUi.pageSlot !== shopUi.slot) { shopUi.pageSlot = shopUi.slot; shopUi.pg = 0; }
         shopUi.pg = Math.min(shopUi.pg || 0, pages - 1);
         const step = 47;
-        items.slice(shopUi.pg * PER, shopUi.pg * PER + PER).forEach((it, i) => {
-            const y = 208 + i * step, owned = E.isOwned(it), worn = E.isEquipped(it), trying = shopUi.tryItem === it;
-            c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(24, y, 976, step - 6);
-            t.text(it.name, 40, y + 22, 24, worn ? OK_COL : GOLD, 'left', true);
-            const locked = E.isLocked(it);
-            t.text(locked ? (it.hint || 'Locked') + ' only' : (it.price === 0 ? 'Free' : it.price + ' ' + E.CURRENCY), 430, y + 22, 22, locked ? BAD_COL : (owned ? AMBER_DIM : (E.SAVE.wallet >= it.price ? AMBER : BAD_COL)), 'left');
-            t.btn('try' + it.id, 610, y + 4, 160, 36, trying ? 'Trying' : 'Try on', () => { shopUi.tryItem = trying ? null : it; refreshPreview(); }, { size: 20, active: trying });
-            if (worn) t.btn('worn' + it.id, 790, y + 4, 200, 36, 'Wearing', null, { size: 20, disabled: true });
-            else if (owned) t.btn('wear' + it.id, 790, y + 4, 200, 36, 'Wear', () => { E.equipItem(it); }, { size: 20, tone: 'ok' });
-            else if (locked) t.btn('lock' + it.id, 790, y + 4, 200, 36, 'Locked', null, { size: 20, disabled: true });
-            else t.btn('buy' + it.id, 790, y + 4, 200, 36, E.SAVE.wallet >= it.price ? 'Buy' : 'Need ' + (it.price - E.SAVE.wallet), () => { E.buyItem(it); }, { size: 20, tone: 'gold', disabled: E.SAVE.wallet < it.price });
-        });
+        items.slice(shopUi.pg * PER, shopUi.pg * PER + PER).forEach((it, i) => itemRow(t, c, it, i, 208 + i * step, step));
         if (pages > 1) {
             if (shopUi.slot === 'mskin') t.text('Only in Become the Monster', 512, 586, 16, AMBER_DIM, 'center');
             t.btn('pgPrev', 40, 590, 180, 40, 'Previous', () => { shopUi.pg--; }, { size: 20, disabled: shopUi.pg === 0 });
@@ -166,24 +174,54 @@ export const shop = new Terminal((t) => {
             t.text(r[2] + ' / ' + r[3] + ' today', 520, y, 20, r[2] >= r[3] ? AMBER_DIM : AMBER, 'left');
         });
         t.text('New height record: +' + E.HEIGHT_RECORD_BONUS + ' per meter. First time at 15 m today: +' + E.HIGH_DAILY_BONUS + '.', 40, 600, 18, AMBER_DIM, 'left');
+    } else if (shopUi.tab === 'featured') {
+        shopUi.seenWeek = true;
+        const weekly = E.CATALOG.filter(it => E.isFeatured(it));
+        t.text('This week: -' + Math.round(E.WEEKLY_DISCOUNT * 100) + '%', 40, 176, 26, GOLD, 'left', true);
+        t.text('New stock in ' + E.fmtDuration(E.weekMsLeft()), 1000, 176, 20, AMBER_DIM, 'right');
+        weekly.forEach((it, i) => itemRow(t, c, it, i, 198 + i * 47, 47));
+        const act = Object.keys(E.SEASONS).filter(id => E.seasonActive(id)), items = E.CATALOG.filter(it => it.season && act.includes(it.season) && !E.isOwned(it));
+        if (act.length) {
+            t.text('Seasonal: ' + act.map(id => E.SEASONS[id].name + ' (' + E.seasonText(id) + ')').join(', '), 40, 410, 22, GOLD, 'left', true);
+            items.slice(0, 3).forEach((it, i) => itemRow(t, c, it, i, 428 + i * 47, 47));
+            t.text(items.length > 3 ? 'More seasonal items are in the Shop tab.' : (items.length ? '' : 'You own all current seasonal items!'), 40, 596, 18, AMBER_DIM, 'left');
+        } else {
+            const next = Object.keys(E.SEASONS).map(id => id);
+            t.text('No seasonal event right now.', 40, 440, 24, AMBER, 'left', true);
+            t.text(next.map(id => E.SEASONS[id].name + ' ' + E.seasonText(id)).join('   '), 40, 480, 20, AMBER_DIM, 'left');
+        }
     } else if (shopUi.tab === 'records') {
-        // Najlepsze czasy i osiągnięcia
+        // Najlepsze czasy (zwykłe po lewej, Nightmare po prawej) i liczniki wygranych
         t.text('Best times', 40, 176, 28, GOLD, 'left', true);
+        t.text('Nightmare', 520, 176, 28, '#ff7a6a', 'left', true);
         E.RECORDS.forEach((r, i) => {
-            const nm = r.id.endsWith('_nm'), j = nm ? i - E.RECORDS.findIndex(q => q.id.endsWith('_nm')) : i;   // rekordy Nightmare w drugiej kolumnie
-            const v = E.SAVE.records[r.id], y = (nm ? 240 : 208) + j * 28, x = nm ? 520 : 40;
-            t.text(r.name, x, y, nm ? 18 : 22, nm ? '#ff7a6a' : AMBER, 'left');
-            t.text(v === undefined ? (r.score ? '-' : '--:--') : (r.score ? String(v) : E.fmtDuration(v * 1000)), nm ? 900 : 400, y, nm ? 18 : 22, v === undefined ? AMBER_DIM : GOLD, 'left', true);
+            const nm = r.id.endsWith('_nm'), j = nm ? i - E.RECORDS.findIndex(q => q.id.endsWith('_nm')) : i;
+            const v = E.SAVE.records[r.id], y = 216 + j * 34, x = nm ? 520 : 40;
+            t.text(r.name.replace(' (Nightmare)', ''), x, y, 22, nm ? '#ff9a8a' : AMBER, 'left');
+            t.text(v === undefined ? (r.score ? '-' : '--:--') : (r.score ? String(v) : E.fmtDuration(v * 1000)), nm ? 900 : 400, y, 22, v === undefined ? AMBER_DIM : GOLD, 'left', true);
         });
-        t.text('Wins: maze ' + (E.SAVE.mazeWins || 0) + ', silence ' + (E.SAVE.silenceWins || 0) + ', well ' + (E.SAVE.wellWins || 0) + ', lava ' + (E.SAVE.lavaWins || 0), 520, 208, 18, AMBER_DIM, 'left');
-        t.text('Achievements', 40, 384, 26, GOLD, 'left', true);
-        E.ACHIEVEMENTS.forEach((a, i) => {
-            const done = !!E.SAVE.achievements[a.id], y = 416 + i * 37;
-            c.fillStyle = done ? 'rgba(127,196,127,0.12)' : 'rgba(255,176,0,0.06)'; c.fillRect(24, y - 18, 976, 34);
-            t.text((done ? '✓ ' : '• ') + a.name, 40, y - 4, 22, done ? OK_COL : GOLD, 'left', true);
-            t.text(a.desc, 40, y + 14, 16, AMBER, 'left');
-            t.text(a.rewardName, 980, y - 2, 20, done ? OK_COL : AMBER_DIM, 'right', true);
+        const S = E.SAVE;
+        t.text('Wins: maze ' + (S.mazeWins || 0) + ', silence ' + (S.silenceWins || 0) + ', well ' + (S.wellWins || 0) + ', laundry ' + (S.laundryWins || 0) + ', memory ' + (S.memoryWins || 0) + ', lava ' + (S.lavaWins || 0), 520, 470, 18, AMBER_DIM, 'left');
+        t.text('Games: hide&seek ' + (S.hideseekWins || 0) + ', banana ' + (S.bananaWins || 0) + ', race ' + (S.raceWins || 0) + ', monster ' + (S.monsterWins || 0), 520, 496, 18, AMBER_DIM, 'left');
+        t.text('Quests done: ' + (S.questsDone || 0) + '   Perfect days: ' + (S.bonusDays || 0), 520, 522, 18, AMBER_DIM, 'left');
+        t.text('Easy runs do not count for records. Details of each unlock are in the Awards tab.', 40, 610, 18, AMBER_DIM, 'left');
+    } else if (shopUi.tab === 'awards') {
+        // Osiągnięcia ze stronami po 6 (nagroda = kosmetyk z zakładki Shop)
+        const list = E.ACHIEVEMENTS, PER = 6, pages = Math.ceil(list.length / PER);
+        shopUi.apg = Math.min(shopUi.apg || 0, pages - 1);
+        const done = list.filter(a => E.SAVE.achievements[a.id]).length;
+        t.text('Awards ' + done + ' / ' + list.length, 40, 174, 26, GOLD, 'left', true);
+        list.slice(shopUi.apg * PER, shopUi.apg * PER + PER).forEach((a, i) => {
+            const ok = !!E.SAVE.achievements[a.id], y = 194 + i * 62;
+            c.fillStyle = ok ? 'rgba(127,196,127,0.12)' : 'rgba(255,176,0,0.06)'; c.fillRect(24, y, 976, 56);
+            t.text((ok ? '✓ ' : '• ') + a.name, 40, y + 16, 21, ok ? OK_COL : GOLD, 'left', true);
+            t.text(a.desc, 40, y + 40, 16, AMBER, 'left');
+            if (a.goal && !ok) { const v = Math.min(a.goal, a.val()); t.bar(560, y + 12, 200, 12, v / a.goal, AMBER); t.text(v + '/' + a.goal, 775, y + 18, 16, AMBER, 'left'); }
+            t.text(a.rewardName, 980, y + 28, 19, ok ? OK_COL : AMBER_DIM, 'right', true);
         });
+        t.btn('apgPrev', 40, 582, 180, 40, 'Previous', () => { shopUi.apg--; }, { size: 20, disabled: shopUi.apg === 0 });
+        t.text('Page ' + (shopUi.apg + 1) + ' of ' + pages, 512, 602, 20, AMBER, 'center');
+        t.btn('apgNext', 804, 582, 180, 40, 'Next', () => { shopUi.apg++; }, { size: 20, disabled: shopUi.apg >= pages - 1 });
     } else {
         const d = E.ensureDaily();
         t.text('Today\'s quests (new ones in ' + E.fmtDuration(E.msToMidnight()) + ')', 40, 176, 26, GOLD, 'left', true);

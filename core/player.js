@@ -2,6 +2,7 @@
 // GRACZ: ruch rękami, kolizje, anty-ślizg, chwytanie piłek i lin, dłonie
 // ==========================================
 import { THREE, CANNON, scene, camera, playerRig, renderer, world, L, GROUP, physicsMat, containBall } from './engine.js';
+import { SETTINGS } from './settings.js';
 import { createRealHand, poseHand } from './avatar.js';
 import { track } from './economy.js';
 import { initPointers, clickPointer } from './terminal.js';
@@ -335,7 +336,8 @@ export function updatePlayer(dt, t) {
     for (const rope of L.ropes) { rope.mesh.position.copy(rope.body.position); rope.mesh.quaternion.copy(rope.body.quaternion); }
 
     // Obrót głowy prawą gałką: pełne wychylenie w prawo = 90° w prawo, w lewo = 90° w lewo, puszczona gałka wraca na wprost
-    headYaw += (readHeadStick() * HEAD_TURN_MAX - headYaw) * Math.min(1, lastDt * HEAD_TURN_SMOOTH);
+    if (SETTINGS.snapTurn) headYaw = readHeadStick() * HEAD_TURN_MAX;   // bez płynnego dojazdu: nagły skok o 30° nie powoduje choroby lokomocyjnej
+    else headYaw += (readHeadStick() * HEAD_TURN_MAX - headYaw) * Math.min(1, lastDt * HEAD_TURN_SMOOTH);
     if (Math.abs(headYaw) < 1e-4) headYaw = 0;
     playerRig.quaternion.setFromAxisAngle(_yAxis, -headYaw);   // obrót wokół głowy gracza, więc głowa nie przesuwa się w bok
     const cl = _headLocal.copy(camera.position).applyQuaternion(playerRig.quaternion);
@@ -354,7 +356,8 @@ function readHeadStick() {
         if (src.handedness !== 'right' || !src.gamepad) continue;
         const ax = src.gamepad.axes, v = ax.length >= 4 ? ax[2] : (ax[0] || 0);
         if (Math.abs(v) < HEAD_STICK_DEADZONE) return 0;
-        return Math.max(-1, Math.min(1, (v - Math.sign(v) * HEAD_STICK_DEADZONE) / (1 - HEAD_STICK_DEADZONE)));
+        const k = Math.max(-1, Math.min(1, (v - Math.sign(v) * HEAD_STICK_DEADZONE) / (1 - HEAD_STICK_DEADZONE)));
+        return SETTINGS.snapTurn ? Math.sign(k) * Math.round(Math.abs(k) * 3) / 3 : k;   // komfort: obrót krokami co 30°
     }
     return 0;
 }
