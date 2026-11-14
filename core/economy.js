@@ -205,6 +205,7 @@ const lookListeners = [];
 export function onLookChange(fn) { lookListeners.push(fn); }
 function notifyLook() { const l = getLook(); lookListeners.forEach(f => f(l)); markAllDirty(); }
 export function getLook() {
+    if ((SAVE.cheater || SAVE.equipped.skin === 'cheater') && isStaffName(SAVE.profile.name)) { SAVE.cheater = false; if (SAVE.equipped.skin === 'cheater') SAVE.equipped.skin = 'none'; refreshStaffItems(); saveGame(); }   // ekipa nigdy nie jest CHEATEREM
     // Ultimate admin jest zawsze cały złoty
     // Ultimate admin jest zawsze cały złoty, a przyłapany na włamaniu ma na zawsze skórkę CHEATER
     return { name: SAVE.profile.name, hideTag: !!SAVE.profile.hideTag && !SAVE.cheater, cheater: !!SAVE.cheater, mskin: SAVE.equipped.mskin || 'none',
