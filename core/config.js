@@ -102,7 +102,8 @@ export const RESERVED_NICKS = {
     'boyisgamer': 'c511d81e82b67718a164546ec9e98845084e8793ba2af30298093f32a3baba15',
     'spikyvr': '01d78f02137245bfe78f82dc4989497d94b5b8ec4ec41cde4e65a8905a32071c',
     'zbyniu': 'feed385a1982fea19f574cc0e867a3d9f7a7e8e5dcd35c68f2676bc64c49868e',
-    'lincolnvr': '5cdeaae62ff9bb4a7884d64ad076deceae01d21c8492d1dbd54f0f0bfe070f88'
+    'lincolnvr': '5cdeaae62ff9bb4a7884d64ad076deceae01d21c8492d1dbd54f0f0bfe070f88',
+    'vitoryboy': '57bdd3f2658f784068dae1538d95b1eee3e8c4901a69c82726a14bd40f742d92'
 };
 const low = (n) => String(n || '').trim().toLowerCase();
 // Moderatorzy wybrani przez admina w grze (zapisani na tym urządzeniu)
