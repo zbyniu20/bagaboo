@@ -22,6 +22,8 @@ export const ARRIVAL_WELL = [WELL_X, 1.2, 13.2];         // ...po powrocie ze St
 export const ARRIVAL_GAMES = [LAVA_X, 1.2, 13.2];        // ...z salonu BagaBoo Games
 export const ARRIVAL_STAFF = [-13.2, 1.2, STAFF_Z];      // ...z pokoju szefa
 export const ARRIVAL_LEVELS = [DOOR_X, 1.2, 13.2];       // ...z pokoju LEVELS
+const WARDROBE_X = -3;                                   // drzwi do szatni w północnej ścianie
+export const ARRIVAL_WARDROBE = [WARDROBE_X, 1.2, -13.2];   // ...z szatni
 const LAUNDRY_Z = 1.5;   // drzwi do Pralni we wschodniej ścianie
 export const ARRIVAL_LAUNDRY = [13.2, 1.2, LAUNDRY_Z];   // ...i z Pralni
 const MIRROR = { x: -14.93, z: 3.2, w: 1.6, h: 2.3 };   // lustro na zachodniej ścianie, obok sklepu
@@ -32,7 +34,7 @@ const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Eule
 
 // Wołane przed budową lobby: manekiny nie staną przed drzwiami ani przed lustrem
 export function prebuild() {
-    L.reserved.push([DOOR_X, 13.4, 3.0], [SILENCE_X, 13.4, 3.0], [WELL_X, 13.4, 3.0], [LAVA_X, 13.4, 2.6], [-13.4, STAFF_Z, 2.6], [13.4, LAUNDRY_Z, 2.6], [-13.6, MIRROR.z, 2.6], [12, -13.4, 2.2]);
+    L.reserved.push([DOOR_X, 13.4, 3.0], [SILENCE_X, 13.4, 3.0], [WELL_X, 13.4, 3.0], [LAVA_X, 13.4, 2.6], [-13.4, STAFF_Z, 2.6], [13.4, LAUNDRY_Z, 2.6], [-13.6, MIRROR.z, 2.6], [12, -13.4, 2.2], [WARDROBE_X, -13.4, 2.8]);
 }
 
 export function build() {
@@ -43,6 +45,9 @@ export function build() {
     // Pokój szefa: wchodzi tylko gracz z nickiem z listy STAFF_NAMES (config.js); inni tylko na zaproszenie
     buildDoor3({ x: -14.97, z: STAFF_Z, rotY: Math.PI / 2, label: 'STAFF ONLY', color: '#ffd27a', glow: 0xffb040, wood: 0x4a3020, signY: 2.7, collider: true, ao: true,
         portal: { target: 'staff', opts: { noFollow: true }, cond: () => isStaffName(getLook().name), deny: 'Staff only. Ask the game owner for an invite.', onEnter: () => toast('Welcome to the staff room', '#ffd27a') } });
+    // Szatnia: podgląd i przymierzanie wszystkich kosmetyków, zdjęcia
+    buildDoor3({ x: WARDROBE_X, z: -14.97, rotY: 0, label: 'WARDROBE', color: '#ffd27a', glow: 0xffb040, rust: true, signY: 3.5, signZ: 0.32, hanging: true, collider: true, ao: true,
+        portal: { target: 'wardrobe', onEnter: () => toast('Welcome to the wardrobe', '#ffd27a') } });
     buildMirror();
     buildRoute();
     buildTitle();

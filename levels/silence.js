@@ -46,6 +46,8 @@ const BALLS = [['black1', 2, 0.3, 10], ['black2', -5, 0.3, -1], ['black3', 9, 1.
 export const info = { id: 'silence', name: 'Absolute Silence', spawn: [0, 1.0, 11.5] };
 
 let S = null, restartFlag = false;
+// Czułość słuchu potwora: Nightmare reaguje na cichsze dźwięki (progi x0,6), Easy na głośniejsze (x1,4)
+const sens = () => S.df.id === 'nightmare' ? 0.6 : (S.df.id === 'easy' ? 1.4 : 1);
 const _c = new THREE.Vector3();
 
 // ---------- BUDOWA ----------
@@ -74,7 +76,7 @@ export function build() {
     buildIntroPanel();
     pickFuses(S.fuseSeed);
     L.onNoise = (speed, pos) => {   // uderzenia dłoni z player.js
-        const lv = Math.max(0, Math.min(1, (speed - HAND_QUIET) / (HAND_LOUD - HAND_QUIET)));
+        const sk = sens(), lv = Math.max(0, Math.min(1, (speed - HAND_QUIET * sk) / (HAND_LOUD * sk - HAND_QUIET * sk)));
         if (lv > 0) emitNoise(pos.x, pos.z, lv);
     };
     N.onLevelMsg(onNet);
@@ -559,9 +561,10 @@ export function update(dt, t, ctx) {
 
     // Mikrofon
     const mic = SFX.micLevel();
-    if (mic > MIC_QUIET && S.clock - S.lastMicSend > 0.2 && S.phase === 'play') {
+    const sk = sens();
+    if (mic > MIC_QUIET * sk && S.clock - S.lastMicSend > 0.2 && S.phase === 'play') {
         S.lastMicSend = S.clock;
-        emitNoise(p.x, p.z, Math.min(1, (mic - MIC_QUIET) / (MIC_LOUD - MIC_QUIET)));
+        emitNoise(p.x, p.z, Math.min(1, (mic - MIC_QUIET * sk) / (MIC_LOUD * sk - MIC_QUIET * sk)));
     }
     // Uderzenia kul (u każdego dźwięk, słyszy tylko host)
     for (const ball of L.throwables) {

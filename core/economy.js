@@ -133,7 +133,8 @@ export const CATALOG = [
     { slot: 'badge', id: 'nm', name: 'Nightmare pin', price: 0, locked: true, hint: '1st Nightmare clear' },
     { slot: 'badge', id: 'ghost', name: 'Ghost badge', price: 0, locked: true, hint: '10 Hide&Seek wins' },
     { slot: 'badge', id: 'banana', name: 'Banana badge', price: 0, locked: true, hint: '5 Banana wins' },
-    { slot: 'badge', id: 'flag', name: 'Race flag', price: 0, locked: true, hint: '5 Race wins' }
+    { slot: 'badge', id: 'flag', name: 'Race flag', price: 0, locked: true, hint: '5 Race wins' },
+    { slot: 'badge', id: 'daily', name: 'Calendar badge', price: 0, locked: true, hint: '5 Daily Runs' }
 ];
 
 // ---------- SEZONY I TYGODNIOWA ROTACJA SKLEPU ----------
@@ -229,7 +230,8 @@ export const ACHIEVEMENTS = [
     // --- Tryby gry ---
     { id: 'hs_10', name: 'Ghost of the warehouse', desc: 'Win 10 rounds of Hide and Seek', reward: ['badge', 'ghost'], rewardName: 'Ghost badge', goal: 10, val: () => SAVE.hideseekWins || 0 },
     { id: 'banana_5', name: 'Top banana', desc: 'Win 5 rounds of Capture the Banana', reward: ['badge', 'banana'], rewardName: 'Banana badge', goal: 5, val: () => SAVE.bananaWins || 0 },
-    { id: 'race_5', name: 'Fast lane', desc: 'Win 5 races', reward: ['badge', 'flag'], rewardName: 'Race flag', goal: 5, val: () => SAVE.raceWins || 0 }
+    { id: 'race_5', name: 'Fast lane', desc: 'Win 5 races', reward: ['badge', 'flag'], rewardName: 'Race flag', goal: 5, val: () => SAVE.raceWins || 0 },
+    { id: 'daily_5', name: 'Daily habit', desc: 'Finish 5 Daily Runs (Maze, Well or Memory)', reward: ['badge', 'daily'], rewardName: 'Calendar badge', goal: 5, val: () => SAVE.dailyRuns || 0 }
 ];
 export const RECORDS = [
     { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'route', name: 'Red route' }, { id: 'race', name: 'Parkour race' }, { id: 'range', name: 'Shooting range (kills)', score: true },
@@ -246,6 +248,20 @@ export const DIFFS = {
 };
 export const DIFF_ORDER = ['easy', 'normal', 'nightmare'];
 export const DIFF_LEVELS = ['maze', 'silence', 'well', 'laundry', 'memory'];
+
+// ---------- DAILY RUN: dzienny, wspólny układ dla poziomów z losową mapą ----------
+// Układ Maze, Well i Memory liczy się z daty UTC (ten sam dla wszystkich graczy na świecie), więc działa duch,
+// dzienna lista czasów i jednorazowy bonus za ukończenie. Bieg jest "dzienny", gdy ziarno poziomu = ziarno dnia.
+export const DAILY_LEVELS = ['maze', 'well', 'memory'];
+const RUN = {};   // czy bieżący bieg poziomu jest dzienny (ustawia main.js przy wejściu)
+export function dailyDate() { return new Date().toISOString().slice(0, 10); }
+export function dailySeed(level) { return hashStr('daily-' + level + '-' + dailyDate()) % 1000000000; }
+export function setRunSeed(level, seed) { RUN[level] = seed !== undefined && DAILY_LEVELS.includes(level) && seed === dailySeed(level); }
+export function isDaily(level) { return !!RUN[level]; }
+export function dailyOn(level) { return !!(SAVE.dailyMode && SAVE.dailyMode[level]); }
+export function setDailyMode(level, on) { SAVE.dailyMode = SAVE.dailyMode || {}; SAVE.dailyMode[level] = !!on; saveGame(); markAllDirty(); }
+export function dailyKey(level, diff) { return 'daily:' + level + ':' + dailyDate() + ':' + (diff || getDiff(level)); }
+function pruneDaily(obj) { if (!obj) return; const d = ':' + dailyDate() + ':'; for (const k of Object.keys(obj)) if (k.startsWith('daily:') && !k.includes(d)) delete obj[k]; }
 export const HEIGHT_RECORD_BONUS = 10;   // za każdy nowy metr rekordu wysokości
 export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dnia
 
@@ -258,7 +274,7 @@ function defaultSave() {
         best: { height: 0, jumps: 0 },
         login: { last: 0, streak: 0 },
         daily: null, pos: null, savedAt: 0,
-        records: {}, achievements: {}, diff: {}, top: {}, nmWins: {}, questsDone: 0, bonusDays: 0
+        records: {}, achievements: {}, diff: {}, top: {}, nmWins: {}, questsDone: 0, bonusDays: 0, dailyMode: {}, dailyTop: {}, dailyDone: {}, dailyRuns: 0
     };
 }
 // Podpis zapisu: suma kontrolna z "solą". Wykrywa ręczne zmiany w przeglądarce (nie jest to pełne zabezpieczenie).
@@ -294,6 +310,7 @@ function load() {
             records: Object.assign({}, s.records || {}),
             achievements: Object.assign({}, s.achievements || {}),
             diff: Object.assign({}, s.diff || {}), top: Object.assign({}, s.top || {}), nmWins: Object.assign({}, s.nmWins || {}),
+            dailyMode: Object.assign({}, s.dailyMode || {}), dailyTop: Object.assign({}, s.dailyTop || {}), dailyDone: Object.assign({}, s.dailyDone || {}),
             owned: owned
         });
     } catch (e) { return d; }
@@ -377,6 +394,10 @@ export function levelReward(level, first, repeat, label) {
     if (amount > 0) addBones(amount, (wins === 0 ? 'first ' : '') + label + tag);
     else toast('Daily reward limit for this level reached. Come back tomorrow!', '#ffb030');
     if (df.id === 'nightmare' && !SAVE.nmWins[level]) { SAVE.nmWins[level] = Date.now(); addBones(Math.round(first * 0.5), 'first Nightmare clear!'); }
+    if (isDaily(level)) {   // Daily Run: jednorazowy bonus za każdy poziom dziennie (poza dziennym limitem powtórek)
+        const k = dailyKey(level); pruneDaily(SAVE.dailyDone);
+        if (!SAVE.dailyDone[k]) { SAVE.dailyDone[k] = 1; SAVE.dailyRuns = (SAVE.dailyRuns || 0) + 1; addBones(Math.round(first * 0.3 * df.reward), 'Daily Run bonus'); }
+    }
     checkCompletionist(); checkCounters();
     saveGame();
     return amount;
@@ -387,6 +408,14 @@ export function rewardActivity(key) { capped(key, ACTIVITY[key].each); }
 export function recordTime(id, sec) {
     const diff = getDiff(id);
     if (diff === 'easy') { toast('Easy runs do not count for records', '#9aa0a0'); return false; }
+    if (isDaily(id)) {   // dzienny układ: osobna lista czasów dnia (nie miesza się z rekordami życia)
+        const dk = dailyKey(id, diff); SAVE.dailyTop = SAVE.dailyTop || {}; pruneDaily(SAVE.dailyTop);
+        const prevList = SAVE.dailyTop[dk] || [], prevBest = prevList[0], r = Math.round(sec * 10) / 10;
+        SAVE.dailyTop[dk] = prevList.concat([r]).sort((a, b) => a - b).slice(0, 5);
+        saveGame(); markAllDirty();
+        if (prevBest === undefined || r < prevBest) { toast(prevBest === undefined ? 'Daily time: ' + fmtDuration(sec * 1000) : 'New daily record: ' + fmtDuration(sec * 1000), '#7fe8ff'); return true; }
+        return false;
+    }
     const key = recordKey(id, diff), prev = SAVE.records[key];
     SAVE.top = SAVE.top || {};
     const list = (SAVE.top[key] || []).concat([Math.round(sec * 10) / 10]).sort((a, b) => a - b).slice(0, 5);
@@ -399,7 +428,10 @@ export function recordTime(id, sec) {
     saveGame(); markAllDirty();
     return false;
 }
-export function topTimes(id, diff) { const l = SAVE.top && SAVE.top[recordKey(id, diff)]; return l ? l.slice() : []; }
+export function topTimes(id, diff, daily) {
+    const l = daily ? SAVE.dailyTop && SAVE.dailyTop[dailyKey(id, diff)] : SAVE.top && SAVE.top[recordKey(id, diff)];
+    return l ? l.slice() : [];
+}
 // Rekord punktowy (im więcej, tym lepiej), np. strzelnica
 export function recordScore(id, score) {
     const prev = SAVE.records[id];
@@ -419,6 +451,7 @@ export function checkCounters() {
     if ((SAVE.hideseekWins || 0) >= 10) unlockAchievement('hs_10');
     if ((SAVE.bananaWins || 0) >= 5) unlockAchievement('banana_5');
     if ((SAVE.raceWins || 0) >= 5) unlockAchievement('race_5');
+    if ((SAVE.dailyRuns || 0) >= 5) unlockAchievement('daily_5');
 }
 export function unlockAchievement(id) {
     if (SAVE.achievements[id]) return false;

@@ -10,7 +10,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LIGHT_PRESETS } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
-import { levelReward, recordTime, unlockAchievement, diffOf } from '../core/economy.js';
+import { levelReward, recordTime, unlockAchievement, diffOf, isDaily, dailyDate } from '../core/economy.js';
+import { createGhost } from '../core/runkit.js';
 import { setPlayerPosition } from '../core/player.js';
 import { createEvents } from '../core/events.js';
 import { toast } from '../core/terminal.js';
@@ -30,6 +31,7 @@ const SCARE_COOLDOWN = 15;     // minimalna przerwa między jumpscare'ami
 const DEADEND_CHANCE = 0.6;    // szansa na jumpscare po wejściu w ślepy zaułek
 const PHANTOM_MIN = 22, PHANTOM_MAX = 45;   // co ile sekund zjawa na końcu korytarza
 const START_NODE = N * N, END_NODE = N * N + 1;
+const TWIN_DELAY = 45;         // Nightmare: po tylu sekundach pościgu pojawia się drugi manekin
 
 export const info = { id: 'maze', name: 'The Maze', spawn: [2, 1.0, 56] };
 let S = null;   // stan poziomu
@@ -89,7 +91,7 @@ export function build() {
     // Ziarno od main.js (w multiplayerze wspólne z hostem, więc cała drużyna ma ten sam układ)
     const seed = L.levelSeed !== undefined ? L.levelSeed : (Math.random() * 1e9) | 0, M = generate(seed), root = L.root;
     L.levelId = 'maze-' + seed;   // każdy gracz ma swój labirynt, więc inni gracze są ukryci
-    S = { ev: createEvents('maze'), df: diffOf('maze'), cps: [], cp: -1, M: M, seed: seed, time: 0, phase: 'intro', phaseT: 0, chaseT: 0, lost: 0, lastScare: -99, scareT: -1, playerNode: -1, dist: null, target: null, introShown: false, lights: [],
+    S = { ghost: createGhost('maze', { onlyDaily: true }), ev: createEvents('maze'), df: diffOf('maze'), cps: [], cp: -1, M: M, seed: seed, time: 0, phase: 'intro', phaseT: 0, chaseT: 0, lost: 0, lastScare: -99, scareT: -1, playerNode: -1, dist: null, target: null, introShown: false, lights: [],
           lastNode: -1, nextPhantom: PHANTOM_MIN + Math.random() * (PHANTOM_MAX - PHANTOM_MIN), phantom: null, blackout: 0 };
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -49.5, maxX: 49.5, minZ: -59.5, maxZ: 59.5, maxY: 19.6 };
@@ -125,6 +127,7 @@ export function build() {
     buildCage();
     S.scare = createJumpscare({});
     if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name + (S.df.checkpoints ? '' : ' (no checkpoints)'), S.df.color);
+    if (isDaily('maze')) toast('Daily Run %s: same layout for everyone' % dailyDate(), '#7fe8ff');
     buildPhantom();
     buildDecor();
 }
@@ -230,7 +233,7 @@ function finishMaze() {
     S.mq.group.visible = false; S.mq.aura.intensity = 0;
     toast('You escaped!', '#7fc47f');
     levelReward('maze', REWARD_FIRST, REWARD_REPEAT, 'maze escape');
-    recordTime('maze', S.runT || 0);
+    S.ghost.finish(recordTime('maze', S.runT || 0), S.runT || 0);
     if (!S.scares) unlockAchievement('maze_runner');
     setTimeout(() => toast('A hatch opened in the floor... or take the EXIT door', '#9fc8ff'), 2600);
     SFX.creak(0.7, { x: HOLE[0], y: 0.2, z: HOLE[1] });
@@ -349,6 +352,7 @@ export function update(dt, t, ctx) {
     const body = ctx.body, p = body.position, q = S.mq, c = S.cage;
     S.time += dt; S.phaseT += dt; S.runT = (S.runT || 0) + dt;
     S.ev.update(dt, S.phase === 'chase' || S.phase === 'intro');
+    S.ghost.tick(dt, p, S.phase !== 'done' && S.phase !== 'leaving');
     const cagePos = { x: c.home[0], y: 1.5, z: c.home[1] };
     if (S.cps.length && (S.phase === 'chase' || S.phase === 'intro' || S.phase === 'cutscene')) reachCheckpoints(p);
 
@@ -400,8 +404,11 @@ export function update(dt, t, ctx) {
         if (k >= 4.3) { S.phase = 'chase'; S.phaseT = 0; S.frozen = null; toast('RUN!', '#e0533f'); }
     } else if (S.phase === 'chase') {
         S.chaseT += dt;
-        chase(dt, t, p);
-        const dx = p.x - q.x, dz = p.z - q.z, dist = Math.hypot(dx, dz);
+        chase(dt, t, p, q, S, S.chaseT);
+        let dist = Math.hypot(p.x - q.x, p.z - q.z);
+        // Nightmare: po 45 s pościgu pojawia się drugi manekin (bliźniak) 14-24 komórek od ciebie i też cię goni
+        if (S.df.id === 'nightmare' && !S.tw && S.chaseT > TWIN_DELAY) spawnTwin(p);
+        if (S.tw) { chase(dt, t, p, S.tw, S.tw, S.chaseT - TWIN_DELAY); dist = Math.min(dist, Math.hypot(p.x - S.tw.x, p.z - S.tw.z)); }
         SFX.heartbeat(Math.max(0, 1 - dist / 22));
         if (dist < 0.85 && p.y < 3.2) { S.phase = 'caught'; S.phaseT = 0; jumpscare(); }
     } else if (S.phase === 'caught') {
@@ -432,16 +439,17 @@ export function update(dt, t, ctx) {
 }
 
 // Manekin idzie środkami komórek najkrótszą drogą do gracza (nie przechodzi przez ściany)
-function chase(dt, t, p) {
-    const q = S.mq, pn = nodeAt(p.x, p.z);
-    if (pn !== S.playerNode) { S.playerNode = pn; S.dist = bfs(S.M, pn).dist; q.target = null; }
+// q: manekin, st: obiekt z playerNode i dist (dla głównego manekina S, dla bliźniaka on sam), ct: czas pościgu tego manekina
+function chase(dt, t, p, q, st, ct) {
+    const pn = nodeAt(p.x, p.z);
+    if (pn !== st.playerNode) { st.playerNode = pn; st.dist = bfs(S.M, pn).dist; q.target = null; }
     const qn = nodeAt(q.x, q.z);
     let tx, tz;
     if (qn === pn) { tx = p.x; tz = p.z; }
     else {
         if (!q.target || Math.hypot(q.target[0] - q.x, q.target[1] - q.z) < 0.12) {
             let best = -1;
-            for (const m of neighbors(S.M, qn)) if (S.dist[m] >= 0 && (best < 0 || S.dist[m] < S.dist[best])) best = m;
+            for (const m of neighbors(S.M, qn)) if (st.dist[m] >= 0 && (best < 0 || st.dist[m] < st.dist[best])) best = m;
             if (best < 0) return;
             if ((qn === START_NODE && best < N * N) || (best === START_NODE)) q.target = [2, best === START_NODE ? 50.5 : 49.6];
             else if ((qn === END_NODE && best < N * N) || (best === END_NODE)) q.target = [2, best === END_NODE ? -50.5 : -49.6];
@@ -449,7 +457,7 @@ function chase(dt, t, p) {
         }
         tx = q.target[0]; tz = q.target[1];
     }
-    const speed = (SPEED_START + (SPEED_MAX - SPEED_START) * Math.min(1, S.chaseT / SPEED_RAMP)) * S.df.speed;
+    const speed = (SPEED_START + (SPEED_MAX - SPEED_START) * Math.min(1, ct / SPEED_RAMP)) * S.df.speed;
     const dx = tx - q.x, dz = tz - q.z, d = Math.hypot(dx, dz);
     if (d > 0.001) { const s = Math.min(d, speed * dt); q.x += dx / d * s; q.z += dz / d * s; }
     const yaw = Math.atan2(dx, dz); let dy = yaw - q.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); q.yaw += dy * Math.min(1, dt * 6);
@@ -460,8 +468,21 @@ function chase(dt, t, p) {
     q.aura.intensity = 3 + Math.sin(t * 5);
 }
 
+// Bliźniak (tylko Nightmare): drugi manekin liczy własną drogę BFS do gracza
+function spawnTwin(p) {
+    const dist = bfs(S.M, nodeAt(p.x, p.z)).dist, cands = [];
+    for (let n = 0; n < N * N; n++) if (dist[n] >= 14 && dist[n] <= 24) cands.push(n);
+    if (!cands.length) { S.tw = null; S.chaseT -= 5; return; }   // za mały dystans (np. mała część labiryntu): spróbuj za chwilę
+    const c = nodeCenter(cands[(Math.random() * cands.length) | 0]), m = buildMannequin(T.mkRng(778));
+    for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.1, 0.1, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
+    m.group.position.set(c[0], 0, c[1]); L.root.add(m.group);
+    S.tw = { group: m.group, head: m.head, aura: { intensity: 0 }, x: c[0], z: c[1], yaw: 0, target: null, playerNode: -1, dist: null };
+    toast('A second mannequin is hunting you!', '#ff2a4a'); SFX.scream({ x: c[0], y: 1.6, z: c[1] });
+}
+
 // Wywoływane przy wyjściu z poziomu: sprzątanie rzeczy przyczepionych do kamery
 export function dispose() {
+    if (S && S.ghost) S.ghost.dispose();
     if (S && S.ev) S.ev.dispose();
     if (S && S.scare) S.scare.dispose();
     S = null;

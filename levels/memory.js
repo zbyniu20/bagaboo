@@ -9,7 +9,8 @@
 // ==========================================
 import { THREE, L, tex, camera, addCrispBlock, lighting } from '../core/engine.js';
 import * as T from '../core/textures.js';
-import { levelReward, recordTime, diffOf } from '../core/economy.js';
+import { levelReward, recordTime, diffOf, isDaily, dailyDate } from '../core/economy.js';
+import { createGhost } from '../core/runkit.js';
 import { toast } from '../core/terminal.js';
 import { createEvents } from '../core/events.js';
 import { hands, releaseAll, setPlayerPosition } from '../core/player.js';
@@ -43,6 +44,8 @@ const MOVE_SCALE = 0.95, MAX_UP = 4.0, MAX_SPEED_XZ = 4.0, EXTRA_GRAVITY = 4.0;
 const REWARD_FIRST = 2200, REWARD_REPEAT = 220;
 export const info = { id: 'memory', name: 'Burning Memory', spawn: [0, 1.4, 3.0] };
 let S = null;
+// Nightmare: w podglądzie świecą tylko dobre kamienie w co drugim rzędzie (parzyste), resztę trzeba zapamiętać po drodze
+const shown = (r) => S.df.id !== 'nightmare' || r % 2 === 0;
 const _c = new THREE.Vector3();
 
 // ---------- BUDOWA ----------
@@ -52,7 +55,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -9.4, maxX: 9.4, minZ: BACK_Z + 0.4, maxZ: 7.6, maxY: 13.5 };
     L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.maxSpeedXZ = MAX_SPEED_XZ;
-    S = { ev: createEvents('memory', { skip: ['red'] }), seed: seed, df: diffOf('memory'), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', previewT: PREVIEW_TIME * diffOf('memory').grace, nextScareRow: SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1)), chaseT: -HEAD_START * diffOf('memory').grace, rows: [], row: -1, dead: null, hudT: 0, leaving: false, fx: [], flick: [] };
+    S = { ghost: createGhost('memory', { onlyDaily: true }), ev: createEvents('memory', { skip: ['red'] }), seed: seed, df: diffOf('memory'), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', previewT: PREVIEW_TIME * diffOf('memory').grace, nextScareRow: SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1)), chaseT: -HEAD_START * diffOf('memory').grace, rows: [], row: -1, dead: null, hudT: 0, leaving: false, fx: [], flick: [] };
     buildCave(R);
     buildLava();
     buildTrack(R);
@@ -64,6 +67,7 @@ export function build() {
     buildBurnFx();
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name, S.df.color);
+    if (isDaily('memory')) toast('Daily Run ' + dailyDate() + ': same layout for everyone', '#7fe8ff');
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     // Jumpscare z paszczą Bestii (co 5-8 linii)
     // Paszcza Bestii na wysokości oczu, tuż przed twarzą, z ognistym błyskiem i świecącymi oczami
@@ -199,7 +203,7 @@ function finish() {
     if (S.leaving) return; S.leaving = true;
     toast('You crossed the burning path!', '#7fc47f');
     levelReward('memory', REWARD_FIRST, REWARD_REPEAT, 'crossing Burning Memory');
-    recordTime('memory', S.runT);
+    S.ghost.finish(recordTime('memory', S.runT), S.runT);
 }
 const INTRO = [
     'A lava beast lives in this pool. Cross 20 lines of stones to reach the EXIT.',
@@ -214,6 +218,7 @@ export function update(dt, t, ctx) {
     if (!S || S.leaving) return;
     S.clock += dt; S.ctx = ctx; S.body = ctx.body;
     S.ev.update(dt, S.phase === 'run' && !S.dead);
+    S.ghost.tick(dt, ctx.body.position, S.phase === 'run' && S.row >= 0 && !S.dead);
     const p = ctx.body.position;
     ctx.body.velocity.y -= EXTRA_GRAVITY * dt;
     // Lawa i iskry
@@ -243,7 +248,7 @@ export function update(dt, t, ctx) {
         ctx.body.position.set(0, 12, (START_EDGE + LAST_Z) / 2 + 10); ctx.body.velocity.set(0, 0, 0);
         const k = Math.min(1, S.previewT / 1.5);   // ostatnie 1,5 s: przyciemnianie
         S.previewLight.intensity = 140 * k; lighting.hemi.intensity = S.hemiBase + 3 * k;
-        for (const row of S.rows) for (const st of row) if (st.kind === 'solid') st.m.material.emissiveIntensity = 1.2 * k;
+        S.rows.forEach((row, r) => { if (shown(r)) for (const st of row) if (st.kind === 'solid') st.m.material.emissiveIntensity = 1.2 * k; });
         if (S.previewT <= 0) endPreview();
     }
     const B = S.beast;
@@ -279,7 +284,7 @@ export function update(dt, t, ctx) {
                 if (r + 1 >= S.nextScareRow) { S.nextScareRow += SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1)); S.scare.trigger(); buzz('both', 1, 400); }   // jumpscare co 5-8 linii
             }
         }
-        if (s.state === 'wait') { s.t += dt; s.m.position.x = s.x + (Math.random() - 0.5) * 0.03; if (s.t > SLOW_DELAY) { s.state = 'sinking'; s.speed = SLOW_SPEED; SFX.creak(0.5, { x: s.x, y: 1, z: s.z }); } }
+        if (s.state === 'wait') { s.t += dt; s.m.position.x = s.x + (Math.random() - 0.5) * 0.03; if (s.t > SLOW_DELAY) { s.state = 'sinking'; s.speed = SLOW_SPEED * (S.df.id === 'nightmare' ? 1.4 : 1); SFX.creak(0.5, { x: s.x, y: 1, z: s.z }); } }
         if (s.state === 'sinking') {
             const d = -s.speed * dt; s.y += d; s.m.position.y += d; b.min.y += d; b.max.y += d;
             if (s.ob.body) s.ob.body.position.y += d;
@@ -295,12 +300,13 @@ export function update(dt, t, ctx) {
 function startPreview() {
     S.phase = 'preview'; S.previewT = PREVIEW_TIME * S.df.grace; S.hemiBase = lighting.hemi.intensity;
     releaseAll();
-    for (const row of S.rows) for (const st of row) if (st.kind === 'solid') { st.m.material.emissive = new THREE.Color(0x30ff60); st.m.material.emissiveIntensity = 1.2; }
+    S.rows.forEach((row, r) => { if (shown(r)) for (const st of row) if (st.kind === 'solid') { st.m.material.emissive = new THREE.Color(0x30ff60); st.m.material.emissiveIntensity = 1.2; } });
+    if (S.df.id === 'nightmare') toast('Nightmare: only every second row is shown!', '#ff6a4a');
     toast('Memorize the green stones! ' + Math.round(S.previewT) + ' seconds.', '#7fff90');
 }
 function endPreview() {
     S.previewLight.intensity = 0; lighting.hemi.intensity = S.hemiBase;
-    for (const row of S.rows) for (const st of row) if (st.kind === 'solid') st.m.material.emissiveIntensity = 0;
+    S.rows.forEach((row, r) => { for (const st of row) if (st.kind === 'solid') st.m.material.emissiveIntensity = 0; });
     setPlayerPosition(info.spawn[0], info.spawn[1], info.spawn[2]);
     S.phase = 'run'; S.chaseT = -HEAD_START * S.df.grace;
     toast('Jump on the stones. The beast starts ' + Math.round(HEAD_START * S.df.grace) + ' s after your first jump!', '#ff6a2a');
@@ -347,7 +353,7 @@ function respawn() {
     B.x = 5.5; B.z = START_EDGE - 2.5; B.y = -0.9; B.speed = BEAST_SPEED * S.df.speed; B.rising = false; B.step = undefined;
     const bf = S.burn;
     bf.orange.material.opacity = 0; bf.flames.forEach(fl => { fl.s.material.opacity = 0; });
-    S.dead = null; S.runT = 0; S.row = -1; S.chaseT = -HEAD_START * S.df.grace; S.hudT = 0;
+    S.dead = null; S.runT = 0; S.row = -1; S.chaseT = -HEAD_START * S.df.grace; S.hudT = 0; S.ghost.reset();
     S.nextScareRow = SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1));
     S.attempt = (S.attempt || 1) + 1;
     startPreview();
@@ -369,7 +375,7 @@ function drawHud() {
     S.hud.update();
 }
 export function dispose() {
-    if (S) { S.ev.dispose(); if (S.phase === 'preview') lighting.hemi.intensity = S.hemiBase; S.scare.dispose(); S.hud.dispose(); S.intro.dispose(); for (const o of [S.burn.orange, S.burn.grey, S.burn.ash]) camera.remove(o); S.burn.flames.forEach(f => camera.remove(f.s)); }
+    if (S) { S.ghost.dispose(); S.ev.dispose(); if (S.phase === 'preview') lighting.hemi.intensity = S.hemiBase; S.scare.dispose(); S.hud.dispose(); S.intro.dispose(); for (const o of [S.burn.orange, S.burn.grey, S.burn.ash]) camera.remove(o); S.burn.flames.forEach(f => camera.remove(f.s)); }
     L.moveScale = 1; L.maxUp = 99; L.maxSpeedXZ = 0;
     S = null;
 }

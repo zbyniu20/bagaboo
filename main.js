@@ -38,6 +38,10 @@ const LEVELS = {
     hideseek: { path: './levels/hideseek.js', light: 'hideseek', extras: [] },
     banana: { path: './levels/banana.js', light: 'station', extras: [] },
     race: { path: './levels/race.js', light: 'arcade', extras: [] },
+    wardrobe: { path: './levels/wardrobe.js', light: 'staff', extras: [] },
+    koth: { path: './levels/koth.js', light: 'station', extras: [] },
+    infection: { path: './levels/infection.js', light: 'station', extras: [] },
+    dodgeball: { path: './levels/dodgeball.js', light: 'station', extras: [] },
     staff: { path: './levels/staff.js', light: 'staff', extras: [] }
 };
 let level = null, extras = [], levelId = null, started = false, switching = false;
@@ -73,7 +77,7 @@ export async function loadLevel(id, spawn) {
     markAllDirty();
 }
 // Ekran ładowania przed oczami: zamiast zamrożonego obrazu gracz widzi czerń z napisem
-const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well', lava: 'Floor is Lava', staff: 'Staff room', games: 'BagaBoo Games', levels: 'Levels', laundry: 'The Industrial Laundromat', memory: 'Burning Memory', monster: 'Become the Monster', range: 'Shooting Range', hideseek: 'Hide and Seek', banana: 'Capture the Banana', race: 'Parkour Race' };
+const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well', lava: 'Floor is Lava', staff: 'Staff room', games: 'BagaBoo Games', levels: 'Levels', laundry: 'The Industrial Laundromat', memory: 'Burning Memory', monster: 'Become the Monster', range: 'Shooting Range', hideseek: 'Hide and Seek', banana: 'Capture the Banana', race: 'Parkour Race', wardrobe: 'Wardrobe', koth: 'King of the Hill', infection: 'Infection', dodgeball: 'Dodgeball' };
 const fade = (() => {
     const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
@@ -102,7 +106,9 @@ async function goToLevel(id, spawn, opts) {
     opts = opts || {};
     if (PAUSE.on) closePause();
     // Ziarno układu: od hosta, z restartu albo nowe losowe
-    L.levelSeed = SEEDED[id] ? (opts.seed !== undefined ? opts.seed : (Math.random() * 1e9) | 0) : undefined;
+    // Daily Run (przełącznik przy pulpicie): układ z daty, taki sam dla wszystkich; w drużynie liczy się ziarno hosta
+    L.levelSeed = SEEDED[id] ? (opts.seed !== undefined ? opts.seed : (ECO.dailyOn(id) ? ECO.dailySeed(id) : (Math.random() * 1e9) | 0)) : undefined;
+    if (SEEDED[id]) ECO.setRunSeed(id, L.levelSeed);
     if (NETM.NET.mode === 'host' && !opts.noFollow && id !== 'staff') NETM.sendFollow(id, { seed: L.levelSeed });   // goście idą za hostem (oprócz pokoju szefa)
     showLoading(LEVEL_NAMES[id] || id);
     await nextFrames(3);   // najpierw pokaż czarny ekran, dopiero potem ciężka praca
