@@ -72,14 +72,14 @@ export function build() {
     S.introSkip = introSeen('memory'); if (S.introSkip) S.introT = 0;   // samouczek tylko za pierwszym razem
 }
 function buildCave(R) {
-    const rock = 0x3a2420, edge = 0x601808;
+    const rock = 0x5a3a30, edge = 0x601808;
     addCrispBlock(0, -2.5, POOL_C, 22, 5, POOL_L + 2, 0x1a0c08, 0x400800);                             // dno basenu pod lawą
     addCrispBlock(0, 14.5, POOL_C, 22, 1, POOL_L + 2, 0x1a1010, 0x200404);                             // sklepienie
     for (const s of [-1, 1]) addCrispBlock(s * 10.5, 7, POOL_C, 1, 14, POOL_L + 2, rock, edge, tex.wall);
     addCrispBlock(0, 7, 9, 22, 14, 1, rock, edge, tex.wall);
     addCrispBlock(0, 7, BACK_Z - 0.5, 22, 14, 1, rock, edge, tex.wall);
-    addCrispBlock(0, TOP / 2, (8.5 + START_EDGE) / 2, 20, TOP, 8.5 - START_EDGE, 0x4a3430, edge, tex.floor);   // ląd startowy
-    addCrispBlock(0, TOP / 2, (END_EDGE + BACK_Z) / 2, 20, TOP, END_EDGE - BACK_Z, 0x4a3430, edge, tex.floor);  // ląd końcowy
+    addCrispBlock(0, TOP / 2, (8.5 + START_EDGE) / 2, 20, TOP, 8.5 - START_EDGE, 0x6a4a40, edge, tex.floor);   // ląd startowy
+    addCrispBlock(0, TOP / 2, (END_EDGE + BACK_Z) / 2, 20, TOP, END_EDGE - BACK_Z, 0x6a4a40, edge, tex.floor);  // ląd końcowy
     // Stalaktyty zwisające ze sklepienia
     const st = new THREE.MeshStandardMaterial({ color: 0x241612, roughness: 0.9 });
     for (let i = 0; i < 70; i++) { const h = 1 + R() * 3.5, c = new THREE.Mesh(new THREE.ConeGeometry(0.15 + R() * 0.4, h, 6), st); c.rotation.x = Math.PI; c.position.set((R() * 2 - 1) * 9.5, 14 - h / 2, 8 - R() * POOL_L); L.root.add(c); }
@@ -240,7 +240,7 @@ export function update(dt, t, ctx) {
         S.previewT -= dt;
         ctx.body.position.set(0, 12, (START_EDGE + LAST_Z) / 2 + 10); ctx.body.velocity.set(0, 0, 0);
         const k = Math.min(1, S.previewT / 1.5);   // ostatnie 1,5 s: przyciemnianie
-        S.previewLight.intensity = 140 * k; lighting.hemi.intensity = S.hemiBase * (1 + 2 * k);
+        S.previewLight.intensity = 140 * k; lighting.hemi.intensity = S.hemiBase + 3 * k;
         for (const row of S.rows) for (const st of row) if (st.kind === 'solid') st.m.material.emissiveIntensity = 1.2 * k;
         if (S.previewT <= 0) endPreview();
     }

@@ -55,9 +55,9 @@ export function build() {
 // Skrzynie mają co najmniej 0,8 m przerwy, więc da się między nimi przejść i się ukryć.
 function buildArena() {
     const R = T.mkRng(4242), boxes = [];
-    addCrispBlock(0, -0.5, 0, A * 2 + 2, 1, A * 2 + 2, 0x4a4a4e, 0x101014, tex.floor, { rough: tex.floorRough });
-    addCrispBlock(0, H + 0.5, 0, A * 2 + 2, 1, A * 2 + 2, 0x222228, 0x101014);
-    for (const [x, z, w, d] of [[0, -A - 0.5, A * 2 + 2, 1], [0, A + 0.5, A * 2 + 2, 1], [-A - 0.5, 0, 1, A * 2], [A + 0.5, 0, 1, A * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x6a625a, 0x1a1814, tex.wall);
+    addCrispBlock(0, -0.5, 0, A * 2 + 2, 1, A * 2 + 2, 0x7a7a80, 0x101014, tex.floor, { rough: tex.floorRough });
+    addCrispBlock(0, H + 0.5, 0, A * 2 + 2, 1, A * 2 + 2, 0x3a3a42, 0x101014);
+    for (const [x, z, w, d] of [[0, -A - 0.5, A * 2 + 2, 1], [0, A + 0.5, A * 2 + 2, 1], [-A - 0.5, 0, 1, A * 2], [A + 0.5, 0, 1, A * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x9a9288, 0x1a1814, tex.wall);
     const fits = (x, z, w, d) => {
         if (Math.abs(x) + w / 2 > A - 4.5 || z + d / 2 > A - 6.5 || z - d / 2 < -A + 5.5) return false;   // wolne pasy przy ścianach: starty i drzwi
         return boxes.every(b => Math.abs(x - b.x) > (w + b.w) / 2 + 0.8 || Math.abs(z - b.z) > (d + b.d) / 2 + 0.8);
@@ -71,10 +71,10 @@ function buildArena() {
         return false;
     };
     // Regały (długie i wysokie, tworzą alejki) i skrzynie różnej wielkości
-    for (let i = 0; i < 9; i++) { const horiz = R() < 0.5; place(horiz ? 5.5 : 0.8, 2.6, horiz ? 0.8 : 5.5, 0x5a4a3a, tex.wood, 40); }
-    for (let i = 0; i < 40; i++) place(1.1 + R() * 1.5, 0.9 + R() * 1.3, 1.1 + R() * 1.5, R() < 0.5 ? 0x8a6a40 : 0x6a5438, tex.wood, 30);
+    for (let i = 0; i < 9; i++) { const horiz = R() < 0.5; place(horiz ? 5.5 : 0.8, 2.6, horiz ? 0.8 : 5.5, 0x8a7258, tex.wood, 40); }
+    for (let i = 0; i < 40; i++) place(1.1 + R() * 1.5, 0.9 + R() * 1.3, 1.1 + R() * 1.5, R() < 0.5 ? 0xb89060 : 0x9a7850, tex.wood, 30);
     // Szafki pod zachodnią ścianą (ozdoba i osłona)
-    for (let z = -16; z <= 12; z += 2.2) addCrispBlock(-A + 0.6, 1.1, z, 0.9, 2.2, 0.9, 0x4a5a6a, 0x10141a);
+    for (let z = -16; z <= 12; z += 2.2) addCrispBlock(-A + 0.6, 1.1, z, 0.9, 2.2, 0.9, 0x6a7a8a, 0x10141a);
     // Manekiny w alejkach (ambient, nie łapią)
     for (let i = 0; i < 6; i++) {
         const m = buildMannequin(T.mkRng(100 + i)); const x = (R() * 2 - 1) * 14, z = (R() * 2 - 1) * 12;
@@ -85,8 +85,8 @@ function buildArena() {
     WAYPOINTS.length = 0;
     for (let x = -14; x <= 14; x += 4.7) for (let z = -13; z <= 14; z += 4.7) if (boxes.every(b => Math.abs(x - b.x) > b.w / 2 + 0.9 || Math.abs(z - b.z) > b.d / 2 + 0.9)) WAYPOINTS.push([x, z]);
     // Lampy
-    for (const [x, z] of [[-10, -10], [10, -10], [-10, 10], [10, 10]]) {
-        const l = new THREE.PointLight(0xffd8a0, 14, 20, 1.8); l.position.set(x, H - 1, z); L.root.add(l);
+    for (const [x, z] of [[-10, -10], [10, -10], [-10, 10], [10, 10], [0, 0], [0, -16]]) {
+        const l = new THREE.PointLight(0xffd8a0, 34, 24, 1.6); l.position.set(x, H - 1, z); L.root.add(l);
         const f = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 0.3), new THREE.MeshBasicMaterial({ color: 0xffe8c0 })); f.position.set(x, H - 0.1, z); L.root.add(f);
     }
 }
