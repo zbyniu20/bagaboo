@@ -19,7 +19,7 @@ import { startPresence } from './core/presence.js';
 import { updateHammer } from './core/hammer.js';
 import { updateVrMenu, vrMenuTerminal } from './core/vrmenu.js';
 import { onLevelBuilt, updateVisuals } from './core/visuals.js';
-import { isReservedNick, checkNickPassword } from './core/config.js';
+import { isReservedNick, checkNickPassword, isStaffName } from './core/config.js';
 
 // Lista poziomów. Nowy poziom = nowy plik w folderze levels/ + wpis tutaj.
 // light: preset oświetlenia z config.js, extras: dodatkowe pliki doładowywane razem z poziomem
@@ -121,6 +121,7 @@ NETM.onFollow((level, data) => {
 // Gość: zaproszenie od hosta (pokój szefa) albo odesłanie do lobby
 // Haker przyłapany w pokoju szefa: skórka CHEATER na zawsze i ban na tydzień
 NETM.onCheater((until) => {
+    if (isStaffName(ECO.SAVE.profile.name)) return;   // ekipa nigdy nie dostaje CHEATERA
     ECO.markCheater(); NETM.selfBan(Math.max(0, (until || 0) - Date.now()) || 7 * 24 * 3600 * 1000);
     toast('CHEATER! Breaking into the staff room = one-week ban.', '#ff2a2a');
     NETM.leaveNetwork('You were caught cheating. Banned for one week.');
