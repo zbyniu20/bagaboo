@@ -247,7 +247,7 @@ export const ACHIEVEMENTS = [
     { id: 'daily_5', name: 'Daily habit', desc: 'Finish 5 Daily Runs (Maze, Well or Memory)', reward: ['badge', 'daily'], rewardName: 'Calendar badge', goal: 5, val: () => SAVE.dailyRuns || 0 }
 ];
 export const RECORDS = [
-    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'hospital', name: 'The Hospital' }, { id: 'cemetery', name: 'The Cemetery' }, { id: 'route', name: 'Red route' }, { id: 'race', name: 'Parkour race' }, { id: 'range', name: 'Shooting range (kills)', score: true },
+    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'hospital', name: 'The Hospital' }, { id: 'cemetery', name: 'The Cemetery' }, { id: 'route', name: 'Red route' }, { id: 'race', name: 'Parkour race' }, { id: 'redlight', name: 'Red Light, Green Light' }, { id: 'lasttile', name: 'Last Tile (seconds)', score: true }, { id: 'range', name: 'Shooting range (kills)', score: true },
     { id: 'maze_nm', name: 'The Maze (Nightmare)' }, { id: 'silence_nm', name: 'Silence (Nightmare)' }, { id: 'well_nm', name: 'The Well (Nightmare)' }, { id: 'laundry_nm', name: 'Laundromat (Nightmare)' }, { id: 'memory_nm', name: 'Memory (Nightmare)' }, { id: 'hospital_nm', name: 'Hospital (Nightmare)' }, { id: 'cemetery_nm', name: 'Cemetery (Nightmare)' }
 ];
 
