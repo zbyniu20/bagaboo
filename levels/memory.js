@@ -19,13 +19,15 @@ import { ARRIVAL_FROM_MEMORY } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA ----------
-// 6 ścieżek po 20 kamieni. Każda linia to zwarta grupa 3 x 2 kamieni (kamień 0,55 m, odstęp 0,1 m),
-// dzięki czemu z każdego kamienia da się doskoczyć do każdego z 6 kamieni następnej linii, ale nie dalej.
-const ROWS = 20, COL_X = [-0.65, 0, 0.65], SUB_DZ = 0.65, SQ = 0.55, ROW_DZ = 1.9, TOP = 1.0;
-const FIRST_Z = -2.0, LAVA_Y = 0.2;
-const LAST_Z = FIRST_Z - (ROWS - 1) * ROW_DZ - SUB_DZ;  // najdalszy kamień
-const START_EDGE = FIRST_Z + SQ / 2 + 1.0;               // ląd startowy kończy się 1 m przed pierwszą linią
-const END_EDGE = LAST_Z - SQ / 2 - 1.0;                  // ląd końcowy zaczyna się 1 m za ostatnim rzędem
+// 6 ścieżek po 20 kamieni wypełnia prawie cały basen. Kamienie 1,5 x 1,5 m, między nimi 1,1 m lawy
+// (w bok i do przodu), więc między kamieniami trzeba skakać, nie da się przejść ani przebiec.
+// Z kamienia doskoczysz na kamień przed sobą, na skos (lewo/prawo) i w bok; linii dalej już nie.
+const ROWS = 20, COLS = 6, SQ = 1.5, PITCH = 2.6, TOP = 1.0;
+const COL_X = Array.from({ length: COLS }, (_, i) => (i - (COLS - 1) / 2) * PITCH);   // -6,5 ... 6,5
+const ROW_DZ = PITCH, FIRST_Z = -2.0, LAVA_Y = 0.2;
+const LAST_Z = FIRST_Z - (ROWS - 1) * ROW_DZ;            // ostatnia linia
+const START_EDGE = FIRST_Z + SQ / 2 + 1.1;               // ląd startowy kończy się 1,1 m przed pierwszą linią
+const END_EDGE = LAST_Z - SQ / 2 - 1.1;                  // ląd końcowy zaczyna się 1,1 m za ostatnią linią
 const BACK_Z = END_EDGE - 5.8;                           // ściana z drzwiami EXIT
 const POOL_C = (8.5 + BACK_Z) / 2, POOL_L = 8.5 - BACK_Z;   // środek i długość jaskini
 const SLOW_DELAY = 0.35, SLOW_SPEED = 0.45;              // powolny kwadrat: zaczyna tonąć po chwili, ok. 2 s do lawy
@@ -35,7 +37,7 @@ const PREVIEW_TIME = 10;                                 // 10 s podglądu z gó
 const SCARE_MIN = 5, SCARE_MAX = 8;                      // jumpscare losowo co 5-8 linii (ok. 3 na całą trasę)
 const BEAST_SPEED = 1.8, BEAST_MAX = 2.9, BEAST_RAMP = 40;   // Bestia: m/s, przyspiesza przez 40 s
 const CATCH_DIST = 1.7, ARRIVE_TIME = 1.0;               // po wpadnięciu do lawy Bestia jest przy tobie w 1 s
-// Ograniczony skok (ok. 2,3 m lotu): każdy kamień następnej linii w zasięgu, linia dalej już nie
+// Ograniczony skok (ok. 2,3 m lotu): przerwa 1,1 m (także na skos) w zasięgu, linia albo kolumna dalej (3,7 m) już nie
 const MOVE_SCALE = 0.95, MAX_UP = 4.0, MAX_SPEED_XZ = 4.0, EXTRA_GRAVITY = 4.0;
 const REWARD_FIRST = 2200, REWARD_REPEAT = 220;
 export const info = { id: 'memory', name: 'Burning Memory', spawn: [0, 1.4, 3.0] };
@@ -47,7 +49,7 @@ export function build() {
     const seed = L.levelSeed !== undefined ? L.levelSeed : (Math.random() * 1e9) | 0, R = T.mkRng(seed);
     L.levelId = 'memory-' + seed;
     L.spawn = info.spawn.slice();
-    L.bounds = { minX: -9.4, maxX: 9.4, minZ: BACK_Z + 0.4, maxZ: 7.6, maxY: 13 };
+    L.bounds = { minX: -9.4, maxX: 9.4, minZ: BACK_Z + 0.4, maxZ: 7.6, maxY: 13.5 };
     L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.maxSpeedXZ = MAX_SPEED_XZ;
     S = { seed: seed, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', previewT: PREVIEW_TIME, nextScareRow: SCARE_MIN + Math.floor(Math.random() * (SCARE_MAX - SCARE_MIN + 1)), chaseT: -HEAD_START, rows: [], row: -1, dead: null, hudT: 0, leaving: false, fx: [], flick: [] };
     buildCave(R);
@@ -102,19 +104,28 @@ function buildLava() {
     pts.frustumCulled = false; L.root.add(pts); S.embers = { geo: geo, pos: pos, n: n };
 }
 // Tor: 20 rzędów, w każdym losowo: dobry, powoli tonący i od razu tonący kwadrat
-// W każdej linii losowo: 2 dobre, 2 tonące powoli i 2 wpadające od razu
+// W każdej linii: 2 dobre, 2 tonące powoli i 2 wpadające od razu (losowo, ale zawsze z przejściem):
+// dwie "bezpieczne ścieżki" idą przez basen i w każdej linii przesuwają się najwyżej o jedną kolumnę,
+// więc z każdego dobrego kamienia jest skok na dobry kamień w następnej linii.
 function buildTrack(R) {
+    const step = (c) => Math.max(0, Math.min(COLS - 1, c + Math.floor(R() * 3) - 1));
+    let a = Math.floor(R() * COLS), b = Math.floor(R() * COLS);
     for (let r = 0; r < ROWS; r++) {
-        const kinds = ['solid', 'solid', 'slow', 'slow', 'fast', 'fast'];
-        for (let i = 5; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [kinds[i], kinds[j]] = [kinds[j], kinds[i]]; }
-        const z0 = FIRST_Z - r * ROW_DZ, row = [];
-        let k = 0;
-        for (const dz of [0, -SUB_DZ]) for (const x of COL_X) {
-            const z = z0 + dz;
+        const pb = b;
+        if (r > 0) { a = step(a); b = step(b); }
+        if (a === b) {   // dwa różne dobre kamienie w linii; druga ścieżka zostaje w zasięgu skoku ze swojego poprzedniego kamienia
+            const opts = [a - 1, a + 1].filter(c => c >= 0 && c < COLS && (r === 0 || Math.abs(c - pb) <= 1));
+            b = opts[Math.floor(R() * opts.length)];
+        }
+        const rest = ['slow', 'slow', 'fast', 'fast'];
+        for (let i = 3; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [rest[i], rest[j]] = [rest[j], rest[i]]; }
+        const z = FIRST_Z - r * ROW_DZ, row = [];
+        COL_X.forEach((x, c) => {
+            const kind = c === a || c === b ? 'solid' : rest.pop();
             const m = addCrispBlock(x, TOP / 2 - 0.5, z, SQ, TOP + 1, SQ, 0x5a4038, 0xff4a10, tex.floor);   // jednakowe z wyglądu: trzeba zapamiętać, które są dobre
             const ob = L.obstacles[L.obstacles.length - 1];
-            row.push({ m: m, ob: ob, kind: kinds[k++], x: x, z: z, y: 0, t: 0, state: 'up' });
-        }
+            row.push({ m: m, ob: ob, kind: kind, x: x, z: z, y: 0, t: 0, state: 'up' });
+        });
         S.rows.push(row);
     }
 }
@@ -191,8 +202,8 @@ const INTRO = [
     'A lava beast lives in this pool. Cross 20 lines of stones to reach the EXIT.',
     'Every line has 6 stones: 2 stay, 2 sink slowly and 2 drop at once. They all look the same.',
     'First you see the path from above for 10 seconds: the green stones are safe. Remember them!',
-    'You can jump only one line at a time, to any of the 6 stones of the next line.',
-    'Then you get 10 seconds before the beast hunts you. Touch the lava and it is on you in a second.'
+    'There is lava between all stones: jump forward, diagonally or sideways, one stone at a time.',
+    'The beast starts 10 seconds after your first jump. Touch the lava and it is on you in a second.'
 ];
 
 // ---------- CO KLATKĘ ----------
@@ -222,7 +233,7 @@ export function update(dt, t, ctx) {
     if (S.phase === 'preview') {
         // Podgląd z góry: gracz wisi nad środkiem basenu i nie może się ruszać, dobre kamienie świecą na zielono
         S.previewT -= dt;
-        ctx.body.position.set(0, 9.5, (START_EDGE + LAST_Z) / 2 + 6); ctx.body.velocity.set(0, 0, 0);
+        ctx.body.position.set(0, 12, (START_EDGE + LAST_Z) / 2 + 10); ctx.body.velocity.set(0, 0, 0);
         const k = Math.min(1, S.previewT / 1.5);   // ostatnie 1,5 s: przyciemnianie
         S.previewLight.intensity = 140 * k; lighting.hemi.intensity = S.hemiBase * (1 + 2 * k);
         for (const row of S.rows) for (const st of row) if (st.kind === 'solid') st.m.material.emissiveIntensity = 1.2 * k;
@@ -231,9 +242,11 @@ export function update(dt, t, ctx) {
     const B = S.beast;
     if (B.rising) { B.y = Math.min(-0.9, B.y + dt * 1.2); B.roarT -= dt; if (B.roarT <= 0) { B.roarT = 99; SFX.roar(1.0, { x: B.x, y: 1, z: B.z }); buzz('both', 0.6, 500); } if (B.y >= -0.9) B.rising = false; }
     if (S.phase === 'run') {
-        S.runT += dt; S.chaseT += dt;
+        // Na lądzie startowym gracz jest bezpieczny: przewaga, pościg i jumpscare'y ruszają dopiero po wejściu na pierwszy kamień
+        const onStartLand = p.z > START_EDGE - 0.15;
+        if (S.row >= 0) { S.runT += dt; S.chaseT += dt; }
         // Po 10 s przewagi Bestia brodzi przez lawę za graczem i przyspiesza
-        if (S.chaseT > 0) {
+        if (S.chaseT > 0 && !onStartLand) {
             B.speed = BEAST_SPEED + (BEAST_MAX - BEAST_SPEED) * Math.min(1, S.chaseT / BEAST_RAMP);
             const dx = p.x - B.x, dz = p.z - B.z, d = Math.hypot(dx, dz);
             if (d > 0.1) { B.x += dx / d * Math.min(d, B.speed * dt); B.z += dz / d * Math.min(d, B.speed * dt); }
@@ -283,7 +296,7 @@ function endPreview() {
     for (const row of S.rows) for (const st of row) if (st.kind === 'solid') st.m.material.emissiveIntensity = 0;
     setPlayerPosition(info.spawn[0], info.spawn[1], info.spawn[2]);
     S.phase = 'run'; S.chaseT = -HEAD_START;
-    toast('RUN! The beast comes in 10 seconds!', '#ff6a2a');
+    toast('Jump on the stones. The beast starts 10 s after your first jump!', '#ff6a2a');
 }
 function updateDeath(dt, t) {
     const d = S.dead, B = S.beast, bf = S.burn; d.t += dt;
@@ -322,6 +335,7 @@ function drawHud() {
     x.font = 'bold 28px "Courier New", monospace';
     if (S.phase === 'intro') { x.fillStyle = '#ffb070'; x.fillText('Watch the beast wake up...', 30, 162); }
     else if (S.phase === 'preview') { x.fillStyle = '#7fff90'; x.fillText('Memorize the green path: ' + Math.ceil(S.previewT) + ' s', 30, 162); }
+    else if (S.row < 0) { x.fillStyle = '#ffd27a'; x.fillText('Jump on the first stones to start', 30, 162); }
     else if (S.chaseT < 0) { x.fillStyle = '#ffd27a'; x.fillText('The beast hunts you in ' + Math.ceil(-S.chaseT) + ' s', 30, 162); }
     else { x.fillStyle = '#ff4a2a'; x.fillText('THE BEAST IS COMING! Do not stop!', 30, 162); }
     S.hud.update();
