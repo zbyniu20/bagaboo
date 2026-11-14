@@ -189,10 +189,10 @@ function startGame(restorePosition) {
 }
 
 // Przed startem: ban na dobę i hasło do zastrzeżonego nicku
-async function canStart() {
+async function canStart(allowBanned) {
     await NETM.ensureMic();   // jeśli przeglądarka nie dała mikrofonu przy wczytaniu strony, pytamy jeszcze raz przy kliknięciu
     const ban = NETM.myBanUntil();
-    if (ban) { $('status').innerText = 'You are banned until ' + new Date(ban).toLocaleString() + '.'; return false; }
+    if (ban && !allowBanned) { $('status').innerText = 'You are banned until ' + new Date(ban).toLocaleString() + '.'; return false; }
     const name = ($('playerName').value || '').trim();
     if (isReservedNick(name)) {
         if (!(await checkNickPassword(name, $('playerPass').value))) {
@@ -205,7 +205,7 @@ async function canStart() {
 }
 $('btnSolo').onclick = async () => { if (!(await canStart())) return; initAudio(); readProfile(); startGame(true); };
 $('btnHost').onclick = async () => { if (!(await canStart())) return; initAudio(); readProfile(); lobbyButtons(false); NETM.startHost(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
-$('btnJoin').onclick = async () => { if (!(await canStart())) return; initAudio(); readProfile(); lobbyButtons(false); NETM.startJoin(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
+$('btnJoin').onclick = async () => { if (!(await canStart(true))) return; initAudio(); readProfile(); lobbyButtons(false); NETM.startJoin(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
 // Pole hasła pokazuje się tylko przy zastrzeżonym nicku
 // Zapamiętane hasła do zastrzeżonych nicków (tylko na tym urządzeniu)
 const PW_KEY = 'bagaboo_saved_pw';
@@ -297,7 +297,7 @@ lobbyButtons(false);
 loadLevel('lobby').then(() => {
     lobbyButtons(true); passVis(); drawScoreboard();
     const ban = NETM.myBanUntil();
-    $('status').innerText = ban ? 'You are banned until ' + new Date(ban).toLocaleString() + '.' : 'Ready. Put on your headset and press Enter VR after starting.';
-    if (ban) lobbyButtons(false);
+    $('status').innerText = ban ? 'You are banned until ' + new Date(ban).toLocaleString() + '. If the owner unbanned you, press Join Room.' : 'Ready. Put on your headset and press Enter VR after starting.';
+    if (ban) { lobbyButtons(false); $('btnJoin').disabled = false; }   // zbanowany może tylko dołączyć do pokoju (host może go odbanować)
 })
     .catch((e) => { console.error(e); $('status').innerText = 'Could not load the level: ' + e.message; });
