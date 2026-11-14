@@ -93,6 +93,18 @@ LIGHT_PRESETS.hideseek = {   // ciemny magazyn: każdy ma latarkę
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.4,
     flashlight: { color: 0xfff0d8, intensity: 75, distance: 30, angle: 0.55, penumbra: 0.6, decay: 2 }
 };
+LIGHT_PRESETS.hospital = {   // szpital: zimne, zielonkawe światło i latarka (posągi ruszają się, gdy nie świecisz)
+    background: 0x0e1414, fogColor: 0x182020, fogDensity: 0.016, exposure: 1.4,
+    hemiSky: 0xb0d0d0, hemiGround: 0x384444, hemiIntensity: 2.6,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3,
+    flashlight: { color: 0xf4fff8, intensity: 90, distance: 30, angle: 0.6, penumbra: 0.5, decay: 2 }
+};
+LIGHT_PRESETS.cemetery = {   // cmentarz nocą: błękitny księżyc, mgła i latarka
+    background: 0x0c1218, fogColor: 0x1c2630, fogDensity: 0.022, exposure: 1.45,
+    hemiSky: 0x90a8d0, hemiGround: 0x30403a, hemiIntensity: 2.8,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3,
+    flashlight: { color: 0xfff0d8, intensity: 90, distance: 30, angle: 0.6, penumbra: 0.6, decay: 2 }
+};
 // ---------- ROLE I ZASTRZEŻONE NICKI ----------
 // Ultimate admin: uprawnienia admina, złota postać 2 razy większa, jako jedyny może zbanować admina.
 // Admin ma wszystkie uprawnienia. Moderatorzy: wejście do pokoju szefa, młotki, wyrzucanie i bany (poza adminem).

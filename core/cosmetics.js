@@ -56,6 +56,20 @@ export function extraHat(id) {
         const m = mat({ color: 0x1a1a1e, metalness: 0.4, roughness: 0.4 }), cup = mat({ color: 0xff4a2a, roughness: 0.4 });
         g.add(at(new THREE.TorusGeometry(0.155, 0.012, 8, 28, Math.PI), m, 0, 0.0, 0).rotateY(Math.PI / 2));
         for (const s of [-1, 1]) { const c = at(new THREE.CylinderGeometry(0.045, 0.045, 0.035, 18), cup, s * 0.158, -0.005, 0); c.rotation.z = Math.PI / 2; g.add(c); }
+    } else if (id === 'nursecap') {
+        const w = mat({ color: 0xf4f4f0, roughness: 0.8 });
+        g.add(at(new THREE.CylinderGeometry(0.115, 0.13, 0.1, 18), w, 0, 0.14, 0));
+        g.add(at(new THREE.BoxGeometry(0.1, 0.1, 0.01), w, 0, 0.12, -0.13));
+        const red = mat({ color: 0xd01818 });
+        g.add(at(new THREE.BoxGeometry(0.05, 0.016, 0.012), red, 0, 0.155, -0.138));
+        g.add(at(new THREE.BoxGeometry(0.016, 0.05, 0.012), red, 0, 0.155, -0.138));
+    } else if (id === 'lanternhat') {
+        const iron = mat({ color: 0x2a2a2e, metalness: 0.8, roughness: 0.4 });
+        g.add(at(new THREE.CylinderGeometry(0.05, 0.06, 0.1, 10), mat({ color: 0xffc860, emissive: 0xffa020, emissiveIntensity: 1.4 }), 0, 0.28, 0));
+        g.add(at(new THREE.ConeGeometry(0.065, 0.05, 10), iron, 0, 0.36, 0));
+        g.add(at(new THREE.CylinderGeometry(0.008, 0.008, 0.16, 5), iron, 0, 0.19, 0));
+        g.add(at(new THREE.CylinderGeometry(0.13, 0.14, 0.03, 18), iron, 0, 0.1, 0));
+        const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffc070, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.8 })); glow.scale.set(0.35, 0.35, 1); glow.position.set(0, 0.28, 0); g.add(glow);
     } else if (id === 'laurel') {
         const gold = mat({ color: 0xd4a640, metalness: 1, roughness: 0.3, envMapIntensity: Math.max(0.8, ENV) });
         g.add(at(new THREE.TorusGeometry(0.146, 0.008, 6, 32), gold, 0, 0.085, 0).rotateX(Math.PI / 2));
@@ -201,6 +215,7 @@ export const EXTRA_BADGES = {
     pumpkin: { bg: '#2a1004', draw: (x) => { x.fillStyle = '#e8781a'; x.beginPath(); x.ellipse(64, 70, 36, 30, 0, 0, 7); x.fill(); x.fillStyle = '#2a5a1a'; x.fillRect(60, 34, 8, 14); x.fillStyle = '#2a1004'; x.beginPath(); x.moveTo(46, 64); x.lineTo(56, 64); x.lineTo(51, 54); x.moveTo(72, 64); x.lineTo(82, 64); x.lineTo(77, 54); x.fill(); x.fillRect(48, 80, 32, 6); } },
     snow: { bg: '#0a1a30', draw: (x) => { x.strokeStyle = '#d8f0ff'; x.lineWidth = 6; x.lineCap = 'round'; for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; x.beginPath(); x.moveTo(64 + Math.cos(a) * 38, 64 + Math.sin(a) * 38); x.lineTo(64 - Math.cos(a) * 38, 64 - Math.sin(a) * 38); x.stroke(); } } },
     sun: { bg: '#3a1a00', draw: (x) => { x.fillStyle = '#ffd030'; x.beginPath(); x.arc(64, 64, 22, 0, 7); x.fill(); x.strokeStyle = '#ffd030'; x.lineWidth = 6; x.lineCap = 'round'; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; x.beginPath(); x.moveTo(64 + Math.cos(a) * 32, 64 + Math.sin(a) * 32); x.lineTo(64 + Math.cos(a) * 44, 64 + Math.sin(a) * 44); x.stroke(); } } },
+    present: { bg: '#3a0a1a', draw: (x) => { x.fillStyle = '#e03a5a'; x.fillRect(34, 52, 60, 44); x.fillStyle = '#ffd23a'; x.fillRect(60, 52, 8, 44); x.fillRect(34, 70, 60, 8); x.beginPath(); x.ellipse(52, 46, 14, 9, -0.4, 0, 7); x.ellipse(76, 46, 14, 9, 0.4, 0, 7); x.fill(); } },
     daily: { bg: '#0a2a3a', draw: (x) => { x.fillStyle = '#f4f4f4'; x.fillRect(34, 40, 60, 56); x.fillStyle = '#e03a3a'; x.fillRect(34, 40, 60, 14); x.fillStyle = '#0a2a3a'; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) x.fillRect(42 + i * 18, 62 + j * 11, 10, 6); x.fillRect(46, 32, 6, 14); x.fillRect(76, 32, 6, 14); } },
     nm: { bg: '#1a0420', draw: (x) => { x.fillStyle = '#ff2a4a'; x.beginPath(); x.moveTo(64, 26); x.lineTo(96, 54); x.lineTo(88, 100); x.lineTo(40, 100); x.lineTo(32, 54); x.closePath(); x.fill(); x.fillStyle = '#1a0420'; x.beginPath(); x.arc(52, 64, 7, 0, 7); x.arc(76, 64, 7, 0, 7); x.fill(); x.fillRect(46, 82, 36, 6); } }
 };
