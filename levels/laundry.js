@@ -9,6 +9,7 @@ import { THREE, L, tex, camera, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
 import { levelReward, recordTime, diffOf } from '../core/economy.js';
 import { createGhost } from '../core/runkit.js';
+import { createEvents } from '../core/events.js';
 import { toast } from '../core/terminal.js';
 import { hands, releaseAll } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -36,7 +37,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: X0 + 0.4, maxX: X1 - 0.4, minZ: Z1 + 0.4, maxZ: Z0 - 0.4, maxY: H - 0.4 };
     L.onNoise = onNoise;
-    S = { df: diffOf('laundry'), ghost: createGhost('laundry'), carried: false, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', valves: [], safe: [], soap: null, vents: [], drums: [], nextSteam: 25, steam: 0,
+    S = { ev: createEvents('laundry', { skip: ['fog'] }), df: diffOf('laundry'), ghost: createGhost('laundry'), carried: false, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', valves: [], safe: [], soap: null, vents: [], drums: [], nextSteam: 25, steam: 0,
           machT: 2, hudT: 0, caughtT: -1, leaving: false, done: 0, rage: false, fx: [], lamps: [], blackout: 0, nextBlackout: 35, glimpseT: 18, rumbleT: 12 };
     buildHall();
     buildMachines();
@@ -396,6 +397,7 @@ export function update(dt, t, ctx) {
     }
     if (S.phase === 'play') S.runT += dt;
     S.ghost.tick(dt, p, S.phase === 'play' && S.caughtT < 0 && !S.leaving);
+    S.ev.update(dt, S.phase === 'play' && S.caughtT < 0);
     // Złapany: chwila na jumpscare, potem od nowa
     S.scare.update(dt);
     if (S.caughtT >= 0) { S.caughtT += dt; if (S.caughtT > 1.6) { carry = S.df.checkpoints ? { done: S.valves.map(v => v.done), runT: S.runT } : null; S.leaving = true; ctx.goto('laundry'); } return; }
@@ -548,7 +550,7 @@ function drawHud(p) {
     S.hud.update();
 }
 export function dispose() {
-    if (S) { S.ghost.dispose(); S.hud.dispose(); S.intro.dispose(); S.scare.dispose(); camera.remove(S.white); }
+    if (S) { S.ev.dispose(); S.ghost.dispose(); S.hud.dispose(); S.intro.dispose(); S.scare.dispose(); camera.remove(S.white); }
     L.onNoise = null;
     S = null;
 }

@@ -6,6 +6,7 @@ import * as CANNON from 'cannon-es';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GFX, LP } from './config.js';
 import * as T from './textures.js';
+import { SETTINGS } from './settings.js';
 
 export { THREE, CANNON };
 
@@ -55,7 +56,7 @@ export function applyLighting(P) {
     lighting.preset = P;
     scene.background.set(P.background);
     scene.fog.color.set(P.fogColor); scene.fog.density = P.fogDensity;
-    renderer.toneMappingExposure = P.exposure;
+    renderer.toneMappingExposure = P.exposure * SETTINGS.brightness;
     scene.environment = P.envIntensity > 0 ? envTex : null;
     hemi.color.set(P.hemiSky); hemi.groundColor.set(P.hemiGround); hemi.intensity = P.hemiIntensity;
     sun.visible = P.sunIntensity > 0; sun.intensity = P.sunIntensity; sun.color.set(P.sunColor);
@@ -64,6 +65,8 @@ export function applyLighting(P) {
     if (P.flashlight) { const F = P.flashlight; headLamp.color.set(F.color); headLamp.intensity = F.intensity; headLamp.distance = F.distance; headLamp.angle = F.angle; headLamp.penumbra = F.penumbra; headLamp.decay = F.decay; }
 }
 applyLighting(LP);
+// Zmiana suwaka jasności w menu pauzy: przelicza ekspozycję bieżącego presetu
+export function applyBrightness() { if (lighting.preset) renderer.toneMappingExposure = lighting.preset.exposure * SETTINGS.brightness; }
 
 // Fizyka (gracz nie ma kontaktów w Cannonie, jego kolizje liczy player.js)
 export const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.81, 0) });

@@ -15,6 +15,7 @@ import { levelReward, recordTime, unlockAchievement, diffOf } from '../core/econ
 import { toast } from '../core/terminal.js';
 import { hands, setPlayerPosition } from '../core/player.js';
 import * as SFX from '../core/audio.js';
+import { createEvents } from '../core/events.js';
 import * as N from '../core/network.js';
 import { ARRIVAL_FROM_WELL as ARRIVAL_WELL } from './levels.js';
 import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions , introSeen } from '../core/levelkit.js';
@@ -50,7 +51,7 @@ export function build() {
     L.bounds = { minX: -HS + 0.2, maxX: HS - 0.2, minZ: -HS + 0.2, maxZ: HS - 0.2, maxY: TOP + 2 };
     L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.noHeightTrack = true;
     S = {
-        df: diffOf('well'), clock: 0, playT: 0, introT: quick ? RESTART_INTRO : INTRO_TIME, phase: 'intro', ooze: -1.2, nextSurge: rnd(R, SURGE_MIN, SURGE_MAX), surge: 0,
+        ev: createEvents('well'), df: diffOf('well'), clock: 0, playT: 0, introT: quick ? RESTART_INTRO : INTRO_TIME, phase: 'intro', ooze: -1.2, nextSurge: rnd(R, SURGE_MIN, SURGE_MAX), surge: 0,
         nextScare: rnd(R, SCARE_MIN, SCARE_MAX), scareT: -1, faller: null, reach: null, blackout: 0, caughtT: -1, leaving: false,
         grates: [], crumbles: [], hatch: null, hudT: 0, R: R, lastHand: [null, null],
         seed: seed, out: new Set(), spectator: false, lastHostMsg: -10, netT: 0, surgeNet: 0
@@ -406,6 +407,7 @@ function win() {
 export function update(dt, t, ctx) {
     if (!S || S.leaving) return;
     S.ctx = ctx; S.clock += dt;
+    S.ev.update(dt, S.phase === 'play' && S.caughtT < 0);
     const body = ctx.body, p = body.position, h = p.y - 0.35;
     body.velocity.y -= EXTRA_GRAVITY * dt;   // studnia ciągnie w dół
 
@@ -518,6 +520,7 @@ export function update(dt, t, ctx) {
 }
 
 export function dispose() {
+    if (S && S.ev) S.ev.dispose();
     if (S) for (const o of [S.face, S.hud, S.intro]) if (o) o.dispose();
     L.moveScale = 1; L.maxUp = 99; L.noHeightTrack = false;
     N.onLevelMsg(null);

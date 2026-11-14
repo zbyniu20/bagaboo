@@ -1,6 +1,6 @@
 // ==========================================
 // SALON "BAGABOO GAMES": wybór trybów gry drzwiami
-// 1. Floor is Lava, 2. Become the Monster, 3. Shooting Range, 4. Hide and Seek. Drzwi LOBBY wracają do lobby.
+// 1. Floor is Lava, 2. Become the Monster, 3. Shooting Range, 4. Hide and Seek, 5. Capture the Banana, 6. Parkour Race. Drzwi LOBBY wracają do lobby.
 // ==========================================
 import { THREE, L, tex, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
@@ -8,17 +8,21 @@ import { toast } from '../core/terminal.js';
 import { buildDoor } from '../core/levelkit.js';
 import { ARRIVAL_GAMES } from './lobby-door.js';
 
-const W = 10, D = 6, H = 5;
+const W = 15, D = 6, H = 5;
 export const info = { id: 'games', name: 'BagaBoo Games', spawn: [0, 1.0, 4.2] };
-export const ARRIVAL_FROM_LAVA = [-7.5, 1.2, -4.4];
-export const ARRIVAL_FROM_MONSTER = [-2.5, 1.2, -4.4];
-export const ARRIVAL_FROM_RANGE = [2.5, 1.2, -4.4];
-export const ARRIVAL_FROM_HIDESEEK = [7.5, 1.2, -4.4];
+export const ARRIVAL_FROM_LAVA = [-12.5, 1.2, -4.4];
+export const ARRIVAL_FROM_MONSTER = [-7.5, 1.2, -4.4];
+export const ARRIVAL_FROM_RANGE = [-2.5, 1.2, -4.4];
+export const ARRIVAL_FROM_HIDESEEK = [2.5, 1.2, -4.4];
+export const ARRIVAL_FROM_BANANA = [7.5, 1.2, -4.4];
+export const ARRIVAL_FROM_RACE = [12.5, 1.2, -4.4];
 const MODES = [
-    { x: -7.5, label: 'FLOOR IS LAVA', color: '#ff8a3a', glow: 0xff5a10, target: 'lava', desc: ['Do not touch the floor.', 'Heavy jumps, sinking platforms,', 'ropes and rising lava.', 'Solo or with friends.'] },
-    { x: -2.5, label: 'BECOME THE MONSTER', color: '#ff4a4a', glow: 0xff2020, target: 'monster', desc: ['One player becomes the monster.', 'Everyone else runs for 2 minutes.', 'Not caught = 200 Bagabucks.', 'Best with 2 or more players.'] },
-    { x: 2.5, label: 'SHOOTING RANGE', color: '#60d0ff', glow: 0x30a0ff, target: 'range', desc: ['Shoot the monsters that pop up.', '2 minutes. Most kills wins', '200 Bagabucks.', 'Pull the trigger to shoot.'] },
-    { x: 7.5, label: 'HIDE AND SEEK', color: '#7fe8ff', glow: 0x30c0ff, target: 'hideseek', desc: ['One seeker, everyone else hides', 'in a dark warehouse. 25 s to hide,', 'then 2 minutes of hunt. 200 Bagabucks.', 'Alone? A mannequin seeks you.'] }
+    { x: -12.5, label: 'FLOOR IS LAVA', color: '#ff8a3a', glow: 0xff5a10, target: 'lava', desc: ['Do not touch the floor.', 'Heavy jumps, sinking platforms,', 'ropes and rising lava.', 'Solo or with friends.'] },
+    { x: -7.5, label: 'BECOME THE MONSTER', color: '#ff4a4a', glow: 0xff2020, target: 'monster', desc: ['One player becomes the monster.', 'Everyone else runs for 2 minutes.', 'Not caught = 200 Bagabucks.', 'Best with 2 or more players.'] },
+    { x: -2.5, label: 'SHOOTING RANGE', color: '#60d0ff', glow: 0x30a0ff, target: 'range', desc: ['Shoot the monsters that pop up.', '2 minutes. Most kills wins', '200 Bagabucks.', 'Pull the trigger to shoot.'] },
+    { x: 2.5, label: 'HIDE AND SEEK', color: '#7fe8ff', glow: 0x30c0ff, target: 'hideseek', desc: ['One seeker, everyone else hides', 'in a dark warehouse. 25 s to hide,', 'then 2 minutes of hunt. 200 Bagabucks.', 'Alone? A mannequin seeks you.'] },
+    { x: 7.5, label: 'CAPTURE THE BANANA', color: '#ffe040', glow: 0xffc020, target: 'banana', desc: ['Two teams, two bananas.', 'Steal theirs, bring it home.', 'First to 3 captures wins', '200 Bagabucks. Solo: vs a guard.'] },
+    { x: 12.5, label: 'PARKOUR RACE', color: '#ff7ac0', glow: 0xff3aa0, target: 'race', desc: ['Race over the void.', 'First to the finish wins', '200 Bagabucks.', 'Solo: beat the par time.'] }
 ];
 let S = null;
 

@@ -12,6 +12,7 @@ import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { levelReward, recordTime, unlockAchievement, diffOf } from '../core/economy.js';
 import { setPlayerPosition } from '../core/player.js';
+import { createEvents } from '../core/events.js';
 import { toast } from '../core/terminal.js';
 import * as SFX from '../core/audio.js';
 import * as NET from '../core/network.js';
@@ -88,7 +89,7 @@ export function build() {
     // Ziarno od main.js (w multiplayerze wspólne z hostem, więc cała drużyna ma ten sam układ)
     const seed = L.levelSeed !== undefined ? L.levelSeed : (Math.random() * 1e9) | 0, M = generate(seed), root = L.root;
     L.levelId = 'maze-' + seed;   // każdy gracz ma swój labirynt, więc inni gracze są ukryci
-    S = { df: diffOf('maze'), cps: [], cp: -1, M: M, seed: seed, time: 0, phase: 'intro', phaseT: 0, chaseT: 0, lost: 0, lastScare: -99, scareT: -1, playerNode: -1, dist: null, target: null, introShown: false, lights: [],
+    S = { ev: createEvents('maze'), df: diffOf('maze'), cps: [], cp: -1, M: M, seed: seed, time: 0, phase: 'intro', phaseT: 0, chaseT: 0, lost: 0, lastScare: -99, scareT: -1, playerNode: -1, dist: null, target: null, introShown: false, lights: [],
           lastNode: -1, nextPhantom: PHANTOM_MIN + Math.random() * (PHANTOM_MAX - PHANTOM_MIN), phantom: null, blackout: 0 };
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -49.5, maxX: 49.5, minZ: -59.5, maxZ: 59.5, maxY: 19.6 };
@@ -347,6 +348,7 @@ export function update(dt, t, ctx) {
     if (!S) return;
     const body = ctx.body, p = body.position, q = S.mq, c = S.cage;
     S.time += dt; S.phaseT += dt; S.runT = (S.runT || 0) + dt;
+    S.ev.update(dt, S.phase === 'chase' || S.phase === 'intro');
     const cagePos = { x: c.home[0], y: 1.5, z: c.home[1] };
     if (S.cps.length && (S.phase === 'chase' || S.phase === 'intro' || S.phase === 'cutscene')) reachCheckpoints(p);
 
@@ -460,6 +462,7 @@ function chase(dt, t, p) {
 
 // Wywoływane przy wyjściu z poziomu: sprzątanie rzeczy przyczepionych do kamery
 export function dispose() {
+    if (S && S.ev) S.ev.dispose();
     if (S && S.scare) S.scare.dispose();
     S = null;
 }

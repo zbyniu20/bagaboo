@@ -9,6 +9,7 @@ import { LP } from './config.js';
 import { makeCanvas, toTex, mkRng } from './textures.js';
 import { roleTagFor } from './config.js';
 import { rimify } from './visuals.js';
+import { extraHat, extraGlasses, extraMask, extraSleeveMat, extraGloveMat, EXTRA_SKINS, EXTRA_BADGES } from './cosmetics.js';
 
 const ENV = LP.envIntensity;
 const NAIL_GEO = new THREE.SphereGeometry(1, 12, 8);
@@ -66,6 +67,7 @@ const SKINS = {
     ultimate: { fur: 0xe0b040, face: 0xb8902a, metal: true },   // ultimate admin: cały złoty
     cheater: { fur: 0x39ff14, face: 0xff00aa, glowEyes: true }   // przyłapany haker: jaskrawozielony z różową twarzą, na zawsze
 };
+Object.assign(SKINS, EXTRA_SKINS);   // nowe skórki (sezonowe i za wyzwania)
 export function furColor(look) { const k = SKINS[look.skin]; return new THREE.Color(k ? k.fur : (look.color || '#3d2314')); }
 function furMat(look, shade) {
     const k = SKINS[look.skin], f = furTexture();
@@ -77,6 +79,7 @@ function faceMat(look) {
     return new THREE.MeshStandardMaterial({ color: k && k.face ? k.face : 0x2a2422, roughness: 0.55, bumpMap: tex.skin, bumpScale: 0.5, envMapIntensity: ENV });
 }
 function skinMaterial(look) {
+    const eg = extraGloveMat(look.gloves); if (eg) return eg;
     if (look.gloves === 'neon') return new THREE.MeshStandardMaterial({ color: 0x20ff70, emissive: 0x10ff60, emissiveIntensity: 1.3, roughness: 0.3 });
     if (look.gloves === 'mannequin') return new THREE.MeshStandardMaterial({ map: tex.plaster, bumpMap: tex.plaster, bumpScale: 0.7, color: 0xd8d0c2, roughness: 0.55, envMapIntensity: ENV });
     if (look.gloves === 'burnt') { const b = burntTexture(); return new THREE.MeshStandardMaterial({ color: 0x1a1210, roughness: 0.9, emissive: 0xff5a10, emissiveMap: b, emissiveIntensity: 1.4, bumpMap: tex.plaster, bumpScale: 2, envMapIntensity: ENV }); }
@@ -94,6 +97,7 @@ function nailMaterial(look) {
 }
 function sleeveMaterial(look) {
     const base = { side: THREE.DoubleSide, envMapIntensity: ENV };
+    const ex = extraSleeveMat(look.sleeve, base); if (ex) return ex;
     if (look.sleeve === 'leather') return new THREE.MeshStandardMaterial(Object.assign(base, { color: 0x3a2214, roughness: 0.35, metalness: 0.1 }));
     if (look.sleeve === 'camo') return new THREE.MeshStandardMaterial(Object.assign(base, { map: tex.camo, roughness: 0.9 }));
     if (look.sleeve === 'bandage') return new THREE.MeshStandardMaterial(Object.assign(base, { map: tex.bandage, bumpMap: tex.bandage, bumpScale: 1, roughness: 0.95 }));
@@ -162,6 +166,7 @@ export function poseHand(rig, dt) {
 const mat = (o) => new THREE.MeshStandardMaterial(Object.assign({ envMapIntensity: ENV, roughness: 0.6 }, o));
 const meshAt = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o; };
 export function buildHat(id) {
+    { const e = extraHat(id); if (e.children.length) return e; }
     const g = new THREE.Group();
     if (id === 'cap') {
         const c = mat({ color: 0x6a1a14 });
@@ -225,6 +230,7 @@ export function buildHat(id) {
     return g;
 }
 export function buildGlasses(id) {
+    { const e = extraGlasses(id); if (e.children.length) return e; }
     const g = new THREE.Group();
     if (id === 'goldshades') g.add(meshAt(new THREE.BoxGeometry(0.2, 0.045, 0.02), mat({ color: 0xd4a640, metalness: 1, roughness: 0.15, envMapIntensity: Math.max(0.8, ENV) }), 0, 0.02, -0.132));
     else if (id === 'sunglasses') g.add(meshAt(new THREE.BoxGeometry(0.2, 0.045, 0.02), mat({ color: 0x050505, metalness: 0.9, roughness: 0.1 }), 0, 0.02, -0.132));
@@ -252,6 +258,7 @@ export function buildGlasses(id) {
 }
 // Maski zakładane na twarz (nowy dział sklepu)
 export function buildMask(id) {
+    { const e = extraMask(id); if (e.children.length) return e; }
     const g = new THREE.Group();
     const shell = (m, sx, sy, sz) => { const o = meshAt(new THREE.SphereGeometry(1, 24, 16, 0, Math.PI * 2, 0, Math.PI), m, 0, 0, -0.1); o.scale.set(sx, sy, sz); g.add(o); return o; };
     const dark = new THREE.MeshBasicMaterial({ color: 0x050505 });
@@ -352,6 +359,7 @@ const BADGES = {
     mod: { bg: '#0a2a7a', draw: (x) => shield(x, '#d8e8ff', 'M') },
     crown: { bg: '#7a0a10', draw: (x) => { x.fillStyle = '#ffd23a'; x.beginPath(); x.moveTo(26, 88); x.lineTo(26, 46); x.lineTo(46, 66); x.lineTo(64, 36); x.lineTo(82, 66); x.lineTo(102, 46); x.lineTo(102, 88); x.closePath(); x.fill(); } }
 };
+Object.assign(BADGES, EXTRA_BADGES);   // nowe odznaki
 function shield(x, col, letter) {
     x.fillStyle = col; x.beginPath(); x.moveTo(64, 20); x.lineTo(100, 32); x.lineTo(96, 76); x.quadraticCurveTo(64, 110, 64, 110); x.quadraticCurveTo(64, 110, 32, 76); x.lineTo(28, 32); x.closePath(); x.fill();
     x.fillStyle = '#1a0a0a'; x.font = 'bold 50px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(letter, 64, 66);
