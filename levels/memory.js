@@ -64,7 +64,8 @@ export function build() {
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     // Jumpscare z paszczą Bestii (co 5-8 linii)
-    S.scare = createJumpscare({ head: lavaBeast().group, scale: 0.9, y: -0.25, restZ: -0.55, fromZ: -2.6, eyes: false });
+    // Paszcza Bestii na wysokości oczu, tuż przed twarzą, z ognistym błyskiem i świecącymi oczami
+    S.scare = createJumpscare({ head: lavaBeast().group, scale: 1.0, y: -0.06, restZ: -0.48, fromZ: -2.4, tilt: -0.1, eyes: false, flash: 0xff4a08 });
     // Mocne światło na czas podglądu z góry
     S.previewLight = new THREE.PointLight(0xffe0c0, 0, 70, 1.2); S.previewLight.position.set(0, 13, (START_EDGE + LAST_Z) / 2); L.root.add(S.previewLight);
     S.introSkip = introSeen('memory'); if (S.introSkip) S.introT = 0;   // samouczek tylko za pierwszym razem
