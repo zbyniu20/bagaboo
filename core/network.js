@@ -7,7 +7,7 @@ import { THREE, camera, scene, L, CANNON, containBall, playerRig } from './engin
 import { createAvatar, poseHand, lookKey, animateFace } from './avatar.js';
 import { getLook, SESSION, SAVE } from './economy.js';
 import { markAllDirty, toast } from './terminal.js';
-import { rankOf, setLocalMod, isStaffName } from './config.js';
+import { rankOf, setLocalMod, isStaffName, isOwnerName, isUltimateName } from './config.js';
 import { getAudioContext } from './audio.js';
 
 /* global Peer */
@@ -35,8 +35,27 @@ let followHandler = null, lastFollow = null, inviteHandler = null;
 const BAN_KEY = 'bagaboo_banlist', MY_BAN_KEY = 'bagaboo_banned', DAY = 24 * 3600 * 1000;
 function banList() { try { return JSON.parse(localStorage.getItem(BAN_KEY)) || {}; } catch (e) { return {}; } }
 function saveBanList(b) { try { localStorage.setItem(BAN_KEY, JSON.stringify(b)); } catch (e) {} }
-export function bannedNamesList() { const b = banList(), now = Date.now(); return Object.keys(b).filter(n => b[n] > now).map(n => ({ name: n, until: b[n] })); }
-export function unbanName(name) { const b = banList(); delete b[String(name).toLowerCase()]; saveBanList(b); markAllDirty(); }
+// Gracze, którzy próbowali wejść z banem (zapisani u hosta), żeby właściciel mógł ich odbanować z listy
+const ATT_KEY = 'bagaboo_blocked', UNBAN_KEY = 'bagaboo_unbanned', WEEK_MS = 7 * DAY;
+function readMap(k) { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } }
+function writeMap(k, m) { try { localStorage.setItem(k, JSON.stringify(m)); } catch (e) {} }
+export function bannedNamesList() {
+    const b = banList(), a = readMap(ATT_KEY), now = Date.now(), out = {};
+    for (const n of Object.keys(b)) if (b[n] > now) out[n] = b[n];
+    for (const n of Object.keys(a)) if (a[n] > now && !out[n]) out[n] = a[n];
+    return Object.keys(out).map(n => ({ name: n, until: out[n] }));
+}
+// Odbanować może tylko właściciel (BoyIsGamer) albo ultimate admin. Odbanowany gracz wchodzi od razu, także jeśli ban został zapisany na jego urządzeniu.
+export function canUnban() { const me = SAVE.profile.name; return isOwnerName(me) || isUltimateName(me); }
+export function unbanName(name) {
+    if (!canUnban()) return false;
+    const k = String(name).toLowerCase(), b = banList(), a = readMap(ATT_KEY), u = readMap(UNBAN_KEY);
+    delete b[k]; delete a[k]; saveBanList(b); writeMap(ATT_KEY, a);
+    for (const x of [...bannedNames]) if (String(x).toLowerCase() === k) bannedNames.delete(x);
+    u[k] = Date.now() + WEEK_MS; writeMap(UNBAN_KEY, u);
+    setStatus(name + ' was unbanned. They can join right away.'); markAllDirty();
+    return true;
+}
 function isBannedName(name) { const b = banList(), u = b[String(name || '').toLowerCase()]; return u && u > Date.now(); }
 // Czy to urządzenie ma bana (sprawdzane na stronie startowej)
 // ---------- WŁAMANIE DO POKOJU SZEFA ----------
@@ -285,7 +304,17 @@ function handleGuest(conn) {
         if (!data || !clientConnections.includes(conn)) return;
         if (data.type === 'playerUpdate') {
             const nm = data.payload && data.payload.profile && data.payload.profile.name;
-            if (nm && (bannedNames.has(nm) || isBannedName(nm))) { try { conn.send({ type: 'banned', until: banList()[nm.toLowerCase()] || Date.now() + DAY }); } catch (e) {} kickConn(conn, null); return; }
+            if (nm) {
+                const low = nm.toLowerCase(), sb = +data.payload.sb || 0, un = readMap(UNBAN_KEY);
+                if (un[low] && un[low] > Date.now()) {
+                    // Odbanowany przez właściciela: gracz dostaje zielone światło i czyści ban na swoim urządzeniu
+                    if (sb) { try { conn.send({ type: 'unbanned' }); } catch (e) {} delete un[low]; writeMap(UNBAN_KEY, un); }
+                } else if (bannedNames.has(nm) || isBannedName(nm) || sb > Date.now()) {
+                    const until = banList()[low] || (sb > Date.now() ? sb : Date.now() + DAY);
+                    if (sb > Date.now()) { const a = readMap(ATT_KEY); a[low] = sb; writeMap(ATT_KEY, a); markAllDirty(); }   // trafia na listę banów u hosta
+                    try { conn.send({ type: 'banned', until: until }); } catch (e) {} kickConn(conn, null); return;
+                }
+            }
             playersState[conn.peer] = data.payload; updateRemote(conn.peer, data.payload); checkIntruder(conn.peer, data.payload);
         } else if (data.type === 'objectMove') { sharedObjectsState[data.id] = data.payload; syncObject(data.id, data.payload); }
         else if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, conn.peer); }
@@ -342,6 +371,7 @@ export function startJoin(code, cb) {
                 setTimeout(() => location.reload(), 2500);
                 return;
             }
+            if (data.type === 'unbanned') { try { localStorage.removeItem(MY_BAN_KEY); } catch (e) {} toast('You were unbanned. Welcome back!', '#9aff60'); return; }
             if (data.type === 'cheater') { if (cheaterHandler) cheaterHandler(data.until); return; }
             if (data.type === 'invite' && data.level === 'staff') myInvited = true;
             if (data.type === 'role') { setLocalMod(data.name, data.mod); toast(data.mod ? 'You are now a moderator!' : 'You are no longer a moderator', '#ffd27a'); markAllDirty(); return; }
@@ -408,6 +438,7 @@ export function networkTick(handL, handR) {
         head: { p: hp.toArray(), q: hq.toArray() },
         h1: { p: l1p.toArray(), q: l1q.toArray(), g: handL.userData.rig.grip },
         h2: { p: l2p.toArray(), q: l2q.toArray(), g: handR.userData.rig.grip },
+        sb: myBanUntil(),   // ban zapisany na tym urządzeniu (host może go zdjąć, jeśli właściciel odbanował gracza)
         sl: playerRig.userData.sliding ? 1 : 0,   // ślizg na brzuchu
         s: { h: SESSION.maxH, j: SESSION.jumps, e: (Date.now() - SESSION.since) / 1000 }
     };
