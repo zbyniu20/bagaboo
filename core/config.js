@@ -138,5 +138,14 @@ export async function checkNickPassword(name, password) {
     const buf = await crypto.subtle.digest('SHA-256', data);
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('') === hash;
 }
+// Kto może wyrzucić / zbanować kogo: ekipa (admin, moderator) nawzajem nie, tylko ultimate admin (zbyniu) może każdego (poza sobą)
+export function canPunish(byName, targetName) {
+    const by = rankOf(byName), target = rankOf(targetName);
+    if (by === 0) return false;
+    if (by >= 4) return target < 4;
+    return target === 0;
+}
+// Zwiększ tę liczbę, a przy następnym wejściu każde urządzenie zdejmuje wszystkie bany i listy odbanowań
+export const BANS_CLEARED = 1;
 export const LIGHT_MODE = 'dusk';
 export const LP = LIGHT_PRESETS[LIGHT_MODE];
