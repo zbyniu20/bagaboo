@@ -94,7 +94,7 @@ export const ULTIMATE_NAMES = ['zbyniu'];
 export const ADMIN_NAMES = ['BoyIsGamer'];
 export const COADMIN_NAMES = ['spikyvr'];   // co-admin: uprawnienia admina, własny napis CO-ADMIN i odznaka
 export const OWNER_NAMES = ['BoyIsGamer'];   // właściciel gry: napis OWNER nad głową i odznaka Owner
-export const MOD_NAMES = ['lincolnvr'];
+export const MOD_NAMES = ['lincolnvr', 'vitoryboy'];
 // Zastrzeżone nicki: żeby grać pod tym nickiem, trzeba podać hasło na stronie startowej.
 // Wartość to skrót SHA-256 z tekstu "bagaboo:" + nick małymi literami + ":" + hasło.
 // Nowy skrót wygenerujesz narzędziem na stronie z plikami do wgrania (sekcja "Hasła do nicków").
