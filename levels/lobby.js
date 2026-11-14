@@ -8,7 +8,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GFX, LP } from '../core/config.js';
 import * as T from '../core/textures.js';
 import * as M from '../core/murals.js';
-import { computer, shop, board, onPreview, previewLook } from '../core/ui.js';
+import { computer, shop, board, dailyBoard, onPreview, previewLook } from '../core/ui.js';
 import { createHead, createGorillaTorso } from '../core/avatar.js';
 import { track } from '../core/economy.js';
 
@@ -75,6 +75,7 @@ export function build() {
     buildDecor();
     buildComputerDesk(3.5, -9);
     buildScoreboard();
+    buildDailyBoard();
     buildShop();
     buildChains();
     buildParticles();
@@ -306,6 +307,16 @@ function buildScoreboard() {
     g.add(new THREE.Mesh(mergeGeometries(bolts), new THREE.MeshStandardMaterial({ color: 0x8a8a8a, metalness: 1, roughness: 0.3 })));
     const l = new THREE.PointLight(0xff6a3a, 5, 6, 2); l.position.set(0, 0, 1.2); g.add(l);
     L.reserved.push([13.6, -7.5, 2.4]);
+}
+
+// Tablica dnia na zachodniej ścianie: zadania dzienne z postępem, seria i czas do nagrody za logowanie
+function buildDailyBoard() {
+    const g = new THREE.Group(); g.position.set(-14.9, 2.6, 5.5); g.rotation.y = Math.PI / 2; L.root.add(g);
+    const frame = new THREE.Mesh(new RoundedBoxGeometry(3.5, 2.3, 0.14, 2, 0.05), new THREE.MeshStandardMaterial({ color: 0x2a221c, metalness: 0.5, roughness: 0.45, envMapIntensity: ENV }));
+    frame.castShadow = true; frame.receiveShadow = true; g.add(frame);
+    const screen = dailyBoard.createMesh(3.3, 2.06); screen.position.z = 0.075; g.add(screen);
+    const l = new THREE.PointLight(0xffb060, 4, 6, 2); l.position.set(0, 0, 1.2); g.add(l);
+    L.reserved.push([-13.6, 5.5, 2.2]);
 }
 
 // Automat sklepowy przy zachodniej ścianie + stojak z podglądem przedmiotu na głowie

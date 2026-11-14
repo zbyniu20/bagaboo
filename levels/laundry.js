@@ -7,7 +7,8 @@
 // ==========================================
 import { THREE, L, tex, camera, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
-import { levelReward, recordTime } from '../core/economy.js';
+import { levelReward, recordTime, diffOf } from '../core/economy.js';
+import { createGhost } from '../core/runkit.js';
 import { toast } from '../core/terminal.js';
 import { hands, releaseAll } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -18,7 +19,7 @@ import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare , in
 
 // ---------- USTAWIENIA ----------
 const X0 = -16, X1 = 16, Z0 = 6, Z1 = -54, H = 9;   // hala 32 x 60 m, 9 m wysokości
-const WALK = 3.4, INVESTIGATE = 5.2, SPRINT = 8.8, RAGE = 8.0;   // prędkości Szmaciarza (m/s): w sprincie szybszy od gracza
+const WALK0 = 3.4, INVESTIGATE0 = 5.2, SPRINT0 = 8.8, RAGE0 = 8.0;   // prędkości Szmaciarza (m/s): w sprincie szybszy od gracza
 const SEE_DIST = 14, CATCH_DIST = 1.3, SAFE_HEIGHT = 2.6;       // widzi na 14 m (para), nie sięga wyżej niż 2,6 m
 const LOSE_TIME = 7;                                            // tyle sekund szuka cię po stracie z oczu
 const BLACKOUT_MIN = 28, BLACKOUT_MAX = 50;                     // co ile sekund gasną światła
@@ -27,7 +28,7 @@ const TURNS = [3, 2, 2, 2];                                      // ile obrotów
 const REWARD_FIRST = 2000, REWARD_REPEAT = 200, INTRO_TIME = 10;
 export const info = { id: 'laundry', name: 'The Industrial Laundromat', spawn: [0, 1.0, 3.6] };
 const COLORS = [0xffd21a, 0x1ad2c8, 0xff5aa8, 0xff8a1a, 0x8ad21a, 0x5a8aff];
-let S = null;
+let S = null, carry = null;   // carry: zakręcone zawory i czas przenoszone przez punkt kontrolny po złapaniu
 const _v = new THREE.Vector3();
 
 // ---------- BUDOWA ----------
@@ -35,7 +36,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: X0 + 0.4, maxX: X1 - 0.4, minZ: Z1 + 0.4, maxZ: Z0 - 0.4, maxY: H - 0.4 };
     L.onNoise = onNoise;
-    S = { clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', valves: [], safe: [], soap: null, vents: [], drums: [], nextSteam: 25, steam: 0,
+    S = { df: diffOf('laundry'), ghost: createGhost('laundry'), carried: false, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', valves: [], safe: [], soap: null, vents: [], drums: [], nextSteam: 25, steam: 0,
           machT: 2, hudT: 0, caughtT: -1, leaving: false, done: 0, rage: false, fx: [], lamps: [], blackout: 0, nextBlackout: 35, glimpseT: 18, rumbleT: 12 };
     buildHall();
     buildMachines();
@@ -54,6 +55,15 @@ export function build() {
     S.white = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthTest: false }));
     S.white.position.z = -0.26; S.white.renderOrder = 996; camera.add(S.white);
     S.scare = createJumpscare({ head: buildMask(), scale: 1.6, y: -0.25, restZ: -0.45, fromZ: -2.2, eyes: false });
+    if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name + (S.df.checkpoints ? '' : ' (no checkpoints)'), S.df.color);
+    // Punkt kontrolny po złapaniu: zakręcone zawory zostają zakręcone, czas biegu płynie dalej (Easy i Normal)
+    if (carry && S.df.checkpoints) {
+        S.carried = true; S.runT = carry.runT; S.introT = 0; S.introSkip = true; S.phase = 'play'; S.intro.mesh.visible = false;
+        carry.done.forEach((d, i) => { if (!d) return; const v = S.valves[i]; v.done = true; v.acc = v.need; S.done++; v.lamp.material.color.setHex(0x30ff60); v.glow.material.color.setHex(0x30ff60); });
+        if (S.done) toast('Checkpoint: ' + S.done + '/4 valves stay closed', '#7fc47f');
+        if (S.done === 4) openGate();
+    }
+    carry = null;
 }
 
 function buildHall() {
@@ -345,7 +355,7 @@ function finish() {
     if (S.leaving) return; S.leaving = true;
     toast('You escaped the laundromat!', '#7fc47f');
     levelReward('laundry', REWARD_FIRST, REWARD_REPEAT, 'escaping the laundromat');
-    recordTime('laundry', S.runT);
+    S.ghost.finish(recordTime('laundry', S.runT) && !S.carried, S.runT);
 }
 // Gorąca para: bucha z losowej rury, odpycha i oślepia
 function steamBurst(p) {
@@ -385,9 +395,10 @@ export function update(dt, t, ctx) {
         if (S.introT <= 0) { S.phase = 'play'; toast('Find the 4 red valves. Stay quiet.', '#ff5aa8'); }
     }
     if (S.phase === 'play') S.runT += dt;
+    S.ghost.tick(dt, p, S.phase === 'play' && S.caughtT < 0 && !S.leaving);
     // Złapany: chwila na jumpscare, potem od nowa
     S.scare.update(dt);
-    if (S.caughtT >= 0) { S.caughtT += dt; if (S.caughtT > 1.6) { S.leaving = true; ctx.goto('laundry'); } return; }
+    if (S.caughtT >= 0) { S.caughtT += dt; if (S.caughtT > 1.6) { carry = S.df.checkpoints ? { done: S.valves.map(v => v.done), runT: S.runT } : null; S.leaving = true; ctx.goto('laundry'); } return; }
     // Bębny pralek i suszarka się obracają, maszyny hałasują
     for (const d of S.drums) d.rotation.z += dt * 2;
     S.dryer.drum.rotation.x += dt * 0.4;
@@ -427,6 +438,7 @@ export function update(dt, t, ctx) {
 }
 
 function thinkMonster(dt, t, p) {
+    const WALK = WALK0 * S.df.speed, INVESTIGATE = INVESTIGATE0 * S.df.speed, SPRINT = SPRINT0 * S.df.speed, RAGE = RAGE0 * S.df.speed;
     const tm = S.tm, safe = inSafe(p) || p.y - 0.35 > SAFE_HEIGHT;
     const sees = !safe && canSee(p);
     if (sees && tm.mode !== 'chase') {
@@ -453,7 +465,7 @@ function thinkMonster(dt, t, p) {
     tm.y += ((tm.climb ? feet : 0) - tm.y) * Math.min(1, dt * (tm.climb ? 5 : 3));
     const next = tm.climb ? [p.x, p.z] : (tm.path.length ? tm.path[0] : null);
     if (next) {
-        const dx = next[0] - tm.x, dz = next[1] - tm.z, d = Math.hypot(dx, dz);
+        const dx = next[0] - tm.x, dz = next[1] - tm.z, d = Math.max(1e-4, Math.hypot(dx, dz));   // d > 0: gracz dokładnie na potworze nie daje NaN
         tm.x += dx / d * Math.min(d, speed * dt); tm.z += dz / d * Math.min(d, speed * dt);
         const want = Math.atan2(dx, dz); let dd = want - tm.dir; while (dd > Math.PI) dd -= Math.PI * 2; while (dd < -Math.PI) dd += Math.PI * 2;
         tm.dir += dd * Math.min(1, dt * 6);
@@ -536,7 +548,7 @@ function drawHud(p) {
     S.hud.update();
 }
 export function dispose() {
-    if (S) { S.hud.dispose(); S.intro.dispose(); S.scare.dispose(); camera.remove(S.white); }
+    if (S) { S.ghost.dispose(); S.hud.dispose(); S.intro.dispose(); S.scare.dispose(); camera.remove(S.white); }
     L.onNoise = null;
     S = null;
 }

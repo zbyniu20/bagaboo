@@ -8,6 +8,7 @@ import { THREE, L, tex, camera, addCrispBlock, addBody, addConstraint, physicsMa
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { levelReward, recordTime, unlockAchievement } from '../core/economy.js';
+import { createGhost } from '../core/runkit.js';
 import { toast } from '../core/terminal.js';
 import { hands, setPlayerPosition, releaseAll } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -34,7 +35,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -9.6, maxX: 9.6, minZ: -61.6, maxZ: 4.6, maxY: 23.5 };
     L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.maxSpeedXZ = MAX_SPEED_XZ;
-    S = { clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', burns: 0, cp: 0, grace: 0, lavaY: LAVA_Y, surgeT: 0, nextSurge: 45, flash: 0,
+    S = { ghost: createGhost('lava'), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', burns: 0, cp: 0, grace: 0, lavaY: LAVA_Y, surgeT: 0, nextSurge: 45, flash: 0,
           sinkers: [], movers: [], mannequins: [], hudT: 0, leaving: false };
     S.checkpoints = [info.spawn.slice()];
     buildHall();
@@ -173,7 +174,7 @@ function finish() {
     S.leaving = true;
     toast('You crossed the lava!', '#7fc47f');
     levelReward('lava', REWARD_FIRST, REWARD_REPEAT, 'lava crossing');
-    recordTime('lava', S.runT);
+    S.ghost.finish(recordTime('lava', S.runT), S.runT);
     if (S.burns === 0) unlockAchievement('lava_walker');
 }
 const INTRO = [
@@ -212,6 +213,7 @@ export function update(dt, t, ctx) {
         if (S.introT <= 0) { S.phase = 'play'; toast('Go! Do not touch the floor.', '#ffb070'); }
     }
     if (S.phase === 'play') S.runT += dt;
+    S.ghost.tick(dt, p, S.phase === 'play');
     ctx.body.velocity.y -= EXTRA_GRAVITY * dt;   // mocniejsza grawitacja
 
     // Lawa: falowanie, pulsowanie i wzbieranie
@@ -266,7 +268,7 @@ export function update(dt, t, ctx) {
 }
 
 export function dispose() {
-    if (S) { S.hud.dispose(); S.intro.dispose(); camera.remove(S.flashPanel); }
+    if (S) { S.ghost.dispose(); S.hud.dispose(); S.intro.dispose(); camera.remove(S.flashPanel); }
     L.moveScale = 1; L.maxUp = 99; L.maxSpeedXZ = 0;
     S = null;
 }

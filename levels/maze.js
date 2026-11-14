@@ -10,7 +10,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LIGHT_PRESETS } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
-import { levelReward, recordTime, unlockAchievement } from '../core/economy.js';
+import { levelReward, recordTime, unlockAchievement, diffOf } from '../core/economy.js';
+import { setPlayerPosition } from '../core/player.js';
 import { toast } from '../core/terminal.js';
 import * as SFX from '../core/audio.js';
 import * as NET from '../core/network.js';
@@ -87,7 +88,7 @@ export function build() {
     // Ziarno od main.js (w multiplayerze wspólne z hostem, więc cała drużyna ma ten sam układ)
     const seed = L.levelSeed !== undefined ? L.levelSeed : (Math.random() * 1e9) | 0, M = generate(seed), root = L.root;
     L.levelId = 'maze-' + seed;   // każdy gracz ma swój labirynt, więc inni gracze są ukryci
-    S = { M: M, seed: seed, time: 0, phase: 'intro', phaseT: 0, chaseT: 0, lost: 0, lastScare: -99, scareT: -1, playerNode: -1, dist: null, target: null, introShown: false, lights: [],
+    S = { df: diffOf('maze'), cps: [], cp: -1, M: M, seed: seed, time: 0, phase: 'intro', phaseT: 0, chaseT: 0, lost: 0, lastScare: -99, scareT: -1, playerNode: -1, dist: null, target: null, introShown: false, lights: [],
           lastNode: -1, nextPhantom: PHANTOM_MIN + Math.random() * (PHANTOM_MAX - PHANTOM_MIN), phantom: null, blackout: 0 };
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -49.5, maxX: 49.5, minZ: -59.5, maxZ: 59.5, maxY: 19.6 };
@@ -118,9 +119,11 @@ export function build() {
     const walls = new THREE.Mesh(mergeGeometries(geos), wallMat); walls.castShadow = true; walls.receiveShadow = true; root.add(walls);
 
     buildHintsAndLights(M, path);
+    if (S.df.checkpoints) buildCheckpoints(path);
     buildRooms();
     buildCage();
     S.scare = createJumpscare({});
+    if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name + (S.df.checkpoints ? '' : ' (no checkpoints)'), S.df.color);
     buildPhantom();
     buildDecor();
 }
@@ -148,6 +151,36 @@ function buildHintsAndLights(M, path) {
     // Mocniejsze światło na co ~5. skrzyżowaniu głównej drogi (maks. 7 lamp)
     const step = Math.max(1, Math.floor(junctions.length / 7));
     for (let q = 0; q < junctions.length && S.lights.length < 7; q += step) { const c = nodeCenter(path[junctions[q]]); addLamp(c[0], c[1], 0xffb070, 28); }
+}
+// Punkty kontrolne (Easy i Normal): 3 zielone słupy na głównej drodze, po ćwierci, połowie i trzech czwartych trasy.
+// Po złapaniu wracasz do ostatniego z nich, a manekin zaczyna pościg od początku labiryntu. Nightmare nie ma punktów kontrolnych.
+function buildCheckpoints(path) {
+    const mat = () => new THREE.MeshBasicMaterial({ color: 0x2a4a30, transparent: true, opacity: 0.9, toneMapped: false });
+    for (const f of [0.25, 0.5, 0.75]) {
+        let k = Math.round((path.length - 1) * f); while (k > 1 && path[k] >= N * N) k--;
+        const c = nodeCenter(path[k]), g = new THREE.Group(); g.position.set(c[0], 0, c[1]); L.root.add(g);
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.6, 8), mat()); pillar.position.y = 1.3; g.add(pillar);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.05, 6, 24), mat()); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.05; g.add(ring);
+        const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0x30ff70, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false })); glow.scale.set(1.6, 3, 1); glow.position.y = 1.4; g.add(glow);
+        S.cps.push({ x: c[0], z: c[1], parts: [pillar, ring], glow: glow });
+    }
+}
+function reachCheckpoints(p) {
+    for (let i = S.cp + 1; i < S.cps.length; i++) {
+        const c = S.cps[i];
+        if (Math.hypot(p.x - c.x, p.z - c.z) < 1.7) {
+            S.cp = i; for (const m of c.parts) m.material.color.setHex(0x40ff80); c.glow.material.opacity = 0.9;
+            SFX.fuse(); toast('Checkpoint ' + (i + 1) + '/' + S.cps.length + ' saved', '#7fc47f');
+        }
+    }
+}
+// Złapany przy punkcie kontrolnym: wracasz do niego, a manekin zaczyna pościg od klatki
+function respawnAtCheckpoint() {
+    const c = S.cps[S.cp], q = S.mq, cg = S.cage;
+    S.frozen = null; setPlayerPosition(c.x, 1.0, c.z);
+    q.x = cg.home[0] + 1.6; q.z = cg.home[1]; q.target = null; S.playerNode = -1; S.chaseT = 0; S.lost = 0;
+    S.phase = 'chase'; S.phaseT = 0;
+    toast('Back to checkpoint ' + (S.cp + 1) + '. It hunts you again!', '#7fc47f');
 }
 function hintTexture(kind) {
     const c = T.makeCanvas(256, 256), x = c.getContext('2d'), R = T.mkRng(kind === 'x' ? 11 : 22);
@@ -315,6 +348,7 @@ export function update(dt, t, ctx) {
     const body = ctx.body, p = body.position, q = S.mq, c = S.cage;
     S.time += dt; S.phaseT += dt; S.runT = (S.runT || 0) + dt;
     const cagePos = { x: c.home[0], y: 1.5, z: c.home[1] };
+    if (S.cps.length && (S.phase === 'chase' || S.phase === 'intro' || S.phase === 'cutscene')) reachCheckpoints(p);
 
     if (S.blackout > 0) S.blackout -= dt;
     const dark = S.blackout > 0;
@@ -346,7 +380,7 @@ export function update(dt, t, ctx) {
     if (S.phase === 'intro') {
         if (!S.introShown && S.time > 1) { S.introShown = true; toast('Find the exit. Something is waiting...', '#ff6a40'); }
         q.head.rotation.y = Math.sin(t * 0.7) * 0.4;   // manekin rozgląda się w klatce
-        if (S.time >= CAGE_TIME) { S.phase = 'cutscene'; S.phaseT = 0; S.frozen = null; SFX.creak(0.9, cagePos); toast('Something is breaking free...', '#ff6a40'); }
+        if (S.time >= CAGE_TIME * S.df.grace) { S.phase = 'cutscene'; S.phaseT = 0; S.frozen = null; SFX.creak(0.9, cagePos); toast('Something is breaking free...', '#ff6a40'); }
     } else if (S.phase === 'cutscene') {
         // Krótka scenka: klatka się trzęsie, drzwi wylatują, manekin wychodzi. Gracz stoi w miejscu.
         freeze(body);
@@ -370,6 +404,7 @@ export function update(dt, t, ctx) {
         if (dist < 0.85 && p.y < 3.2) { S.phase = 'caught'; S.phaseT = 0; jumpscare(); }
     } else if (S.phase === 'caught') {
         freeze(body);
+        if (S.phaseT > 1.5 && S.cp >= 0) { respawnAtCheckpoint(); return; }
         if (S.phaseT > 1.5) { S.phase = 'leaving'; S.frozen = null; toast('The mannequin caught you. A new maze awaits...', '#e0533f'); 
             // Solo: nowy labirynt. W drużynie: ten sam układ, żeby nie rozdzielać graczy.
             if (NET.NET.mode === 'solo') ctx.goto('maze'); else ctx.goto('maze', null, { seed: S.seed, noFollow: true }); }
@@ -412,7 +447,7 @@ function chase(dt, t, p) {
         }
         tx = q.target[0]; tz = q.target[1];
     }
-    const speed = SPEED_START + (SPEED_MAX - SPEED_START) * Math.min(1, S.chaseT / SPEED_RAMP);
+    const speed = (SPEED_START + (SPEED_MAX - SPEED_START) * Math.min(1, S.chaseT / SPEED_RAMP)) * S.df.speed;
     const dx = tx - q.x, dz = tz - q.z, d = Math.hypot(dx, dz);
     if (d > 0.001) { const s = Math.min(d, speed * dt); q.x += dx / d * s; q.z += dz / d * s; }
     const yaw = Math.atan2(dx, dz); let dy = yaw - q.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); q.yaw += dy * Math.min(1, dt * 6);

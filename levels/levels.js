@@ -5,7 +5,8 @@
 // ==========================================
 import { THREE, L, tex, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
-import { SAVE, fmtDuration } from '../core/economy.js';
+import { SAVE, fmtDuration, DIFFS, DIFF_ORDER, getDiff, setDiff, topTimes } from '../core/economy.js';
+import { Terminal, wrapText } from '../core/terminal.js';
 import { toast } from '../core/terminal.js';
 import { buildDoor } from '../core/levelkit.js';
 import { ARRIVAL_LEVELS } from './lobby-door.js';
@@ -25,6 +26,41 @@ const DOORS = [
     { x: 4, label: 'LAUNDROMAT', color: '#ff7ac0', glow: 0xff3aa0, target: 'laundry', rec: 'laundry', msg: 'Something is walking between the washers...', desc: ['Close 4 steam valves.', 'The Threadman', 'hunts in the steam.'] },
     { x: 8, label: 'BURNING MEMORY', color: '#ff8a3a', glow: 0xff4a10, target: 'memory', rec: 'memory', msg: 'Remember or burn...', desc: ['Cross 20 rows of stones', 'over lava. Remember the', 'safe ones. Run!'] }
 ];
+
+// Pulpit przy drzwiach: opis poziomu, wybór trudności (Easy / Normal / Nightmare) i najlepsze czasy.
+// Terminale tworzymy raz na moduł (lista terminali w terminal.js nie jest sprzątana), rysują się z aktualnego zapisu.
+const boards = {};
+function boardFor(d) {
+    if (boards[d.target]) return boards[d.target];
+    const t = new Terminal((t) => {
+        const c = t.ctx, diff = getDiff(d.rec), df = DIFFS[diff];
+        t.background();
+        c.strokeStyle = d.color; c.lineWidth = 8; c.strokeRect(6, 6, t.W - 12, t.H - 12);
+        t.text(d.label, t.W / 2, 50, 40, d.color, 'center', true);
+        d.desc.forEach((l, i) => t.text(l, t.W / 2, 100 + i * 30, 22, '#f0e6dc', 'center'));
+        const bw = 230;
+        DIFF_ORDER.forEach((id, i) => {
+            const x = 20 + i * (bw + 14), q = DIFFS[id];
+            t.btn('diff-' + id, x, 200, bw, 62, q.name, () => setDiff(d.rec, id), { tone: id === 'easy' ? 'ok' : (id === 'normal' ? 'gold' : 'bad'), active: id === diff, size: 26 });
+        });
+        wrapText(df.info, 52).slice(0, 2).forEach((l, i) => t.text(l, t.W / 2, 290 + i * 26, 19, df.color, 'center', true));
+        c.fillStyle = 'rgba(255,176,0,0.25)'; c.fillRect(24, 345, t.W - 48, 2);
+        if (diff === 'easy') {
+            t.text('Easy runs are not ranked.', t.W / 2, 410, 24, '#9aa0a0', 'center', true);
+            t.text('Switch to Normal or Nightmare', t.W / 2, 446, 20, '#9aa0a0', 'center');
+            t.text('to set records and see your ghost.', t.W / 2, 474, 20, '#9aa0a0', 'center');
+        } else {
+            t.text('Best times (' + df.name + ')', 40, 378, 24, '#ffd27a', 'left', true);
+            const top = topTimes(d.rec, diff);
+            if (!top.length) t.text('Not finished yet', 40, 424, 24, '#9a8a7a', 'left');
+            top.slice(0, 5).forEach((s, i) => { t.text((i + 1) + '.  ' + fmtDuration(s * 1000), 60, 418 + i * 34, 26, i === 0 ? '#ffd27a' : '#f0e6dc', 'left', i === 0); });
+            if (top.length) t.text('Ghost of #1 runs with you', t.W - 36, 418, 17, '#7fe8ff', 'right');
+        }
+        t.scanlines();
+    }, 768, 624);
+    boards[d.target] = t;
+    return t;
+}
 let S = null;
 
 export function build() {
@@ -47,19 +83,13 @@ export function build() {
     for (const d of DOORS) {
         buildDoor({ x: d.x, z: -D + 0.03, rotY: 0, label: d.label, color: d.color, glow: d.glow, rust: true, light: true, signY: 2.85,
             portal: { target: d.target, onEnter: () => toast(d.msg, d.color) } });
-        const c = T.makeCanvas(512, 320), x = c.getContext('2d');
-        x.fillStyle = '#0c0808'; x.fillRect(0, 0, 512, 320); x.strokeStyle = d.color; x.lineWidth = 8; x.strokeRect(6, 6, 500, 308);
-        x.fillStyle = d.color; x.font = 'bold 46px sans-serif'; x.textAlign = 'center'; x.fillText(d.label, 256, 64);
-        x.fillStyle = '#f0e6dc'; x.font = '32px sans-serif'; d.desc.forEach((l, i) => x.fillText(l, 256, 120 + i * 42));
-        const rec = SAVE.records[d.rec];
-        x.fillStyle = '#ffd27a'; x.font = 'bold 32px sans-serif'; x.fillText(rec !== undefined ? 'Your record: ' + fmtDuration(rec * 1000) : 'Not finished yet', 256, 286);
-        // Tablica na słupku, podniesiona na wysokość oczu i lekko pochylona (cała widoczna)
-        addCrispBlock(d.x, 0.75, -3.6, 0.16, 1.5, 0.16, 0x3a2a24, 0x100808);
-        addCrispBlock(d.x, 0.04, -3.6, 0.6, 0.08, 0.6, 0x3a2a24, 0x100808);
-        const frame = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.84, 0.05), new THREE.MeshStandardMaterial({ color: 0x2a1a14, roughness: 0.6 }));
-        frame.position.set(d.x, 1.95, -3.64); frame.rotation.x = -0.18; L.root.add(frame);
-        const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.75), new THREE.MeshBasicMaterial({ map: T.toTex(c, false), toneMapped: false }));
-        screen.position.set(d.x, 1.95, -3.61); screen.rotation.x = -0.18; L.root.add(screen);
+        // Tablica na słupku, podniesiona na wysokość oczu i lekko pochylona: opis, wybór trudności i najlepsze czasy
+        addCrispBlock(d.x, 0.72, -3.74, 0.16, 1.44, 0.16, 0x3a2a24, 0x100808);   // słupek za tablicą, nie zasłania ekranu
+        addCrispBlock(d.x, 0.04, -3.74, 0.6, 0.08, 0.6, 0x3a2a24, 0x100808);
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.22, 0.05), new THREE.MeshStandardMaterial({ color: 0x2a1a14, roughness: 0.6 }));
+        frame.position.set(d.x, 2.05, -3.64); frame.rotation.x = -0.18; L.root.add(frame);
+        const screen = boardFor(d).createMesh(1.4, 1.14);
+        screen.position.set(d.x, 2.05, -3.61); screen.rotation.x = -0.18; L.root.add(screen);
     }
     buildWarnings();
     buildDoor({ x: 0, z: D - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x4a3a30, portal: { target: 'lobby', spawn: ARRIVAL_LEVELS, onEnter: () => toast('Back to the lobby') } });
