@@ -94,7 +94,7 @@ export const ULTIMATE_NAMES = ['zbyniu'];
 export const ADMIN_NAMES = ['BoyIsGamer'];
 export const COADMIN_NAMES = ['spikyvr'];   // co-admin: uprawnienia admina, własny napis CO-ADMIN i odznaka
 export const OWNER_NAMES = ['BoyIsGamer'];   // właściciel gry: napis OWNER nad głową i odznaka Owner
-export const MOD_NAMES = ['lincolnvr', 'vitoryboy'];
+export const MOD_NAMES = ['lincolnvr', 'victoryboy'];
 // Zastrzeżone nicki: żeby grać pod tym nickiem, trzeba podać hasło na stronie startowej.
 // Wartość to skrót SHA-256 z tekstu "bagaboo:" + nick małymi literami + ":" + hasło.
 // Nowy skrót wygenerujesz narzędziem na stronie z plikami do wgrania (sekcja "Hasła do nicków").
@@ -103,7 +103,7 @@ export const RESERVED_NICKS = {
     'spikyvr': '01d78f02137245bfe78f82dc4989497d94b5b8ec4ec41cde4e65a8905a32071c',
     'zbyniu': 'feed385a1982fea19f574cc0e867a3d9f7a7e8e5dcd35c68f2676bc64c49868e',
     'lincolnvr': '5cdeaae62ff9bb4a7884d64ad076deceae01d21c8492d1dbd54f0f0bfe070f88',
-    'vitoryboy': '57bdd3f2658f784068dae1538d95b1eee3e8c4901a69c82726a14bd40f742d92'
+    'victoryboy': '5042db4f93898d899923d8a8b5be0cff903a03dca20dcb1ce1e51a183722fe4b'
 };
 const low = (n) => String(n || '').trim().toLowerCase();
 // Moderatorzy wybrani przez admina w grze (zapisani na tym urządzeniu)
