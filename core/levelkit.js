@@ -122,8 +122,10 @@ export function createJumpscare(o) {
     if (o.eyes !== false) for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1000, transparent: true, blending: THREE.AdditiveBlending, depthTest: false })); e.scale.set(0.16, 0.16, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 1001; head.add(e); }
     head.scale.setScalar(o.scale || 2.4);
     const plane = (col) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, depthTest: false })); p.position.z = -0.25; return p; };
-    const black = plane(0x000000), red = plane(0xff0000); black.renderOrder = 998; red.renderOrder = 999;
+    const black = plane(0x000000), red = plane(o.flash !== undefined ? o.flash : 0xff0000); black.renderOrder = 998; red.renderOrder = 999;
     const g = new THREE.Group(); g.add(black, red, head); g.visible = false; camera.add(g);
+    // Wszystko przy samych oczach: wyłączamy odrzucanie obiektów poza kadrem (w goglach potrafiło ukryć duże modele tuż przy kamerze)
+    g.traverse((c) => { c.frustumCulled = false; });
     const y = o.y !== undefined ? o.y : -0.36, rest = o.restZ !== undefined ? o.restZ : -0.32, from = o.fromZ !== undefined ? o.fromZ : -1.9;
     let t = -1;
     return {
