@@ -28,12 +28,12 @@ export function build() {
     S = { lights: [], screens: [] };
     // Podłoga w szachownicę, ciemne ściany, sufit
     const fc = T.makeCanvas(256, 256), fx = fc.getContext('2d');
-    for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { fx.fillStyle = (i + j) % 2 ? '#1a1420' : '#2e2438'; fx.fillRect(i * 32, j * 32, 32, 32); }
+    for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { fx.fillStyle = (i + j) % 2 ? '#2a2036' : '#4a3c60'; fx.fillRect(i * 32, j * 32, 32, 32); }
     const ft = T.toTex(fc, true); ft.repeat.set(4, 3);
     const floor = addCrispBlock(0, -0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0xffffff, 0x302040);
     floor.material.map = ft; floor.material.bumpMap = null; floor.material.roughness = 0.35; floor.material.needsUpdate = true;
-    addCrispBlock(0, H + 0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x1a1420, 0x302040);
-    for (const [x, z, w, d] of [[0, -D - 0.5, W * 2 + 2, 1], [0, D + 0.5, W * 2 + 2, 1], [-W - 0.5, 0, 1, D * 2], [W + 0.5, 0, 1, D * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x2a2232, 0x302040);
+    addCrispBlock(0, H + 0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x3a2e4a, 0x302040);
+    for (const [x, z, w, d] of [[0, -D - 0.5, W * 2 + 2, 1], [0, D + 0.5, W * 2 + 2, 1], [-W - 0.5, 0, 1, D * 2], [W + 0.5, 0, 1, D * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x5a4a72, 0x302040);
     // Neonowe paski pod sufitem
     const neon = [[0xff3aff, -D + 0.05, 'z'], [0x3affff, D - 0.05, 'z'], [0xff8a3a, -W + 0.05, 'x'], [0x7a5aff, W - 0.05, 'x']];
     for (const [col, p, axis] of neon) {
@@ -42,7 +42,7 @@ export function build() {
         L.root.add(m);
     }
     for (const [x, z, c] of [[-5, -3, 0xff5aa0], [5, -3, 0x5ac8ff], [0, 3, 0xa05aff], [-6, 3, 0xffa040], [6, 3, 0x40ffa0]]) {
-        const l = new THREE.PointLight(c, 10, 9, 1.8); l.position.set(x, H - 0.6, z); L.root.add(l); S.lights.push({ l: l, base: 10, ph: Math.random() * 6 });
+        const l = new THREE.PointLight(c, 26, 12, 1.6); l.position.set(x, H - 0.6, z); L.root.add(l); S.lights.push({ l: l, base: 26, ph: Math.random() * 6 });
     }
     // Wielki neonowy napis nad drzwiami
     const tc = T.makeCanvas(1024, 160), tx = tc.getContext('2d');

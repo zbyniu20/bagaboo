@@ -67,9 +67,9 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -W + 0.3, maxX: W - 0.3, minZ: -D + 0.3, maxZ: D - 0.3, maxY: H - 0.3 };
     S = { lights: [], t: 0 };
-    addCrispBlock(0, -0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x6a5a50, 0x1a1010, tex.floor, { rough: tex.floorRough });
-    addCrispBlock(0, H + 0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x2a2224, 0x1a1010);
-    for (const [x, z, w, d] of [[0, -D - 0.5, W * 2 + 2, 1], [0, D + 0.5, W * 2 + 2, 1], [-W - 0.5, 0, 1, D * 2], [W + 0.5, 0, 1, D * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x5a4a48, 0x1a1010, tex.wall);
+    addCrispBlock(0, -0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x8a7a70, 0x1a1010, tex.floor, { rough: tex.floorRough });
+    addCrispBlock(0, H + 0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x4a3c3e, 0x1a1010);
+    for (const [x, z, w, d] of [[0, -D - 0.5, W * 2 + 2, 1], [0, D + 0.5, W * 2 + 2, 1], [-W - 0.5, 0, 1, D * 2], [W + 0.5, 0, 1, D * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x7a6a68, 0x1a1010, tex.wall);
     // Czerwony chodnik od wejścia do drzwi
     const rug = new THREE.Mesh(new THREE.PlaneGeometry(2.2, D * 2 - 1), new THREE.MeshStandardMaterial({ color: 0x5a0a10, roughness: 0.95 }));
     rug.rotation.x = -Math.PI / 2; rug.position.set(0, 0.01, 0); L.root.add(rug);
@@ -95,7 +95,7 @@ export function build() {
     buildDoor({ x: 0, z: D - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x4a3a30, portal: { target: 'lobby', spawn: ARRIVAL_LEVELS, onEnter: () => toast('Back to the lobby') } });
     // Migoczące świece i lampy
     for (const [x, z] of [[-9, 4], [9, 4], [-9, -1], [9, -1], [0, 2]]) {
-        const l = new THREE.PointLight(0xffa060, 6, 9, 1.8); l.position.set(x, 3.6, z); L.root.add(l); S.lights.push({ l: l, base: 6, ph: Math.random() * 9 });
+        const l = new THREE.PointLight(0xffa060, 14, 12, 1.6); l.position.set(x, 3.6, z); L.root.add(l); S.lights.push({ l: l, base: 14, ph: Math.random() * 9 });
         const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffb060, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); f.scale.set(0.5, 0.5, 1); f.position.set(x, 3.6, z); L.root.add(f);
     }
 }

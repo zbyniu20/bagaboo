@@ -45,10 +45,10 @@ export const LIGHT_PRESETS = {
         shafts: true, shaftColor: 0xdfe8ee, shaftOpacity: 0.17
     },
     night: {
-        background: 0x020103, fogColor: 0x050204, fogDensity: 0.042, exposure: 1.2,
-        hemiSky: 0x2a3350, hemiGround: 0x180808, hemiIntensity: 1.0,
+        background: 0x2a2a38, fogColor: 0x3a3444, fogDensity: 0.02, exposure: 1.5,   // jaśniej, jak w lobby (wcześniej 0.042 / 1.0)
+        hemiSky: 0x9aa6cc, hemiGround: 0x4a3a36, hemiIntensity: 3.4,
         sunColor: 0xffffff, sunIntensity: 0, sunPos: [3, 60, 2],
-        envIntensity: 0, bounce: 0,
+        envIntensity: 0.35, bounce: 0,
         flashlight: { color: 0xfff0d8, intensity: 90, distance: 34, angle: 0.52, penumbra: 0.65, decay: 2 },
         flickers: [[-10, 16, -10, 0xff1a1a, 70, 24], [10, 16, -10, 0xff3010, 60, 24], [-10, 14, 10, 0x6a20ff, 55, 22], [10, 16, 10, 0xff1a1a, 65, 24], [-12, 2.5, -12, 0x30ff70, 22, 12]],
         bulbs: [], muralBase: 0.7, muralPulse: 0.25, trampBase: 0.6, trampPulse: 0.3, edgeOpacity: 0.35,
@@ -58,39 +58,39 @@ export const LIGHT_PRESETS = {
 };
 // Dodatkowe presety dla poziomów: lawa (pomarańczowa poświata od dołu) i pokój szefa (ciepłe światło)
 LIGHT_PRESETS.lava = {
-    background: 0x1e0805, fogColor: 0x4a1608, fogDensity: 0.015, exposure: 1.35,
-    hemiSky: 0xffa070, hemiGround: 0x3a1208, hemiIntensity: 1.7,
-    sunColor: 0xff6a2a, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0, flashlight: null
+    background: 0x3a1a10, fogColor: 0x5a2a1a, fogDensity: 0.009, exposure: 1.55,
+    hemiSky: 0xffb890, hemiGround: 0x6a3a2a, hemiIntensity: 3.4,
+    sunColor: 0xff6a2a, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.35, flashlight: null
 };
 LIGHT_PRESETS.staff = {
-    background: 0x1a120c, fogColor: 0x1a120c, fogDensity: 0.004, exposure: 1.0,
-    hemiSky: 0xffe0c0, hemiGround: 0x3a2a20, hemiIntensity: 1.3,
+    background: 0x1a120c, fogColor: 0x1a120c, fogDensity: 0.004, exposure: 1.15,
+    hemiSky: 0xffe8d0, hemiGround: 0x5a4a3a, hemiIntensity: 2.2,
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.4, flashlight: null
 };
 LIGHT_PRESETS.laundry = {
-    background: 0x6a706a, fogColor: 0x6a706a, fogDensity: 0.085, exposure: 0.95,   // gęsta, brudna para: widać ok. 10-12 m
-    hemiSky: 0xb8c4c0, hemiGround: 0x2a2624, hemiIntensity: 0.85,
-    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.4, flashlight: { color: 0xfff4e0, intensity: 40, distance: 18, angle: 0.5, penumbra: 0.7, decay: 2 }
+    background: 0x6a706a, fogColor: 0x6a706a, fogDensity: 0.085, exposure: 1.2,   // gęsta, brudna para: widać ok. 10-12 m
+    hemiSky: 0xd0dcd8, hemiGround: 0x4a4644, hemiIntensity: 1.9,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.4, flashlight: { color: 0xfff4e0, intensity: 70, distance: 22, angle: 0.5, penumbra: 0.7, decay: 2 }
 };
 LIGHT_PRESETS.station = {
-    background: 0x0a0c10, fogColor: 0x10141a, fogDensity: 0.02, exposure: 1.15,
-    hemiSky: 0x9ab0d0, hemiGround: 0x2a2620, hemiIntensity: 1.2,
+    background: 0x20262e, fogColor: 0x2a3038, fogDensity: 0.01, exposure: 1.5,
+    hemiSky: 0xb0c4e0, hemiGround: 0x5a5248, hemiIntensity: 3.4,
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3, flashlight: null
 };
 LIGHT_PRESETS.levels = {
-    background: 0x0c0606, fogColor: 0x140808, fogDensity: 0.03, exposure: 1.1,
-    hemiSky: 0xffb090, hemiGround: 0x200808, hemiIntensity: 0.9,
-    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3, flashlight: null
+    background: 0x2a1614, fogColor: 0x3a2220, fogDensity: 0.012, exposure: 1.5,
+    hemiSky: 0xffc0a0, hemiGround: 0x6a4440, hemiIntensity: 3.6,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.5, flashlight: null
 };
 LIGHT_PRESETS.arcade = {
-    background: 0x08060c, fogColor: 0x0c0814, fogDensity: 0.012, exposure: 1.1,
-    hemiSky: 0x8a6aff, hemiGround: 0x200a20, hemiIntensity: 0.9,
-    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3, flashlight: null
+    background: 0x1c1628, fogColor: 0x241c34, fogDensity: 0.008, exposure: 1.5,
+    hemiSky: 0xa088ff, hemiGround: 0x5a3a5a, hemiIntensity: 3.6,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.5, flashlight: null
 };
 LIGHT_PRESETS.hideseek = {   // ciemny magazyn: każdy ma latarkę
-    background: 0x050608, fogColor: 0x0a0c10, fogDensity: 0.028, exposure: 1.1,
-    hemiSky: 0x7088a8, hemiGround: 0x201814, hemiIntensity: 0.75,
-    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.25,
+    background: 0x20262e, fogColor: 0x2a3038, fogDensity: 0.012, exposure: 1.5,
+    hemiSky: 0xa0b4d0, hemiGround: 0x504840, hemiIntensity: 3.6,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.4,
     flashlight: { color: 0xfff0d8, intensity: 75, distance: 30, angle: 0.55, penumbra: 0.6, decay: 2 }
 };
 // ---------- ROLE I ZASTRZEŻONE NICKI ----------
