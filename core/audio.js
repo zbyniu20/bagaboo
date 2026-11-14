@@ -235,6 +235,12 @@ export function ballHit(vol, pos) {
     const o = ctx.createOscillator(), og = ctx.createGain(); o.frequency.setValueAtTime(180, t0); o.frequency.exponentialRampToValueAtTime(60, t0 + 0.2);
     env(og, t0, vol * 0.8, 0.003, 0.22); o.connect(og); og.connect(dst); o.start(t0); o.stop(t0 + 0.3);
 }
+// Krótki sygnał detektora (Treasure Hunt): wysokość tonu w Hz, głośność, czas w sekundach
+export function beep(freq, vol, dur) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, d = dur || 0.1, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = freq;
+    env(g, t0, vol || 0.2, 0.005, d); o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + d + 0.05);
+}
 // Bezpiecznik włożony do panelu
 export function fuse() {
     if (!ctx) return;
