@@ -334,8 +334,28 @@ export function updatePlayer(dt, t) {
     for (const ball of L.throwables) { ball.position.copy(ball.userData.body.position); ball.quaternion.copy(ball.userData.body.quaternion); }
     for (const rope of L.ropes) { rope.mesh.position.copy(rope.body.position); rope.mesh.quaternion.copy(rope.body.quaternion); }
 
-    const cl = camera.position;
+    // Obrót głowy prawą gałką: pełne wychylenie w prawo = 90° w prawo, w lewo = 90° w lewo, puszczona gałka wraca na wprost
+    headYaw += (readHeadStick() * HEAD_TURN_MAX - headYaw) * Math.min(1, lastDt * HEAD_TURN_SMOOTH);
+    if (Math.abs(headYaw) < 1e-4) headYaw = 0;
+    playerRig.quaternion.setFromAxisAngle(_yAxis, -headYaw);   // obrót wokół głowy gracza, więc głowa nie przesuwa się w bok
+    const cl = _headLocal.copy(camera.position).applyQuaternion(playerRig.quaternion);
     playerRig.position.set(bp.x - cl.x, bp.y - radius - gorillaStanceOffset, bp.z - cl.z);
     playerRig.updateMatrixWorld(true);
+}
+const HEAD_TURN_MAX = Math.PI / 2, HEAD_TURN_SMOOTH = 14, HEAD_STICK_DEADZONE = 0.12;
+let headYaw = 0;
+const _yAxis = new THREE.Vector3(0, 1, 0), _headLocal = new THREE.Vector3();
+// Wychylenie prawej gałki w poziomie, od -1 (lewo) do 1 (prawo), z martwą strefą
+function readHeadStick() {
+    if (!renderer.xr.isPresenting) return 0;
+    const session = renderer.xr.getSession && renderer.xr.getSession();
+    if (!session) return 0;
+    for (const src of session.inputSources) {
+        if (src.handedness !== 'right' || !src.gamepad) continue;
+        const ax = src.gamepad.axes, v = ax.length >= 4 ? ax[2] : (ax[0] || 0);
+        if (Math.abs(v) < HEAD_STICK_DEADZONE) return 0;
+        return Math.max(-1, Math.min(1, (v - Math.sign(v) * HEAD_STICK_DEADZONE) / (1 - HEAD_STICK_DEADZONE)));
+    }
+    return 0;
 }
 export function isGrounded() { return grounded; }
