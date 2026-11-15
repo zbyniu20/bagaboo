@@ -33,16 +33,42 @@ let S = null, carry = null;   // carry: zakręcone zawory i czas przenoszone prz
 const _v = new THREE.Vector3();
 
 // ---------- BUDOWA ----------
+// ---------- INSTANCJE ----------
+// Powtarzalne elementy (pralki, worki, szkło, pierścienie) trafiają do InstancedMesh: jedno wywołanie rysowania na grupę zamiast kilku na sztukę.
+const _o = new THREE.Object3D();
+function instBlock(m) {
+    L.root.remove(m);                                   // kolizja zostaje (addCrispBlock), rysuje grupa
+    const p = m.geometry.parameters, key = m.material.color.getHex() + '|' + p.width + '|' + p.height + '|' + p.depth + '|' + m.material.roughness;
+    const g = S.batch.blocks[key] || (S.batch.blocks[key] = { geo: m.geometry, mat: m.material, list: [] });
+    m.updateMatrix(); g.list.push(m.matrix.clone());
+}
+function instPart(name, geo, mat, parent, pos, rotY, scale) {
+    const g = S.batch.parts[name] || (S.batch.parts[name] = { geo: geo, mat: mat, list: [] });
+    _o.position.copy(pos); _o.rotation.set(0, rotY || 0, 0); _o.scale.copy(scale || new THREE.Vector3(1, 1, 1)); _o.updateMatrix();
+    g.list.push(_o.matrix.clone());
+}
+function flushBatches() {
+    const make = (g) => {
+        const im = new THREE.InstancedMesh(g.geo, g.mat, g.list.length);
+        g.list.forEach((mx, i) => im.setMatrixAt(i, mx));
+        im.instanceMatrix.needsUpdate = true; im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
+        L.root.add(im);
+    };
+    for (const k in S.batch.blocks) make(S.batch.blocks[k]);
+    for (const k in S.batch.parts) make(S.batch.parts[k]);
+}
+
 export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: X0 + 0.4, maxX: X1 - 0.4, minZ: Z1 + 0.4, maxZ: Z0 - 0.4, maxY: H - 0.4 };
     L.onNoise = onNoise;
-    S = { ev: createEvents('laundry', { skip: ['fog'] }), df: diffOf('laundry'), ghost: createGhost('laundry'), carried: false, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', valves: [], safe: [], soap: null, vents: [], drums: [], nextSteam: 25, steam: 0,
+    S = { ev: createEvents('laundry', { skip: ['fog'] }), df: diffOf('laundry'), ghost: createGhost('laundry'), carried: false, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', valves: [], safe: [], soap: null, vents: [], drums: [], batch: { blocks: {}, parts: {} }, nextSteam: 25, steam: 0,
           machT: 2, hudT: 0, caughtT: -1, leaving: false, done: 0, rage: false, fx: [], lamps: [], blackout: 0, nextBlackout: 35, glimpseT: 18, rumbleT: 12 };
     buildHall();
     buildMachines();
     buildDryer();
     buildCeiling();
+    flushBatches();
     buildSoap();
     buildPipes();
     buildValves();
@@ -81,14 +107,21 @@ function buildHall() {
     }
 }
 // Pralka: kolorowa plastikowa obudowa z okrągłymi drzwiczkami od strony alejki
+const RING_GEO = new THREE.TorusGeometry(0.42, 0.06, 10, 28), GLASS_GEO = new THREE.CircleGeometry(0.4, 28), PANEL_GEO = new THREE.PlaneGeometry(1.2, 0.18);
+let RING_MAT, GLASS_MAT, PANEL_MAT, DRUM_RING_GEO, DRUM_RING_MAT;
 function machine(x, z, face, col) {
     const m = addCrispBlock(x, 0.9, z, 1.4, 1.8, 1.6, col, 0x1a1a1a);
     m.material.roughness = 0.35;
-    const door = new THREE.Group(); door.position.set(x + face * 0.71, 1.0, z); door.rotation.y = face * Math.PI / 2; L.root.add(door);
-    door.add(new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.06, 10, 28), new THREE.MeshStandardMaterial({ color: 0xc8c8c8, metalness: 0.8, roughness: 0.3 })));
-    const glass = new THREE.Mesh(new THREE.CircleGeometry(0.4, 28), new THREE.MeshStandardMaterial({ color: 0x1a2a3a, roughness: 0.1, metalness: 0.2 })); glass.position.z = 0.01; door.add(glass);
-    const panel = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.18), new THREE.MeshBasicMaterial({ color: 0x101010 })); panel.position.set(0, 0.7, 0.01); door.add(panel);
-    S.drums.push(glass);
+    instBlock(m);
+    RING_MAT = RING_MAT || new THREE.MeshStandardMaterial({ color: 0xc8c8c8, metalness: 0.8, roughness: 0.3 });
+    GLASS_MAT = GLASS_MAT || new THREE.MeshStandardMaterial({ color: 0x1a2a3a, roughness: 0.1, metalness: 0.2 });
+    PANEL_MAT = PANEL_MAT || new THREE.MeshBasicMaterial({ color: 0x101010 });
+    // drzwiczki w układzie lokalnym (obrót wokół Y o face * 90°): szkło +0,01 i panel (0, 0,7, 0,01) wzdłuż lokalnego Z
+    const rot = face * Math.PI / 2, nx = Math.sin(rot), nz = Math.cos(rot);
+    const at = (lx, ly, lz) => new THREE.Vector3(x + face * 0.71 + lx * Math.cos(rot) + lz * nx, 1.0 + ly, z - lx * Math.sin(rot) + lz * nz);
+    instPart('ring', RING_GEO, RING_MAT, null, at(0, 0, 0), rot);
+    instPart('glass', GLASS_GEO, GLASS_MAT, null, at(0, 0, 0.01), rot);
+    instPart('panel', PANEL_GEO, PANEL_MAT, null, at(0, 0.7, 0.01), rot);
 }
 // Otwarty bęben (kryjówka): pusty w środku, wejście 1,4 m od strony alejki. Szmaciarz tam nie wejdzie.
 function openDrum(x, z, face, col) {
@@ -98,8 +131,9 @@ function openDrum(x, z, face, col) {
     block(-face * (W / 2 - t / 2), hgt / 2, 0, t, hgt, W);               // tył
     block(0, hgt / 2, -(W / 2 - t / 2), W, hgt, t); block(0, hgt / 2, W / 2 - t / 2, W, hgt, t);   // boki
     block(face * (W / 2 - t / 2), 2.05, 0, t, 0.6, W);                   // nadproże nad wejściem
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.09, 10, 32), new THREE.MeshStandardMaterial({ color: 0xd8d8d8, metalness: 0.8, roughness: 0.3 }));
-    ring.position.set(x + face * (W / 2 + 0.02), 0.95, z); ring.rotation.y = Math.PI / 2; L.root.add(ring);
+    DRUM_RING_GEO = DRUM_RING_GEO || new THREE.TorusGeometry(0.85, 0.09, 10, 32);
+    DRUM_RING_MAT = DRUM_RING_MAT || new THREE.MeshStandardMaterial({ color: 0xd8d8d8, metalness: 0.8, roughness: 0.3 });
+    instPart('drumring', DRUM_RING_GEO, DRUM_RING_MAT, null, new THREE.Vector3(x + face * (W / 2 + 0.02), 0.95, z), Math.PI / 2);
     S.safe.push(new THREE.Box3(new THREE.Vector3(x - W / 2 + t, 0, z - W / 2 + t), new THREE.Vector3(x + W / 2 - t, 2.2, z + W / 2 - t)));
 }
 function buildMachines() {
@@ -136,11 +170,15 @@ function buildDryer() {
     S.safe.push(new THREE.Box3(new THREE.Vector3(cx - len / 2, 0.3, cz - 1.3), new THREE.Vector3(cx + len / 2 - 0.2, 3.6, cz + 1.3)));
 }
 // Szyny podsufitowe z workami z praniem, rury i kładki na 3 m (bezpieczne przed atakiem z ziemi)
+let ROPE_GEO, ROPE_MAT;
 function bag(x, y, z, col) {
     const m = addCrispBlock(x, y, z, 0.8, 1.0, 0.8, col, 0x202020);
     m.material.roughness = 0.95;
-    const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, H - 0.3 - (y + 0.5), 5), new THREE.MeshStandardMaterial({ color: 0x3a3a3a }));
-    rope.position.set(x, (H - 0.3 + y + 0.5) / 2, z); L.root.add(rope);
+    instBlock(m);
+    ROPE_GEO = ROPE_GEO || new THREE.CylinderGeometry(0.015, 0.015, 1, 5);
+    ROPE_MAT = ROPE_MAT || new THREE.MeshStandardMaterial({ color: 0x3a3a3a });
+    const len = H - 0.3 - (y + 0.5);
+    instPart('rope', ROPE_GEO, ROPE_MAT, null, new THREE.Vector3(x, (H - 0.3 + y + 0.5) / 2, z), 0, new THREE.Vector3(1, len, 1));
 }
 function buildCeiling() {
     const rail = new THREE.MeshStandardMaterial({ color: 0x4a4a4a, metalness: 0.8, roughness: 0.4 });
