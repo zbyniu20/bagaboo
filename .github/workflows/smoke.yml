@@ -1,9 +1,9 @@
 name: Smoke tests
 
+# Automatyczne uruchamianie wyłączone (decyzja właściciela): testy ruszają tylko ręcznie, z zakładki Actions -> Smoke tests -> Run workflow.
+# Żeby włączyć je z powrotem przy każdym PR-ze i pushu do main, dopisz pod "on:" klucze push (branches: [main]) i pull_request.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   smoke:
