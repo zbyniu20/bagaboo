@@ -104,6 +104,7 @@ export const CATALOG = [
     { slot: 'hat', id: 'headphones', name: 'Headphones', price: 0, locked: true, hint: 'Daily quests x5' },
     { slot: 'hat', id: 'laurel', name: 'Golden laurel', price: 0, locked: true, hint: 'All 3 quests, 7 days' },
     { slot: 'hat', id: 'nursecap', name: 'Nurse cap', price: 0, locked: true, hint: 'Hospital on Nightmare' },
+    { slot: 'hat', id: 'skullcrown', name: 'Skull crown', price: 0, locked: true, hint: 'Catacombs on Nightmare' },
     { slot: 'hat', id: 'lanternhat', name: 'Lantern hat', price: 0, locked: true, hint: 'Cemetery on Nightmare' },
     { slot: 'glasses', id: 'monocle', name: 'Gold monocle', price: 600, weekly: true },
     { slot: 'glasses', id: 'heart', name: 'Heart glasses', price: 700, season: 'spring' },
@@ -285,7 +286,8 @@ export const ACHIEVEMENTS = [
     { id: 'nm_memory', name: 'Burning brain', desc: 'Cross Burning Memory on Nightmare', reward: ['sleeve', 'ember'], rewardName: 'Ember cloth' },
     { id: 'nm_hospital', name: 'Do not blink', desc: 'Escape The Hospital on Nightmare', reward: ['hat', 'nursecap'], rewardName: 'Nurse cap' },
     { id: 'nm_cemetery', name: 'Rest in peace', desc: 'Escape The Cemetery on Nightmare', reward: ['hat', 'lanternhat'], rewardName: 'Lantern hat' },
-    { id: 'nm_all', name: 'Nightmare master', desc: 'Clear all 7 levels on Nightmare', reward: ['skin', 'nightmare'], rewardName: 'Nightmare ape', goal: 7, val: () => Object.keys(SAVE.nmWins || {}).length },
+    { id: 'nm_catacombs', name: 'Bone collector', desc: 'Escape The Catacombs on Nightmare', reward: ['hat', 'skullcrown'], rewardName: 'Skull crown' },
+    { id: 'nm_all', name: 'Nightmare master', desc: 'Clear all 8 levels on Nightmare', reward: ['skin', 'nightmare'], rewardName: 'Nightmare ape', goal: 8, val: () => Object.keys(SAVE.nmWins || {}).length },
     // --- Tryby gry ---
     { id: 'hs_10', name: 'Ghost of the warehouse', desc: 'Win 10 rounds of Hide and Seek', reward: ['badge', 'ghost'], rewardName: 'Ghost badge', goal: 10, val: () => SAVE.hideseekWins || 0 },
     { id: 'banana_5', name: 'Top banana', desc: 'Win 5 rounds of Capture the Banana', reward: ['badge', 'banana'], rewardName: 'Banana badge', goal: 5, val: () => SAVE.bananaWins || 0 },
@@ -303,8 +305,8 @@ export const ACHIEVEMENTS = [
 // Statystyki konta liczone na stałe (SAVE.stats): playSec, meters, scares, clears, emotes, highFives
 export function stat(k) { return (SAVE.stats && SAVE.stats[k]) || 0; }
 export const RECORDS = [
-    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'hospital', name: 'The Hospital' }, { id: 'cemetery', name: 'The Cemetery' }, { id: 'route', name: 'Red route' }, { id: 'race', name: 'Parkour race' }, { id: 'redlight', name: 'Red Light, Green Light' }, { id: 'swingrun', name: 'Swing Run' }, { id: 'towerclimb', name: 'Tower Climb' }, { id: 'lasttile', name: 'Last Tile (seconds)', score: true }, { id: 'statues', name: 'Statues (silences)', score: true }, { id: 'blindtag', name: 'Blind Tag (seconds)', score: true }, { id: 'range', name: 'Shooting range (kills)', score: true },
-    { id: 'maze_nm', name: 'The Maze (Nightmare)' }, { id: 'silence_nm', name: 'Silence (Nightmare)' }, { id: 'well_nm', name: 'The Well (Nightmare)' }, { id: 'laundry_nm', name: 'Laundromat (Nightmare)' }, { id: 'memory_nm', name: 'Memory (Nightmare)' }, { id: 'hospital_nm', name: 'Hospital (Nightmare)' }, { id: 'cemetery_nm', name: 'Cemetery (Nightmare)' }
+    { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'hospital', name: 'The Hospital' }, { id: 'cemetery', name: 'The Cemetery' }, { id: 'catacombs', name: 'The Catacombs' }, { id: 'route', name: 'Red route' }, { id: 'race', name: 'Parkour race' }, { id: 'redlight', name: 'Red Light, Green Light' }, { id: 'swingrun', name: 'Swing Run' }, { id: 'towerclimb', name: 'Tower Climb' }, { id: 'lasttile', name: 'Last Tile (seconds)', score: true }, { id: 'statues', name: 'Statues (silences)', score: true }, { id: 'blindtag', name: 'Blind Tag (seconds)', score: true }, { id: 'range', name: 'Shooting range (kills)', score: true },
+    { id: 'maze_nm', name: 'The Maze (Nightmare)' }, { id: 'silence_nm', name: 'Silence (Nightmare)' }, { id: 'well_nm', name: 'The Well (Nightmare)' }, { id: 'laundry_nm', name: 'Laundromat (Nightmare)' }, { id: 'memory_nm', name: 'Memory (Nightmare)' }, { id: 'hospital_nm', name: 'Hospital (Nightmare)' }, { id: 'cemetery_nm', name: 'Cemetery (Nightmare)' }, { id: 'catacombs_nm', name: 'Catacombs (Nightmare)' }
 ];
 
 // ---------- POZIOMY TRUDNOŚCI (poziomy z drzwi w sali Levels) ----------
@@ -316,7 +318,7 @@ export const DIFFS = {
     nightmare: { id: 'nightmare', name: 'Nightmare', color: '#ff4a3a', speed: 1.25, grace: 0.6, checkpoints: false, reward: 1.5, info: 'Faster monsters, no checkpoints. Reward x1.5, own records, first-clear bonus.' }
 };
 export const DIFF_ORDER = ['easy', 'normal', 'nightmare'];
-export const DIFF_LEVELS = ['maze', 'silence', 'well', 'laundry', 'memory', 'hospital', 'cemetery'];
+export const DIFF_LEVELS = ['maze', 'silence', 'well', 'laundry', 'memory', 'hospital', 'cemetery', 'catacombs'];
 
 // ---------- DAILY RUN: dzienny, wspólny układ dla poziomów z losową mapą ----------
 // Układ Maze, Well i Memory liczy się z daty UTC (ten sam dla wszystkich graczy na świecie), więc działa duch,

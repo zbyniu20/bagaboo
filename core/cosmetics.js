@@ -63,6 +63,10 @@ export function extraHat(id) {
         const red = mat({ color: 0xd01818 });
         g.add(at(new THREE.BoxGeometry(0.05, 0.016, 0.012), red, 0, 0.155, -0.138));
         g.add(at(new THREE.BoxGeometry(0.016, 0.05, 0.012), red, 0, 0.155, -0.138));
+    } else if (id === 'skullcrown') {
+        const bone = mat({ color: 0xe6dcc0, roughness: 0.6 }), dark = mat({ color: 0x1a1412 });
+        g.add(at(new THREE.CylinderGeometry(0.14, 0.15, 0.06, 16), bone, 0, 0.1, 0));
+        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, s = at(new THREE.SphereGeometry(0.04, 8, 6), bone, Math.cos(a) * 0.14, 0.17, Math.sin(a) * 0.14); s.scale.y = 1.2; g.add(s); for (const ex of [-1, 1]) g.add(at(new THREE.SphereGeometry(0.009, 5, 4), dark, Math.cos(a) * 0.17 - Math.sin(a) * 0.015 * ex, 0.18, Math.sin(a) * 0.17 + Math.cos(a) * 0.015 * ex)); }
     } else if (id === 'lanternhat') {
         const iron = mat({ color: 0x2a2a2e, metalness: 0.8, roughness: 0.4 });
         g.add(at(new THREE.CylinderGeometry(0.05, 0.06, 0.1, 10), mat({ color: 0xffc860, emissive: 0xffa020, emissiveIntensity: 1.4 }), 0, 0.28, 0));
