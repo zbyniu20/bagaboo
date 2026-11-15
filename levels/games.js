@@ -11,6 +11,7 @@ import * as T from '../core/textures.js';
 import { toast } from '../core/terminal.js';
 import { buildDoor } from '../core/levelkit.js';
 import { ARRIVAL_GAMES } from './lobby-door.js';
+import { LOBBY_MOVE_SCALE } from '../core/config.js';
 
 const W = 15, D = 15, H = 6;          // sala 30 x 30 m
 const SPACING = 5;
@@ -69,6 +70,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -W + 0.3, maxX: W - 0.3, minZ: -D + 0.3, maxZ: D - 0.3, maxY: H - 0.3 };
     S = { lights: [], screens: [] };
+    L.moveScale = LOBBY_MOVE_SCALE;   // ruch dłońmi taki sam jak w lobby
     // Podłoga w szachownicę, ciemne ściany, sufit
     const fc = T.makeCanvas(256, 256), fx = fc.getContext('2d');
     for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { fx.fillStyle = (i + j) % 2 ? '#2a2036' : '#4a3c60'; fx.fillRect(i * 32, j * 32, 32, 32); }
@@ -101,13 +103,13 @@ function buildDecor() {
     const orb = new THREE.Mesh(new THREE.SphereGeometry(0.45, 20, 16), new THREE.MeshBasicMaterial({ color: 0xc89aff })); orb.position.set(0, 1.9, 0); L.root.add(orb);
     S.orb = orb;
     const lc = new THREE.PointLight(0xb080ff, 36, 24, 1.5); lc.position.set(0, 3.2, 0); L.root.add(lc); S.lights.push({ l: lc, base: 36, ph: 0 });
-    // Automaty przy rogach południowych
+    // Automaty pod południową ścianą, z dala od drzwi trybów (wcześniej stały w rogach i zasłaniały drzwi strzelnicy)
     for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) {
-        const x = sx * (W - 0.8), z = D - 2.2 - i * 1.4;
-        addCrispBlock(x, 0.9, z, 0.8, 1.8, 0.9, 0x1a1a24, 0x5a3aff);
+        const x = sx * (6 + i * 1.4), z = D - 0.75;
+        addCrispBlock(x, 0.9, z, 0.9, 1.8, 0.8, 0x1a1a24, 0x5a3aff);
         const sc = T.makeCanvas(64, 64), sxx = sc.getContext('2d'), tx2 = new THREE.CanvasTexture(sc);
         const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.45), new THREE.MeshBasicMaterial({ map: tx2, toneMapped: false }));
-        scr.position.set(x - sx * 0.46, 1.3, z); scr.rotation.y = -sx * Math.PI / 2; L.root.add(scr);
+        scr.position.set(x, 1.3, z - 0.41); scr.rotation.y = Math.PI; L.root.add(scr);
         S.screens.push({ ctx: sxx, tex: tx2, hue: Math.random() * 360 });
     }
 }
@@ -159,4 +161,4 @@ export function update(dt, t) {
         }
     }
 }
-export function dispose() { S = null; }
+export function dispose() { S = null; L.moveScale = 1; }

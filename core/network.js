@@ -5,7 +5,7 @@
 // ==========================================
 import { emoteState, emotePose } from './emotes.js';
 import { THREE, camera, scene, L, CANNON, containBall, playerRig } from './engine.js';
-import { createAvatar, poseHand, lookKey, animateFace } from './avatar.js';
+import { createAvatar, poseHand, lookKey, animateFace, TAGS } from './avatar.js';
 import { getLook, SESSION, SAVE } from './economy.js';
 import { markAllDirty, toast } from './terminal.js';
 import { rankOf, setLocalMod, isStaffName, isOwnerName, isUltimateName, canPunish, BANS_CLEARED } from './config.js';
@@ -224,20 +224,29 @@ function answerCall(call) {
     call.on('stream', (st) => playAudioStream(st, call.peer));
     call.on('close', () => { if (voiceCalls[call.peer] === call) delete voiceCalls[call.peer]; });
 }
+const callAt = {};   // kiedy zaczęliśmy dzwonić do danego gracza (do ponawiania połączeń, które nie doszły)
 function callPeer(id) {
     if (!peer || voiceCalls[id]) return;
     const s = outStream(); if (!s) return;
     const call = peer.call(id, s); if (!call) return;
-    voiceCalls[id] = call;
+    voiceCalls[id] = call; callAt[id] = performance.now();
     call.on('stream', (st) => playAudioStream(st, id));
-    call.on('close', () => { if (voiceCalls[id] === call) delete voiceCalls[id]; });
+    call.on('close', () => { if (voiceCalls[id] === call) delete voiceCalls[id]; if (audioEls[id] && !playersState[id]) removeAudio(id, true); });
     call.on('error', () => { if (voiceCalls[id] === call) delete voiceCalls[id]; });
 }
 // Gość łączy się głosowo z każdym innym gościem (każdą parę łączy ten z "mniejszym" id), więc wszyscy słyszą wszystkich
+// Połączenie, które nie dało dźwięku w ciągu 10 s (rozmówca jeszcze nie nasłuchiwał albo połączenie zawisło), zamykamy i ponawiamy:
+// wcześniej takie zawieszone połączenie blokowało rozmowę do końca sesji, a działał tylko głos hosta.
+function retryStaleCall(id) {
+    const c = voiceCalls[id];
+    if (c && !audioEls[id] && performance.now() - (callAt[id] || 0) > 10000) { try { c.close(); } catch (e) {} delete voiceCalls[id]; callPeer(id); }
+}
 function meshVoice() {
     if (NET.mode !== 'guest') return;
+    retryStaleCall(GAME_PREFIX + NET.code);   // głos hosta
     for (const id in playersState) {
-        if (id === myPeerId || isHostId(id) || voiceCalls[id]) continue;
+        if (id === myPeerId || isHostId(id)) continue;
+        if (voiceCalls[id]) { if (myPeerId < id) retryStaleCall(id); continue; }
         if (myPeerId < id) callPeer(id);
     }
 }
@@ -263,6 +272,7 @@ function updateRemote(id, st) {
         p.torso.position.copy(p.head.position).add(new THREE.Vector3(bx * drop * Math.sin(lean), -drop * Math.cos(lean), bz * drop * Math.sin(lean)));
         p.torso.rotation.set(-lean, e.y, 0);
     } else { p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -drop, 0)); p.torso.rotation.set(0, e.y, 0); }
+    if (p.head.userData.tags) for (const tg of p.head.userData.tags) tg.visible = !TAGS.hidden;   // Hide and Seek: bez nazw nad głowami
     p.group.visible = (st.lvl || 'lobby') === L.levelId;   // widać tylko graczy na tym samym poziomie
 }
 function removeRemote(id) { if (remoteAvatars[id]) { scene.remove(remoteAvatars[id].group); delete remoteAvatars[id]; } }

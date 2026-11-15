@@ -18,10 +18,10 @@ import { createGhost } from '../core/runkit.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, introSeen } from '../core/levelkit.js';
 import { ARRIVAL_FROM_REDLIGHT } from './games.js';
 
-const AX = 7, Z0 = 22, Z1 = -24, START_Z = 18, FINISH_Z = -16, DOLL_Z = -20.5, H = 9;
-const WAIT = 12, SOLO_WAIT = 4, COUNTDOWN = 3, ROUND = 90, GRACE = 15, RESULTS = 8, REWARD = 200, PAR = 55;
+const AX = 14, Z0 = 24, Z1 = -58, START_Z = 20, FINISH_Z = -48, DOLL_Z = -53, H = 10;   // hala 28 x 82 m: dwa razy dłuższy bieg i dwa razy szersza
+const WAIT = 12, SOLO_WAIT = 4, COUNTDOWN = 3, ROUND = 150, GRACE = 15, RESULTS = 8, REWARD = 200, PAR = 105;
 const RED_GRACE = 1.0, MOVE_SPEED = 0.8, PENALTY = 1.5;   // po zapaleniu czerwonego masz 1 s na wyhamowanie
-export const info = { id: 'redlight', name: 'Red Light, Green Light', spawn: [0, 1.0, 20] };
+export const info = { id: 'redlight', name: 'Red Light, Green Light', spawn: [0, 1.0, 22] };
 let S = null;
 
 export function build() {
@@ -31,7 +31,7 @@ export function build() {
     buildHall();
     buildDoor({ x: 0, z: Z0 - 0.03, rotY: Math.PI, label: 'GAMES', color: '#d080ff', wood: 0x3a3048, portal: { target: 'games', spawn: ARRIVAL_FROM_REDLIGHT, onEnter: () => toast('Back to BagaBoo Games') } });
     // Lalka na końcu hali: odwrócona tyłem na zielonym, twarzą do graczy na czerwonym
-    const d = buildMannequin(T.mkRng(8181)); d.group.scale.setScalar(2.4); d.group.position.set(0, 0.5, DOLL_Z); L.root.add(d.group);
+    const d = buildMannequin(T.mkRng(8181)); d.group.scale.setScalar(3.4); d.group.position.set(0, 0.5, DOLL_Z); L.root.add(d.group);
     d.group.traverse(o => { if (o.isMesh && o.material && o.material.map) o.material = new THREE.MeshStandardMaterial({ color: 0xe8d8c8, roughness: 0.5 }); });
     S.eyes = [-1, 1].map(sx => { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })); e.scale.set(0.18, 0.18, 1); e.position.set(sx * 0.04, 0.152, 0.11); d.head.add(e); return e; });
     S.doll = d; S.dollYaw = Math.PI;
@@ -47,7 +47,7 @@ function buildHall() {
     for (const s of [-1, 1]) addCrispBlock(s * (AX + 0.5), H / 2, (Z0 + Z1) / 2, 1, H, Z0 - Z1 + 2, 0x9a9aa8, 0x20202a, tex.wall);
     addCrispBlock(0, H / 2, Z0 + 0.5, AX * 2 + 2, H, 1, 0x9a9aa8, 0x20202a, tex.wall);
     addCrispBlock(0, H / 2, Z1 - 0.5, AX * 2 + 2, H, 1, 0x9a9aa8, 0x20202a, tex.wall);
-    addCrispBlock(0, 0.25, DOLL_Z, 3.4, 0.5, 2, 0x3a3048, 0xff3030);   // podest lalki
+    addCrispBlock(0, 0.25, DOLL_Z, 5, 0.5, 2.6, 0x3a3048, 0xff3030);   // podest lalki
     // Linie startu (biała) i mety (czerwona szachownica)
     const line = (z, col, w) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(AX * 2, w), new THREE.MeshBasicMaterial({ color: col })); m.rotation.x = -Math.PI / 2; m.position.set(0, 0.012, z); L.root.add(m); };
     line(START_Z, 0xffffff, 0.3); line(FINISH_Z, 0xff4040, 0.6);
@@ -56,9 +56,9 @@ function buildHall() {
     g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(352, 32, 320, 64); g.fillStyle = '#fff'; g.font = 'bold 52px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('FINISH', 512, 66);
     const ban = new THREE.Mesh(new THREE.PlaneGeometry(AX * 2, 1.8), new THREE.MeshBasicMaterial({ map: T.toTex(c, false), toneMapped: false, side: THREE.DoubleSide })); ban.position.set(0, 4.5, FINISH_Z); L.root.add(ban);
     // Światło sygnalizacyjne: dwie duże lampy pod sufitem po bokach lalki + światło punktowe
-    S.lamps = [-1, 1].map(sx => { const m = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.4, 2.4), new THREE.MeshBasicMaterial({ color: 0x30ff60 })); m.position.set(sx * 4.2, H - 0.4, DOLL_Z + 1); L.root.add(m); return m; });
-    S.sig = new THREE.PointLight(0x30ff60, 90, 40, 1.3); S.sig.position.set(0, H - 1.5, -6); L.root.add(S.sig);
-    for (let z = 14; z > Z1; z -= 12) { const l = new THREE.PointLight(0xffe8d0, 30, 22, 1.5); l.position.set(0, H - 1.5, z); L.root.add(l); }
+    S.lamps = [-1, 1].map(sx => { const m = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.4, 2.4), new THREE.MeshBasicMaterial({ color: 0x30ff60 })); m.position.set(sx * 9, H - 0.4, DOLL_Z + 1); L.root.add(m); return m; });
+    S.sig = new THREE.PointLight(0x30ff60, 130, 70, 1.3); S.sig.position.set(0, H - 1.5, -20); L.root.add(S.sig);
+    for (let z = 18; z > Z1; z -= 14) for (const x of [-9, 0, 9]) { const l = new THREE.PointLight(0xffe8d0, 30, 22, 1.5); l.position.set(x, H - 1.5, z); L.root.add(l); }
 }
 
 // ---------- SIEĆ ----------
@@ -93,7 +93,7 @@ function setLight(l) {
 }
 function startedCountdown() {
     S.rewarded = false; S.finished = false; S.myT = 0; S.caught = 0; S.penalty = 0; S.order = []; S.times = {}; S.ghost.reset(); setLight('green');
-    setPlayerPosition((Math.random() * 2 - 1) * 5, 1.0, START_Z + 1.5 + Math.random() * 2);
+    setPlayerPosition((Math.random() * 2 - 1) * 11, 1.0, START_Z + 1.5 + Math.random() * 2);
     toast('Get ready!', '#ff7a7a');
 }
 function startedPlay() { toast('GO! Run on green, freeze on red!', '#7fff90'); SFX.roar(0.4); }
@@ -155,7 +155,7 @@ export function update(dt, t, ctx) {
         if (S.penalty > 0) { S.penalty -= dt; ctx.body.velocity.set(0, ctx.body.velocity.y, 0); }
         else if (S.light === 'red' && S.clock - S.redAt > RED_GRACE && Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z) > MOVE_SPEED) {
             S.caught++; S.penalty = PENALTY; toast('You moved! Back to the start.', '#ff4a4a'); SFX.scare(); buzz('both', 0.8, 250);
-            setPlayerPosition((Math.random() * 2 - 1) * 5, 1.0, START_Z + 1.5 + Math.random() * 2); ctx.body.velocity.set(0, 0, 0);
+            setPlayerPosition((Math.random() * 2 - 1) * 11, 1.0, START_Z + 1.5 + Math.random() * 2); ctx.body.velocity.set(0, 0, 0);
         }
         if (p.z < FINISH_Z) {
             S.finished = true; toast('Finished! ' + S.myT.toFixed(1) + ' s', '#7fc47f'); SFX.bell && SFX.bell();

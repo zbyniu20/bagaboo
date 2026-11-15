@@ -41,7 +41,10 @@ export function captureEnvironment(P) {
         if (P) {
             let lum = null; try { lum = cubeLuminance(); } catch (e) { console.warn('Cube luminance read failed', e); }
             const gain = lum === null ? 2.0 : Math.max(1, Math.min(5, referenceLuminance(P) / Math.max(0.0005, lum)));
-            if (gain > 1.02) L.root.traverse(o => { if (o.isMesh && o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.isMeshStandardMaterial) m.envMapIntensity = (m.envMapIntensity === undefined ? 1 : m.envMapIntensity) * gain; }); });
+            // Wzmocnienie raz na materiał (materiały bywają współdzielone przez wiele siatek i trwają między poziomami): liczymy od wartości bazowej,
+            // inaczej gain mnożył się przy każdej siatce (kanapy w Staff miały envMapIntensity rzędu milionów i były białe)
+            const seen = new Set();
+            if (gain > 1.02) L.root.traverse(o => { if (o.isMesh && o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.isMeshStandardMaterial && !seen.has(m)) { seen.add(m); if (m.userData.envBase === undefined) m.userData.envBase = m.envMapIntensity === undefined ? 1 : m.envMapIntensity; m.envMapIntensity = m.userData.envBase * gain; } }); });
             env.gain = gain;
         }
         return env;

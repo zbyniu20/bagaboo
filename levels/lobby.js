@@ -17,7 +17,7 @@ const ENV = LP.envIntensity;
 let fx = null;   // stan animacji tego poziomu
 
 // W lobby gracz porusza się trochę szybciej (odepchnięcia i wyrzut o 15% mocniejsze)
-const LOBBY_MOVE_SCALE = 1.15;
+import { LOBBY_MOVE_SCALE } from '../core/config.js';
 export function build() {
     L.moveScale = LOBBY_MOVE_SCALE;
     fx = { flickers: [], muralMats: [], trampMats: [], lampSprites: [], shaftMats: [], mist: [], mannequins: [], meatSpots: [], bulbSpots: [], cloudTex: null, preview: null, previewHead: null };

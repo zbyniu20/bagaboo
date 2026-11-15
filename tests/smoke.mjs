@@ -110,6 +110,13 @@ for (const lv of LEVELS) {
         await run(`const M = await import('./main.js'); const PL = await import('./core/player.js'); await M.loadLevel('${lv}'); if ('${lv}' === 'wardrobe') PL.setPlayerPosition(-5, 1.0, 0); return 1;`);
         await page.waitForTimeout(2500);
         const r = await run(`const ENG = await import('./core/engine.js'), I = ENG.renderer.info; let pl = 0; ENG.scene.traverse(o => { if (o.isPointLight && o.visible) pl++; }); return { calls: I.render.calls, tris: I.render.triangles, pl: pl };`);
+        // level-specific rules fixed in the last round
+        const rules = await run(`const E = await import('./core/engine.js'), A = await import('./core/avatar.js'); return { floorY: E.L.floorY, moveScale: E.L.moveScale, tagsHidden: A.TAGS.hidden, maxZ: E.L.bounds.maxZ, minZ: E.L.bounds.minZ, minX: E.L.bounds.minX, maxX: E.L.bounds.maxX };`);
+        if ((lv === 'lasttile' || lv === 'race') && !(rules.floorY < -5)) fail(`${lv}: no pit floor (floorY=${rules.floorY}): players cannot fall`);
+        if ((lv === 'games' || lv === 'wardrobe') && rules.moveScale !== 1.15) fail(`${lv}: movement scale ${rules.moveScale}, expected the lobby value 1.15`);
+        if (lv === 'hideseek' && !rules.tagsHidden) fail('hideseek: name tags are not hidden');
+        if (lv !== 'hideseek' && rules.tagsHidden) fail(`${lv}: name tags still hidden after leaving hide and seek`);
+        if (lv === 'redlight' && !(rules.maxX - rules.minX > 24 && rules.maxZ - rules.minZ > 70)) fail('redlight: hall is not big enough');
         const budget = BUDGET[lv] || BUDGET.default;
         if (!(r.calls > 0)) fail(`${lv}: nothing was rendered`);
         else if (r.calls > budget) fail(`${lv}: ${r.calls} draw calls exceed budget ${budget}`);

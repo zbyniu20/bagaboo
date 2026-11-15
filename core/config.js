@@ -63,8 +63,8 @@ LIGHT_PRESETS.lava = {
     sunColor: 0xff6a2a, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.35, flashlight: null
 };
 LIGHT_PRESETS.staff = {
-    background: 0x1a120c, fogColor: 0x1a120c, fogDensity: 0.004, exposure: 1.15,
-    hemiSky: 0xffe8d0, hemiGround: 0x5a4a3a, hemiIntensity: 2.2,
+    background: 0x0c0806, fogColor: 0x0c0806, fogDensity: 0.006, exposure: 1.15,   // przyciemniony gabinet (meble były białe przez błąd odbić, teraz naprawiony)
+    hemiSky: 0xe8c8a8, hemiGround: 0x3a2e24, hemiIntensity: 2.0,
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.4, flashlight: null
 };
 LIGHT_PRESETS.laundry = {
@@ -167,3 +167,6 @@ export function canPunish(byName, targetName) {
 export const BANS_CLEARED = 1;
 export const LIGHT_MODE = 'dusk';
 export const LP = LIGHT_PRESETS[LIGHT_MODE];
+
+// Mnożnik ruchu napędzanego dłońmi w lobby, Games i garderobie (poziomy z własnym ruchem ustawiają swoje wartości)
+export const LOBBY_MOVE_SCALE = 1.15;

@@ -13,6 +13,7 @@ import { buildDoor } from '../core/levelkit.js';
 import { emotePose, EMOTES } from '../core/emotes.js';
 import * as SFX from '../core/audio.js';
 import { ARRIVAL_WARDROBE } from './lobby-door.js';
+import { LOBBY_MOVE_SCALE } from '../core/config.js';
 
 const W = 9, D = 7, H = 5;
 const PODIUM = [0, -1.5];
@@ -23,7 +24,8 @@ let S = null;
 
 // Lista przedmiotów do przewijania w danym dziale (bez tych tylko dla ekipy)
 const listFor = (slot) => E.CATALOG.filter(it => it.slot === slot && !(it.locked && STAFF_HINTS.includes(it.hint)));
-const UI = { idx: {}, auto: true, spin: 0, emoting: false };
+const UI = { idx: {}, auto: true, spin: 0, emoting: false, blue: false };
+const BLUE = 0x0a3cff;   // niebieski do kluczowania (chroma key) przy nagrywaniu wideo
 function equippedIndex(slot) { const l = listFor(slot), cur = E.SAVE.equipped[slot]; return Math.max(0, l.findIndex(it => it.id === cur)); }
 function resetIdx() { for (const [s] of SLOTS) UI.idx[s] = equippedIndex(s); }
 function current(slot) { const l = listFor(slot); return l[((UI.idx[slot] || 0) % l.length + l.length) % l.length]; }
@@ -52,11 +54,12 @@ const panel = new Terminal((t) => {
         if (owned && !worn) t.btn('wear' + slot, 850, y + 5, 140, 40, slot === 'emote' ? 'Favorite' : 'Wear', () => { E.equipItem(it); S.dirtyLook = true; markAllDirty(); }, { size: 20, tone: 'ok' });
         else if (!owned && !locked) t.btn('buy' + slot, 850, y + 5, 140, 40, E.SAVE.wallet >= price ? 'Buy' : 'Need ' + (price - E.SAVE.wallet), () => { E.buyItem(it); S.dirtyLook = true; markAllDirty(); }, { size: 18, tone: 'gold', disabled: E.SAVE.wallet < price });
     });
-    t.btn('spin', 20, 520, 250, 52, UI.auto ? 'Turntable: auto' : 'Turntable: stopped', () => { UI.auto = !UI.auto; }, { size: 21, tone: UI.auto ? 'ok' : undefined });
-    t.btn('left', 285, 520, 70, 52, '<<', () => { UI.spin -= 0.6; UI.auto = false; }, { size: 24 });
-    t.btn('right', 370, 520, 70, 52, '>>', () => { UI.spin += 0.6; UI.auto = false; }, { size: 24 });
-    t.btn('reset', 460, 520, 230, 52, 'Reset to worn', () => { resetIdx(); UI.emoting = false; S.dirtyLook = true; }, { size: 21 });
-    t.btn('photo', 710, 520, 294, 52, 'Take photo', () => { S.photoReq = true; }, { tone: 'gold', size: 24 });
+    t.btn('spin', 20, 520, 235, 52, UI.auto ? 'Turntable: auto' : 'Turntable: stopped', () => { UI.auto = !UI.auto; }, { size: 21, tone: UI.auto ? 'ok' : undefined });
+    t.btn('left', 265, 520, 70, 52, '<<', () => { UI.spin -= 0.6; UI.auto = false; }, { size: 24 });
+    t.btn('right', 345, 520, 70, 52, '>>', () => { UI.spin += 0.6; UI.auto = false; }, { size: 24 });
+    t.btn('reset', 425, 520, 140, 52, 'Reset', () => { resetIdx(); UI.emoting = false; S.dirtyLook = true; }, { size: 21 });
+    t.btn('blue', 575, 520, 175, 52, UI.blue ? 'Blue screen: on' : 'Blue screen: off', () => { UI.blue = !UI.blue; applyBlue(); }, { size: 19, tone: UI.blue ? 'ok' : undefined });
+    t.btn('photo', 760, 520, 244, 52, 'Take photo', () => { S.photoReq = true; }, { tone: 'gold', size: 24 });
     t.text('Preview any item. Locked items show how to earn them. Photos appear on the wall.', 36, 604, 18, AMBER_DIM, 'left');
     t.scanlines();
 }, 1024, 640);
@@ -65,22 +68,29 @@ const panel = new Terminal((t) => {
 export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -W + 0.4, maxX: W - 0.4, minZ: -D + 0.4, maxZ: D - 0.4, maxY: H - 0.4 };
+    L.moveScale = LOBBY_MOVE_SCALE;   // ruch dłońmi taki sam jak w lobby
     S = { clock: 0, dirtyLook: true, avatar: null, photos: [], photoReq: false, flash: 0, frames: [], lights: [] };
     resetIdx();
     addCrispBlock(0, -0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x6a5a4e, 0x181008, tex.floor, { rough: tex.floorRough });
     addCrispBlock(0, H + 0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x4a3c3e, 0x181008);
     for (const [x, z, w, d] of [[0, -D - 0.5, W * 2 + 2, 1], [0, D + 0.5, W * 2 + 2, 1], [-W - 0.5, 0, 1, D * 2], [W + 0.5, 0, 1, D * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x8a7a72, 0x181008, tex.wall);
     // Podest z delikatnym blaskiem i reflektor z góry
-    addCrispBlock(PODIUM[0], 0.15, PODIUM[1], 3.4, 0.3, 3.4, 0x2a2a34, 0xffd27a);
+    const podium = addCrispBlock(PODIUM[0], 0.15, PODIUM[1], 3.4, 0.3, 3.4, 0x2a2a34, 0xffd27a);
     const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.06, 40), new THREE.MeshStandardMaterial({ color: 0x9a8a68, metalness: 0.3, roughness: 0.5 }));
     disc.position.set(PODIUM[0], 0.33, PODIUM[1]); L.root.add(disc); S.disc = disc;
-    const spot = new THREE.SpotLight(0xfff0d8, 70, 12, 0.5, 0.6, 1.5); spot.position.set(PODIUM[0], 4.6, PODIUM[1] + 0.5); spot.target.position.set(PODIUM[0], 0.8, PODIUM[1]); L.root.add(spot, spot.target);
-    for (const [x, z] of [[-6, -4], [6, -4], [-6, 4], [6, 4]]) { const l = new THREE.PointLight(0xffd8a0, 30, 16, 1.6); l.position.set(x, 4, z); L.root.add(l); }
+    // Niebieski ekran do nagrywania wideo: ściana za podestem i podłoga wokół niego (podest i tarcza też robią się niebieskie)
+    const blueMat = new THREE.MeshBasicMaterial({ color: BLUE, toneMapped: false });
+    const bw = new THREE.Mesh(new THREE.PlaneGeometry(W * 2 - 0.2, H - 0.1), blueMat); bw.position.set(0, H / 2, -D + 0.1); bw.visible = false;
+    const bf = new THREE.Mesh(new THREE.PlaneGeometry(W * 2 - 0.2, D + 1.5), blueMat); bf.rotation.x = -Math.PI / 2; bf.position.set(0, 0.014, -D / 2 + 0.75 - 0.2); bf.visible = false;
+    L.root.add(bw, bf);
+    S.blue = { wall: bw, floor: bf, mat: blueMat, podium: podium, disc: disc, podiumMat: podium.material, discMat: disc.material };
+    const spot = new THREE.SpotLight(0xfff0d8, 110, 12, 0.5, 0.6, 1.5); spot.position.set(PODIUM[0], 4.6, PODIUM[1] + 0.5); spot.target.position.set(PODIUM[0], 0.8, PODIUM[1]); L.root.add(spot, spot.target);
+    for (const [x, z] of [[-6, -4], [6, -4], [-6, 4], [6, 4]]) { const l = new THREE.PointLight(0xffd8a0, 48, 16, 1.6); l.position.set(x, 4, z); L.root.add(l); }
     // Napis na ścianie
     const tc = T.makeCanvas(1024, 160), tx = tc.getContext('2d');
     tx.textAlign = 'center'; tx.textBaseline = 'middle'; tx.font = 'bold 110px serif'; tx.shadowColor = '#ffb040'; tx.shadowBlur = 24; tx.fillStyle = '#ffe8c0'; tx.fillText('WARDROBE', 512, 86);
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(6, 0.94), new THREE.MeshBasicMaterial({ map: T.toTex(tc, false), transparent: true, toneMapped: false }));
-    sign.position.set(0, 3.8, -D + 0.06); L.root.add(sign);
+    sign.position.set(0, 3.8, -D + 0.06); L.root.add(sign); S.sign = sign;
     // Terminal przy zachodniej ścianie (zwrócony na wschód, do podestu)
     const scr = panel.createMesh(2.4, 1.5); scr.position.set(-W + 0.12, 1.7, 0); scr.rotation.y = Math.PI / 2; L.root.add(scr);
     addCrispBlock(-W + 0.05, 1.7, 0, 0.1, 1.64, 2.54, 0x2a221c, 0x181008);
@@ -96,6 +106,17 @@ export function build() {
     buildDoor({ x: 0, z: D - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x4a3a30, portal: { target: 'lobby', spawn: ARRIVAL_WARDROBE, onEnter: () => toast('Back to the lobby') } });
     S.photoCam = new THREE.PerspectiveCamera(34, 1, 0.1, 40);
     S.photoCam.position.set(PODIUM[0], 1.3, PODIUM[1] + 4.2); S.photoCam.lookAt(PODIUM[0], 0.95, PODIUM[1]);
+    applyBlue();
+    markAllDirty();
+}
+
+export function setBlueScreen(on) { UI.blue = !!on; applyBlue(); }   // też dla testów
+// Niebieski ekran: włącza/wyłącza tło do kluczowania i podmienia materiały podestu
+function applyBlue() {
+    if (!S || !S.blue) return;
+    const b = S.blue, on = UI.blue;
+    b.wall.visible = b.floor.visible = on; if (S.sign) S.sign.visible = !on;
+    b.podium.material = on ? b.mat : b.podiumMat; b.disc.material = on ? b.mat : b.discMat;
     markAllDirty();
 }
 
@@ -158,5 +179,5 @@ export function update(dt, t) {
 }
 export function dispose() {
     if (S) { if (S.flashPanel && S.flashPanel.parent) S.flashPanel.parent.remove(S.flashPanel); for (const f of S.frames) if (f.material.map) f.material.map.dispose(); }
-    S = null;
+    S = null; L.moveScale = 1;
 }

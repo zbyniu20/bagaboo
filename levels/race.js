@@ -9,7 +9,7 @@ import { THREE, L, tex, camera, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
 import { levelReward, recordTime } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
-import { setPlayerPosition } from '../core/player.js';
+import { setPlayerPosition, isGrounded } from '../core/player.js';
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
@@ -20,7 +20,7 @@ import { ARRIVAL_FROM_RACE } from './games.js';
 const WAIT = 12, SOLO_WAIT = 4, COUNTDOWN = 4, RACE_MAX = 170, GRACE = 20, RESULTS = 9, REWARD = 200, PAR = 95;
 const FALL_Y = -5;
 // Ten sam sposób poruszania się co w Floor is Lava: cięższy skok, więc odstępy 0,7-1,2 m da się pokonać
-const MOVE_SCALE = 0.8, MAX_UP = 4.2, MAX_SPEED_XZ = 3.8, EXTRA_GRAVITY = 3.0;
+const MOVE_SCALE = 0.8, MAX_UP = 4.2, MAX_SPEED_XZ = 3.8, EXTRA_GRAVITY = 1.5;   // wcześniej 3.0: trochę lżejszy skok
 export const info = { id: 'race', name: 'Parkour Race', spawn: [0, 1.9, 3] };
 const START = [0, 1.9, 3];
 let S = null;
@@ -30,11 +30,13 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -9.6, maxX: 9.6, minZ: -139, maxZ: 8.6, maxY: 38 };
     L.moveScale = MOVE_SCALE; L.maxUp = MAX_UP; L.maxSpeedXZ = MAX_SPEED_XZ;
+    L.floorY = -40;   // bez globalnej podłogi: upadek w przepaść jest naprawdę wykrywany (FALL_Y)
     S = { ghost: createGhost('race'), clock: 0, phase: 'wait', t: 0, order: [], times: {}, cps: [START.slice()], cp: 0, falls: 0, myT: 0, finished: false, lastHostMsg: -10, netT: 0, hudT: 0, introT: 10, rewarded: false, solo: true, lastBeep: -1 };
     S.t = N.NET.mode === 'solo' ? SOLO_WAIT : WAIT;
     buildHall();
     buildCourse();
-    buildDoor({ x: 0, z: 8.47, rotY: Math.PI, label: 'GAMES', color: '#d080ff', wood: 0x3a3048, portal: { target: 'games', spawn: ARRIVAL_FROM_RACE, onEnter: () => toast('Back to BagaBoo Games') } });
+    addCrispBlock(0, 3.0, 9.1, 3.4, 4, 0.4, 0x3a3248, 0x302040);   // ścianka za drzwiami wyjścia
+    buildDoor({ x: 0, y: 1.0, z: 8.47, rotY: Math.PI, label: 'GAMES', color: '#d080ff', wood: 0x3a3048, portal: { target: 'games', spawn: ARRIVAL_FROM_RACE, onEnter: () => toast('Back to BagaBoo Games') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 760, 1.0, 0.594, -0.04, -1.05, 995); S.intro.last = -1;
     N.onLevelMsg(onNet);
@@ -70,7 +72,7 @@ function checkpoint(x, top, z) {
 }
 function buildCourse() {
     const R = T.mkRng(777), cols = [0x5a4a78, 0x4a5a78, 0x78486a];
-    slab(0, 1.0, 3, 8, 6, 0x4a4a6a, 0xff5ac8);                                       // start
+    slab(0, 1.0, 4.0, 8, 9.2, 0x4a4a6a, 0xff5ac8);   // start (sięga aż do drzwi wyjścia)                                       // start
     let z = -2.4, x = 0, top = 1.0;
     // 1) Kamienie: odstęp 0,7-1,2 m, zmiany wysokości w górę o maks. 0,45 m
     while (z > -29) {
@@ -138,7 +140,7 @@ function broadcast() {
     N.sendLevelMsg({ k: 'st', ph: S.phase, t: S.t, order: S.order.map(toNet), times: times, n: participants().length });
 }
 function startedCountdown() {
-    S.rewarded = false; S.finished = false; S.cp = 0; S.falls = 0; S.myT = 0; S.order = []; S.times = {}; S.ghost.reset();
+    S.rewarded = false; S.finished = false; S.cp = 0; S.lastPlat = null; S.falls = 0; S.myT = 0; S.order = []; S.times = {}; S.ghost.reset();
     setPlayerPosition(START[0] + (Math.random() - 0.5) * 5, START[1], START[2] + (Math.random() - 0.5) * 3);
     toast('Get ready!', '#ff7ac0');
 }
@@ -210,10 +212,15 @@ export function update(dt, t, ctx) {
             const c = S.cps[i];
             if (Math.abs(p.x - c[0]) < 2.1 && Math.abs(p.z - c[2]) < 1.6 && Math.abs(p.y - c[1]) < 1.2) { S.cp = i; SFX.fuse(); toast('Checkpoint ' + i + '/' + (S.cps.length - 1), '#7fc47f'); }
         }
-        // Spadek w przepaść
+        // Ostatnia platforma, na której stałeś: tam wracasz po upadku (środek płyty, żeby nie spaść znowu z krawędzi)
+        if (isGrounded()) {
+            const feet = p.y - 0.35;
+            for (const ob of L.obstacles) { const b = ob.box3; if (p.x >= b.min.x && p.x <= b.max.x && p.z >= b.min.z && p.z <= b.max.z && Math.abs(b.max.y - feet) < 0.45 && b.max.y > 0.4) { S.lastPlat = [(b.min.x + b.max.x) / 2, b.max.y, (b.min.z + b.max.z) / 2]; break; } }
+        }
+        // Spadek w przepaść: z powrotem na platformę, z której spadłeś
         if (p.y < FALL_Y) {
-            const c = S.cps[S.cp]; setPlayerPosition(c[0], c[1] + 0.3, c[2]); ctx.body.velocity.set(0, 0, 0); S.falls++;
-            toast('Fell! Back to ' + (S.cp ? 'checkpoint ' + S.cp : 'the start'), '#ff6a4a'); buzz('both', 0.7, 200);
+            const c = S.lastPlat || [S.cps[S.cp][0], S.cps[S.cp][1] - 0.9, S.cps[S.cp][2]]; setPlayerPosition(c[0], c[1] + 1.2, c[2]); ctx.body.velocity.set(0, 0, 0); S.falls++;
+            toast('Fell! Back to the last platform', '#ff6a4a'); buzz('both', 0.7, 200);
         }
         // Meta
         if (p.z < S.finish.z && p.y > S.finish.top - 1) {

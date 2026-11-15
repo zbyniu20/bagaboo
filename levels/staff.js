@@ -147,16 +147,16 @@ function carpet() {
 }
 function buildRoom() {
     const wp = wallpaper(); wp.repeat.set(6, 1.6);
-    addCrispBlock(0, -0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0xb08060, 0x2a1a10, tex.wood, { uvMeters: 1.5 });
-    addCrispBlock(0, H + 0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x3a2a22, 0x2a1a10);
-    const wallMat = new THREE.MeshStandardMaterial({ map: wp, roughness: 0.85 });
+    addCrispBlock(0, -0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x4a3424, 0x2a1a10, tex.wood, { uvMeters: 1.5 });
+    addCrispBlock(0, H + 0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x1e1612, 0x2a1a10);
+    const wallMat = new THREE.MeshStandardMaterial({ map: wp, color: 0x707070, roughness: 0.85 });
     const wall = (x, z, w, d) => {
         addCrispBlock(x, H / 2, z, w, H, d, 0x223322, 0x101810);
         const m = L.root.children[L.root.children.length - 1]; m.material = wallMat;
     };
     wall(0, -D - 0.5, W * 2 + 2, 1); wall(0, D + 0.5, W * 2 + 2, 1); wall(-W - 0.5, 0, 1, D * 2); wall(W + 0.5, 0, 1, D * 2);
     // Boazeria (bez kolizji, tuż przy ścianach)
-    const panel = new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x6a4028, roughness: 0.6 });
+    const panel = new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x2e1c12, roughness: 0.6 });
     for (const [x, z, w, d] of [[0, -D + 0.03, W * 2, 0.06], [0, D - 0.03, W * 2, 0.06], [-W + 0.03, 0, 0.06, D * 2], [W - 0.03, 0, 0.06, D * 2]]) {
         const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.0, d), panel); m.position.set(x, 0.5, z); m.receiveShadow = true; L.root.add(m);
     }
@@ -164,7 +164,7 @@ function buildRoom() {
     rug.rotation.x = -Math.PI / 2; rug.position.set(0, 0.01, -1.4); rug.scale.set(1.4, 1.4, 1); rug.receiveShadow = true; L.root.add(rug);
     // Ciepłe światła sufitowe
     for (const [x, z] of [[-3.5, -2.5], [3.5, -2.5], [-3.5, 2.5], [3.5, 2.5]]) {
-        const l = new THREE.PointLight(0xffc890, 9, 10, 1.6); l.position.set(x, H - 0.4, z); L.root.add(l);
+        const l = new THREE.PointLight(0xffc890, 10, 10, 1.6); l.position.set(x, H - 0.4, z); L.root.add(l);
         const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 0.22, 20, 1, true), new THREE.MeshStandardMaterial({ color: 0xe8d8b0, emissive: 0x6a5030, side: THREE.DoubleSide }));
         shade.position.set(x, H - 0.25, z); L.root.add(shade);
     }
@@ -176,9 +176,9 @@ function box(x, y, z, w, h, d, mat, solid) {
     return m;
 }
 function buildFurniture() {
-    const leather = new THREE.MeshStandardMaterial({ color: 0x5a0e10, roughness: 0.45, envMapIntensity: ENV });
-    const cushion = new THREE.MeshStandardMaterial({ color: 0x6a1418, roughness: 0.6 });
-    const wood = new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x8a5a38, roughness: 0.5, envMapIntensity: ENV });
+    const leather = new THREE.MeshStandardMaterial({ color: 0x2a0608, roughness: 0.45, envMapIntensity: ENV });
+    const cushion = new THREE.MeshStandardMaterial({ color: 0x34080a, roughness: 0.6 });
+    const wood = new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x3e281a, roughness: 0.5, envMapIntensity: ENV });
     const dark = new THREE.MeshStandardMaterial({ color: 0x1a1a1c, metalness: 0.6, roughness: 0.4, envMapIntensity: ENV });
     const gold = new THREE.MeshStandardMaterial({ color: 0xd4a640, metalness: 1, roughness: 0.3, envMapIntensity: Math.max(0.6, ENV) });
     const TZ = -D;   // ściana z telewizorem
@@ -239,7 +239,7 @@ function buildFurniture() {
     const fl = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.32, 20, 1, true), new THREE.MeshStandardMaterial({ color: 0xe8d0a0, emissive: 0x6a4a20, side: THREE.DoubleSide })); fl.position.set(-W + 0.8, 1.7, D - 0.9); L.root.add(fl);
     const fll = new THREE.PointLight(0xffc080, 4, 5, 2); fll.position.set(-W + 0.8, 1.6, D - 0.9); L.root.add(fll);
     for (const [x, z] of [[W - 0.6, D - 0.6], [-W + 0.6, -D + 0.6]]) {
-        box(x, 0.25, z, 0.45, 0.5, 0.45, new THREE.MeshStandardMaterial({ color: 0x5a3a2a, roughness: 0.8 }));
+        box(x, 0.25, z, 0.45, 0.5, 0.45, new THREE.MeshStandardMaterial({ color: 0x2e1c14, roughness: 0.8 }));
         for (let i = 0; i < 7; i++) { const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshStandardMaterial({ color: 0x1e4a1e, roughness: 0.8 })); leaf.scale.set(0.5, 1.4, 0.5); leaf.position.set(x + Math.cos(i) * 0.12, 0.85, z + Math.sin(i) * 0.12); leaf.rotation.z = Math.cos(i * 2) * 0.5; L.root.add(leaf); }
     }
     const pc2 = T.makeCanvas(512, 320), x = pc2.getContext('2d');

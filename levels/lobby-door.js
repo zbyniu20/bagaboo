@@ -7,7 +7,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP, GFX, isStaffName } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { toast } from '../core/terminal.js';
-import { createHead, createGorillaTorso, createGorillaArm, placeArm, buildHat, addRoleTag, ULTIMATE_SCALE, animateFace } from '../core/avatar.js';
+import { createHead, createGorillaTorso, createGorillaArm, createRealHand, poseHand, placeArm, buildHat, addRoleTag, ULTIMATE_SCALE, animateFace } from '../core/avatar.js';
+import { emoteState, emotePose } from '../core/emotes.js';
 import { myVoice } from '../core/network.js';
 import { getLook, onLookChange, unlockItem, recordTime, unlockAchievement } from '../core/economy.js';
 import { hands } from '../core/player.js';
@@ -74,20 +75,29 @@ function buildMirror() {
     mirror = new Reflector(new THREE.PlaneGeometry(W, H), { textureWidth: GFX.mirror, textureHeight: Math.round(GFX.mirror * 1.44), color: 0xb0b0b0, clipBias: 0.003 });
     mirror.position.set(0, y0 + H / 2, 0.03); g.add(mirror);
     if (mirror.camera) mirror.camera.layers.enable(MIRROR_LAYER);
+    // Twoje prawdziwe dłonie znikają tylko na czas renderu lustra (zamiast nich widać kopie, które potrafią wykonywać emotki)
+    const mirrorRender = mirror.onBeforeRender;
+    mirror.onBeforeRender = function () {
+        const hv = [hands.L && hands.L.visible, hands.R && hands.R.visible];
+        if (hands.L) hands.L.visible = false; if (hands.R) hands.R.visible = false;
+        try { mirrorRender.apply(this, arguments); } finally { if (hands.L) hands.L.visible = hv[0]; if (hands.R) hands.R.visible = hv[1]; }
+    };
     addStaticBody(MIRROR.x + 0.05, 1.4, MIRROR.z, new CANNON.Box(new CANNON.Vec3(0.06, 1.4, W / 2 + b)), g, false);
     buildMe(getLook());
     if (!lookHooked) { lookHooked = true; onLookChange((look) => { if (me) buildMe(look); }); }
 }
 // Twoja postać goryla: niewidoczna dla ciebie, widoczna tylko w lustrze
 function buildMe(look) {
-    if (me) for (const o of [me.head, me.torso, me.armL, me.armR]) L.root.remove(o);
+    if (me) for (const o of [me.head, me.torso, me.armL, me.armR, me.handL, me.handR]) L.root.remove(o);
     const head = createHead(look, false), torso = createGorillaTorso(look), armL = createGorillaArm(look), armR = createGorillaArm(look);
     const sc = look.skin === 'ultimate' ? ULTIMATE_SCALE : 1;   // ultimate admin w lustrze też jest 2 razy większy
     head.scale.setScalar(sc); torso.scale.setScalar(sc);
     if (sc > 1) for (const a of [armL, armR]) a.geometry = a.geometry.clone().scale(sc, 1, sc);
     addRoleTag(head, look);   // napis z rolą widać też w lustrze
-    for (const o of [head, torso, armL, armR]) { o.traverse(c => c.layers.set(MIRROR_LAYER)); L.root.add(o); }
-    me = { head: head, torso: torso, armL: armL, armR: armR, drop: 0.35 * sc };
+    // Dłonie w lustrze to osobne kopie (warstwa lustra): pokazują te same ruchy co twoje, a podczas emotki wykonują ją, więc widzisz ją w lustrze
+    const handL = createRealHand(true, look), handR = createRealHand(false, look); handL.scale.setScalar(sc); handR.scale.setScalar(sc);
+    for (const o of [head, torso, armL, armR, handL, handR]) { o.traverse(c => c.layers.set(MIRROR_LAYER)); L.root.add(o); }
+    me = { head: head, torso: torso, armL: armL, armR: armR, handL: handL, handR: handR, drop: 0.35 * sc };
 }
 
 // ---------- CZERWONA TRASA "PARKOUR KING" ----------
@@ -211,11 +221,18 @@ export function update(dt, t, ctx) {
     mirror.visible = _p.x > MIRROR.x + 0.2 && Math.hypot(_p.x - MIRROR.x, _p.z - MIRROR.z) < 8;
     if (me && mirror.visible) {
         me.head.position.copy(_p); me.head.quaternion.copy(_q);
-        _e.setFromQuaternion(_q, 'YXZ');
-        me.torso.position.set(_p.x, _p.y - me.drop, _p.z); me.torso.rotation.set(0, _e.y, 0);
+        // Dłonie: kopie twoich, a gdy trwa emotka, układane przez emotePose (to samo, co widzą inni gracze)
+        const em = emoteState();
+        if (hands.L && hands.R) {
+            for (const [m, h] of [[me.handL, hands.L], [me.handR, hands.R]]) { m.position.copy(h.position); m.quaternion.copy(h.quaternion); if (m.userData.rig && h.userData.rig) m.userData.rig.target = h.userData.rig.target; }
+        }
+        if (em) emotePose(me, em.id, em.t);
+        poseHand(me.handL.userData.rig, 1 / 60); poseHand(me.handR.userData.rig, 1 / 60);
+        _e.setFromQuaternion(me.head.quaternion, 'YXZ');
+        me.torso.position.set(me.head.position.x, me.head.position.y - me.drop, me.head.position.z); me.torso.rotation.set(0, _e.y, 0);
         const v = myVoice(); animateFace(me.head, v.level, v.pitch, 1 / 60);   // w lustrze usta ruszają się, gdy mówisz
         me.torso.updateMatrixWorld(true);
-        if (hands.L) { placeArm(me.armL, me.torso, -1, hands.L); placeArm(me.armR, me.torso, 1, hands.R); }
+        placeArm(me.armL, me.torso, -1, me.handL); placeArm(me.armR, me.torso, 1, me.handR);
     }
 }
 export function dispose() {
