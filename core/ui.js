@@ -214,11 +214,12 @@ export const shop = new Terminal((t) => {
         // Najlepsze czasy (zwykłe po lewej, Nightmare po prawej) i liczniki wygranych
         t.text('Best times', 40, 176, 28, GOLD, 'left', true);
         t.text('Nightmare', 520, 176, 28, '#ff7a6a', 'left', true);
+        const nNormal = E.RECORDS.filter(q => !q.id.endsWith('_nm')).length, step = nNormal > 13 ? Math.floor(380 / (nNormal - 1)) : 34, fs = step < 30 ? 18 : 22;   // dużo rekordów: ciaśniejszy układ
         E.RECORDS.forEach((r, i) => {
             const nm = r.id.endsWith('_nm'), j = nm ? i - E.RECORDS.findIndex(q => q.id.endsWith('_nm')) : i;
-            const v = E.SAVE.records[r.id], y = 216 + j * 34, x = nm ? 520 : 40;
-            t.text(r.name.replace(' (Nightmare)', ''), x, y, 22, nm ? '#ff9a8a' : AMBER, 'left');
-            t.text(v === undefined ? (r.score ? '-' : '--:--') : (r.score ? String(v) : E.fmtDuration(v * 1000)), nm ? 900 : 400, y, 22, v === undefined ? AMBER_DIM : GOLD, 'left', true);
+            const v = E.SAVE.records[r.id], y = 216 + j * (nm ? 34 : step), x = nm ? 520 : 40;
+            t.text(r.name.replace(' (Nightmare)', ''), x, y, nm ? 22 : fs, nm ? '#ff9a8a' : AMBER, 'left');
+            t.text(v === undefined ? (r.score ? '-' : '--:--') : (r.score ? String(v) : E.fmtDuration(v * 1000)), nm ? 900 : 400, y, nm ? 22 : fs, v === undefined ? AMBER_DIM : GOLD, 'left', true);
         });
         const S = E.SAVE;
         t.text('Wins: maze ' + (S.mazeWins || 0) + ', silence ' + (S.silenceWins || 0) + ', well ' + (S.wellWins || 0) + ', laundry ' + (S.laundryWins || 0) + ', memory ' + (S.memoryWins || 0) + ', lava ' + (S.lavaWins || 0), 520, 470, 18, AMBER_DIM, 'left');
