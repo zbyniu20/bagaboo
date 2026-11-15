@@ -16,7 +16,7 @@ jobs:
       matrix:
         levels:
           - lobby,levels,maze,silence,well,laundry
-          - memory,lava,hospital,cemetery,catacombs,nursery,games
+          - memory,lava,hospital,cemetery,catacombs,nursery,hotel,games
           - wardrobe,hideseek,statues,blindtag,swingrun,towerclimb,race,redlight
     defaults:
       run:
