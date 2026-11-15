@@ -113,6 +113,14 @@ const data = await run(`
             if (['sleeve', 'gloves', 'skin'].includes(it.slot)) { const a = AV.createAvatar(Object.assign({}, E.getLook(), { [it.slot]: it.id })); if (!a.group.children.length) bad.push(it.slot + ' avatar empty: ' + it.id); }
         } catch (e) { bad.push(it.slot + ':' + it.id + ' threw ' + e.message); }
     }
+    // staff badges: the owner/admin/ultimate badges must be offered in the wardrobe (Gorilla Machine) to the people who may wear them, and to nobody else
+    const GMACH = await import('./core/gorillamachine.js'), prevName = E.SAVE.profile.name;
+    const badgesFor = (n) => { E.setProfile({ name: n }); return GMACH.itemsFor('badge').map(i => i.id).filter(id => ['owner', 'ultimate', 'coadmin', 'admin', 'mod'].includes(id)).sort().join(); };
+    const bB = badgesFor('BoyIsGamer'), bZ = badgesFor('zbyniu'), bX = badgesFor('RandomPlayer');
+    if (bB !== 'admin,owner') bad.push('BoyIsGamer should be offered admin+owner badges, got: ' + bB);
+    if (bZ !== 'admin,coadmin,mod,owner,ultimate') bad.push('zbyniu should be offered all 5 staff badges, got: ' + bZ);
+    if (bX !== '') bad.push('a normal player must not be offered staff badges, got: ' + bX);
+    E.setProfile({ name: prevName });
     // host migration election: deterministic order, old host excluded, rank 0 first
     const NW = await import('./core/network.js');
     const e1 = NW.electNewHost('b', ['a', 'b', 'c', 'H'], 'H'); if (e1.order.join() !== 'a,b,c' || e1.rank !== 1) bad.push('election order/rank wrong: ' + JSON.stringify(e1));

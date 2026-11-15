@@ -15,8 +15,8 @@ export const CATS = [
     { id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badges' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' },
     { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }, { id: 'emote', name: 'Emotes' }, { id: 'mskin', name: 'Monster skins' }
 ];
-const STAFF_HINTS = ['Owner', 'Ultimate', 'Co-admin', 'Admin', 'Moderator', 'Staff', 'For hackers'];   // przedmioty tylko dla ekipy nie są na liście
-export const itemsFor = (slot) => E.CATALOG.filter(it => it.slot === slot && !(it.locked && STAFF_HINTS.includes(it.hint)));
+const STAFF_HINTS = ['Owner', 'Ultimate', 'Ultimate Admin', 'Co-admin', 'Admin', 'Moderator', 'Staff', 'For hackers'];   // przedmioty tylko dla ekipy: pokazane wyłącznie tym, którzy je mają (np. odznaki Owner i Admin dla BoyIsGamer)
+export const itemsFor = (slot) => E.CATALOG.filter(it => it.slot === slot && !(it.locked && STAFF_HINTS.includes(it.hint) && !E.isOwned(it)));
 const PER = 7;
 
 // Stan maszyny
