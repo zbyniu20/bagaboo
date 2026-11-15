@@ -300,7 +300,7 @@ const modeSim = await run(`
     {
         const TM = await import('./core/terminal.js'); let went = null; const gctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
         m = await load('levels'); const tick = (n) => { for (let i = 0; i < n; i++) m.update(0.1, T += 0.1, gctx); TM.redrawTerminals(); };
-        tick(3); let ld = m.debug(); if (!ld || !ld.buttons.includes('enter') || ld.buttons.filter(x => x.startsWith('row')).length !== 11) bad.push('levels: terminal buttons missing (' + (ld && ld.buttons.length) + ')');
+        tick(3); let ld = m.debug(); if (ld.screens !== 5) bad.push('levels: expected 5 terminal screens, got ' + ld.screens); if (!(ld.visitors >= 1)) bad.push('levels: visitor count wrong'); if (!ld || !ld.buttons.includes('enter') || ld.buttons.filter(x => x.startsWith('row')).length !== 11) bad.push('levels: terminal buttons missing (' + (ld && ld.buttons.length) + ')');
         if (!m._press('row2')) bad.push('levels: row2 not clickable'); tick(1); if (m.debug().sel !== 2) bad.push('levels: row click did not select');
         const E2 = await import('./core/economy.js'); E2.setDiff('well', 'normal');
         tick(1); if (!m._press('diff-nightmare')) bad.push('levels: difficulty buttons missing'); if (E2.getDiff('well') !== 'nightmare') bad.push('levels: difficulty not set'); E2.setDiff('well', 'normal');

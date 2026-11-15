@@ -18,8 +18,14 @@ export class Terminal {
     }
     createMesh(w, h) {
         this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: this.tex, toneMapped: false }));
-        this.mesh.userData.terminal = this;
+        this.mesh.userData.terminal = this; this.meshes = [this.mesh];
         return this.mesh;
+    }
+    // Dodatkowy ekran z tą samą grafiką (kilka stanowisk przy jednym terminalu: jedno płótno, jedno rysowanie, celownik działa na każdym)
+    addMesh(w, h) {
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), this.mesh.material);
+        m.userData.terminal = this; this.meshes.push(m);
+        return m;
     }
     redraw() { this.buttons = []; this.draw(this); this.tex.needsUpdate = true; this.dirty = false; }
     rrect(x, y, w, h, r) {
@@ -86,7 +92,7 @@ export function initPointers(controllers) {
 export function updatePointers(desktopCam) {
     const hoverIds = new Map();
     for (const t of terminals) t.pointer = null;   // pozycja celownika na ekranie (px, py) albo null; używa jej np. oko na terminalu wyboru poziomów
-    const meshes = terminals.filter(t => t.mesh && t.mesh.parent).map(t => t.mesh);
+    const meshes = terminals.filter(t => t.mesh && t.mesh.parent).flatMap(t => (t.meshes || [t.mesh]).filter(m => m.parent));
     for (let i = 0; i < ctrls.length; i++) {
         hits[i] = null; lasers[i].visible = false; cursors[i].visible = false;
         if (!renderer.xr.isPresenting && desktopCam && i === 0 && meshes.length) {

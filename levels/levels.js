@@ -12,6 +12,7 @@ import { fmtDuration, DIFFS, DIFF_ORDER, getDiff, setDiff, topTimes, dailyOn, se
 import { Terminal, toast, wrapText } from '../core/terminal.js';
 import { buildDoor, createJumpscare } from '../core/levelkit.js';
 import * as SFX from '../core/audio.js';
+import * as N from '../core/network.js';
 import { IS_QUEST } from '../core/device.js';
 import { ARRIVAL_LEVELS } from './lobby-door.js';
 
@@ -36,6 +37,8 @@ const LV = [
     { target: 'hotel', rec: 'hotel', label: 'THE HOTEL', type: 'SURVIVAL', threat: 5, msg: 'Do not stop. Hide when it rumbles...', desc: ['Open numbered doors, find', 'keys, hide in wardrobes.', 'Something rushes through.'] },
     { secret: true, label: 'ROOM 000', type: 'UNKNOWN', threat: 5, msg: 'It was never on the list.', desc: ['No one has opened this door.', 'It opens from the other side.', 'Do not knock twice.'] }
 ];
+// Stanowiska terminala: x, z, obrót ekranu (rotY=0: patrzy na +z, czyli z północnej ściany do wnętrza; pi/2: z zachodniej ściany; -pi/2: ze wschodniej)
+const STATIONS = [{ x: 0, z: -D, rotY: 0 }, { x: -6.6, z: -D, rotY: 0 }, { x: 6.6, z: -D, rotY: 0 }, { x: -W, z: -1.4, rotY: Math.PI / 2 }, { x: W, z: -1.4, rotY: -Math.PI / 2 }];
 const WORDS = ['', 'FAINT', 'LOW', 'HIGH', 'SEVERE', 'LETHAL'], PROX = ['9.0 m', '7.2 m', '5.1 m', '3.4 m', '1.9 m', '0.6 m'];
 const WHISPERS = ['LISTEN.', 'STILL THERE?', 'NOT THAT ONE.', 'BEHIND YOU.', 'I CAN HEAR YOU BREATHE.', 'CHOOSE.', 'HE IS WATCHING THE DOOR.'];
 const TICKER = 'THEY ARE WATCHING YOU  ■  NO ONE CAME BACK  ■  DO NOT LOOK BEHIND YOU  ■  IT HEARS EVERY STEP  ■  TURN BACK NOW  ■  ';
@@ -48,6 +51,12 @@ const TS = { sel: 9, knock: 0 };
 let term = null, overlay = null, noise = null;
 let S = null;
 
+function plateTexture(label) {   // tabliczka z numerem stanowiska nad ekranem
+    const c = T.makeCanvas(256, 52), x = c.getContext('2d');
+    x.fillStyle = 'rgba(10,6,4,0.85)'; x.fillRect(0, 0, 256, 52); x.strokeStyle = '#5a2018'; x.lineWidth = 3; x.strokeRect(2, 2, 252, 48);
+    x.fillStyle = '#ff6a52'; x.font = 'bold 30px "Courier New", monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(label, 128, 28);
+    return T.toTex(c, false);
+}
 function ensureAssets(W2, H2) {
     if (!overlay) {   // linie skanowania i winieta rysowane raz
         overlay = document.createElement('canvas'); overlay.width = W2; overlay.height = H2;
@@ -60,6 +69,12 @@ function ensureAssets(W2, H2) {
         for (let i = 0; i < img.data.length; i += 4) { const g = Math.random() * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = g; img.data[i + 3] = 22; }
         n.putImageData(img, 0, 0);
     }
+}
+// Ilu graczy jest teraz w tej sali (ty i inni z sesji); "oczekiwanych" jest zawsze 0
+function visitorsHere() {
+    let n = 1;
+    try { const me = N.myId(); for (const id in N.playersState) { const st = N.playersState[id]; if (id !== me && st && st.lvl === 'levels') n++; } } catch (e) { /* solo: tylko ty */ }
+    return n;
 }
 function sp(c, px) { try { c.letterSpacing = px + 'px'; } catch (e) { /* starsze przeglądarki: bez rozstrzelenia */ } }
 function tx(c, s, x, y, size, col, align, font, glow) {
@@ -115,7 +130,7 @@ function drawScreen(t) {
         tx(c, pips, 368, y + 20, 20, BLOOD, 'right');
         t.buttons.push({ id: 'row' + i, x: 8, y: y, w: 372, h: 38, action: () => pick(i) });
     });
-    tx(c, '> MEMORY CHECK ........ OK', 30, 560 + 70, 19, AMBD); tx(c, '> VISITORS PRESENT .... 1', 30, 580 + 70, 19, AMBD); tx(c, '> VISITORS EXPECTED ... 0', 30, 600 + 70, 19, AMBD);
+    tx(c, '> MEMORY CHECK ........ OK', 30, 560 + 70, 19, AMBD); tx(c, '> VISITORS PRESENT .... ' + visitorsHere(), 30, 580 + 70, 19, AMBD); tx(c, '> VISITORS EXPECTED ... 0', 30, 600 + 70, 19, AMBD);
     c.fillStyle = '#3a1812'; c.fillRect(392, 48, 2, 640);
     // panel poziomu (w Nightmare lekko drży)
     c.save(); if (nm) c.translate(Math.sin(now * 38) > 0 ? 1.5 : 0, Math.sin(now * 29) > 0.4 ? -1 : 0);
@@ -245,13 +260,25 @@ export function build() {
     tcx.shadowColor = '#ff2a10'; tcx.shadowBlur = 30; tcx.fillStyle = '#e8d0c0'; tcx.fillText('LEVELS', 512, 86);
     const title = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 0.69), new THREE.MeshBasicMaterial({ map: T.toTex(tc, false), transparent: true, toneMapped: false }));
     title.position.set(0, 5.35, -D + 0.06); L.root.add(title);
-    // Terminal: obudowa, ekran, pulpit z przodu (nie da się podejść do ekranu bliżej niż ok. 1,5 m)
-    addCrispBlock(0, 2.65, -D + 0.18, 5.5, 3.55, 0.36, 0x14100e, 0x2a1a14);
+    // Stanowiska: ten sam terminal na kilku ekranach (jedno płótno), żeby wszyscy gracze z sesji mogli wybierać naraz bez tłoku.
+    // Każdy gracz ma własny wybór (stan jest u niego lokalnie), a ekrany pokazują ten sam widok. Obudowa i pulpit są kolizyjne:
+    // do ekranu nie podejdziesz bliżej niż ok. 1,5 m.
     ensureAssets(1152, 720);
     if (!term) term = new Terminal(drawScreen, 1152, 720);
     term.state = {}; term.dirty = true;
-    const screen = term.createMesh(4.8, 3.0); screen.position.set(0, 2.65, -D + 0.37); L.root.add(screen);
-    addCrispBlock(0, 0.45, -D + 1.0, 6.2, 0.9, 1.2, 0x2a1a14, 0x100808);
+    STATIONS.forEach((st, k) => {
+        const r = st.rotY, along = (dx, dz) => [st.x + Math.cos(r) * dx + Math.sin(r) * dz, st.z - Math.sin(r) * dx + Math.cos(r) * dz];   // przesunięcie wzdłuż ściany (dx) i od ściany do wnętrza (dz)
+        const horiz = Math.abs(Math.sin(r)) < 0.5;
+        const bez = along(0, 0.18), scr = along(0, 0.37), desk = along(0, 1.0);
+        addCrispBlock(bez[0], 2.65, bez[1], horiz ? 5.5 : 0.36, 3.55, horiz ? 0.36 : 5.5, 0x14100e, 0x2a1a14);
+        addCrispBlock(desk[0], 0.45, desk[1], horiz ? 6.2 : 1.2, 0.9, horiz ? 1.2 : 6.2, 0x2a1a14, 0x100808);
+        const screen = k === 0 ? term.createMesh(4.8, 3.0) : term.addMesh(4.8, 3.0);
+        screen.position.set(scr[0], 2.65, scr[1]); screen.rotation.y = r; L.root.add(screen);
+        const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.3), new THREE.MeshBasicMaterial({ map: plateTexture('TERMINAL ' + (k + 1)), transparent: true, toneMapped: false }));
+        const pl = along(0, 0.4); plate.position.set(pl[0], 4.72, pl[1]); plate.rotation.y = r; L.root.add(plate);
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff3020, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.35 }));
+        const hp = along(0, 1.2); halo.scale.set(6.5, 4.2, 1); halo.position.set(hp[0], 2.65, hp[1]); L.root.add(halo);   // poświata bez światła punktowego (budżet świateł)
+    });
     const glow = new THREE.PointLight(0xff3020, 18, 11, 1.8); glow.position.set(0, 2.4, -D + 2.2); L.root.add(glow); S.glow = glow;
     for (const f of ['24px VT323', '24px "IM Fell English SC"', 'italic 24px "IM Fell English"']) { try { document.fonts.load(f).then(() => { if (term) term.dirty = true; }); } catch (e) { /* bez czcionek: Courier */ } }
     buildWarnings();
@@ -288,9 +315,9 @@ function warningTexture(text, w, h, size) {
 function buildWarnings() {
     const decal = (map, w, h, x, y, z, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: map, transparent: true, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2 })); m.position.set(x, y, z); m.rotation.y = ry; L.root.add(m); return m; };
     // Czaszki na ścianach bocznych i napisy ostrzegawcze
-    for (const z of [-3.5, 0.5, 4.5]) { decal(skullTexture(z * 7 + 3), 1.1, 1.1, -W + 0.05, 3.6, z, Math.PI / 2); decal(skullTexture(z * 9 + 5), 1.1, 1.1, W - 0.05, 3.6, z, -Math.PI / 2); }
-    decal(warningTexture('ENTER AT YOUR OWN RISK', 1024, 160, 88), 6, 0.94, -W + 0.06, 2.0, 0.5, Math.PI / 2);
-    decal(warningTexture('NO ONE CAME BACK', 1024, 160, 96), 5, 0.78, W - 0.06, 2.0, 0.5, -Math.PI / 2);
+    for (const z of [3.2, 5.6]) { decal(skullTexture(z * 7 + 3), 1.1, 1.1, -W + 0.05, 3.6, z, Math.PI / 2); decal(skullTexture(z * 9 + 5), 1.1, 1.1, W - 0.05, 3.6, z, -Math.PI / 2); }   // na bocznych ścianach tylko z tyłu: z przodu stoją ekrany
+    decal(warningTexture('ENTER AT YOUR OWN RISK', 1024, 160, 88), 6, 0.94, -6.5, 3.6, D - 0.06, Math.PI);
+    decal(warningTexture('NO ONE CAME BACK', 1024, 160, 96), 5, 0.78, 6.5, 3.6, D - 0.06, Math.PI);
     decal(warningTexture('TURN BACK NOW', 1024, 160, 96), 5, 0.78, 0, 4.4, D - 0.06, Math.PI);
     decal(warningTexture('THEY ARE WATCHING YOU', 1024, 160, 80), 4.2, 0.66, -6, 1.6, D - 0.06, Math.PI);
     decal(warningTexture('YOU HAVE BEEN WARNED', 1024, 160, 80), 4.2, 0.66, 6, 1.6, D - 0.06, Math.PI);
@@ -312,5 +339,5 @@ export function update(dt, t, ctx) {
     if (S.redraw <= 0) { S.redraw = IS_QUEST ? 0.4 : 0.2; if (term) term.dirty = true; }
 }
 export function dispose() { if (S) S.scare.dispose(); S = null; }
-export const debug = () => S ? { sel: TS.sel, dread: S.dread, knocks: TS.knock, leaving: S.leaving, buttons: term ? term.buttons.map(b => b.id) : [], levels: LV.map(l => l.target || null) } : null;   // dla testów
+export const debug = () => S ? { screens: term && term.meshes ? term.meshes.length : 0, visitors: visitorsHere(), sel: TS.sel, dread: S.dread, knocks: TS.knock, leaving: S.leaving, buttons: term ? term.buttons.map(b => b.id) : [], levels: LV.map(l => l.target || null) } : null;   // dla testów
 export const _press = (id) => { const b = term && term.buttons.find(x => x.id === id); if (b) b.action(); return !!b; };   // dla testów
