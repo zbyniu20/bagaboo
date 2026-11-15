@@ -5,22 +5,11 @@
 // Dźwięk idzie przez HRTF, więc słychać kierunek i odległość. Głośność = suwak Effects.
 // ==========================================
 import { camera } from './engine.js';
+import { LEVEL_DEFS } from './registry.js';
 import { audioBus, spatial, noiseBuf, creak, bang, whisper, setRoom } from './audio.js';
 
 // loops: stałe źródła [typ, [[x,y,z], ...]], rand: losowe odgłosy { t: typ, e: [min,max] s między, d: [min,max] m od gracza, v: głośność }
-const DEFS = {
-    levels: { rand: [{ t: 'creak', e: [12, 24], d: [5, 12], v: 0.12 }] },
-    maze: { rand: [{ t: 'creak', e: [7, 15], d: [15, 32], v: 0.18 }, { t: 'whisper', e: [28, 55], d: [8, 20], v: 0.5 }] },
-    silence: { rand: [{ t: 'creak', e: [9, 18], d: [10, 22], v: 0.14 }] },
-    well: { rand: [{ t: 'drip', e: [2, 5], d: [2, 6], v: 0.3 }, { t: 'creak', e: [10, 20], d: [6, 14], v: 0.18 }] },
-    laundry: { loops: [['machine', [[-10, 2, -10], [10, 2, -22], [-10, 2, -36], [10, 2, -46]]]], rand: [{ t: 'thud', e: [4, 9], d: [8, 26], v: 0.35 }, { t: 'drip', e: [3, 7], d: [3, 12], v: 0.2 }] },
-    memory: { loops: [['crackle', [[-7, 1, -5], [7, 1, -20], [-7, 1, -35], [7, 1, -50]]]], rand: [{ t: 'thud', e: [8, 16], d: [10, 25], v: 0.3 }] },
-    lava: { loops: [['crackle', [[0, 1, -8], [0, 1, -24], [0, 1, -40], [0, 1, -56]]]], rand: [{ t: 'thud', e: [9, 18], d: [10, 25], v: 0.28 }] },
-    hospital: { loops: [['hum', [[0, 3.2, -4], [0, 3.2, -13], [0, 3.2, -22], [0, 3.2, -31], [0, 3.2, -40]]]], rand: [{ t: 'drip', e: [3, 8], d: [3, 9], v: 0.25 }, { t: 'bang', e: [18, 40], d: [18, 30], v: 0.3 }, { t: 'creak', e: [10, 22], d: [6, 16], v: 0.15 }] },
-    cemetery: { loops: [['wind', null]], rand: [{ t: 'owl', e: [12, 25], d: [18, 34], v: 0.3 }, { t: 'bell', e: [30, 55], d: [25, 40], v: 0.35 }] },
-    catacombs: { loops: [['wind', null]], rand: [{ t: 'drip', e: [2, 5], d: [3, 12], v: 0.3 }, { t: 'creak', e: [6, 13], d: [8, 20], v: 0.2 }, { t: 'whisper', e: [18, 40], d: [3, 9], v: 0.45 }, { t: 'thud', e: [14, 30], d: [12, 28], v: 0.3 }] },
-    games: { rand: [{ t: 'blip', e: [0.5, 1.8], d: [4, 22], v: 0.16 }] }
-};
+const DEFS = Object.fromEntries(LEVEL_DEFS.filter(d => d.ambience).map(d => [d.id, d.ambience]));   // z core/registry.js
 let cur = null, loops = [], timers = [], pending = true;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const _p = { x: 0, y: 0, z: 0 };

@@ -4,6 +4,7 @@
 //   - economy data is consistent (achievement rewards exist, no duplicate ids),
 //   - every emote pose runs without throwing.
 // Usage:  cd tests && npm install && npx playwright install chromium   (once)
+//         (or point CHROMIUM_PATH at an installed Chromium; CI: .github/workflows/smoke.yml)
 //         npm run smoke            # all levels
 //         node smoke.mjs maze,well # selected levels
 // This does NOT measure real VR frame rate: draw calls/point lights are only a proxy for GPU cost.
@@ -32,7 +33,7 @@ const failures = [], notes = [];
 const fail = (m) => { failures.push(m); console.log('FAIL', m); };
 const ok = (m) => { notes.push(m); console.log('ok  ', m); };
 
-const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const ctx = await browser.newContext({ viewport: { width: 1000, height: 640 } });
 await ctx.route(/unpkg\.com/, (route) => {
     const u = route.request().url();
@@ -153,12 +154,14 @@ if (data.length) data.forEach((m) => fail('data: ' + m)); else ok('data: achieve
 // ---- level registry (core/registry.js): the single list of levels must agree with files, index.html, economy and lighting ----
 phase = 'registry';
 const reg = await run(`
-    const R = await import('./core/registry.js'), E = await import('./core/economy.js'), C = await import('./core/config.js');
+    const R = await import('./core/registry.js'), E = await import('./core/economy.js'), C = await import('./core/config.js'), MU = await import('./core/music.js');
     const bad = [], ids = new Set(), ach = new Set(E.ACHIEVEMENTS.map(a => a.id)), recIds = new Set(E.RECORDS.map(r => r.id));
     for (const d of R.LEVEL_DEFS) {
         if (ids.has(d.id)) bad.push('duplicate id ' + d.id); ids.add(d.id);
         if (d.kind === 'virtual') continue;
         if (d.light !== '@mode' && !C.LIGHT_PRESETS[d.light]) bad.push(d.id + ': unknown light preset ' + d.light);
+        if (d.theme && !MU.THEMES[d.theme]) bad.push(d.id + ': unknown music theme ' + d.theme);
+        if (d.kind !== 'virtual' && !d.theme) bad.push(d.id + ': no music theme');
         if (d.diff && !ach.has('nm_' + d.id)) bad.push(d.id + ': difficulty level without nm_' + d.id + ' achievement');
         if (d.rec && !recIds.has(d.id)) bad.push(d.id + ': missing record entry');
     }

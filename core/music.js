@@ -6,12 +6,13 @@
 // ==========================================
 import { getAudioContext, hooks, threatLevel } from './audio.js';
 import { SETTINGS } from './settings.js';
+import { LEVEL_DEFS } from './registry.js';
 
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 const SCALES = { minor: [0, 2, 3, 5, 7, 8, 10], phrygian: [0, 1, 3, 5, 7, 8, 10], pent: [0, 3, 5, 7, 10], majpent: [0, 2, 4, 7, 9], dim: [0, 2, 3, 5, 6, 8, 9] };
 // root: nuta MIDI, bpm: tempo bazowe, pad: kształt fali pada, lp: filtr pada, arp: szansa na nutę arpeggia w kroku (ósemka),
 // bass: czy bas pulsuje zawsze (poza tym tylko przy zagrożeniu), lead: kształt fali arpeggia
-const THEMES = {
+export const THEMES = {
     calm: { root: 45, scale: 'pent', bpm: 60, pad: 'sine', lp: 1400, arp: 0.18, lead: 'triangle', bass: false, vol: 0.9 },
     dread: { root: 40, scale: 'phrygian', bpm: 54, pad: 'sawtooth', lp: 420, arp: 0.06, lead: 'sine', bass: false, vol: 1 },
     hospital: { root: 43, scale: 'dim', bpm: 50, pad: 'triangle', lp: 800, arp: 0.1, lead: 'sine', bass: false, vol: 1 },
@@ -22,8 +23,7 @@ const THEMES = {
     arcade: { root: 55, scale: 'majpent', bpm: 112, pad: 'square', lp: 900, arp: 0.75, lead: 'square', bass: true, vol: 0.7 },
     chase: { root: 41, scale: 'phrygian', bpm: 96, pad: 'sawtooth', lp: 600, arp: 0.2, lead: 'sawtooth', bass: true, vol: 0.9 }
 };
-const LEVEL_THEME = { lobby: 'calm', wardrobe: 'calm', staff: 'calm', levels: 'dread', maze: 'dread', silence: 'dread', well: 'dread', laundry: 'industrial', memory: 'lava', lava: 'lava',
-    hospital: 'hospital', cemetery: 'cemetery', catacombs: 'catacombs', games: 'arcade', range: 'arcade', banana: 'arcade', koth: 'arcade', dodgeball: 'arcade', race: 'arcade', monster: 'chase', infection: 'chase', hideseek: 'dread', redlight: 'chase', potato: 'arcade', lasttile: 'arcade', treasure: 'dread', statues: 'arcade', blindtag: 'dread', swingrun: 'arcade', towerclimb: 'dread' };
+const LEVEL_THEME = Object.fromEntries(LEVEL_DEFS.filter(d => d.theme).map(d => [d.id, d.theme]));   // z core/registry.js
 let theme = THEMES.calm, bus = null, nextT = 0, step = 0, deg = 0, muted = false;
 const BASE = 0.32;   // głośność bazowa muzyki względem efektów
 
