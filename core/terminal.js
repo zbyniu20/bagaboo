@@ -18,8 +18,14 @@ export class Terminal {
     }
     createMesh(w, h) {
         this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: this.tex, toneMapped: false }));
-        this.mesh.userData.terminal = this;
+        this.mesh.userData.terminal = this; this.meshes = [this.mesh];
         return this.mesh;
+    }
+    // Dodatkowy ekran z tą samą grafiką (kilka stanowisk przy jednym terminalu: jedno płótno, jedno rysowanie, celownik działa na każdym)
+    addMesh(w, h) {
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), this.mesh.material);
+        m.userData.terminal = this; this.meshes.push(m);
+        return m;
     }
     redraw() { this.buttons = []; this.draw(this); this.tex.needsUpdate = true; this.dirty = false; }
     rrect(x, y, w, h, r) {
@@ -85,7 +91,8 @@ export function initPointers(controllers) {
 // desktopCam: na komputerze celujesz środkiem ekranu (celownik), klik = spust
 export function updatePointers(desktopCam) {
     const hoverIds = new Map();
-    const meshes = terminals.filter(t => t.mesh && t.mesh.parent).map(t => t.mesh);
+    for (const t of terminals) t.pointer = null;   // pozycja celownika na ekranie (px, py) albo null; używa jej np. oko na terminalu wyboru poziomów
+    const meshes = terminals.filter(t => t.mesh && t.mesh.parent).flatMap(t => (t.meshes || [t.mesh]).filter(m => m.parent));
     for (let i = 0; i < ctrls.length; i++) {
         hits[i] = null; lasers[i].visible = false; cursors[i].visible = false;
         if (!renderer.xr.isPresenting && desktopCam && i === 0 && meshes.length) {
@@ -94,7 +101,7 @@ export function updatePointers(desktopCam) {
             if (r.length && r[0].uv) {
                 const h = r[0], term = h.object.userData.terminal, px = h.uv.x * term.W, py = (1 - h.uv.y) * term.H;
                 const b = term.buttons.find(bt => px >= bt.x && px <= bt.x + bt.w && py >= bt.y && py <= bt.y + bt.h) || null;
-                hits[0] = { term: term, btn: b };
+                hits[0] = { term: term, btn: b }; term.pointer = { x: px, y: py };
                 if (b) hoverIds.set(term, [b.id]);
             }
             continue;
@@ -109,7 +116,7 @@ export function updatePointers(desktopCam) {
         if (!res.length || !res[0].uv) continue;
         const h = res[0], term = h.object.userData.terminal, px = h.uv.x * term.W, py = (1 - h.uv.y) * term.H;
         const b = term.buttons.find(bt => px >= bt.x && px <= bt.x + bt.w && py >= bt.y && py <= bt.y + bt.h) || null;
-        hits[i] = { term: term, btn: b };
+        hits[i] = { term: term, btn: b }; term.pointer = { x: px, y: py };
         if (b) { if (!hoverIds.has(term)) hoverIds.set(term, []); hoverIds.get(term).push(b.id); }
         lasers[i].visible = true; lasers[i].scale.z = h.distance;
         cursors[i].visible = true; cursors[i].position.copy(h.point);

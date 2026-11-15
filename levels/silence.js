@@ -3,7 +3,7 @@
 // Ślepiec nic nie widzi, ale słyszy uderzenia dłoni i mikrofon. Przetrwaj 3 minuty.
 // Bezpieczniki skracają czas, czarne kule odciągają potwora, liny ratują przed szarżą.
 // W multiplayerze potworem steruje host; złapanych gracz trafia do gniazda, a inni mogą go uwolnić.
-// Po wygranej otwierają się drzwi do Studni (poziom 3); drzwi LOBBY za plecami prowadzą do lobby.
+// Po wygranej otwierają się drzwi EXIT na końcu (prowadzą do wyboru poziomów); drzwi LOBBY za plecami też.
 // ==========================================
 import { THREE, CANNON, L, tex, camera, lighting, addBody, addConstraint, addCrispBlock, addBlobAO, physicsMat, GROUP, place, seg, V3, UNIT_SPHERE } from '../core/engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -216,16 +216,16 @@ function buildExitDoor() {
     buildDoor({ x: 0, z: 14.97, rotY: Math.PI, label: 'LOBBY', color: '#70ff90', glow: 0x60ff90, wood: 0x6a7a8a, light: true,
         portal: { target: 'levels', spawn: ARRIVAL_SILENCE, onEnter: () => toast('Back to the levels') } });
 }
-// Drzwi do Studni pod zegarem: zamknięte kratą, otwierają się po wygranej
+// Drzwi EXIT na końcu, pod zegarem: zamknięte kratą, otwierają się po wygranej
 function buildWellDoor() {
-    const d = buildDoor({ x: 0, z: -14.97, rotY: 0, label: 'THE WELL', color: '#b8ffcf', wood: 0x4a6a5a, grate: true });
+    const d = buildDoor({ x: 0, z: -14.97, rotY: 0, label: 'EXIT', color: '#70ff90', glow: 0x60ff90, wood: 0x4a6a5a, grate: true });
     d.sign.material.opacity = 0.25;
     S.wellDoor = { door: d, grate: d.grate, sign: d.sign, open: 0 };
 }
 function openWellDoor() {
     S.wellDoor.opening = true; S.wellDoor.sign.material.opacity = 1;
     const l = new THREE.PointLight(0x40ff90, 6, 6, 2); l.position.set(0, 2.6, -13.8); L.root.add(l);
-    addDoorPortal(S.wellDoor.door, { target: 'well', onEnter: () => toast('Do not look down...', '#b8ffcf') });
+    addDoorPortal(S.wellDoor.door, { target: 'levels', spawn: ARRIVAL_SILENCE, onEnter: () => toast('You made it out of the silence', '#9aff40') });
 }
 
 // ---------- ŚLEPIEC (model) ----------
@@ -331,7 +331,7 @@ function drawHud() {
     let msg = '', col = '#cfe3ff';
     if (S.localNested) { msg = 'Caught! Wait for a friend to free you.'; col = '#ff6a4a'; }
     else if (S.rescueT > 0) { msg = 'Freeing... keep squeezing the cage lock'; col = '#9aff40'; }
-    else if (S.won) { msg = 'You survived! THE WELL (under the clock) or LOBBY (behind you)'; col = '#9aff40'; }
+    else if (S.won) { msg = 'You survived! The EXIT (under the clock) is open'; col = '#9aff40'; }
     else if (S.mon.mode === 'chase' || S.mon.mode === 'roar') { msg = 'It is coming! Climb a rope!'; col = '#ff4a2a'; }
     else if (S.mon.mode === 'camp') { msg = 'It waits below. Throw a black ball away.'; col = '#ffb030'; }
     else if (S.alert > 0) { msg = 'It heard something...'; col = '#ffb030'; }
@@ -520,7 +520,7 @@ function freeMe() {
     setPlayerPosition(NEST[0] + 2.2, 1.0, NEST[1] + 2.2);
     toast('You are free! Stay quiet.', '#9aff40');
 }
-// Wygrana: nagroda, potwór zastyga, otwierają się drzwi do Studni (gracz sam wybiera drzwi)
+// Wygrana: nagroda, potwór zastyga, otwierają się drzwi EXIT na końcu
 function win() {
     if (S.won) return;
     S.won = true; S.phase = 'won';
@@ -528,7 +528,7 @@ function win() {
     levelReward('silence', REWARD_FIRST, REWARD_REPEAT, 'silent escape');
     S.ghost.finish(recordTime('silence', S.playT || GAME_TIME), S.playT || GAME_TIME);
     if (!S.usedBall && !S.wasCaught) unlockAchievement('silent_ghost');
-    setTimeout(() => toast('Choose a door: THE WELL or LOBBY', '#b8ffcf'), 2600);
+    setTimeout(() => toast('The EXIT door is open', '#70ff90'), 2600);
     S.mon.mode = 'sleep'; S.mon.speedNow = 0;
     if (S.localNested) freeMe();
     openWellDoor();
