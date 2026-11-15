@@ -144,7 +144,11 @@ export const CATALOG = [
     { slot: 'emote', id: 'clap', name: 'Clap', price: 400 },
     { slot: 'emote', id: 'bow', name: 'Bow', price: 500 },
     { slot: 'emote', id: 'flex', name: 'Flex', price: 900 },
-    { slot: 'emote', id: 'dance', name: 'Dance', price: 1200 }
+    { slot: 'emote', id: 'dance', name: 'Dance', price: 1200 },
+    { slot: 'emote', id: 'highfive', name: 'High five', price: 0 },   // darmowa: dwóch graczy blisko siebie robi ją naraz = przybijają piątkę
+    { slot: 'emote', id: 'salute', name: 'Salute', price: 0, locked: true, hint: 'Clear 25 levels' },
+    { slot: 'emote', id: 'shrug', name: 'Shrug', price: 0, locked: true, hint: '25 jumpscares' },
+    { slot: 'emote', id: 'heart', name: 'Heart', price: 0, locked: true, hint: '5 high fives' }
 ];
 
 // ---------- SEZONY I TYGODNIOWA ROTACJA SKLEPU ----------
@@ -244,8 +248,17 @@ export const ACHIEVEMENTS = [
     { id: 'banana_5', name: 'Top banana', desc: 'Win 5 rounds of Capture the Banana', reward: ['badge', 'banana'], rewardName: 'Banana badge', goal: 5, val: () => SAVE.bananaWins || 0 },
     { id: 'race_5', name: 'Fast lane', desc: 'Win 5 races', reward: ['badge', 'flag'], rewardName: 'Race flag', goal: 5, val: () => SAVE.raceWins || 0 },
     { id: 'gift_3', name: 'Generous', desc: 'Give 3 gifts to other players', reward: ['badge', 'present'], rewardName: 'Present badge', goal: 3, val: () => SAVE.giftsSent || 0 },
+    // --- Statystyki konta (SAVE.stats) ---
+    { id: 'hf_5', name: 'High fiver', desc: 'Give 5 high fives to other players', reward: ['emote', 'heart'], rewardName: 'Heart emote', goal: 5, val: () => stat('highFives') },
+    { id: 'scared_25', name: 'Easily spooked', desc: 'Get jumpscared 25 times', reward: ['emote', 'shrug'], rewardName: 'Shrug emote', goal: 25, val: () => stat('scares') },
+    { id: 'clears_25', name: 'Seasoned survivor', desc: 'Clear levels 25 times', reward: ['emote', 'salute'], rewardName: 'Salute emote', goal: 25, val: () => stat('clears') },
+    { id: 'play_5h', name: 'Basement dweller', desc: 'Play for 5 hours in total', reward: ['bones', 1000], rewardName: '+1000 Bagabucks', goal: 5, val: () => Math.floor(stat('playSec') / 3600) },
+    { id: 'walk_10k', name: 'Marathon', desc: 'Walk 10 km in total', reward: ['bones', 800], rewardName: '+800 Bagabucks', goal: 10, val: () => Math.floor(stat('meters') / 1000) },
+    { id: 'emote_50', name: 'Show-off', desc: 'Use emotes 50 times', reward: ['bones', 500], rewardName: '+500 Bagabucks', goal: 50, val: () => stat('emotes') },
     { id: 'daily_5', name: 'Daily habit', desc: 'Finish 5 Daily Runs (Maze, Well or Memory)', reward: ['badge', 'daily'], rewardName: 'Calendar badge', goal: 5, val: () => SAVE.dailyRuns || 0 }
 ];
+// Statystyki konta liczone na stałe (SAVE.stats): playSec, meters, scares, clears, emotes, highFives
+export function stat(k) { return (SAVE.stats && SAVE.stats[k]) || 0; }
 export const RECORDS = [
     { id: 'maze', name: 'The Maze' }, { id: 'silence', name: 'Absolute Silence' }, { id: 'well', name: 'The Well' }, { id: 'lava', name: 'Floor is Lava' }, { id: 'laundry', name: 'Laundromat' }, { id: 'memory', name: 'Burning Memory' }, { id: 'hospital', name: 'The Hospital' }, { id: 'cemetery', name: 'The Cemetery' }, { id: 'route', name: 'Red route' }, { id: 'race', name: 'Parkour race' }, { id: 'redlight', name: 'Red Light, Green Light' }, { id: 'lasttile', name: 'Last Tile (seconds)', score: true }, { id: 'range', name: 'Shooting range (kills)', score: true },
     { id: 'maze_nm', name: 'The Maze (Nightmare)' }, { id: 'silence_nm', name: 'Silence (Nightmare)' }, { id: 'well_nm', name: 'The Well (Nightmare)' }, { id: 'laundry_nm', name: 'Laundromat (Nightmare)' }, { id: 'memory_nm', name: 'Memory (Nightmare)' }, { id: 'hospital_nm', name: 'Hospital (Nightmare)' }, { id: 'cemetery_nm', name: 'Cemetery (Nightmare)' }
@@ -281,13 +294,13 @@ export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dni
 function defaultSave() {
     return {
         v: 1, wallet: START_BONES, earned: 0,
-        owned: ['skin:none', 'badge:none', 'tool:none', 'mskin:none', 'hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none', 'emote:wave', 'emote:cheer'],
+        owned: ['skin:none', 'badge:none', 'tool:none', 'mskin:none', 'hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none', 'emote:wave', 'emote:cheer', 'emote:highfive'],
         equipped: { skin: 'none', badge: 'none', tool: 'none', mskin: 'none', hat: 'none', glasses: 'none', mask: 'none', sleeve: 'cloth', gloves: 'none', emote: 'wave' },
         profile: { name: 'Acrobat', color: '#3d2314' },
         best: { height: 0, jumps: 0 },
         login: { last: 0, streak: 0 },
         daily: null, pos: null, savedAt: 0,
-        records: {}, achievements: {}, diff: {}, top: {}, nmWins: {}, questsDone: 0, bonusDays: 0, dailyMode: {}, dailyTop: {}, dailyDone: {}, dailyRuns: 0
+        records: {}, achievements: {}, diff: {}, top: {}, nmWins: {}, questsDone: 0, bonusDays: 0, dailyMode: {}, dailyTop: {}, dailyDone: {}, dailyRuns: 0, stats: {}
     };
 }
 // Podpis zapisu: suma kontrolna z "solą". Wykrywa ręczne zmiany w przeglądarce (nie jest to pełne zabezpieczenie).
@@ -324,11 +337,21 @@ function load() {
             achievements: Object.assign({}, s.achievements || {}),
             diff: Object.assign({}, s.diff || {}), top: Object.assign({}, s.top || {}), nmWins: Object.assign({}, s.nmWins || {}),
             dailyMode: Object.assign({}, s.dailyMode || {}), dailyTop: Object.assign({}, s.dailyTop || {}), dailyDone: Object.assign({}, s.dailyDone || {}),
+            stats: Object.assign({}, s.stats || {}),
             owned: owned
         });
     } catch (e) { return d; }
 }
 export const SAVE = load();
+let statDirty = false, statSaveT = 0;
+// Zwiększa licznik statystyk. Zapis na dysk jest rzadki (co ok. 30 s), osiągnięcia sprawdzane przy zmianie całości.
+export function bumpStat(k, n) {
+    n = n === undefined ? 1 : n; if (!(n > 0)) return;
+    SAVE.stats[k] = (SAVE.stats[k] || 0) + n; statDirty = true;
+    if (Math.floor(SAVE.stats[k]) !== Math.floor(SAVE.stats[k] - n)) checkStatAchievements();
+}
+function checkStatAchievements() { for (const a of ACHIEVEMENTS) if (a.val && a.goal && !SAVE.achievements[a.id] && a.id.match(/^(hf_|scared_|clears_|play_|walk_|emote_)/) && a.val() >= a.goal) unlockAchievement(a.id); }
+export function flushStats(dt) { statSaveT += dt; if (statDirty && statSaveT > 30) { statSaveT = 0; statDirty = false; saveGame(); } }
 export const SESSION = { maxH: 0, jumps: 0, since: Date.now(), lastM: 0 };
 
 export function hasSave() { try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; } }
@@ -411,6 +434,7 @@ export function levelReward(level, first, repeat, label) {
         const k = dailyKey(level); pruneDaily(SAVE.dailyDone);
         if (!SAVE.dailyDone[k]) { SAVE.dailyDone[k] = 1; SAVE.dailyRuns = (SAVE.dailyRuns || 0) + 1; addBones(Math.round(first * 0.3 * df.reward), 'Daily Run bonus'); }
     }
+    bumpStat('clears');
     checkCompletionist(); checkCounters();
     saveGame();
     return amount;
@@ -495,8 +519,8 @@ export function unlockAchievement(id) {
     if (SAVE.achievements[id]) return false;
     const a = ACHIEVEMENTS.find(x => x.id === id); if (!a) return false;
     SAVE.achievements[id] = Date.now();
-    const key = a.reward[0] + ':' + a.reward[1];
-    if (!SAVE.owned.includes(key)) SAVE.owned.push(key);
+    if (a.reward[0] === 'bones') addBones(a.reward[1], 'achievement: ' + a.name);
+    else { const key = a.reward[0] + ':' + a.reward[1]; if (!SAVE.owned.includes(key)) SAVE.owned.push(key); }
     saveGame(); markAllDirty();
     setTimeout(() => toast('Achievement: ' + a.name + '! Unlocked ' + a.rewardName, '#ffd27a'), 1500);
     return true;
@@ -609,6 +633,7 @@ export function track(ev, v) {
 
 // Wywoływane co klatkę: czas gry i czas z innymi graczami
 export function tick(dt, othersCount) {
+    bumpStat('playSec', dt); flushStats(dt);
     const d = ensureDaily(), a = d.acc;
     a.play += dt; a.playMin += dt;
     if (a.playMin >= 60) { a.playMin -= 60; questProgress('play', 1); }

@@ -235,6 +235,9 @@ export const shop = new Terminal((t) => {
         t.text('Wins: maze ' + (S.mazeWins || 0) + ', silence ' + (S.silenceWins || 0) + ', well ' + (S.wellWins || 0) + ', laundry ' + (S.laundryWins || 0) + ', memory ' + (S.memoryWins || 0) + ', lava ' + (S.lavaWins || 0), 520, 470, 18, AMBER_DIM, 'left');
         t.text('Games: hide&seek ' + (S.hideseekWins || 0) + ', banana ' + (S.bananaWins || 0) + ', race ' + (S.raceWins || 0) + ', monster ' + (S.monsterWins || 0), 520, 496, 18, AMBER_DIM, 'left');
         t.text('Quests done: ' + (S.questsDone || 0) + '   Perfect days: ' + (S.bonusDays || 0), 520, 522, 18, AMBER_DIM, 'left');
+        t.text('Lifetime', 520, 556, 20, GOLD, 'left', true);
+        t.text('Played ' + E.fmtDuration(E.stat('playSec') * 1000) + '   Walked ' + (E.stat('meters') / 1000).toFixed(1) + ' km', 520, 580, 18, AMBER, 'left');
+        t.text('Jumpscares ' + E.stat('scares') + '   Clears ' + E.stat('clears') + '   Emotes ' + E.stat('emotes') + '   High fives ' + E.stat('highFives'), 520, 604, 18, AMBER, 'left');
         t.text('Easy runs do not count for records. Details of each unlock are in the Awards tab.', 40, 610, 18, AMBER_DIM, 'left');
     } else if (shopUi.tab === 'awards') {
         // Osiągnięcia ze stronami po 6 (nagroda = kosmetyk z zakładki Shop)

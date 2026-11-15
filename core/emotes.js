@@ -11,7 +11,11 @@ export const EMOTES = {
     clap: { name: 'Clap', dur: 3.5 },
     bow: { name: 'Bow', dur: 3.0 },
     dance: { name: 'Dance', dur: 5.0 },
-    flex: { name: 'Flex', dur: 3.5 }
+    flex: { name: 'Flex', dur: 3.5 },
+    highfive: { name: 'High five', dur: 4.0 },   // dwóch graczy blisko siebie z tą emotką = przybijają piątkę (core/highfive.js)
+    salute: { name: 'Salute', dur: 3.0 },
+    shrug: { name: 'Shrug', dur: 3.0 },
+    heart: { name: 'Heart', dur: 3.5 }
 };
 export const EMOTE = { id: null, t0: 0 };
 export function playEmote(id) { if (!EMOTES[id]) return false; EMOTE.id = id; EMOTE.t0 = performance.now(); return true; }
@@ -61,6 +65,25 @@ export function emotePose(a, id, t) {
     } else if (id === 'flex') {
         const y = 0.12 + 0.05 * S(t * 7) * fade;
         put(a.handL, -0.42, y, 0.0, 0.5, 0, 1); put(a.handR, 0.42, y, 0.0, -0.5, 0, 1);
+    } else if (id === 'highfive') {
+        // prawa dłoń wyciągnięta w górę i do przodu, lekko drga w oczekiwaniu na przybicie
+        put(a.handR, 0.22, 0.28 + 0.03 * S(t * 8) * fade, 0.42 + 0.03 * S(t * 8), -0.2, 0, 0);
+        put(a.handL, -0.28, -0.5, 0.05, 0, 0, 0.3);
+    } else if (id === 'salute') {
+        // dłoń przy skroni, głowa lekko do góry
+        put(a.handR, 0.13, 0.06 * fade, 0.2, -0.5, 0, 0);
+        put(a.handL, -0.28, -0.5, 0.05, 0, 0, 0.3);
+        a.head.quaternion.premultiply(_q.setFromEuler(_e.set(-0.12 * fade, 0, 0, 'YXZ')));
+    } else if (id === 'shrug') {
+        const up = 0.12 * (0.5 - 0.5 * Math.cos(Math.min(1, t / 0.4) * Math.PI)) * fade;
+        a.head.position.y -= 0.03 * fade;
+        a.head.quaternion.premultiply(_q.setFromEuler(_e.set(0, 0, 0.18 * fade * S(t * 2.5), 'YXZ')));
+        put(a.handL, -0.45, -0.28 + up, 0.22, 0.6, 0, 0); put(a.handR, 0.45, -0.28 + up, 0.22, -0.6, 0, 0);
+    } else if (id === 'heart') {
+        // obie dłonie przed klatką, kciuki i palce razem: kształt serca, które bije
+        const b = 1 + 0.12 * Math.max(0, S(t * 7));
+        put(a.handL, -0.09 * b, -0.18, 0.36, 0.9, 0, 0.6); put(a.handR, 0.09 * b, -0.18, 0.36, -0.9, 0, 0.6);
+        a.head.quaternion.premultiply(_q.setFromEuler(_e.set(0, 0, 0.1 * fade * S(t * 2), 'YXZ')));
     }
     return true;
 }

@@ -10,10 +10,11 @@ import * as ECO from './core/economy.js';
 import * as NETM from './core/network.js';
 import { updatePlayer, setPlayerPosition, buildHands, hands, playerBody, releaseAll } from './core/player.js';
 import { redrawTerminals, updatePointers, updateToast, markAllDirty, toast, terminals } from './core/terminal.js';
-import { initAudio, updateListener } from './core/audio.js';
+import { initAudio, updateListener, hooks as audioHooks } from './core/audio.js';
 import { setLevelMusic } from './core/music.js';
 import { pollEmoteButtons } from './core/emotepanel.js';
 import { setAmbience } from './core/ambience.js';
+import { updateHighFive } from './core/highfive.js';
 import { drawScoreboard } from './core/ui.js';
 import { PAUSE, pauseMenu, pollPauseButtons, closePause } from './core/pause.js';
 import { SETTINGS, saveSettings } from './core/settings.js';
@@ -268,6 +269,8 @@ renderer.xr.addEventListener('sessionend', saveNow);
 
 // --- Pętla gry ---
 const clock = new THREE.Clock();
+const _stepP = new THREE.Vector3(), _stepLast = new THREE.Vector3();
+audioHooks.onScare = () => ECO.bumpStat('scares');
 let uiTimer = 0;
 renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.1), t = clock.elapsedTime;
@@ -290,7 +293,12 @@ renderer.setAnimationLoop(() => {
     }
     NETM.poseRemoteHands(dt);
     NETM.animateFaces(dt);
-    if (started && !frozen) ECO.tick(dt, NETM.otherPlayers().length);
+    if (started && !frozen) {
+        ECO.tick(dt, NETM.otherPlayers().length);
+        // dystans: poziomy ruch głowy, pomijamy teleporty (> 3 m na klatkę) i oderwane skoki
+        camera.getWorldPosition(_stepP); const dm = Math.hypot(_stepP.x - _stepLast.x, _stepP.z - _stepLast.z); if (dm > 0.001 && dm < 3) ECO.bumpStat('meters', dm); _stepLast.copy(_stepP);
+    }
+    updateHighFive();
     updateListener(camera);
     // Ekran ładowania znika płynnie
     fade.value += (fade.target - fade.value) * Math.min(1, dt * 4);
