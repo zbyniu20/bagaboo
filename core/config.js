@@ -99,6 +99,12 @@ LIGHT_PRESETS.hospital = {   // szpital: zimne, zielonkawe światło i latarka (
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3,
     flashlight: { color: 0xf4fff8, intensity: 90, distance: 30, angle: 0.6, penumbra: 0.5, decay: 2 }
 };
+LIGHT_PRESETS.hotel = {   // hotel: ciemny, ciepły półmrok, gęsta mgła i latarka
+    background: 0x050302, fogColor: 0x0c0806, fogDensity: 0.04, exposure: 1.3,
+    hemiSky: 0xb08868, hemiGround: 0x2a1c14, hemiIntensity: 1.0,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.15,
+    flashlight: { color: 0xfff0d0, intensity: 80, distance: 18, angle: 0.5, penumbra: 0.7, decay: 2 }
+};
 LIGHT_PRESETS.nursery = {   // pokój dziecięcy: ciepły półmrok, lekka mgła i latarka
     background: 0x140a08, fogColor: 0x20140e, fogDensity: 0.03, exposure: 1.35,
     hemiSky: 0xd0a888, hemiGround: 0x4a3028, hemiIntensity: 1.5,

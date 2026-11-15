@@ -63,6 +63,11 @@ export function extraHat(id) {
         const red = mat({ color: 0xd01818 });
         g.add(at(new THREE.BoxGeometry(0.05, 0.016, 0.012), red, 0, 0.155, -0.138));
         g.add(at(new THREE.BoxGeometry(0.016, 0.05, 0.012), red, 0, 0.155, -0.138));
+    } else if (id === 'bellhop') {
+        const red = mat({ color: 0xb01820, roughness: 0.7 }), gold = mat({ color: 0xd8b040, metalness: 0.8, roughness: 0.35 });
+        g.add(at(new THREE.CylinderGeometry(0.1, 0.12, 0.14, 18), red, 0, 0.12, 0));
+        g.add(at(new THREE.CylinderGeometry(0.121, 0.121, 0.025, 18), gold, 0, 0.1, 0));
+        g.add(at(new THREE.SphereGeometry(0.02, 8, 6), gold, 0, 0.2, 0));
     } else if (id === 'teddyears') {
         const fur = mat({ color: 0xa87038, roughness: 0.95 }), inner = mat({ color: 0xe8a0a0, roughness: 0.9 });
         for (const s of [-1, 1]) { const e = at(new THREE.SphereGeometry(0.06, 10, 8), fur, s * 0.1, 0.15, 0); e.scale.z = 0.7; g.add(e); const i2 = at(new THREE.SphereGeometry(0.035, 8, 6), inner, s * 0.1, 0.15, -0.025); i2.scale.z = 0.5; g.add(i2); }
