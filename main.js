@@ -15,6 +15,7 @@ import { setLevelMusic } from './core/music.js';
 import { pollEmoteButtons } from './core/emotepanel.js';
 import { setAmbience } from './core/ambience.js';
 import { updateHighFive } from './core/highfive.js';
+import { startXrPerf, stopXrPerf, updateXrPerf } from './core/xrperf.js';
 import { drawScoreboard } from './core/ui.js';
 import { PAUSE, pauseMenu, pollPauseButtons, closePause } from './core/pause.js';
 import { SETTINGS, saveSettings } from './core/settings.js';
@@ -273,7 +274,8 @@ const _stepP = new THREE.Vector3(), _stepLast = new THREE.Vector3();
 audioHooks.onScare = () => ECO.bumpStat('scares');
 let uiTimer = 0;
 renderer.setAnimationLoop(() => {
-    const dt = Math.min(clock.getDelta(), 0.1), t = clock.elapsedTime;
+    const rawDt = clock.getDelta(), dt = Math.min(rawDt, 0.1), t = clock.elapsedTime;
+    if (renderer.xr.isPresenting) updateXrPerf(rawDt);
     for (let i = frameWaiters.length - 1; i >= 0; i--) if (--frameWaiters[i].n <= 0) { frameWaiters[i].r(); frameWaiters.splice(i, 1); }
     pollPauseButtons(); pollEmoteButtons();
     // Pauza zatrzymuje świat tylko w grze solo
@@ -320,11 +322,13 @@ renderer.setAnimationLoop(() => {
 });
 
 // --- Start ---
-document.body.appendChild(VRButton.createButton(renderer));
+document.body.appendChild(VRButton.createButton(renderer, { optionalFeatures: ['local-floor'] }));   // bez hand-tracking i layers: gra używa kontrolerów, a Quest nie pyta o zbędne zgody
 NETM.initMic();
 // Spust w goglach odblokowuje dźwięk głosów innych graczy (przeglądarka wymaga gestu użytkownika)
 for (const i of [0, 1]) renderer.xr.getController(i).addEventListener('selectstart', NETM.unlockVoices);
 renderer.xr.addEventListener('sessionstart', NETM.unlockVoices);
+renderer.xr.addEventListener('sessionstart', () => startXrPerf(renderer.xr.getSession()));
+renderer.xr.addEventListener('sessionend', stopXrPerf);
 fillMenu();
 $('status').innerText = 'Loading the lobby...';
 lobbyButtons(false);

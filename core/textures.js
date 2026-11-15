@@ -1,4 +1,6 @@
 // Proceduralne tekstury rysowane na canvasie (bez plików graficznych)
+import { IS_QUEST } from './device.js';
+const ANISO = (n) => IS_QUEST ? Math.min(n, 2) : n;   // Quest: filtrowanie anizotropowe jest drogie przy małym zysku w VR
 import * as THREE from 'three';
 import { GFX } from './config.js';
 
@@ -15,7 +17,7 @@ export function mkRng(seed) {
 export function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 export function toTex(c, repeat) {
     const t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 16;
+    t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANISO(16);
     if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; }
     return t;
 }
@@ -40,7 +42,7 @@ export function normalFor(texture, strength) {
     }
     x.putImageData(img, 0, 0);
     const t = new THREE.CanvasTexture(c);
-    t.wrapS = texture.wrapS; t.wrapT = texture.wrapT; t.anisotropy = 8; t.repeat.copy(texture.repeat); t.offset.copy(texture.offset);
+    t.wrapS = texture.wrapS; t.wrapT = texture.wrapT; t.anisotropy = ANISO(8); t.repeat.copy(texture.repeat); t.offset.copy(texture.offset);
     normalCache.set(texture, t);
     return t;
 }
@@ -153,7 +155,7 @@ export function createFloorRoughTexture() {
         }
     }
     const t = new THREE.CanvasTexture(c);
-    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.NoColorSpace; t.anisotropy = 8;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.NoColorSpace; t.anisotropy = ANISO(8);
     return t;
 }
 

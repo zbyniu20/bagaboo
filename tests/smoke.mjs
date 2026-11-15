@@ -52,7 +52,7 @@ page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed 
 
 await page.goto(`http://localhost:${PORT}/`);
 await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 90000 });
-await page.click('#btnSolo');
+await page.click('#btnSolo', { timeout: 90000 });
 await page.waitForTimeout(1500);
 
 const run = (code, arg) => page.evaluate(async ([code, arg]) => { const F = Object.getPrototypeOf(async function () {}).constructor; return await new F('arg', code)(arg); }, [code, arg]);
@@ -78,6 +78,15 @@ const data = await run(`
         try { if (!EM.emotePose(a, id, t)) bad.push('emote ' + id + ' not applied at t=' + t); } catch (e) { bad.push('emote ' + id + ' threw: ' + e.message); }
         for (const h of [a.head, a.handL, a.handR]) if (![h.position.x, h.position.y, h.position.z].every(Number.isFinite)) bad.push('emote ' + id + ' produced NaN');
     }
+    // VR performance governor: slow frames raise the level, long stable frames lower it again
+    const XP = await import('./core/xrperf.js'), g = { avg: 0, slow: 0, fast: 0, cool: 0, level: 0 }, budget = 1000 / 72;
+    for (let i = 0; i < 400; i++) XP.govern(g, 25, budget);              // ~10 s at 40 fps
+    if (g.level < 1) bad.push('governor did not react to slow frames (level ' + g.level + ')');
+    if (g.level > XP.GOV.maxLevel) bad.push('governor exceeded max level');
+    for (let i = 0; i < 6000; i++) XP.govern(g, 13.9, budget);           // ~83 s at 72 fps (3 levels x 20 s)
+    if (g.level !== 0) bad.push('governor did not recover after stable frames (level ' + g.level + ')');
+    const calm = { avg: 0, slow: 0, fast: 0, cool: 0, level: 0 }; for (let i = 0; i < 2000; i++) XP.govern(calm, 13.9, budget);
+    if (calm.level !== 0) bad.push('governor changed level on stable 72 fps');
     return bad;
 `);
 if (data.length) data.forEach((m) => fail('data: ' + m)); else ok('data: achievements, catalog and emote poses consistent');
@@ -96,6 +105,33 @@ for (const lv of LEVELS) {
         else ok(`${lv}: ${r.calls} calls (budget ${budget}), ${r.pl} point lights, ${r.tris} tris`);
     } catch (e) { fail(`${lv}: ${e.message.slice(0, 200)}`); }
 }
+
+// ---- memory: repeated level changes must not keep growing GPU resources (Quest tabs have little memory) ----
+phase = 'memory';
+const CYCLE = ['maze', 'well', 'hospital', 'cemetery', 'lobby'];
+const memAfterCycle = async () => { for (const lv of CYCLE) { await run(`const M = await import('./main.js'); await M.loadLevel('${lv}'); return 1;`); await page.waitForTimeout(600); } return run(`const I = (await import('./core/engine.js')).renderer.info.memory; return { geo: I.geometries, tex: I.textures };`); };
+const m1 = await memAfterCycle(), m2 = await memAfterCycle(), m3 = await memAfterCycle();
+console.log('     memory after cycles:', JSON.stringify([m1, m2, m3]));
+if (m3.tex > m2.tex + 30 || m3.geo > m2.geo + 100) fail(`memory: resources keep growing across level changes (${JSON.stringify(m2)} -> ${JSON.stringify(m3)})`); else ok('memory: textures/geometries stable across level cycles');
+
+// ---- Quest browser: user agent detection, light landing page, level still loads ----
+phase = 'quest';
+const qctx = await browser.newContext({ viewport: { width: 1000, height: 640 }, userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/33.0 SamsungBrowser/4.0 Chrome/126.0 VR Safari/537.36' });
+const qpage = await qctx.newPage();
+const qerr = []; qpage.on('pageerror', (e) => qerr.push(e.message));
+await qctx.route(/unpkg\.com/, async (route) => { const u = route.request().url(); let f = null;
+    if (u.includes('three@0.160.0/build/three.module.js')) f = DEPS + '/three/build/three.module.js';
+    else if (u.includes('three@0.160.0/examples/jsm/')) f = DEPS + '/three/examples/jsm/' + u.split('examples/jsm/')[1].split('?')[0];
+    else if (u.includes('cannon-es')) f = DEPS + '/cannon-es/dist/cannon-es.js'; else if (u.includes('peerjs')) f = DEPS + '/peerjs/dist/peerjs.min.js';
+    if (f && fs.existsSync(f)) route.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(f) }); else route.fulfill({ status: 404, body: '' }); });
+await qpage.goto(`http://localhost:${PORT}/`);
+await qpage.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 90000 });
+const lite = await qpage.evaluate(() => document.documentElement.classList.contains('lite'));
+if (!lite) fail('quest: landing page did not switch to lite mode for an OculusBrowser user agent'); else ok('quest: lite landing page');
+await qpage.click('#btnSolo', { timeout: 90000 }); await qpage.waitForTimeout(1500);
+const qinfo = await qpage.evaluate(async () => { const D = await import('./core/device.js'), M = await import('./main.js'); await M.loadLevel('maze'); const E = await import('./core/engine.js'); return { quest: D.IS_QUEST, aniso: E.tex.wall.anisotropy }; });
+if (!qinfo.quest || qinfo.aniso > 2) fail('quest: device detection or anisotropy cap failed ' + JSON.stringify(qinfo)); else ok('quest: detected, anisotropy capped at ' + qinfo.aniso);
+if (qerr.length) qerr.forEach((e) => fail('quest: ' + e)); await qctx.close();
 
 // ---- stats / achievements / audio ----
 phase = 'stats';

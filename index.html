@@ -3,31 +3,91 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BagaBoo VR - Dusk Nightmare Parkour</title>
+<meta name="description" content="BagaBoo VR. Don't look away.">
+<meta name="theme-color" content="#050308">
+<title>BagaBoo VR - Don't Look Away</title>
+<script>if (/OculusBrowser|Quest|Oculus/i.test(navigator.userAgent)) document.documentElement.classList.add('lite');   // Quest: lżejsza strona startowa</script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
-body { margin: 0; overflow: hidden; background-color: #2a2833; font-family: sans-serif; }
-#lobby { position: absolute; inset: 0; background: radial-gradient(circle at 28% 30%, #c98563 0%, #6e5468 38%, #2b2b3d 72%, #15151f 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; color: #f0e6e0; }
-#lobby h1.logo { font-family: 'Creepster', cursive; font-size: 85px; color: #b00000; margin: 0 0 5px; letter-spacing: 4px; text-shadow: 0 0 22px rgba(255, 80, 0, 0.55), 3px 3px 0 #1a0505; }
-#lobby p.subtitle { margin: 0 0 26px; color: #f2c8a8; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-shadow: 1px 1px 3px #000; }
-.form-group { margin-bottom: 14px; display: flex; align-items: center; gap: 10px; width: 340px; justify-content: space-between; }
-.form-group label { font-weight: bold; color: #f0e0d6; text-shadow: 1px 1px 2px #000; }
-input, select { padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #8a5a4a; background: rgba(25,20,30,0.75); color: #f5ece6; width: 180px; box-shadow: inset 2px 2px 6px rgba(0,0,0,0.5); }
-input[type="color"] { padding: 0; height: 40px; cursor: pointer; border: none; }
-.btn-group { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; justify-content: center; max-width: 520px; }
-button { padding: 15px 20px; font-size: 16px; font-weight: bold; border: 1px solid #aa3300; border-radius: 8px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.45); color: #fff; }
-#btnHost { background: #8a1a0a; } #btnJoin { background: #a8360f; } #btnSolo { background: #3a4058; border-color: #4b5270; }
-#btnNew { background: transparent; border-color: #8a5a4a; color: #f2c8a8; padding: 8px 14px; font-size: 13px; margin-top: 12px; box-shadow: none; }
-button:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(255,110,40,0.4); }
-button:focus-visible { outline: 3px solid #ffd27a; outline-offset: 2px; }
-button:disabled { background: #5a4848 !important; color: #b8a0a0 !important; border-color: #4a3838 !important; cursor: not-allowed; transform: none; box-shadow: none; }
-#saveInfo { margin-top: 16px; font-size: 14px; color: #ffd27a; text-align: center; max-width: 440px; text-shadow: 1px 1px 3px #000; }
-#status { margin-top: 10px; font-weight: bold; font-size: 16px; color: #f2c8a8; text-align: center; max-width: 440px; text-shadow: 1px 1px 3px #000; }
-#rules { margin-top: 10px; font-size: 13px; color: #d8c0b0; max-width: 440px; text-align: center; }
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600&display=swap');
+:root { --blood: #c4161c; --ember: #ff7a2a; --gold: #e9c98c; --bone: #f2e8e2; --ink: #050308; --ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; --serif: 'Cinzel', 'Trajan Pro', Georgia, serif; }
+* { box-sizing: border-box; }
+body { margin: 0; overflow: hidden; background-color: var(--ink); font-family: var(--ui); }
+
+/* ---------- STRONA STARTOWA ---------- */
+#lobby { position: absolute; inset: 0; z-index: 1000; color: var(--bone); background: var(--ink); overflow: hidden; --mx: 50%; --my: 40%; }
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#dark { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle 300px at var(--mx) var(--my), rgba(0,0,0,0) 0%, rgba(4,2,8,0.06) 55%, rgba(4,2,8,0.46) 100%); mix-blend-mode: multiply; }
+#glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle 220px at var(--mx) var(--my), rgba(255,190,130,0.14), rgba(255,190,130,0) 70%); mix-blend-mode: screen; }
+#vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 42%, rgba(0,0,0,0) 38%, rgba(0,0,0,0.72) 100%); }
+#grain { position: absolute; inset: -50%; pointer-events: none; opacity: 0.08; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); animation: grain 0.9s steps(6) infinite; }
+@keyframes grain { 0% { transform: translate(0,0); } 20% { transform: translate(-3%,2%); } 40% { transform: translate(2%,-3%); } 60% { transform: translate(-2%,-1%); } 80% { transform: translate(3%,3%); } 100% { transform: translate(0,0); } }
+#curtain { position: absolute; inset: 0; background: #000; pointer-events: none; z-index: 5; animation: curtain 2.6s ease-out 0.2s forwards; }
+@keyframes curtain { 0% { opacity: 1; } 18% { opacity: 1; } 30% { opacity: 0.55; } 38% { opacity: 0.9; } 100% { opacity: 0; visibility: hidden; } }
+
+#stage { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: clamp(18px, 4vh, 40px); padding: clamp(16px, 4vh, 44px) 20px; overflow-y: auto; }
+#hero { text-align: center; }
+h1.logo { position: relative; margin: 0; font-family: var(--serif); font-weight: 900; font-size: clamp(46px, 9.5vw, 132px); line-height: 1; letter-spacing: 0.26em; margin-right: -0.26em; text-transform: uppercase; animation: reveal 2.8s cubic-bezier(.2,.7,.2,1) 0.5s both, flick 9s 3.4s infinite; }
+h1.logo .name { display: block; background: linear-gradient(180deg, #ffffff 0%, #f0dfd6 38%, #b48f84 70%, #6e4a44 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 22px rgba(255,50,20,0.45)) drop-shadow(0 6px 14px rgba(0,0,0,0.8)); }
+h1.logo .vr { display: block; margin: 0.12em auto 0; font-size: 0.36em; letter-spacing: 0.9em; margin-right: -0.9em; color: #fff; text-shadow: 0 0 10px rgba(255,40,20,0.95), 0 0 34px rgba(255,20,10,0.8), 0 3px 10px #000; font-weight: 700; }
+h1.logo::before, h1.logo::after { content: attr(data-t); position: absolute; left: 0; top: 0; width: 100%; pointer-events: none; opacity: 0; }
+h1.logo::before { color: #00e5ff; mix-blend-mode: screen; animation: glitchA 9s 3.4s infinite; }
+h1.logo::after { color: #ff2a6a; mix-blend-mode: screen; animation: glitchB 9s 3.4s infinite; }
+@keyframes reveal { 0% { opacity: 0; letter-spacing: 0.7em; filter: blur(14px); } 100% { opacity: 1; letter-spacing: 0.26em; filter: blur(0); } }
+@keyframes flick { 0%,3%,8%,60%,64%,100% { opacity: 1; } 4% { opacity: 0.4; } 6% { opacity: 0.9; } 61% { opacity: 0.55; } 62.5% { opacity: 1; } 63% { opacity: 0.3; } }
+@keyframes glitchA { 0%,94%,100% { opacity: 0; transform: none; } 95% { opacity: 0.7; transform: translate(-7px, 1px); clip-path: inset(10% 0 55% 0); } 97% { opacity: 0.55; transform: translate(5px, -2px); clip-path: inset(60% 0 8% 0); } 99% { opacity: 0; } }
+@keyframes glitchB { 0%,94%,100% { opacity: 0; transform: none; } 96% { opacity: 0.6; transform: translate(7px, 2px); clip-path: inset(40% 0 30% 0); } 98% { opacity: 0.6; transform: translate(-5px, -1px); clip-path: inset(5% 0 70% 0); } 99.5% { opacity: 0; } }
+.tagline { margin: 22px 0 0; font-family: var(--serif); font-size: clamp(12px, 1.5vw, 16px); letter-spacing: 0.55em; margin-right: -0.55em; text-transform: uppercase; color: #cdb2a6; text-shadow: 0 1px 8px #000; opacity: 0; animation: rise 1.6s ease 2.2s forwards; }
+
+/* ---------- KARTA ---------- */
+#card { position: relative; width: min(400px, 100%); padding: 24px 24px 18px; border-radius: 16px; background: linear-gradient(165deg, rgba(30,14,18,0.55), rgba(10,6,10,0.7)); border: 1px solid rgba(255,255,255,0.09); box-shadow: 0 30px 90px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 70px rgba(190,20,10,0.14); backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); opacity: 0; animation: rise 1.4s cubic-bezier(.2,.7,.2,1) 2.6s forwards; }
+#card::before { content: ''; position: absolute; left: 14%; right: 14%; top: -1px; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,90,40,0.9), transparent); }
+@keyframes rise { 0% { opacity: 0; transform: translateY(16px); } 100% { opacity: 1; transform: none; } }
+.eyebrow { display: block; margin: 0 0 7px 2px; font-size: 10.5px; font-weight: 500; letter-spacing: 0.26em; text-transform: uppercase; color: #9b8279; }
+.row { display: flex; gap: 10px; align-items: stretch; }
+.form-group { margin-bottom: 0; }
+input, select { font: inherit; font-size: 15px; color: #f5ece6; background: rgba(0,0,0,0.38); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 12px 14px; width: 100%; transition: border-color .2s, box-shadow .2s, background .2s; }
+input:hover, select:hover { border-color: rgba(255,255,255,0.22); }
+input:focus, select:focus { outline: none; border-color: rgba(255,110,60,0.8); box-shadow: 0 0 0 3px rgba(255,90,40,0.18); background: rgba(0,0,0,0.5); }
+select { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, #b8a098 50%), linear-gradient(135deg, #b8a098 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
+select option { background: #140c10; }
+input[type="color"] { padding: 3px; width: 50px; flex: none; height: auto; cursor: pointer; }
+input[type="checkbox"] { width: 18px; height: 18px; flex: none; accent-color: var(--blood); padding: 0; }
+button { font: inherit; cursor: pointer; border: 0; color: #fff; transition: transform .18s, box-shadow .25s, filter .2s, background .2s; }
+#btnSolo { position: relative; overflow: hidden; display: block; width: 100%; margin-top: 16px; padding: 16px 20px; font-size: 14px; font-weight: 600; letter-spacing: 0.34em; text-transform: uppercase; border-radius: 12px; background: linear-gradient(180deg, #e0292a 0%, #9c0f14 100%); box-shadow: 0 10px 30px rgba(170,10,10,0.5), inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -2px 0 rgba(0,0,0,0.25); text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+#btnSolo::after { content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; background: linear-gradient(100deg, transparent, rgba(255,255,255,0.35), transparent); transform: skewX(-18deg); animation: sheen 5s ease-in-out 4s infinite; }
+@keyframes sheen { 0%,70% { left: -60%; } 100% { left: 130%; } }
+.links { display: flex; justify-content: center; align-items: center; gap: 4px; margin-top: 10px; }
+.link { background: none; padding: 8px 12px; font-size: 12.5px; letter-spacing: 0.04em; color: #b69d94; border-radius: 8px; box-shadow: none; }
+.link:hover { color: #fff; background: rgba(255,255,255,0.06); }
+.link[aria-expanded="true"] { color: var(--gold); }
+.links i { width: 3px; height: 3px; border-radius: 50%; background: #5a4640; }
+.panel { display: none; margin-top: 8px; padding: 14px; border-radius: 12px; background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.07); }
+.panel.open { display: block; animation: rise 0.35s ease both; }
+.btn-group { display: flex; gap: 10px; margin-top: 12px; }
+#btnHost, #btnJoin { flex: 1; padding: 12px 10px; font-size: 13px; font-weight: 500; letter-spacing: 0.1em; border-radius: 10px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14); }
+#btnHost:hover:not(:disabled), #btnJoin:hover:not(:disabled) { background: rgba(255,90,40,0.22); border-color: rgba(255,110,60,0.6); }
+#btnNew { display: block; margin: 8px auto 0; background: none; padding: 6px 10px; font-size: 11px; letter-spacing: 0.08em; color: #7d6760; }
+#btnNew:hover:not(:disabled) { color: #ff8a70; }
+button:hover:not(:disabled) { transform: translateY(-1px); }
+#btnSolo:hover:not(:disabled) { box-shadow: 0 14px 40px rgba(220,30,20,0.7), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -2px 0 rgba(0,0,0,0.25); filter: brightness(1.1); }
+#btnSolo:active:not(:disabled) { transform: translateY(1px); }
+button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; transform: none; box-shadow: none; }
+#saveInfo { margin-top: 12px; font-size: 12px; color: var(--gold); text-align: center; line-height: 1.45; letter-spacing: 0.02em; }
+#saveInfo:empty { display: none; }
+#status { margin-top: 6px; font-size: 12px; color: #a8948c; text-align: center; min-height: 1.3em; line-height: 1.4; }
+#foot { max-width: 520px; text-align: center; opacity: 0; animation: rise 1.4s ease 3.2s forwards; }
+#vrhint { display: inline-block; font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: #8a736b; }
+#rules { margin-top: 8px; font-size: 11px; line-height: 1.55; color: #5f4d48; }
 #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #fff; font-weight: bold; font-size: 18px; z-index: 100; text-shadow: 2px 2px 4px black; display: none; }
 /* Przycisk ENTER VR pojawia się dopiero po starcie gry (na stronie startowej go nie ma, żeby niczego nie zasłaniał) */
 #VRButton { display: none !important; }
 .connected #VRButton { display: block !important; border-color: #ff6a20 !important; color: #ff8a40 !important; background: rgba(40,20,20,0.85) !important; }
+
+@media (max-height: 700px) { #foot { display: none; } h1.logo { font-size: clamp(40px, 8vw, 96px); } .tagline { margin-top: 14px; } }
+@media (max-width: 600px) { h1.logo { letter-spacing: 0.16em; margin-right: -0.16em; font-size: clamp(36px, 13vw, 80px); } @keyframes reveal { 0% { opacity: 0; filter: blur(12px); } 100% { opacity: 1; filter: blur(0); } } .tagline { letter-spacing: 0.35em; } }
+.lite #grain { display: none; } .lite #card { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(14,8,12,0.84); } .lite #dark { mix-blend-mode: normal; background: radial-gradient(circle 300px at var(--mx) var(--my), rgba(0,0,0,0) 0%, rgba(4,2,8,0.18) 60%, rgba(4,2,8,0.4) 100%); } .lite #glow { display: none; }
+@media (prefers-reduced-motion: reduce) { #grain, #curtain, h1.logo, h1.logo::before, h1.logo::after, #btnSolo::after { animation: none !important; } #curtain { display: none; } .tagline, #card, #foot { animation: none !important; opacity: 1; } }
 </style>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
@@ -35,7 +95,7 @@ button:disabled { background: #5a4848 !important; color: #b8a0a0 !important; bor
 // (nowy numer co 5 minut, więc po wgraniu zmian na GitHub nie trzeba już dopisywać ?v= do adresu).
 // Dodając nowy plik .js do gry, dopisz go do listy FILES.
 (function () {
-  var FILES = ["main.js", "core/audio.js", "core/avatar.js", "core/config.js", "core/debug.js", "core/desktop.js", "core/economy.js", "core/engine.js", "core/hammer.js", "core/haptics.js", "core/levelkit.js", "core/mannequin.js", "core/monsterskins.js", "core/murals.js", "core/network.js", "core/pause.js", "core/player.js", "core/presence.js", "core/settings.js", "core/terminal.js", "core/textures.js", "core/ui.js", "core/visuals.js", "core/vrmenu.js", "levels/games.js", "levels/laundry.js", "levels/lava.js", "levels/levels.js", "levels/lobby-door.js", "levels/lobby.js", "levels/maze.js", "levels/memory.js", "levels/monster.js", "levels/range.js", "levels/silence.js", "levels/staff.js", "levels/well.js", "core/runkit.js", "levels/hideseek.js", "levels/banana.js", "levels/race.js", "levels/koth.js", "levels/wardrobe.js", "levels/hospital.js", "levels/redlight.js", "levels/potato.js", "levels/lasttile.js", "levels/treasure.js", "levels/cemetery.js", "levels/infection.js", "levels/dodgeball.js", "core/roundkit.js", "core/music.js", "core/emotes.js", "core/emotepanel.js", "core/ambience.js", "core/lightpool.js", "core/liquids.js", "core/envcapture.js", "core/botkit.js", "core/cosmetics.js", "core/events.js", "core/highfive.js"];
+  var FILES = ["main.js", "core/audio.js", "core/avatar.js", "core/config.js", "core/debug.js", "core/desktop.js", "core/economy.js", "core/engine.js", "core/hammer.js", "core/haptics.js", "core/levelkit.js", "core/mannequin.js", "core/monsterskins.js", "core/murals.js", "core/network.js", "core/pause.js", "core/player.js", "core/presence.js", "core/settings.js", "core/terminal.js", "core/textures.js", "core/ui.js", "core/visuals.js", "core/vrmenu.js", "levels/games.js", "levels/laundry.js", "levels/lava.js", "levels/levels.js", "levels/lobby-door.js", "levels/lobby.js", "levels/maze.js", "levels/memory.js", "levels/monster.js", "levels/range.js", "levels/silence.js", "levels/staff.js", "levels/well.js", "core/runkit.js", "levels/hideseek.js", "levels/banana.js", "levels/race.js", "levels/koth.js", "levels/wardrobe.js", "levels/hospital.js", "levels/redlight.js", "levels/potato.js", "levels/lasttile.js", "levels/treasure.js", "levels/cemetery.js", "levels/infection.js", "levels/dodgeball.js", "core/roundkit.js", "core/music.js", "core/emotes.js", "core/emotepanel.js", "core/ambience.js", "core/lightpool.js", "core/liquids.js", "core/envcapture.js", "core/botkit.js", "core/cosmetics.js", "core/events.js", "core/highfive.js", "core/device.js", "core/xrperf.js"];
   var VERSION = String(Math.floor(Date.now() / 300000));
   var imports = {
     "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
@@ -59,27 +119,208 @@ button:disabled { background: #5a4848 !important; color: #b8a0a0 !important; bor
 </head>
 <body>
 <div id="lobby">
-  <h1 class="logo">BagaBoo VR</h1>
-  <p class="subtitle">Dusk Nightmare Parkour | Don't Look Away</p>
-  <div class="form-group"><label for="playerName">Nickname:</label><input type="text" id="playerName" value="Acrobat" maxlength="16"></div>
-  <div class="form-group" id="passRow" style="display:none"><label for="playerPass">Password:</label><input type="password" id="playerPass" maxlength="40" autocomplete="current-password"></div>
-  <div class="form-group" id="rememberRow" style="display:none;justify-content:flex-start;gap:8px"><input type="checkbox" id="rememberPass" style="width:20px;height:20px;box-shadow:none"><label for="rememberPass" style="font-weight:normal">Remember password on this device</label></div>
-  <div class="form-group"><label for="playerColor">Body color:</label><input type="color" id="playerColor" value="#3d2314"></div>
-  <div class="form-group"><label for="roomCode">Room code:</label><input type="text" id="roomCode" value="MAIN" maxlength="12"></div>
-  <div class="form-group"><label for="quality">Graphics:</label>
-    <select id="quality"><option value="low">Low (fastest)</option><option value="medium">Medium</option><option value="high">High</option></select></div>
-  <div class="btn-group">
-    <button id="btnHost">Host room</button>
-    <button id="btnJoin">Join as guest</button>
-    <button id="btnSolo">Play solo</button>
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div id="dark"></div><div id="glow"></div><div id="vignette"></div><div id="grain"></div><div id="curtain"></div>
+  <div id="stage">
+    <header id="hero">
+      <h1 class="logo" data-t="BagaBoo"><span class="name">BagaBoo</span><span class="vr">VR</span></h1>
+      <p class="tagline">Don't look away</p>
+    </header>
+    <main id="card">
+      <label class="eyebrow" for="playerName">Nickname</label>
+      <div class="row">
+        <input type="text" id="playerName" value="Acrobat" maxlength="16" autocomplete="nickname" spellcheck="false">
+        <input type="color" id="playerColor" value="#3d2314" title="Fur color" aria-label="Fur color">
+      </div>
+      <div class="form-group" id="passRow" style="display:none;margin-top:12px"><label class="eyebrow" for="playerPass">Password</label><input type="password" id="playerPass" maxlength="40" autocomplete="current-password"></div>
+      <div class="form-group" id="rememberRow" style="display:none;align-items:center;gap:10px;margin-top:10px"><input type="checkbox" id="rememberPass"><label for="rememberPass" style="font-size:12px;color:#a8948c">Remember password on this device</label></div>
+      <button id="btnSolo">Play solo</button>
+      <div class="links">
+        <button class="link" type="button" id="tabFriends" aria-expanded="false" aria-controls="friends">Play with friends</button><i></i>
+        <button class="link" type="button" id="tabOptions" aria-expanded="false" aria-controls="options">Options</button>
+      </div>
+      <div class="panel" id="friends">
+        <label class="eyebrow" for="roomCode">Room code</label>
+        <input type="text" id="roomCode" value="MAIN" maxlength="12" autocomplete="off" spellcheck="false">
+        <div class="btn-group"><button id="btnHost">Host</button><button id="btnJoin">Join</button></div>
+      </div>
+      <div class="panel" id="options">
+        <label class="eyebrow" for="quality">Graphics</label>
+        <select id="quality"><option value="low">Low (fastest)</option><option value="medium">Medium</option><option value="high">High</option></select>
+      </div>
+      <div id="saveInfo"></div>
+      <div id="status">Checking microphone...</div>
+      <button id="btnNew">Delete save and start over</button>
+    </main>
+    <footer id="foot">
+      <span id="vrhint">Best in VR &nbsp;·&nbsp; Desktop supported</span>
+      <div id="rules">One host per room, up to 9 guests. Staff nicknames are protected with a password.</div>
+    </footer>
   </div>
-  <button id="btnNew">New game (delete save)</button>
-  <div id="saveInfo"></div>
-  <div id="status">Checking microphone...</div>
-  <div id="rules">One host per room, up to 9 guests. Guests can join only after the host is online. Hats, glasses, masks, badges, sleeves and gloves are bought with Bagabucks in the shop inside the lobby. Staff nicknames are protected with a password. In VR press Y, B or a stick to pause.</div>
 </div>
 <div id="info">The sun is setting... don't look away.</div>
 <div id="audio-container" style="display:none;"></div>
+<script>
+// ---------- Scena strony startowej: noc, krwawy księżyc z promieniami, magazyny, mgła, iskry, oczy w ciemności, paralaksa i latarka za kursorem ----------
+(function () {
+  var lobby = document.getElementById('lobby'), cv = document.getElementById('scene'), g = cv.getContext('2d');
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var LITE = document.documentElement.classList.contains('lite'), FRAME_MS = LITE ? 48 : 30;
+  var W = 0, H = 0, DPR = 1, M = 44, layers = {}, fog = null, t0 = performance.now(), DT = 1 / 30, lastDraw = 0;
+  var mouse = { x: 0.5, y: 0.4, tx: 0.5, ty: 0.4, real: false };
+  function rng(seed) { var s = seed >>> 0; return function () { s = (s + 0x6D2B79F5) >>> 0; var t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
+  function tree(c, r, x, y, len, ang, wid, depth) {
+    if (depth <= 0 || len < 4) return;
+    var x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len;
+    c.lineWidth = wid; c.beginPath(); c.moveTo(x, y); c.lineTo(x2, y2); c.stroke();
+    var n = r() < 0.7 ? 2 : 3;
+    for (var i = 0; i < n; i++) tree(c, r, x2, y2, len * (0.68 + r() * 0.14), ang + (r() - 0.5) * 1.15, wid * 0.7, depth - 1);
+  }
+  function ape(c, x, y, s) {
+    c.save(); c.translate(x, y); c.scale(s, s);
+    var body = function () {
+      c.beginPath(); c.ellipse(0, -125, 92, 120, -0.08, 0, 7); c.fill();
+      c.beginPath(); c.ellipse(8, -218, 125, 58, 0, 0, 7); c.fill();
+      c.beginPath(); c.ellipse(30, -262, 40, 38, 0.1, 0, 7); c.fill();
+      c.beginPath(); c.ellipse(-48, -34, 52, 40, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(58, -34, 52, 40, 0, 0, 7); c.fill();
+      c.lineCap = 'round'; c.lineWidth = 58;
+      c.beginPath(); c.moveTo(-85, -205); c.quadraticCurveTo(-165, -110, -112, -12); c.stroke();
+      c.beginPath(); c.moveTo(95, -205); c.quadraticCurveTo(178, -100, 128, -12); c.stroke();
+      c.beginPath(); c.ellipse(-112, -8, 40, 24, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(128, -8, 40, 24, 0, 0, 7); c.fill();
+    };
+    c.fillStyle = c.strokeStyle = 'rgba(255,90,40,0.26)'; c.translate(-3, -3); body(); c.translate(3, 3);
+    c.fillStyle = c.strokeStyle = '#030204'; body();
+    c.restore();
+  }
+  function warehouse(c, x, base, w, h, teeth, col) {
+    c.fillStyle = col; c.beginPath(); c.moveTo(x, base); c.lineTo(x, base - h);
+    var tw = w / teeth; for (var i = 0; i < teeth; i++) { c.lineTo(x + i * tw, base - h - tw * 0.55); c.lineTo(x + (i + 1) * tw, base - h); }
+    c.lineTo(x + w, base); c.closePath(); c.fill();
+  }
+  function layer(draw) { var c = document.createElement('canvas'); c.width = Math.floor((W + 2 * M) * DPR); c.height = Math.floor((H + 2 * M) * DPR); var x = c.getContext('2d'); x.scale(DPR, DPR); x.translate(M, M); draw(x); return c; }
+
+  var wins = [], stars = [], embers = [], eyes = [], flash = { a: 0, next: 7 }, moon = { x: 0, y: 0, r: 0 }, apeAt = { x: 0, y: 0, s: 1 }, horizon = 0;
+
+  function build() {
+    DPR = LITE ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
+    W = lobby.clientWidth; H = lobby.clientHeight; horizon = H * 0.8;
+    cv.width = Math.floor(W * DPR); cv.height = Math.floor(H * DPR);
+    var r = rng(1313), narrow = W < 800;
+    moon.r = Math.min(W, H) * (narrow ? 0.15 : 0.18); moon.x = W * (narrow ? 0.5 : 0.5); moon.y = H * (narrow ? 0.2 : 0.3);
+    // warstwa 0: niebo i gwiazdy
+    layers.sky = layer(function (c) {
+      var sky = c.createLinearGradient(0, -M, 0, horizon);
+      sky.addColorStop(0, '#04020a'); sky.addColorStop(0.5, '#160710'); sky.addColorStop(0.86, '#4a1214'); sky.addColorStop(1, '#7a2414');
+      c.fillStyle = sky; c.fillRect(-M, -M, W + 2 * M, H + 2 * M);
+    });
+    stars = []; for (var i = 0; i < 170; i++) stars.push({ x: r() * W, y: r() * horizon * 0.85, a: 0.2 + r() * 0.6, p: r() * 6 });
+    // warstwa 1: dalekie wzgórza i magazyny
+    layers.far = layer(function (c) {
+      c.fillStyle = '#1a0a10'; c.beginPath(); c.moveTo(-M, horizon); for (var x = -M; x <= W + M; x += 20) c.lineTo(x, horizon - 30 - Math.sin(x * 0.004) * 22 - r() * 6); c.lineTo(W + M, horizon); c.fill();
+      var bx = -M; while (bx < W + M) { var bw = 120 + r() * 220, bh = 30 + r() * 70; warehouse(c, bx, horizon + 4, bw, bh, 2 + ((r() * 4) | 0), '#0c050a'); if (r() < 0.35) { c.fillStyle = '#0c050a'; c.fillRect(bx + bw * 0.7, horizon - bh - 80, 16, 90); } bx += bw + 10 + r() * 40; }
+    });
+    wins = []; for (i = 0; i < 20; i++) wins.push({ x: r() * W, y: horizon - 12 - r() * 50, ph: r() * 10, on: r() < 0.5 });
+    // warstwa 2: goryl
+    var s = Math.min(H / 470, 1.45); apeAt.s = s; apeAt.x = narrow ? W * 0.22 : W * 0.15; apeAt.y = H + 8;
+    layers.ape = layer(function (c) { ape(c, apeAt.x, apeAt.y, s); });
+    // warstwa 3: pierwszy plan (ziemia, drzewa, płot, nagrobki)
+    layers.near = layer(function (c) {
+      var gr = c.createLinearGradient(0, horizon, 0, H); gr.addColorStop(0, '#0e0709'); gr.addColorStop(1, '#020103');
+      c.fillStyle = gr; c.fillRect(-M, horizon, W + 2 * M, H - horizon + M);
+      c.strokeStyle = '#020103'; c.lineCap = 'round';
+      tree(c, r, W * 0.97, horizon + 20, H * 0.24, -Math.PI / 2 - 0.12, 15, 7); tree(c, r, W * 0.34, horizon + 10, H * 0.1, -Math.PI / 2 + 0.05, 7, 6); tree(c, r, W * 0.7, horizon + 6, H * 0.08, -Math.PI / 2, 5, 6);
+      c.fillStyle = '#020103'; for (var x = -M; x < W + M; x += 18) c.fillRect(x, horizon + 22, 4, 26); c.fillRect(-M, horizon + 28, W + 2 * M, 3);
+      for (var i = 0; i < 10; i++) { var gx = r() * W, gh = 26 + r() * 30, gw = 18 + r() * 14; c.beginPath(); c.moveTo(gx, H + M); c.lineTo(gx, H - gh); c.quadraticCurveTo(gx + gw / 2, H - gh - gw * 0.6, gx + gw, H - gh); c.lineTo(gx + gw, H + M); c.fill(); }
+    });
+    fog = document.createElement('canvas'); fog.width = 900; fog.height = 160; var f = fog.getContext('2d'), fr = rng(77);
+    for (i = 0; i < 40; i++) { var fx = fr() * 900, fy = 40 + fr() * 80, rr = 40 + fr() * 70, gg = f.createRadialGradient(fx, fy, 0, fx, fy, rr); gg.addColorStop(0, 'rgba(190,150,150,0.20)'); gg.addColorStop(1, 'rgba(190,150,150,0)'); f.fillStyle = gg; f.fillRect(fx - rr, fy - rr, rr * 2, rr * 2); }
+    embers = []; for (i = 0; i < (LITE ? 24 : (W < 700 ? 30 : 70)); i++) embers.push({ x: Math.random() * W, y: Math.random() * H, v: 12 + Math.random() * 34, s: 0.6 + Math.random() * 1.8, p: Math.random() * 6 });
+    eyes = []; for (i = 0; i < 6; i++) eyes.push(newEyes());
+  }
+  function newEyes() { return { x: W * (0.04 + Math.random() * 0.92), y: horizon + (Math.random() - 0.2) * H * 0.15 - (Math.random() < 0.3 ? H * 0.2 : 0), gap: 7 + Math.random() * 7, ph: Math.random() * 20, t: Math.random() * 6, hide: 0 }; }
+  function blit(img, ox, oy) { g.drawImage(img, -M + ox, -M + oy, W + 2 * M, H + 2 * M); }
+
+  function draw(now) {
+    var t = (now - t0) / 1000, dt = DT;
+    var px = (mouse.x - 0.5), py = (mouse.y - 0.5);   // paralaksa: bliższe warstwy przesuwają się mocniej
+    g.setTransform(1, 0, 0, 1, 0, 0); g.scale(DPR, DPR);
+    blit(layers.sky, -px * 6, -py * 4);
+    var i;
+    for (i = 0; i < stars.length; i++) { var st = stars[i], a = st.a * (reduce ? 1 : 0.65 + 0.35 * Math.sin(t * 1.4 + st.p)); g.fillStyle = 'rgba(255,230,220,' + a + ')'; g.fillRect(st.x - px * 6, st.y - py * 4, 1.4, 1.4); }
+    var mx0 = moon.x - px * 10, my0 = moon.y - py * 7;
+    // księżyc: poświata, promienie, tarcza
+    var pulse = reduce ? 1 : 1 + 0.05 * Math.sin(t * 0.9);
+    var mg = g.createRadialGradient(mx0, my0, moon.r * 0.5, mx0, my0, moon.r * 4.6 * pulse);
+    mg.addColorStop(0, 'rgba(255,60,30,0.40)'); mg.addColorStop(0.35, 'rgba(180,20,20,0.16)'); mg.addColorStop(1, 'rgba(120,10,10,0)');
+    g.fillStyle = mg; g.fillRect(mx0 - moon.r * 5, my0 - moon.r * 5, moon.r * 10, moon.r * 10);
+    g.save(); g.globalCompositeOperation = 'lighter'; g.translate(mx0, my0);
+    for (i = 0; i < 9; i++) { var ang = Math.PI * (0.12 + i * 0.095) + (reduce ? 0 : Math.sin(t * 0.18 + i * 1.7) * 0.03), len = H * 1.1, wd = 0.045 + (i % 3) * 0.018; var rg = g.createLinearGradient(0, 0, Math.cos(ang) * len, Math.sin(ang) * len); rg.addColorStop(0, 'rgba(255,70,40,0.11)'); rg.addColorStop(1, 'rgba(255,70,40,0)'); g.fillStyle = rg; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(ang - wd) * len, Math.sin(ang - wd) * len); g.lineTo(Math.cos(ang + wd) * len, Math.sin(ang + wd) * len); g.closePath(); g.fill(); }
+    g.restore();
+    var md = g.createRadialGradient(mx0 - moon.r * 0.3, my0 - moon.r * 0.3, moon.r * 0.1, mx0, my0, moon.r);
+    md.addColorStop(0, '#ff9a6a'); md.addColorStop(0.55, '#d8301c'); md.addColorStop(1, '#7a0c10');
+    g.fillStyle = md; g.beginPath(); g.arc(mx0, my0, moon.r, 0, 7); g.fill();
+    g.fillStyle = 'rgba(60,0,0,0.25)'; [[-0.35, -0.2, 0.22], [0.25, 0.15, 0.28], [-0.1, 0.4, 0.15], [0.4, -0.35, 0.12]].forEach(function (k) { g.beginPath(); g.arc(mx0 + k[0] * moon.r, my0 + k[1] * moon.r, k[2] * moon.r, 0, 7); g.fill(); });
+    if (!reduce) for (i = 0; i < 3; i++) { var bp = ((t * 0.04 + i * 0.37) % 1), bxp = -40 + bp * (W + 80), byp = my0 + Math.sin(bp * 9 + i) * moon.r * 0.95 + i * 34, fl = Math.sin(t * 14 + i * 2) * 5; g.fillStyle = '#020104'; g.beginPath(); g.moveTo(bxp, byp); g.quadraticCurveTo(bxp - 9, byp - 8 - fl, bxp - 18, byp - 2); g.quadraticCurveTo(bxp - 9, byp - 1, bxp, byp + 3); g.quadraticCurveTo(bxp + 9, byp - 1, bxp + 18, byp - 2); g.quadraticCurveTo(bxp + 9, byp - 8 - fl, bxp, byp); g.fill(); }
+    blit(layers.far, -px * 14, -py * 6);
+    for (i = 0; i < wins.length; i++) { var w = wins[i]; var on = w.on ? (0.55 + 0.45 * Math.sin(t * 3 + w.ph) * Math.sin(t * 7.3 + w.ph * 2)) : (Math.sin(t * 0.7 + w.ph) > 0.97 ? 0.8 : 0); if (on > 0.05) { g.fillStyle = 'rgba(255,150,50,' + Math.min(0.9, on) + ')'; g.fillRect(w.x - px * 14, w.y - py * 6, 5, 7); } }
+    fogBand(t, 0); fogBand(t, 1);
+    blit(layers.ape, -px * 22, -py * 8);
+    // oczy goryla
+    var ap = Math.max(0, Math.sin(t * 0.5)) * 0.8 + 0.2, ex = apeAt.x + 30 * apeAt.s - px * 22, eyy = apeAt.y - 266 * apeAt.s - py * 8;
+    for (var sx = -1; sx <= 1; sx += 2) { var gx = ex + sx * 9 * apeAt.s, rr = 16 * apeAt.s, og = g.createRadialGradient(gx, eyy, 0, gx, eyy, rr); og.addColorStop(0, 'rgba(255,50,20,' + ap + ')'); og.addColorStop(1, 'rgba(255,20,10,0)'); g.fillStyle = og; g.fillRect(gx - rr, eyy - rr, rr * 2, rr * 2); g.fillStyle = 'rgba(255,230,200,' + ap + ')'; g.fillRect(gx - 2, eyy - 1, 4, 2); }
+    blit(layers.near, -px * 34, -py * 12);
+    fogBand(t, 2);
+    for (i = 0; i < embers.length; i++) { var e = embers[i]; if (!reduce) { e.y -= e.v * dt; e.x += Math.sin(t * 0.8 + e.p) * 0.25; } if (e.y < -10) { e.y = H + 10; e.x = Math.random() * W; }
+      var ea = 0.3 + 0.5 * Math.abs(Math.sin(t * 2 + e.p)); g.fillStyle = 'rgba(255,' + (110 + (e.s * 40) | 0) + ',40,' + ea + ')'; g.beginPath(); g.arc(e.x - px * 40 * e.s * 0.4, e.y, e.s, 0, 7); g.fill(); }
+    var mxp = mouse.x * W, myp = mouse.y * H;
+    for (i = 0; i < eyes.length; i++) {
+      var ey = eyes[i]; ey.t += dt;
+      if (Math.hypot(ey.x - mxp, ey.y - myp) < 190) ey.hide = 2.5 + Math.random() * 2;
+      if (ey.hide > 0) { ey.hide -= dt; if (ey.hide <= 0) eyes[i] = newEyes(); continue; }
+      var cyc = (ey.t + ey.ph) % 9, al = cyc < 1 ? cyc : cyc < 6.5 ? 1 : Math.max(0, 1 - (cyc - 6.5) / 0.6);
+      if (cyc > 3.0 && cyc < 3.12) al *= 0.05;
+      if (al <= 0.02) continue;
+      for (sx = -1; sx <= 1; sx += 2) { var qx = ey.x + sx * ey.gap - px * 34, gl = g.createRadialGradient(qx, ey.y, 0, qx, ey.y, 12); gl.addColorStop(0, 'rgba(255,40,20,' + 0.9 * al + ')'); gl.addColorStop(1, 'rgba(255,20,10,0)'); g.fillStyle = gl; g.fillRect(qx - 12, ey.y - 12, 24, 24); g.fillStyle = 'rgba(255,200,170,' + al + ')'; g.fillRect(qx - 2, ey.y - 1, 4, 2); }
+    }
+    if (!reduce) { flash.next -= dt; if (flash.next <= 0) { flash.a = 1; flash.next = 10 + Math.random() * 10; } }
+    if (flash.a > 0) { var fa = flash.a > 0.6 ? flash.a : flash.a * (Math.sin(t * 60) > 0 ? 1 : 0.2); g.fillStyle = 'rgba(190,200,255,' + (0.18 * fa) + ')'; g.fillRect(0, 0, W, H); flash.a -= dt * 2.4; }
+  }
+  function fogBand(t, L) {
+    var sp = (L + 1) * 9, off = reduce ? 0 : -((t * sp) % 900), fy = horizon - 70 + L * 34, sc = 0.9 + L * 0.35;
+    g.globalAlpha = 0.5 + L * 0.2;
+    for (var k = -1; k * 900 * sc < W + 900; k++) g.drawImage(fog, off * sc + k * 900 * sc, fy, 900 * sc, 160 * sc);
+    g.globalAlpha = 1;
+  }
+
+  function frame(now) {
+    if (lobby.style.display === 'none') return;           // gra wystartowała: scena przestaje się rysować
+    if (!document.hidden && now - lastDraw >= FRAME_MS) {         // ok. 30 klatek/s: strona startowa nie ma obciążać gogli ani słabych telefonów
+      DT = Math.min(0.1, (now - lastDraw) / 1000); lastDraw = now;
+      if (!mouse.real) { var k = (now - t0) / 1000; mouse.tx = 0.5 + Math.sin(k * 0.35) * 0.32; mouse.ty = 0.42 + Math.sin(k * 0.52 + 1) * 0.2; }
+      mouse.x += (mouse.tx - mouse.x) * 0.09; mouse.y += (mouse.ty - mouse.y) * 0.09;
+      lobby.style.setProperty('--mx', (mouse.x * 100).toFixed(2) + '%'); lobby.style.setProperty('--my', (mouse.y * 100).toFixed(2) + '%');
+      draw(now);
+    }
+    requestAnimationFrame(frame);
+  }
+  window.addEventListener('pointermove', function (e) { mouse.real = true; mouse.tx = e.clientX / Math.max(1, W); mouse.ty = e.clientY / Math.max(1, H); });
+  window.addEventListener('resize', build);
+  build(); requestAnimationFrame(frame);
+
+  // panele "Play with friends" i "Options" (tylko jeden otwarty naraz)
+  var panels = { tabFriends: document.getElementById('friends'), tabOptions: document.getElementById('options') };
+  Object.keys(panels).forEach(function (id) {
+    var b = document.getElementById(id);
+    b.addEventListener('click', function () {
+      var open = !panels[id].classList.contains('open');
+      Object.keys(panels).forEach(function (o) { panels[o].classList.remove('open'); document.getElementById(o).setAttribute('aria-expanded', 'false'); });
+      if (open) { panels[id].classList.add('open'); b.setAttribute('aria-expanded', 'true'); }
+    });
+  });
+  // Enter w polu nicku = graj solo
+  document.getElementById('playerName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var b = document.getElementById('btnSolo'); if (b && !b.disabled) b.click(); } });
+})();
+</script>
 </body>
 </html>
