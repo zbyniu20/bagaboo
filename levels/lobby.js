@@ -8,8 +8,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GFX, LP } from '../core/config.js';
 import * as T from '../core/textures.js';
 import * as M from '../core/murals.js';
-import { computer, shop, board, dailyBoard, onPreview, previewLook } from '../core/ui.js';
-import { createHead, createGorillaTorso } from '../core/avatar.js';
+import { computer, shop, board, dailyBoard } from '../core/ui.js';
+import { machine, attachGorillaMachine, detachGorillaMachine, updateGorillaMachine } from '../core/gorillamachine.js';
 import { track } from '../core/economy.js';
 
 export const info = { id: 'lobby', name: 'Lobby', spawn: [0, 2, 0] };
@@ -20,7 +20,7 @@ let fx = null;   // stan animacji tego poziomu
 import { LOBBY_MOVE_SCALE } from '../core/config.js';
 export function build() {
     L.moveScale = LOBBY_MOVE_SCALE;
-    fx = { flickers: [], muralMats: [], trampMats: [], lampSprites: [], shaftMats: [], mist: [], mannequins: [], meatSpots: [], bulbSpots: [], cloudTex: null, preview: null, previewHead: null };
+    fx = { flickers: [], muralMats: [], trampMats: [], lampSprites: [], shaftMats: [], mist: [], mannequins: [], meatSpots: [], bulbSpots: [], cloudTex: null, };
     L.spawn = info.spawn.slice();
     const root = L.root;
 
@@ -342,27 +342,43 @@ function buildShop() {
     const light = new THREE.PointLight(0xffa860, 6, 5, 2); light.position.set(0, 1.6, 1.2); g.add(light);
     addStaticBody(x, 1.05, z, new CANNON.Box(new CANNON.Vec3(0.45, 1.05, 0.75)), g, false);
     addBlobAO(x + 0.4, z, 2.6);
-    // Stojak z głową, na której widać przedmiot ze sklepu
-    const px = -13.5, pz = 0.45;
-    const ped = new THREE.Group(); ped.position.set(px, 0, pz); L.root.add(ped);
-    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 1.0, 20), body); col.position.y = 0.5; col.castShadow = true; col.receiveShadow = true; ped.add(col);
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.05, 20), dark); top.position.y = 1.02; ped.add(top);
-    const spot = new THREE.PointLight(0xffe0b0, 3, 2.5, 2); spot.position.set(0.5, 1.7, 0); ped.add(spot);
-    fx.preview = new THREE.Group(); fx.preview.position.set(0, 1.72, 0); fx.preview.scale.setScalar(1.3); ped.add(fx.preview);
-    addStaticBody(px, 0.5, pz, new CANNON.Box(new CANNON.Vec3(0.22, 0.5, 0.22)), ped, false);
-    addBlobAO(px, pz, 1.2);
-    L.reserved.push([-13.4, -0.6, 3.0]);
-    onPreview(setPreview);
-    setPreview(previewLook());
+    buildGorillaMachine(body, dark);
 }
-function setPreview(look) {
-    if (!fx || !fx.preview) return;
-    if (fx.previewHead) fx.preview.remove(fx.previewHead);
-    // Popiersie goryla: głowa i tułów (widać też odznakę na piersi)
-    fx.previewHead = new THREE.Group();
-    fx.previewHead.add(createHead(look, false));
-    const torso = createGorillaTorso(look); torso.position.y = -0.35; fx.previewHead.add(torso);
-    fx.preview.add(fx.previewHead);
+// Maszyna goryla (obok sklepu, przy zachodniej ścianie): szklana gablota z pełnym modelem twojego goryla na obrotowej tarczy i pulpit
+// z kategoriami kosmetyków. Tu się przymierza, sprawdza i zakłada kosmetyki (core/gorillamachine.js); w sklepie tylko kupujesz.
+function buildGorillaMachine(body, dark) {
+    const x0 = -14.2, z0 = 0.75;
+    const g = new THREE.Group(); g.position.set(x0, 0, z0); g.rotation.y = Math.PI / 2; L.root.add(g);   // lokalny +z = do wnętrza sali, lokalny +x = świat -z
+    const add = (geo, mat, px, py, pz) => { const m = new THREE.Mesh(geo, mat); m.position.set(px, py, pz); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
+    const BX = 0.62, PX = -0.68;   // gablota (lokalne x) i pulpit
+    // Gablota: cokół, ścianka z tyłu, słupki, daszek z napisem, szkło z przodu, tarcza obrotowa
+    add(new RoundedBoxGeometry(1.2, 0.2, 1.0, 3, 0.04), dark, BX, 0.1, 0);
+    add(new THREE.BoxGeometry(1.2, 2.5, 0.06), new THREE.MeshStandardMaterial({ color: 0x1a0c0e, metalness: 0.5, roughness: 0.5, emissive: 0x2a0608, envMapIntensity: ENV }), BX, 1.25, -0.47);
+    for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.07, 2.5, 1.0), dark, BX + s * 0.6, 1.25, 0);
+    add(new RoundedBoxGeometry(1.34, 0.26, 1.08, 3, 0.04), body, BX, 2.52, 0);
+    const sc = T.makeCanvas(512, 96), sx = sc.getContext('2d');
+    sx.fillStyle = '#1a0606'; sx.fillRect(0, 0, 512, 96); sx.font = 'bold 50px serif'; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.shadowColor = '#ff3a1a'; sx.shadowBlur = 20; sx.fillStyle = '#ffcf9a';
+    sx.fillText('GORILLA MACHINE', 256, 50);
+    const signTex = new THREE.CanvasTexture(sc); signTex.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.225), new THREE.MeshBasicMaterial({ map: signTex, toneMapped: false })); sign.position.set(BX, 2.52, 0.545); g.add(sign);
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.14, 2.3), new THREE.MeshStandardMaterial({ color: 0x90b0ff, transparent: true, opacity: 0.1, roughness: 0.05, metalness: 0.2, depthWrite: false }));
+    glass.position.set(BX, 1.35, 0.5); g.add(glass);
+    const disc = add(new THREE.CylinderGeometry(0.46, 0.5, 0.06, 36), new THREE.MeshStandardMaterial({ color: 0x9a8a68, metalness: 0.5, roughness: 0.4, envMapIntensity: ENV }), BX, 0.23, 0); void disc;
+    const spot = new THREE.PointLight(0xffe0b0, 5, 4.5, 2); spot.position.set(BX, 2.3, 0.45); g.add(spot);
+    // Model: pivot na tarczy (skala 0.95, żeby cały goryl zmieścił się pod daszkiem)
+    const pivot = new THREE.Group(); pivot.position.set(BX, 0.26, 0); pivot.scale.setScalar(0.95); g.add(pivot);
+    attachGorillaMachine(pivot);
+    // Pulpit: szafka i pochylony ekran z kategoriami
+    add(new RoundedBoxGeometry(0.98, 0.92, 0.6, 3, 0.05), body, PX, 0.46, 0);
+    add(new THREE.BoxGeometry(1.04, 0.06, 0.66), dark, PX, 0.95, 0.02);
+    const scr = machine.createMesh(0.96, 0.6); scr.position.set(PX, 1.3, 0.12); scr.rotation.x = -0.5; g.add(scr);
+    add(new THREE.BoxGeometry(1.06, 0.7, 0.05), dark, PX, 1.3, 0.09).rotation.x = -0.5;
+    const plight = new THREE.PointLight(0xffa860, 3, 3, 2); plight.position.set(PX, 1.9, 0.7); g.add(plight);
+    // Kolizje w układzie świata (lokalne x = świat -z): gablota z = z0 - BX, pulpit z = z0 - PX
+    addStaticBody(x0, 1.25, z0 - BX, new CANNON.Box(new CANNON.Vec3(0.5, 1.25, 0.6)), g, false);
+    addStaticBody(x0, 0.5, z0 - PX, new CANNON.Box(new CANNON.Vec3(0.3, 0.5, 0.5)), g, false);
+    addBlobAO(x0 + 0.3, z0 - BX, 1.6); addBlobAO(x0 + 0.3, z0 - PX, 1.4);
+    L.reserved.push([-13.4, 0.8, 3.3]);
 }
 
 function buildChains() {
@@ -555,7 +571,7 @@ export function update(dt, t, ctx) {
         fx.flyPos[i * 3 + 2] = c[2] + Math.cos(t * (2.6 + k * 0.29) + ph) * 0.28;
     }
     if (fx.flyN > 0) fx.flyGeo.attributes.position.needsUpdate = true;
-    if (fx.preview) fx.preview.rotation.y = t * 0.6;
+    updateGorillaMachine(dt);
     updateMannequins(dt);
     // Zadanie dzienne: stanie na szczycie spiralnych schodów
     const p = ctx.pos;
@@ -563,4 +579,4 @@ export function update(dt, t, ctx) {
 }
 
 // Po wyjściu z lobby zwykła prędkość (inne poziomy ustawiają własną)
-export function dispose() { L.moveScale = 1; }
+export function dispose() { L.moveScale = 1; detachGorillaMachine(); }
