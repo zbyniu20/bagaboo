@@ -6,7 +6,7 @@ import { THREE, tex, seg, V3 } from './engine.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP } from './config.js';
-import { makeCanvas, toTex, mkRng } from './textures.js';
+import { makeCanvas, toTex, mkRng, normalFor } from './textures.js';
 import { roleTagFor } from './config.js';
 import { rimify } from './visuals.js';
 import { extraHat, extraGlasses, extraMask, extraSleeveMat, extraGloveMat, EXTRA_SKINS, EXTRA_BADGES } from './cosmetics.js';
@@ -50,9 +50,9 @@ function furTexture() {
     const S = 256, c = makeCanvas(S, S), x = c.getContext('2d'), R = mkRng(828);
     x.fillStyle = '#b8b8b8'; x.fillRect(0, 0, S, S);
     x.lineCap = 'round';
-    for (let i = 0; i < 4200; i++) {
-        const px = R() * S, py = R() * S, len = 4 + R() * 9, a = Math.PI / 2 + (R() - 0.5) * 0.7, v = (R() * 120 + 90) | 0;
-        x.strokeStyle = 'rgba(' + v + ',' + v + ',' + v + ',' + (0.35 + R() * 0.4) + ')'; x.lineWidth = 0.8 + R() * 1.2;
+    for (let i = 0; i < 9000; i++) {   // gęste, cienkie włosy w różnych odcieniach (więcej szczegółu pod normalną)
+        const px = R() * S, py = R() * S, len = 3 + R() * 9, a = Math.PI / 2 + (R() - 0.5) * 0.7, v = (R() * 150 + 70) | 0;
+        x.strokeStyle = 'rgba(' + v + ',' + v + ',' + v + ',' + (0.3 + R() * 0.45) + ')'; x.lineWidth = 0.6 + R() * 1.1;
         x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(a) * len, py + Math.sin(a) * len); x.stroke();
     }
     return (cosTex.fur = toTex(c, true));
@@ -71,12 +71,15 @@ Object.assign(SKINS, EXTRA_SKINS);   // nowe skórki (sezonowe i za wyzwania)
 export function furColor(look) { const k = SKINS[look.skin]; return new THREE.Color(k ? k.fur : (look.color || '#3d2314')); }
 function furMat(look, shade) {
     const k = SKINS[look.skin], f = furTexture();
-    return new THREE.MeshStandardMaterial({ map: f, bumpMap: f, bumpScale: 3, color: furColor(look).multiplyScalar(shade || 1), roughness: k && k.metal ? 0.35 : 0.95, metalness: k && k.metal ? 0.65 : 0, envMapIntensity: k && k.metal ? Math.max(0.8, ENV) : ENV });
+    // Futro: normalna z tekstury włosów + aksamitny połysk (sheen) na krawędziach; metalowe skórki bez sheen
+    const fur = new THREE.MeshPhysicalMaterial({ map: f, normalMap: normalFor(f, 4), normalScale: new THREE.Vector2(1.2, 1.2), color: furColor(look).multiplyScalar(shade || 1), roughness: k && k.metal ? 0.35 : 0.9, metalness: k && k.metal ? 0.65 : 0, envMapIntensity: k && k.metal ? Math.max(0.8, ENV) : ENV });
+    if (!(k && k.metal)) { fur.sheen = 1; fur.sheenRoughness = 0.55; fur.sheenColor = new THREE.Color(0x887766); }
+    return fur;
 }
 function faceMat(look) {
     const k = SKINS[look.skin];
     if (k && k.metal && k.face) return new THREE.MeshStandardMaterial({ color: k.face, metalness: 0.9, roughness: 0.3, envMapIntensity: Math.max(0.8, ENV) });
-    return new THREE.MeshStandardMaterial({ color: k && k.face ? k.face : 0x2a2422, roughness: 0.55, bumpMap: tex.skin, bumpScale: 0.5, envMapIntensity: ENV });
+    return new THREE.MeshPhysicalMaterial({ color: k && k.face ? k.face : 0x2a2422, roughness: 0.5, normalMap: normalFor(tex.skin, 2), normalScale: new THREE.Vector2(0.8, 0.8), clearcoat: 0.25, clearcoatRoughness: 0.4, envMapIntensity: Math.max(0.6, ENV) });
 }
 function skinMaterial(look) {
     const eg = extraGloveMat(look.gloves); if (eg) return eg;
@@ -334,8 +337,8 @@ export function createHead(look, withName) {
         // Usta: ciemny owal, który otwiera się w rytm głosu (rozmowa przez mikrofon)
         const mouth = meshAt(new THREE.SphereGeometry(0.035, 14, 8), new THREE.MeshBasicMaterial({ color: 0x1a0606 }), 0, -0.085, -0.145);
         mouth.scale.set(1, 0.12, 0.35); head.add(mouth); head.userData.face.mouth = mouth;
-        const eyeMat = k.glowEyes ? new THREE.MeshBasicMaterial({ color: 0xff2a10 }) : new THREE.MeshPhysicalMaterial({ color: 0x2a160c, roughness: 0.1, clearcoat: 1 });
-        for (const s of [-1, 1]) { const e = meshAt(new THREE.SphereGeometry(0.014, 12, 8), eyeMat, s * 0.045, 0.02, -0.132); head.add(e); head.userData.face.eyes.push(e); }
+        const eyeMat = k.glowEyes ? new THREE.MeshBasicMaterial({ color: 0xff2a10 }) : new THREE.MeshPhysicalMaterial({ color: 0x2a160c, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 2.2, reflectivity: 1 });   // mokre oko: ostre odbicie otoczenia
+        for (const s of [-1, 1]) { const e = meshAt(new THREE.SphereGeometry(0.0165, 16, 12), eyeMat, s * 0.045, 0.02, -0.132); head.add(e); head.userData.face.eyes.push(e); }
     }
     head.add(buildMask(look.mask)); head.add(buildHat(look.hat)); head.add(buildGlasses(look.glasses));
     if (withName) {

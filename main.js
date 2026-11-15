@@ -4,7 +4,7 @@
 // ==========================================
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { updateDebug } from './core/debug.js';
-import { THREE, scene, camera, renderer, L, clearLevel, applyLighting } from './core/engine.js';
+import { THREE, scene, camera, renderer, L, clearLevel, applyLighting, lighting } from './core/engine.js';
 import { LIGHT_PRESETS, LIGHT_MODE } from './core/config.js';
 import * as ECO from './core/economy.js';
 import * as NETM from './core/network.js';
@@ -22,6 +22,8 @@ import { startPresence } from './core/presence.js';
 import { updateHammer } from './core/hammer.js';
 import { updateVrMenu, vrMenuTerminal } from './core/vrmenu.js';
 import { onLevelBuilt, updateVisuals } from './core/visuals.js';
+import { registerLevelLights, updateLightPool } from './core/lightpool.js';
+import { captureEnvironment } from './core/envcapture.js';
 import { isReservedNick, checkNickPassword, isStaffName } from './core/config.js';
 
 // Lista poziomów. Nowy poziom = nowy plik w folderze levels/ + wpis tutaj.
@@ -71,6 +73,10 @@ export async function loadLevel(id, spawn) {
     level.build();
     for (const e of extras) e.build();
     onLevelBuilt(cfg.light, LIGHT_PRESETS[cfg.light]);   // warstwa wizualna (odbicia, szczegół, poświaty, cząsteczki)
+    registerLevelLights(L.root);                           // pula świateł: do renderu trafia tylko K najważniejszych
+    // Prawdziwe odbicia: jednorazowe zdjęcie poziomu z miejsca startu (światła wybrane dla tego miejsca, latarka wyłączona na czas zdjęcia)
+    { const sp = L.spawn || [0, 1, 0], lampOn = lighting.headLamp.visible; updateLightPool(1, new THREE.Vector3(sp[0], sp[1], sp[2])); lighting.headLamp.visible = false;
+      const env = captureEnvironment(LIGHT_PRESETS[cfg.light]); lighting.headLamp.visible = lampOn; if (env) scene.environment = env.texture; }
     levelId = id; PAUSE.inLobby = id === 'lobby';
     setLevelMusic(id); setAmbience(id);   // dynamiczna muzyka i ambient 3D dla tego poziomu
     const sp = spawn || L.spawn;
@@ -296,7 +302,7 @@ renderer.setAnimationLoop(() => {
     vignette.material.opacity += (vt - vignette.material.opacity) * Math.min(1, dt * 6);
     vignette.visible = vignette.material.opacity > 0.02;
     updateVrMenu(started);   // menu startowe w goglach, dopóki gra się nie zacznie
-    updateVisuals(dt, t);
+    updateVisuals(dt, t); updateLightPool(dt);
     updatePointers(renderer.xr.isPresenting ? null : camera);
     updateDebug(dt);
     if (t - uiTimer > 1) { uiTimer = t; drawScoreboard(); markAllDirty(); }

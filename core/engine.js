@@ -152,9 +152,25 @@ export function addCollider(minX, minY, minZ, maxX, maxY, maxZ) {
     L.obstacles.push({ obj: null, body: null, box3: new THREE.Box3(new THREE.Vector3(minX, minY, minZ), new THREE.Vector3(maxX, maxY, maxZ)) });
 }
 // Teksturowany blok z kolizją. opts: { rough, physical, uvMeters }
+// Krawędzie bloku rysowane w fragment shaderze (wcześniej osobny LineSegments na każdy blok = podwójna liczba wywołań rysowania).
+// Punkt leży na krawędzi, gdy jest blisko dwóch ścian jednocześnie; obwódka porusza się i chowa razem z blokiem.
+function addShaderEdges(mat, w, h, d, edgeColor) {
+    const half = new THREE.Vector3(w / 2, h / 2, d / 2), col = new THREE.Color(edgeColor), op = LP.edgeOpacity;
+    mat.onBeforeCompile = (sh) => {
+        sh.uniforms.uEdgeHalf = { value: half }; sh.uniforms.uEdgeCol = { value: col }; sh.uniforms.uEdgeOp = { value: op };
+        sh.vertexShader = 'varying vec3 vEdgeP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvEdgeP = position;');
+        sh.fragmentShader = 'uniform vec3 uEdgeHalf; uniform vec3 uEdgeCol; uniform float uEdgeOp; varying vec3 vEdgeP;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+            vec3 eD = uEdgeHalf - abs(vEdgeP);
+            float e1 = 1.0 - smoothstep(0.0, 0.016, eD.x), e2 = 1.0 - smoothstep(0.0, 0.016, eD.y), e3 = 1.0 - smoothstep(0.0, 0.016, eD.z);
+            float edge = max(max(e1 * e2, e2 * e3), e1 * e3);
+            diffuseColor.rgb = mix(diffuseColor.rgb, uEdgeCol, clamp(edge * uEdgeOp * 2.0, 0.0, 0.85));`);
+    };
+    mat.customProgramCacheKey = () => 'crispEdge';
+}
 export function addCrispBlock(x, y, z, w, h, d, color, edgeColor, texture, opts) {
     texture = texture || tex.wall; opts = opts || {};
-    const params = { map: texture, bumpMap: texture, bumpScale: 1.4, color: color, roughness: 0.78, metalness: 0.15, envMapIntensity: LP.envIntensity };
+    const nm = T.normalFor(texture, 3);   // prawdziwa mapa normalnych (z jasności tekstury) zamiast bump mapy
+    const params = { map: texture, normalMap: nm, normalScale: new THREE.Vector2(1.1, 1.1), color: color, roughness: 0.78, metalness: 0.15, envMapIntensity: LP.envIntensity };
     let mat;
     if (opts.physical) { params.clearcoat = 0.5; params.clearcoatRoughness = 0.3; mat = new THREE.MeshPhysicalMaterial(params); }
     else mat = new THREE.MeshStandardMaterial(params);
@@ -163,7 +179,7 @@ export function addCrispBlock(x, y, z, w, h, d, color, edgeColor, texture, opts)
     scaleBoxUVs(geo, w, h, d, opts.uvMeters || 4);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true;
-    mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: edgeColor, transparent: true, opacity: LP.edgeOpacity })));
+    addShaderEdges(mat, w, h, d, edgeColor);   // obwódka krawędzi w shaderze: bez osobnego obiektu (połowa wywołań rysowania)
     L.root.add(mesh);
     addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)), mesh, false);
     return mesh;

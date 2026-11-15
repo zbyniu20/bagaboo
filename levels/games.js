@@ -74,7 +74,7 @@ export function build() {
     for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { fx.fillStyle = (i + j) % 2 ? '#2a2036' : '#4a3c60'; fx.fillRect(i * 32, j * 32, 32, 32); }
     const ft = T.toTex(fc, true); ft.repeat.set(10, 10);
     const floor = addCrispBlock(0, -0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0xffffff, 0x302040);
-    floor.material.map = ft; floor.material.bumpMap = null; floor.material.roughness = 0.35; floor.material.needsUpdate = true;
+    floor.material.map = ft; floor.material.normalMap = null; floor.material.roughness = 0.35; floor.material.needsUpdate = true;
     addCrispBlock(0, H + 0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x3a2e4a, 0x302040);
     for (const [x, z, w, d] of [[0, -D - 0.5, W * 2 + 2, 1], [0, D + 0.5, W * 2 + 2, 1], [-W - 0.5, 0, 1, D * 2], [W + 0.5, 0, 1, D * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x5a4a72, 0x302040);
     buildDecor();
