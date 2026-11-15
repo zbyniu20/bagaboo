@@ -8,8 +8,9 @@
 // - drobny gruz na podłodze jako InstancedMesh (jedno wywołanie rysowania)
 // Wszystko zależy od jakości grafiki: Low wyłącza najdroższe efekty, żeby gogle trzymały 72/90 kl./s.
 // ==========================================
-import { THREE, scene, camera, renderer, L, tex } from './engine.js';
+import { THREE, scene, camera, renderer, L, tex, lighting } from './engine.js';
 import { SETTINGS } from './settings.js';
+import { LIQUID_TIME } from './liquids.js';
 
 const Q = SETTINGS.quality === 'low' ? 0 : (SETTINGS.quality === 'high' ? 2 : 1);   // 0 low, 1 medium, 2 high
 const shared = { uTime: { value: 0 } };
@@ -141,7 +142,7 @@ function addHalos() {
         sp.scale.set(size, size, 1); sp.position.copy(wp); L.root.add(sp);
         let beam = null;
         // Delikatny stożek światła pod wysoko wiszącymi lampami (udawane promienie w kurzu/parze)
-        if (Q === 2 && wp.y > 3 && i < 10) {
+        if (Q >= 1 && wp.y > 3 && i < (Q === 2 ? 10 : 4)) {   // stożki światła: 4 na medium, 10 na high
             const h = Math.min(wp.y, 7);
             beam = new THREE.Mesh(new THREE.ConeGeometry(h * 0.45, h, 20, 1, true), new THREE.MeshBasicMaterial({ map: beamTex, color: l.color, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: true }));
             beam.position.set(wp.x, wp.y - h / 2, wp.z); L.root.add(beam);
@@ -216,23 +217,40 @@ export function onLevelBuilt(presetName, P) {
     if (Q > 0) L.root.traverse(o => { if (o.isMesh && o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(addDetail); });
     for (const b of L.throwables) rimify(b, 0x9fe0ff, 0.9, 0.35);                                 // kule do rzucania
     for (const r of L.ropes) rimify(r.mesh, 0xffd090, 0.6, 0.35);                                  // liny
-    fx = { mood: mood, halos: addHalos(), motes: buildMotes(mood), mist: buildMist(mood) };
+    fx = { mood: mood, halos: addHalos(), motes: buildMotes(mood), mist: buildMist(mood), beam: buildFlashBeam(P), beamBase: P.flashlight ? P.flashlight.intensity : 1 };
     scatterDebris();
+}
+// Widoczna wiązka latarki: pusty stożek od głowy w stronę patrzenia. Shader rozjaśnia go przy krawędziach (jak światło w kurzu i mgle),
+// środek zostaje przezroczysty, więc nie zasłania widoku. Jasność idzie za mocą latarki (blackouty ją gaszą).
+function buildFlashBeam(P) {
+    if (!P.flashlight || Q === 0) return null;
+    const F = P.flashlight, len = 14, r = Math.tan(F.angle) * len;
+    const geo = new THREE.ConeGeometry(r, len, 28, 1, true); geo.translate(0, -len / 2, 0); geo.rotateX(Math.PI / 2);   // wierzchołek w głowie, otwarty ku -Z
+    const mat = new THREE.ShaderMaterial({
+        transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+        uniforms: { uCol: { value: new THREE.Color(F.color) }, uOp: { value: 0 } },
+        vertexShader: 'varying vec3 vN; varying vec3 vV; void main(){ vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+        fragmentShader: 'uniform vec3 uCol; uniform float uOp; varying vec3 vN; varying vec3 vV; void main(){ float d = abs(dot(normalize(vN), normalize(vV))); float a = pow(1.0 - d, 1.6) * uOp; gl_FragColor = vec4(uCol * a, a); }'
+    });
+    const m = new THREE.Mesh(geo, mat); m.frustumCulled = false; m.renderOrder = 4; m.position.set(0, -0.12, -0.1); camera.add(m);
+    return m;
 }
 function disposeFx() {
     if (!fx) return;
+    if (fx.beam) { camera.remove(fx.beam); fx.beam.geometry.dispose(); fx.beam.material.dispose(); }
     if (fx.motes) { scene.remove(fx.motes.pts); fx.motes.pts.geometry.dispose(); fx.motes.pts.material.dispose(); }
     if (fx.mist) for (const l of fx.mist) { scene.remove(l.m); l.m.geometry.dispose(); l.m.material.dispose(); l.t.dispose(); }
     fx = null;
 }
 const _cam = new THREE.Vector3();
 export function updateVisuals(dt, t) {
-    shared.uTime.value = t;
+    shared.uTime.value = t; LIQUID_TIME.value = t;
     if (!fx) return;
+    if (fx.beam) fx.beam.material.uniforms.uOp.value = 0.3 * Math.max(0, Math.min(1.2, lighting.headLamp.intensity / fx.beamBase)) * (lighting.headLamp.visible ? 1 : 0);
     camera.getWorldPosition(_cam);
     // Poświaty idą za jasnością lampy (migotanie, gaśnięcie)
     for (const h of fx.halos) {
-        const k = Math.max(0, Math.min(1.5, h.l.intensity / h.base)) * (h.l.visible ? 1 : 0);
+        const k = Math.max(0, Math.min(1.5, h.l.intensity / h.base)) * (h.l.visible || h.l.userData.pooledSrc ? 1 : 0);
         h.sp.material.opacity = 0.35 * k; if (h.beam) h.beam.material.opacity = 0.07 * k;
     }
     // Cząsteczki krążą w sześcianie wokół gracza (zawijają się, więc zawsze są blisko)

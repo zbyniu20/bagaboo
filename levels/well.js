@@ -13,6 +13,7 @@ import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { levelReward, recordTime, unlockAchievement, diffOf, isDaily, dailyDate } from '../core/economy.js';
 import { createGhost } from '../core/runkit.js';
+import { makeOozeMaterial } from '../core/liquids.js';
 import { toast } from '../core/terminal.js';
 import { hands, setPlayerPosition } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -214,7 +215,7 @@ function buildLobbyDoor() {
 // Maź z rękami
 function buildOoze() {
     const geo = new THREE.PlaneGeometry(HS * 2, HS * 2, 24, 24); geo.rotateX(-Math.PI / 2);
-    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x030303, roughness: 0.04, metalness: 0.4, emissive: 0x140004 }));
+    const mesh = new THREE.Mesh(geo, makeOozeMaterial());
     L.root.add(mesh);
     const armMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.08, metalness: 0.3 }), arms = [];
     for (let i = 0; i < 4; i++) {

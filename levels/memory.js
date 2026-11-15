@@ -9,10 +9,12 @@
 // ==========================================
 import { THREE, L, tex, camera, addCrispBlock, lighting } from '../core/engine.js';
 import * as T from '../core/textures.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { levelReward, recordTime, diffOf, isDaily, dailyDate } from '../core/economy.js';
 import { createGhost } from '../core/runkit.js';
 import { toast } from '../core/terminal.js';
 import { createEvents } from '../core/events.js';
+import { makeLavaMaterial } from '../core/liquids.js';
 import { hands, releaseAll, setPlayerPosition } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
@@ -98,7 +100,7 @@ function lavaTexture() {
 }
 function buildLava() {
     const t = lavaTexture(); t.repeat.set(3, 9);
-    const mat = new THREE.MeshStandardMaterial({ map: t, emissiveMap: t, emissive: 0xff4a08, emissiveIntensity: 1.4, roughness: 0.6 });
+    const mat = makeLavaMaterial(t, { emissive: 0xff4a08, intensity: 1.4 });   // płynąca lawa (core/liquids.js)
     const len = POOL_L, m = new THREE.Mesh(new THREE.PlaneGeometry(20, len), mat);
     m.rotation.x = -Math.PI / 2; m.position.set(0, LAVA_Y, POOL_C); L.root.add(m);
     S.lava = { tex: t, mat: mat };
@@ -136,25 +138,44 @@ function buildTrack(R) {
         S.rows.push(row);
     }
 }
-// Wystrój: czaszki na kolcach, klatki ze szkieletami, łańcuchy, kosze z ogniem, popękane ściany
+// Wystrój: czaszki na kolcach, klatki ze szkieletami, kosze z ogniem, popękane ściany.
+// Scalone w kilka dużych obiektów (kolce i czaszki to InstancedMesh, klatki to 3 siatki każda), żeby poziom nie miał setek wywołań rysowania.
+function colorize(geo, r, g, b) { const n = geo.attributes.position.count, c = new Float32Array(n * 3); for (let i = 0; i < n; i++) { c[i * 3] = r; c[i * 3 + 1] = g; c[i * 3 + 2] = b; } geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); return geo; }
+function skullGeometry() {   // czaszka jako jedna geometria (kość i ciemne oczodoły w kolorach wierzchołków)
+    const head = new THREE.SphereGeometry(0.16, 12, 10); head.scale(1, 1.1, 1.05); colorize(head, 0.85, 0.8, 0.69);
+    const jaw = new THREE.BoxGeometry(0.18, 0.06, 0.14); jaw.translate(0, -0.14, 0.04); colorize(jaw, 0.85, 0.8, 0.69);
+    const parts = [head, jaw];
+    for (const sx of [-1, 1]) { const e = new THREE.SphereGeometry(0.045, 8, 6); e.translate(sx * 0.06, 0.02, 0.13); colorize(e, 0.03, 0.03, 0.03); parts.push(e); }
+    return mergeGeometries(parts);
+}
 function buildDecor(R) {
     const bone = new THREE.MeshStandardMaterial({ color: 0xd8ccb0, roughness: 0.7 }), iron = new THREE.MeshStandardMaterial({ color: 0x2a2626, metalness: 0.8, roughness: 0.5 });
-    const skull = () => { const g = new THREE.Group(); const h = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), bone); h.scale.set(1, 1.1, 1.05); g.add(h); const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.14), bone); jaw.position.set(0, -0.14, 0.04); g.add(jaw); for (const sx of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), new THREE.MeshBasicMaterial({ color: 0x080202 })); e.position.set(sx * 0.06, 0.02, 0.13); g.add(e); } return g; };
-    // Kolce z czaszkami wzdłuż brzegów basenu
-    for (let z = 3; z > BACK_Z + 1; z -= 3.5) for (const s of [-1, 1]) {
-        const x = s * (8.5 + R() * 0.8), spike = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.06, 3, 6), iron); spike.position.set(x, 1.5, z); L.root.add(spike);
-        const sk = skull(); sk.position.set(x, 3.1, z); sk.rotation.y = -s * Math.PI / 2 + (R() - 0.5); L.root.add(sk);
-    }
-    // Wiszące klatki ze szkieletami nad lawą
+    const skullMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 }), skullGeo = skullGeometry();
+    // Kolce z czaszkami wzdłuż brzegów basenu (InstancedMesh: jedno wywołanie na kolce, jedno na czaszki)
+    const spots = [];
+    for (let z = 3; z > BACK_Z + 1; z -= 3.5) for (const sd of [-1, 1]) spots.push([sd * (8.5 + R() * 0.8), z, sd, R()]);
+    const spikes = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.02, 0.06, 3, 6), iron, spots.length), skulls = new THREE.InstancedMesh(skullGeo, skullMat, spots.length);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), one = new THREE.Vector3(1, 1, 1);
+    spots.forEach((p, i) => {
+        spikes.setMatrixAt(i, m4.compose(new THREE.Vector3(p[0], 1.5, p[1]), q.identity(), one));
+        e.set(0, -p[2] * Math.PI / 2 + (p[3] - 0.5), 0); q.setFromEuler(e); skulls.setMatrixAt(i, m4.compose(new THREE.Vector3(p[0], 3.1, p[1]), q, one));
+    });
+    spikes.castShadow = skulls.castShadow = false; L.root.add(spikes); L.root.add(skulls);
+    // Wiszące klatki ze szkieletami nad lawą: pręty, obręcze i łańcuch w jednej siatce, czaszka i żebra osobno
     for (let i = 0; i < 6; i++) {
-        const g = new THREE.Group(), x = (R() < 0.5 ? -1 : 1) * (4 + R() * 4), z = -4 - i * 7.5, y = 6 + R() * 3;
-        for (let k = 0; k < 8; k++) { const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.6, 4), iron); const a = k / 8 * Math.PI * 2; bar.position.set(Math.cos(a) * 0.45, 0, Math.sin(a) * 0.45); g.add(bar); }
-        for (const yy of [-0.8, 0.8]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.02, 6, 20), iron); ring.rotation.x = Math.PI / 2; ring.position.y = yy; g.add(ring); }
-        const sk = skull(); sk.position.set(0, -0.55, 0); g.add(sk);
+        const g = new THREE.Group(), x = (R() < 0.5 ? -1 : 1) * (4 + R() * 4), z = -4 - i * 7.5, y = 6 + R() * 3, parts = [];
+        for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, bar = new THREE.CylinderGeometry(0.015, 0.015, 1.6, 4); bar.translate(Math.cos(a) * 0.45, 0, Math.sin(a) * 0.45); parts.push(bar); }
+        for (const yy of [-0.8, 0.8]) { const ring = new THREE.TorusGeometry(0.45, 0.02, 6, 20); ring.rotateX(Math.PI / 2); ring.translate(0, yy, 0); parts.push(ring); }
+        const cl = 14 - y - 0.8, chain = new THREE.CylinderGeometry(0.02, 0.02, cl, 4); chain.translate(0, cl / 2 + 0.8, 0); parts.push(chain);
+        g.add(new THREE.Mesh(mergeGeometries(parts), iron));
+        const sk = new THREE.Mesh(skullGeo, skullMat); sk.position.set(0, -0.55, 0); g.add(sk);
         const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.08, 0.5, 6, 1, true), bone); rib.position.y = -0.3; g.add(rib);
-        const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 14 - y - 0.8, 4), iron); chain.position.y = (14 - y - 0.8) / 2 + 0.8; g.add(chain);
         g.position.set(x, y, z); L.root.add(g); S.flick.push({ cage: g, ph: R() * 6 });
     }
+    // Stalaktyty: 70 stożków scalonych w jedną siatkę
+    const st = new THREE.MeshStandardMaterial({ color: 0x241612, roughness: 0.9 }), cones = [];
+    for (let i = 0; i < 70; i++) { const h = 1 + R() * 3.5, c = new THREE.ConeGeometry(0.15 + R() * 0.4, h, 6); c.rotateX(Math.PI); c.translate((R() * 2 - 1) * 9.5, 14 - h / 2, 8 - R() * POOL_L); cones.push(c); }
+    L.root.add(new THREE.Mesh(mergeGeometries(cones), st));
     // Kosze z ogniem na lądzie (migoczące światła)
     for (const [x, z] of [[-8, 5], [8, 5], [-8, BACK_Z + 2], [8, BACK_Z + 2]]) {
         const b = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.2, 0.6, 10), iron); b.position.set(x, TOP + 0.3, z); L.root.add(b);

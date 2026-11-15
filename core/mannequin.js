@@ -4,9 +4,11 @@
 import { THREE, tex, place, seg, V3, UNIT_SPHERE, UNIT_BOX } from './engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP } from './config.js';
+import { normalFor } from './textures.js';
 
 const ENV = LP.envIntensity;
-const plasterMat = new THREE.MeshStandardMaterial({ map: tex.plaster, bumpMap: tex.plaster, bumpScale: 0.7, color: 0xd8d0c2, roughness: 0.55, envMapIntensity: ENV });
+// Gips jak porcelana: normalna z tekstury (pęknięcia, ziarno), lekko lakierowana powierzchnia łapie odbicia latarki i lamp
+const plasterMat = new THREE.MeshPhysicalMaterial({ map: tex.plaster, normalMap: normalFor(tex.plaster, 3), normalScale: new THREE.Vector2(0.9, 0.9), color: 0xd8d0c2, roughness: 0.42, clearcoat: 0.55, clearcoatRoughness: 0.4, envMapIntensity: Math.max(0.5, ENV) });
 const darkJoint = new THREE.MeshStandardMaterial({ color: 0x101012, roughness: 0.4, metalness: 0.6, envMapIntensity: ENV });
 const voidMat = new THREE.MeshBasicMaterial({ color: 0x000000 }), eyeGlowMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
 const ARM_POSES = [

@@ -84,7 +84,7 @@ function buildArena() {
     const wt = T.toTex(wc, false);
     for (const z of [-20, -7, 6]) {
         const car = addCrispBlock(-4, 1.9, z, 3.2, 3.4, 12, 0xffffff, 0x0a1018);
-        car.material.map = wt; car.material.needsUpdate = true;
+        car.material.map = wt; car.material.normalMap = null; car.material.needsUpdate = true;
         addCrispBlock(-4, 3.65, z, 3.0, 0.15, 11.6, 0x3a3a40, 0x0a1018);
     }
     // Kładka nad torami ze schodami na obu peronach

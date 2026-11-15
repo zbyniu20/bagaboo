@@ -19,6 +19,31 @@ export function toTex(c, repeat) {
     if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; }
     return t;
 }
+// Mapa normalnych z jasności tekstury koloru (filtr Sobela po sąsiednich pikselach, z zawijaniem krawędzi).
+// Ściany, podłogi i drewno dostają prawdziwy relief (wyraźne spoiny, pęknięcia, słoje) zamiast przybliżenia z bump mapy. Liczone raz na teksturę.
+const normalCache = new WeakMap();
+export function normalFor(texture, strength) {
+    if (!texture || !texture.image || !texture.image.width) return null;
+    if (normalCache.has(texture)) return normalCache.get(texture);
+    const src = texture.image, w = src.width, h = src.height, k = strength || 3;
+    const c = makeCanvas(w, h), x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(src, 0, 0);
+    const img = x.getImageData(0, 0, w, h), d = img.data, hg = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) hg[i] = (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255;
+    for (let j = 0; j < h; j++) {
+        const jm = ((j - 1 + h) % h) * w, jp = ((j + 1) % h) * w, jc = j * w;
+        for (let i = 0; i < w; i++) {
+            const im = (i - 1 + w) % w, ip = (i + 1) % w;
+            const nx = -(hg[jc + ip] - hg[jc + im]) * k, ny = (hg[jp + i] - hg[jm + i]) * k, inv = 1 / Math.sqrt(nx * nx + ny * ny + 1), o = (jc + i) * 4;
+            d[o] = (nx * inv * 0.5 + 0.5) * 255; d[o + 1] = (ny * inv * 0.5 + 0.5) * 255; d[o + 2] = (inv * 0.5 + 0.5) * 255; d[o + 3] = 255;
+        }
+    }
+    x.putImageData(img, 0, 0);
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = texture.wrapS; t.wrapT = texture.wrapT; t.anisotropy = 8; t.repeat.copy(texture.repeat); t.offset.copy(texture.offset);
+    normalCache.set(texture, t);
+    return t;
+}
 export function radial(ctx, x, y, r, c0, c1) {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, c0); g.addColorStop(1, c1);

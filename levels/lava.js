@@ -9,6 +9,7 @@ import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { levelReward, recordTime, unlockAchievement } from '../core/economy.js';
 import { createGhost } from '../core/runkit.js';
+import { makeLavaMaterial } from '../core/liquids.js';
 import { toast } from '../core/terminal.js';
 import { hands, setPlayerPosition, releaseAll } from '../core/player.js';
 import * as SFX from '../core/audio.js';
@@ -89,7 +90,7 @@ function lavaTexture() {
 }
 function buildLava() {
     const t = lavaTexture(); t.repeat.set(3, 9);
-    const mat = new THREE.MeshStandardMaterial({ map: t, emissiveMap: t, emissive: 0xff5a10, emissiveIntensity: 1.3, roughness: 0.6 });
+    const mat = makeLavaMaterial(t, { emissive: 0xff5a10, intensity: 1.3 });   // płynąca lawa (core/liquids.js)
     const m = new THREE.Mesh(new THREE.PlaneGeometry(20, 67), mat); m.rotation.x = -Math.PI / 2; m.position.set(0, LAVA_Y, -28.5); L.root.add(m);
     S.lava = { mesh: m, tex: t, mat: mat };
 }

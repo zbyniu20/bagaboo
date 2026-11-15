@@ -50,7 +50,21 @@ export function build() {
 }
 
 // ---------- BUDOWA ----------
+// Niebo: półkula z gwiazdami, księżycem z poświatą i smugami chmur (tekstura rysowana na canvasie, bez mgły i bez zapisu głębi)
+function buildSky() {
+    const c = T.makeCanvas(2048, 1024), x = c.getContext('2d'), R = T.mkRng(31);
+    const g = x.createLinearGradient(0, 0, 0, 1024); g.addColorStop(0, '#02040a'); g.addColorStop(0.42, '#0b1424'); g.addColorStop(0.5, '#27364a'); g.addColorStop(0.56, '#0a1018'); g.addColorStop(1, '#04070b');
+    x.fillStyle = g; x.fillRect(0, 0, 2048, 1024);
+    for (let i = 0; i < 1500; i++) { const y = Math.pow(R(), 1.6) * 470, a = 0.3 + R() * 0.7; x.fillStyle = 'rgba(' + (200 + R() * 55 | 0) + ',' + (210 + R() * 45 | 0) + ',255,' + a + ')'; const r = R() < 0.06 ? 2.2 : 1.1; x.beginPath(); x.arc(R() * 2048, y, r, 0, 7); x.fill(); }
+    for (let i = 0; i < 16; i++) { const px = R() * 2048, py = 200 + R() * 220, rx = 140 + R() * 260, ry = 14 + R() * 26, gr = x.createRadialGradient(px, py, 0, px, py, rx); gr.addColorStop(0, 'rgba(120,140,170,0.20)'); gr.addColorStop(1, 'rgba(120,140,170,0)'); x.save(); x.translate(px, py); x.scale(1, ry / rx); x.translate(-px, -py); x.fillStyle = gr; x.beginPath(); x.arc(px, py, rx, 0, 7); x.fill(); x.restore(); }
+    const mg = x.createRadialGradient(1500, 250, 0, 1500, 250, 190); mg.addColorStop(0, 'rgba(210,225,255,0.55)'); mg.addColorStop(0.25, 'rgba(160,185,235,0.25)'); mg.addColorStop(1, 'rgba(120,150,210,0)');
+    x.fillStyle = mg; x.beginPath(); x.arc(1500, 250, 190, 0, 7); x.fill();
+    x.fillStyle = '#f4f8ff'; x.beginPath(); x.arc(1500, 250, 46, 0, 7); x.fill(); x.fillStyle = 'rgba(160,175,205,0.45)'; for (const [dx, dy, r] of [[-14, -10, 11], [12, 8, 9], [-6, 18, 7]]) { x.beginPath(); x.arc(1500 + dx, 250 + dy, r, 0, 7); x.fill(); }
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(220, 32, 16), new THREE.MeshBasicMaterial({ map: T.toTex(c, false), side: THREE.BackSide, fog: false, depthWrite: false, toneMapped: false }));
+    dome.position.set(0, 0, (Z0 + Z1) / 2); dome.renderOrder = -50; L.root.add(dome);
+}
 function buildYard() {
+    buildSky();
     addCrispBlock(0, -0.5, (Z0 + Z1) / 2, X * 2 + 2, 1, Z0 - Z1 + 2, 0x3a4a3a, 0x0a100a, tex.floor, { rough: tex.floorRough });
     const stone = 0x6a7270;
     for (const s of [-1, 1]) addCrispBlock(s * (X + 0.3), 1.6, (Z0 + Z1) / 2, 0.6, 3.2, Z0 - Z1 + 1, stone, 0x101414, tex.wall);
