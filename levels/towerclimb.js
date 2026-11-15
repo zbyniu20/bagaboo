@@ -72,7 +72,7 @@ const mode = createRaceMode({
         S.ooze = OOZE.start; S.oozeDrop = 0;
         const moon = new THREE.PointLight(0xa8c8ff, 40, 34, 1.6); moon.position.set(0, TOP + 2, 0); L.root.add(moon);
         for (let ly = 6; ly < TOP; ly += 9) { const l = new THREE.PointLight(0x9affc0, 12, 12, 2); l.position.set(0, ly, 0); L.root.add(l); }
-        return { finish: (p) => p.y > TOP - 0.3 && p.z < -HS + 2.4 };
+        return { finish: (p) => p.y > TOP - 0.3 && p.z < -HS + 2.4, exit: { x: -HS + 0.03, y: TOP, z: -HS + 1.0, rotY: Math.PI / 2 } };   // drzwi EXIT na zachodniej ścianie przy mecie
     },
     onReset(S) { S.oozeDrop = 0; S.ooze = OOZE.start; if (S.oozeMesh) S.oozeMesh.position.y = OOZE.start; },
     frame(S, dt, p, ctx) {

@@ -98,6 +98,9 @@ function buildCourse() {
     const padZ = bz - 7 - 1.0 - 3.5;
     slab(0, top, padZ, 8, 7, 0x6a5a2a, 0xffd23a);
     S.finish = { z: padZ + 3.0, top: top };
+    // Wyjście za metą: ścianka na tylnej krawędzi platformy mety i drzwi EXIT do salonu Games
+    addCrispBlock(0, top + 2, padZ - 3.7, 3.4, 4, 0.4, 0x3a3248, 0x302040);
+    buildDoor({ x: 0, y: top, z: padZ - 3.47, rotY: 0, label: 'EXIT', color: '#70ff90', glow: 0x60ff90, wood: 0x3a4a3a, light: true, portal: { target: 'games', spawn: ARRIVAL_FROM_RACE, onEnter: () => toast('Back to BagaBoo Games') } });
     // Brama mety: dwa słupy i belka z napisem
     const FINISH_Z = padZ + 1.5;
     for (const s of [-1, 1]) addCrispBlock(s * 3.6, top + 2.2, FINISH_Z - 1.5, 0.5, 4.4, 0.5, 0xffd23a, 0x302040);

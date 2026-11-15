@@ -36,6 +36,8 @@ export function build() {
     S.eyes = [-1, 1].map(sx => { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })); e.scale.set(0.18, 0.18, 1); e.position.set(sx * 0.04, 0.152, 0.11); d.head.add(e); return e; });
     S.doll = d; S.dollYaw = Math.PI;
     d.group.rotation.y = Math.PI;
+    // Wyjście za metą: drzwi EXIT w tylnej ścianie hali (z boku, bo na środku stoi podest lalki)
+    buildDoor({ x: 9, z: Z1 + 0.03, rotY: 0, label: 'EXIT', color: '#70ff90', glow: 0x60ff90, wood: 0x3a4a3a, light: true, portal: { target: 'games', spawn: ARRIVAL_FROM_REDLIGHT, onEnter: () => toast('Back to BagaBoo Games') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 760, 1.0, 0.594, -0.04, -1.05, 995); S.intro.last = -1;
     N.onLevelMsg(onNet);

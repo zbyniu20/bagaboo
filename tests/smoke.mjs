@@ -150,6 +150,30 @@ const data = await run(`
 `);
 if (data.length) data.forEach((m) => fail('data: ' + m)); else ok('data: achievements, catalog and emote poses consistent');
 
+// ---- level registry (core/registry.js): the single list of levels must agree with files, index.html, economy and lighting ----
+phase = 'registry';
+const reg = await run(`
+    const R = await import('./core/registry.js'), E = await import('./core/economy.js'), C = await import('./core/config.js');
+    const bad = [], ids = new Set(), ach = new Set(E.ACHIEVEMENTS.map(a => a.id)), recIds = new Set(E.RECORDS.map(r => r.id));
+    for (const d of R.LEVEL_DEFS) {
+        if (ids.has(d.id)) bad.push('duplicate id ' + d.id); ids.add(d.id);
+        if (d.kind === 'virtual') continue;
+        if (d.light !== '@mode' && !C.LIGHT_PRESETS[d.light]) bad.push(d.id + ': unknown light preset ' + d.light);
+        if (d.diff && !ach.has('nm_' + d.id)) bad.push(d.id + ': difficulty level without nm_' + d.id + ' achievement');
+        if (d.rec && !recIds.has(d.id)) bad.push(d.id + ': missing record entry');
+    }
+    if (E.DIFF_LEVELS.length !== R.DIFF_LEVEL_IDS.length) bad.push('DIFF_LEVELS out of sync');
+    return { bad: bad, paths: R.LEVEL_DEFS.filter(d => d.kind !== 'virtual').map(d => R.levelPath(d)) };
+`);
+reg.bad.forEach((m) => fail('registry: ' + m));
+const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'), listed = new Set((html.match(/var FILES = \[(.*?)\]/s) || ['', ''])[1].match(/"[^"]+"/g)?.map(x => x.slice(1, -1)) || []);
+const missing = [];
+for (const dir of ['core', 'levels']) for (const f of fs.readdirSync(path.join(ROOT, dir))) if (f.endsWith('.js') && !listed.has(dir + '/' + f)) missing.push(dir + '/' + f);
+for (const f of listed) if (!fs.existsSync(path.join(ROOT, f))) missing.push('FILES lists missing file ' + f);
+for (const pth of reg.paths) if (!fs.existsSync(path.join(ROOT, pth))) missing.push('registry path missing ' + pth);
+missing.forEach((m) => fail('registry/index.html: ' + m));
+if (!reg.bad.length && !missing.length) ok('registry: levels, files, index.html FILES, records and Nightmare achievements agree');
+
 // ---- levels ----
 for (const lv of LEVELS) {
     phase = lv;

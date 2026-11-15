@@ -85,7 +85,10 @@ const mode = createRaceMode({
         g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(96, 32, 320, 64); g.fillStyle = '#ffffff'; g.font = 'bold 52px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('FINISH', 256, 66);
         const banner = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 1.8), new THREE.MeshBasicMaterial({ map: T.toTex(fc, false), toneMapped: false, side: THREE.DoubleSide })); banner.position.set(px, PY + 4.6, fz); L.root.add(banner);
         S.finishZ = finishZ + 1.6;
-        return { finish: (p) => p.z < S.finishZ && p.y > PY - 1 };
+        // Wyjście za metą: ścianka na tylnej krawędzi ostatniej platformy i drzwi EXIT do salonu Games
+        const backZ = finishZ - 4;
+        addCrispBlock(px, PY + 2, backZ - 0.2, 3.4, 4, 0.4, 0x3a3248, 0x302040);
+        return { finish: (p) => p.z < S.finishZ && p.y > PY - 1, exit: { x: px, y: PY, z: backZ + 0.03, rotY: 0 } };
     },
     frame(S, dt, p) { S.extra = 'Station ' + Math.min(STATIONS, Math.max(1, Math.floor((START_Z[0] - p.z) / 14.5) + 1)) + ' of ' + STATIONS; return null; }
 });
