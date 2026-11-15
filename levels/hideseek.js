@@ -12,6 +12,7 @@ import { levelReward } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import { hands, setPlayerPosition } from '../core/player.js';
 import * as N from '../core/network.js';
+import { TAGS } from '../core/avatar.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { createEvents } from '../core/events.js';
@@ -31,6 +32,7 @@ const _p = new THREE.Vector3(), _q = new THREE.Vector3();
 const WAYPOINTS = [];   // punkty patrolu bota w alejkach (wypełniane przy budowie)
 
 export function build() {
+    TAGS.hidden = true;   // nazwy graczy nie mogą świecić przez ściany: inaczej widać, gdzie kto się chowa
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -A + 0.4, maxX: A - 0.4, minZ: -A + 0.4, maxZ: A - 0.4, maxY: H - 0.4 };
     S = { ev: createEvents('hideseek'), clock: 0, phase: 'wait', t: WAIT, seeker: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, bot: null, step: -1 };
@@ -274,6 +276,7 @@ function drawHud() {
     S.hud.update();
 }
 export function dispose() {
+    TAGS.hidden = false;
     if (S) { S.ev.dispose(); S.scare.dispose(); S.hud.dispose(); S.intro.dispose(); camera.remove(S.blind); }
     N.onLevelMsg(null);
     S = null;

@@ -14,6 +14,7 @@ export const LOGIN_INTERVAL = 6 * 3600 * 1000;      // nagroda za logowanie co 6
 const STREAK_WINDOW = 30 * 3600 * 1000;              // seria trwa, jeśli wrócisz w ciągu 30 godzin
 export const QUEST_ALL_BONUS = 150;                  // premia za wykonanie wszystkich 3 zadań dnia
 export const START_BONES = 150;
+export const STAFF_BONUS = 10000;                // jednorazowa premia dla ekipy (admin, moderator)
 export const CURRENCY = 'Bagabucks';
 export const REPEAT_LIMIT = 3;                       // ile powtórnych przejść poziomu dziennie daje nagrodę
 
@@ -436,6 +437,8 @@ export function setProfile(p) { Object.assign(SAVE.profile, p); refreshStaffItem
 export function refreshStaffItems() {
     // Ekipa (admin, moderator) nigdy nie jest CHEATEREM: skórka z błędnego włamania jest zdejmowana
     if (SAVE.cheater && isStaffName(SAVE.profile.name)) { SAVE.cheater = false; const i = SAVE.owned.indexOf('skin:cheater'); if (i >= 0) SAVE.owned.splice(i, 1); if (SAVE.equipped.skin === 'cheater') SAVE.equipped.skin = 'none'; }
+    // Premia dla ekipy: jednorazowo 10000 Bagabucks na każdy zapis, gdy gra jest uruchomiona z nickiem ekipy (admin lub moderator)
+    if (isStaffName(SAVE.profile.name) && !SAVE.staffBonus10k) { SAVE.staffBonus10k = true; addBones(STAFF_BONUS, 'staff bonus'); }
     const n = SAVE.profile.name, give = (key, on) => { const has = SAVE.owned.includes(key); if (on && !has) SAVE.owned.push(key); if (!on && has) SAVE.owned.splice(SAVE.owned.indexOf(key), 1); };
     if ((isOwnerName(n) || isUltimateName(n)) && !SAVE.owned.includes('tool:ban')) SAVE.owned.push('tool:ban');   // Ban hammer za darmo dla właściciela i ultimate admina
     give('badge:owner', isOwnerName(n)); give('badge:coadmin', isCoAdminName(n)); give('badge:ultimate', isUltimateName(n)); give('badge:admin', isAdminName(n)); give('badge:mod', isModName(n) && !isAdminName(n)); give('tool:kick', isStaffName(n));

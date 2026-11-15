@@ -25,6 +25,7 @@ let S = null;
 export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -A + 0.4, maxX: A - 0.4, minZ: -A + 0.4, maxZ: A - 0.4, maxY: H - 0.4 };
+    L.floorY = -40;   // pod płytkami jest przepaść: bez tego gracza trzymała globalna podłoga i nigdy nie spadał
     S = { clock: 0, phase: 'wait', t: N.NET.mode === 'solo' ? SOLO_WAIT : WAIT, rt: 0, rtNet: 0, seed: 1, order: [], fall: [], alive: new Set(), out: new Set(), solo: true, winner: null, iAmOut: false, lastHostMsg: -10, netT: 0, hudT: 0, introT: 10, rewarded: false, tiles: [], survived: 0, lastTick: -1 };
     buildHall();
     buildTiles();

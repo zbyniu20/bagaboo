@@ -99,7 +99,7 @@ export function clearLevel() {
     for (const c of L.constraints) world.removeConstraint(c);
     for (const b of L.bodies) world.removeBody(b);
     for (const k of ['obstacles', 'trampolines', 'ropes', 'throwables', 'bodies', 'constraints', 'reserved', 'portals']) L[k].length = 0;
-    L.tramp = null; L.heldId = null;
+    L.tramp = null; L.heldId = null; L.floorY = undefined;
     L.bounds = { minX: -14.6, maxX: 14.6, minZ: -14.6, maxZ: 14.6, maxY: 19.6 };
     // Zwolnienie pamięci karty graficznej po starym poziomie
     L.root.traverse((o) => {

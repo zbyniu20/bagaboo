@@ -409,6 +409,7 @@ export function createHead(look, withName) {
     head.add(buildMask(look.mask)); head.add(buildHat(look.hat)); head.add(buildGlasses(look.glasses));
     if (withName) {
         const tag = createNameSprite(String(look.name || 'Player').slice(0, 16)); tag.position.set(0, 0.5, 0); tag.scale.set(0.72, 0.18, 1); head.add(tag);
+        head.userData.tags = [tag];   // napisy nad głową: tryby ukrywania (Hide and Seek) wyłączają je przez TAGS.hidden
         addRoleTag(head, look);
     }
     return head;
@@ -590,10 +591,13 @@ export function roleLabel(text, color, glow) {
     return sp;
 }
 // Napis z rolą (OWNER, ULTIMATE ADMIN, CO-ADMIN, ADMIN, MODERATOR) nad nickiem, chyba że gracz go ukrył
+// Poziomy z ukrywaniem (Hide and Seek) ustawiają hidden = true: nazwy graczy nie świecą wtedy przez ściany
+export const TAGS = { hidden: false };
 export function addRoleTag(head, look) {
     const r = look.cheater ? { text: 'CHEATER', color: '#ff2a2a', glow: '#ff0000' } : roleTagFor(look.name);   // napisu CHEATER nie da się ukryć
     if (!r || (look.hideTag && !look.cheater)) return null;
     const lab = roleLabel(r.text, r.color, r.glow); lab.position.set(0, 0.67, 0); head.add(lab);
+    (head.userData.tags = head.userData.tags || []).push(lab);
     return lab;
 }
 export const ULTIMATE_SCALE = 2;
