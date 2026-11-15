@@ -18,6 +18,7 @@ const DEFS = {
     lava: { loops: [['crackle', [[0, 1, -8], [0, 1, -24], [0, 1, -40], [0, 1, -56]]]], rand: [{ t: 'thud', e: [9, 18], d: [10, 25], v: 0.28 }] },
     hospital: { loops: [['hum', [[0, 3.2, -4], [0, 3.2, -13], [0, 3.2, -22], [0, 3.2, -31], [0, 3.2, -40]]]], rand: [{ t: 'drip', e: [3, 8], d: [3, 9], v: 0.25 }, { t: 'bang', e: [18, 40], d: [18, 30], v: 0.3 }, { t: 'creak', e: [10, 22], d: [6, 16], v: 0.15 }] },
     cemetery: { loops: [['wind', null]], rand: [{ t: 'owl', e: [12, 25], d: [18, 34], v: 0.3 }, { t: 'bell', e: [30, 55], d: [25, 40], v: 0.35 }] },
+    catacombs: { loops: [['wind', null]], rand: [{ t: 'drip', e: [2, 5], d: [3, 12], v: 0.3 }, { t: 'creak', e: [6, 13], d: [8, 20], v: 0.2 }, { t: 'whisper', e: [18, 40], d: [3, 9], v: 0.45 }, { t: 'thud', e: [14, 30], d: [12, 28], v: 0.3 }] },
     games: { rand: [{ t: 'blip', e: [0.5, 1.8], d: [4, 22], v: 0.16 }] }
 };
 let cur = null, loops = [], timers = [], pending = true;

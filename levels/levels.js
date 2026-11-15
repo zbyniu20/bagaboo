@@ -1,6 +1,6 @@
 // ==========================================
 // POKÓJ "LEVELS": wybór poziomów drzwiami
-// The Maze, Absolute Silence, The Well, The Industrial Laundromat i Burning Memory. Drzwi LOBBY wracają do lobby.
+// The Maze, Silence, The Well, Laundromat, Burning Memory, Hospital, Cemetery i Catacombs. Drzwi LOBBY wracają do lobby.
 // Przy każdych drzwiach stoi pulpit z opisem i twoim rekordem.
 // ==========================================
 import { THREE, L, tex, addCrispBlock } from '../core/engine.js';
@@ -11,24 +11,26 @@ import { toast } from '../core/terminal.js';
 import { buildDoor } from '../core/levelkit.js';
 import { ARRIVAL_LEVELS } from './lobby-door.js';
 
-const W = 15, D = 7, H = 6;   // sala 30 x 14 m (7 drzwi co 4 m)
+const W = 16, D = 7, H = 6;   // sala 32 x 14 m (8 drzwi co 4 m)
 export const info = { id: 'levels', name: 'Levels', spawn: [0, 1.0, 5.2] };
 // Miejsca, w których stajesz po powrocie z danego poziomu (przed jego drzwiami)
-export const ARRIVAL_FROM_MAZE = [-12, 1.2, -4.6];
-export const ARRIVAL_FROM_SILENCE = [-8, 1.2, -4.6];
-export const ARRIVAL_FROM_WELL = [-4, 1.2, -4.6];
-export const ARRIVAL_FROM_LAUNDRY = [0, 1.2, -4.6];
-export const ARRIVAL_FROM_MEMORY = [4, 1.2, -4.6];
-export const ARRIVAL_FROM_HOSPITAL = [8, 1.2, -4.6];
-export const ARRIVAL_FROM_CEMETERY = [12, 1.2, -4.6];
+export const ARRIVAL_FROM_MAZE = [-14, 1.2, -4.6];
+export const ARRIVAL_FROM_SILENCE = [-10, 1.2, -4.6];
+export const ARRIVAL_FROM_WELL = [-6, 1.2, -4.6];
+export const ARRIVAL_FROM_LAUNDRY = [-2, 1.2, -4.6];
+export const ARRIVAL_FROM_MEMORY = [2, 1.2, -4.6];
+export const ARRIVAL_FROM_HOSPITAL = [6, 1.2, -4.6];
+export const ARRIVAL_FROM_CEMETERY = [10, 1.2, -4.6];
+export const ARRIVAL_FROM_CATACOMBS = [14, 1.2, -4.6];
 const DOORS = [
-    { x: -12, label: 'THE MAZE', color: '#ff6a40', glow: 0xff3010, target: 'maze', rec: 'maze', daily: true, msg: 'You open the door...', desc: ['A huge random maze.', 'A mannequin hunts you.', 'Find the exit.'] },
-    { x: -8, label: 'SILENCE', color: '#9fc8ff', glow: 0x3a7aff, target: 'silence', rec: 'silence', msg: 'Shhh...', desc: ['The Blind One hears', 'every move you make.', 'Survive 3 minutes.'] },
-    { x: -4, label: 'THE WELL', color: '#b8ffcf', glow: 0x30ff90, target: 'well', rec: 'well', daily: true, msg: 'Do not look down...', desc: ['Climb a 64 m shaft', 'before the black', 'ooze takes you.'] },
-    { x: 0, label: 'LAUNDROMAT', color: '#ff7ac0', glow: 0xff3aa0, target: 'laundry', rec: 'laundry', msg: 'Something is walking between the washers...', desc: ['Close 4 steam valves.', 'The Threadman', 'hunts in the steam.'] },
-    { x: 4, label: 'BURNING MEMORY', color: '#ff8a3a', glow: 0xff4a10, target: 'memory', rec: 'memory', daily: true, msg: 'Remember or burn...', desc: ['Cross 20 rows of stones', 'over lava. Remember the', 'safe ones. Run!'] },
-    { x: 8, label: 'THE HOSPITAL', color: '#7fe8ff', glow: 0x30c0ff, target: 'hospital', rec: 'hospital', msg: 'Do not blink...', desc: ['Find 3 keycards.', 'Patients move when your', 'flashlight is not on them.'] },
-    { x: 12, label: 'THE CEMETERY', color: '#7fffb0', glow: 0x30ff80, target: 'cemetery', rec: 'cemetery', msg: 'Stay out of the lantern light...', desc: ['Steal 5 relics.', 'A gravedigger hunts with', 'a lantern. Hide in crypts.'] }
+    { x: -14, label: 'THE MAZE', color: '#ff6a40', glow: 0xff3010, target: 'maze', rec: 'maze', daily: true, msg: 'You open the door...', desc: ['A huge random maze.', 'A mannequin hunts you.', 'Find the exit.'] },
+    { x: -10, label: 'SILENCE', color: '#9fc8ff', glow: 0x3a7aff, target: 'silence', rec: 'silence', msg: 'Shhh...', desc: ['The Blind One hears', 'every move you make.', 'Survive 3 minutes.'] },
+    { x: -6, label: 'THE WELL', color: '#b8ffcf', glow: 0x30ff90, target: 'well', rec: 'well', daily: true, msg: 'Do not look down...', desc: ['Climb a 64 m shaft', 'before the black', 'ooze takes you.'] },
+    { x: -2, label: 'LAUNDROMAT', color: '#ff7ac0', glow: 0xff3aa0, target: 'laundry', rec: 'laundry', msg: 'Something is walking between the washers...', desc: ['Close 4 steam valves.', 'The Threadman', 'hunts in the steam.'] },
+    { x: 2, label: 'BURNING MEMORY', color: '#ff8a3a', glow: 0xff4a10, target: 'memory', rec: 'memory', daily: true, msg: 'Remember or burn...', desc: ['Cross 20 rows of stones', 'over lava. Remember the', 'safe ones. Run!'] },
+    { x: 6, label: 'THE HOSPITAL', color: '#7fe8ff', glow: 0x30c0ff, target: 'hospital', rec: 'hospital', msg: 'Do not blink...', desc: ['Find 3 keycards.', 'Patients move when your', 'flashlight is not on them.'] },
+    { x: 10, label: 'THE CEMETERY', color: '#7fffb0', glow: 0x30ff80, target: 'cemetery', rec: 'cemetery', msg: 'Stay out of the lantern light...', desc: ['Steal 5 relics.', 'A gravedigger hunts with', 'a lantern. Hide in crypts.'] },
+    { x: 14, label: 'CATACOMBS', color: '#ff7a40', glow: 0xff4a10, target: 'catacombs', rec: 'catacombs', msg: 'Do not run. It is listening...', desc: ['Find 4 screaming skulls.', 'The Warden has no light,', 'only red eyes. He hears all.'] }
 ];
 
 // Pulpit przy drzwiach: opis poziomu, wybór trudności (Easy / Normal / Nightmare) i najlepsze czasy.
@@ -136,7 +138,7 @@ function warningTexture(text, w, h, size) {
 function buildWarnings() {
     const decal = (map, w, h, x, y, z, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: map, transparent: true, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2 })); m.position.set(x, y, z); m.rotation.y = ry; L.root.add(m); return m; };
     // Czaszki: między drzwiami nad wejściami i na ścianach bocznych
-    for (const x of [-14, -10, -6, -2, 2, 6, 10, 14]) decal(skullTexture(x + 40), 0.75, 0.75, x, 3.7, -D + 0.05, 0);
+    for (const x of [-12, -8, -4, 0, 4, 8, 12]) decal(skullTexture(x + 40), 0.75, 0.75, x, 3.7, -D + 0.05, 0);
     for (const z of [-3.5, 0.5, 4.5]) { decal(skullTexture(z * 7 + 3), 1.1, 1.1, -W + 0.05, 3.6, z, Math.PI / 2); decal(skullTexture(z * 9 + 5), 1.1, 1.1, W - 0.05, 3.6, z, -Math.PI / 2); }
     // Napisy ostrzegawcze
     decal(warningTexture('ENTER AT YOUR OWN RISK', 1024, 160, 88), 6, 0.94, -W + 0.06, 2.0, 0.5, Math.PI / 2);

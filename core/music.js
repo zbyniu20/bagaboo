@@ -15,6 +15,7 @@ const THEMES = {
     calm: { root: 45, scale: 'pent', bpm: 60, pad: 'sine', lp: 1400, arp: 0.18, lead: 'triangle', bass: false, vol: 0.9 },
     dread: { root: 40, scale: 'phrygian', bpm: 54, pad: 'sawtooth', lp: 420, arp: 0.06, lead: 'sine', bass: false, vol: 1 },
     hospital: { root: 43, scale: 'dim', bpm: 50, pad: 'triangle', lp: 800, arp: 0.1, lead: 'sine', bass: false, vol: 1 },
+    catacombs: { root: 34, scale: 'dim', bpm: 44, pad: 'sine', lp: 600, arp: 0.07, lead: 'sine', bass: false, vol: 1 },
     cemetery: { root: 38, scale: 'minor', bpm: 48, pad: 'sine', lp: 1000, arp: 0.09, lead: 'triangle', bass: false, vol: 1 },
     industrial: { root: 36, scale: 'phrygian', bpm: 78, pad: 'square', lp: 320, arp: 0.05, lead: 'sawtooth', bass: true, vol: 0.9 },
     lava: { root: 36, scale: 'minor', bpm: 66, pad: 'sawtooth', lp: 520, arp: 0.07, lead: 'square', bass: true, vol: 0.9 },
@@ -22,7 +23,7 @@ const THEMES = {
     chase: { root: 41, scale: 'phrygian', bpm: 96, pad: 'sawtooth', lp: 600, arp: 0.2, lead: 'sawtooth', bass: true, vol: 0.9 }
 };
 const LEVEL_THEME = { lobby: 'calm', wardrobe: 'calm', staff: 'calm', levels: 'dread', maze: 'dread', silence: 'dread', well: 'dread', laundry: 'industrial', memory: 'lava', lava: 'lava',
-    hospital: 'hospital', cemetery: 'cemetery', games: 'arcade', range: 'arcade', banana: 'arcade', koth: 'arcade', dodgeball: 'arcade', race: 'arcade', monster: 'chase', infection: 'chase', hideseek: 'dread', redlight: 'chase', potato: 'arcade', lasttile: 'arcade', treasure: 'dread', statues: 'arcade', blindtag: 'dread', swingrun: 'arcade', towerclimb: 'dread' };
+    hospital: 'hospital', cemetery: 'cemetery', catacombs: 'catacombs', games: 'arcade', range: 'arcade', banana: 'arcade', koth: 'arcade', dodgeball: 'arcade', race: 'arcade', monster: 'chase', infection: 'chase', hideseek: 'dread', redlight: 'chase', potato: 'arcade', lasttile: 'arcade', treasure: 'dread', statues: 'arcade', blindtag: 'dread', swingrun: 'arcade', towerclimb: 'dread' };
 let theme = THEMES.calm, bus = null, nextT = 0, step = 0, deg = 0, muted = false;
 const BASE = 0.32;   // głośność bazowa muzyki względem efektów
 
