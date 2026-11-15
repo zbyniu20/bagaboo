@@ -7,7 +7,7 @@
 // rzadkie (2200-3500) w 3-5 dni, a legendarne (6000) w około tydzień regularnej gry.
 // ==========================================
 import { toast, markAllDirty } from './terminal.js';
-import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isReservedNick } from './config.js';
+import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isReservedNick, staffBadgesFor } from './config.js';
 
 const SAVE_KEY = 'bagaboo_save_v1';
 export const LOGIN_INTERVAL = 6 * 3600 * 1000;      // nagroda za logowanie co 6 godzin
@@ -75,7 +75,7 @@ export const CATALOG = [
     { slot: 'badge', id: 'flame', name: 'Lava walker', price: 0, locked: true, hint: 'Achievement' },
     { slot: 'badge', id: 'crown', name: 'Parkour King', price: 0, locked: true, hint: 'Red route' },
     { slot: 'badge', id: 'owner', name: 'Owner', price: 0, locked: true, hint: 'Owner' },
-    { slot: 'badge', id: 'ultimate', name: 'Ultimate admin', price: 0, locked: true, hint: 'Ultimate' },
+    { slot: 'badge', id: 'ultimate', name: 'Ultimate Admin', price: 0, locked: true, hint: 'Ultimate Admin' },
     { slot: 'badge', id: 'coadmin', name: 'Co-admin', price: 0, locked: true, hint: 'Co-admin' },
     { slot: 'badge', id: 'admin', name: 'Admin', price: 0, locked: true, hint: 'Admin' },
     { slot: 'badge', id: 'mod', name: 'Moderator', price: 0, locked: true, hint: 'Moderator' },
@@ -457,13 +457,11 @@ export function refreshStaffItems() {
     grantStaffBonus();
     const n = SAVE.profile.name, give = (key, on) => { const has = SAVE.owned.includes(key); if (on && !has) SAVE.owned.push(key); if (!on && has) SAVE.owned.splice(SAVE.owned.indexOf(key), 1); };
     if ((isOwnerName(n) || isUltimateName(n)) && !SAVE.owned.includes('tool:ban')) SAVE.owned.push('tool:ban');   // Ban hammer za darmo dla właściciela i ultimate admina
-    give('badge:owner', isOwnerName(n)); give('badge:coadmin', isCoAdminName(n)); give('badge:ultimate', isUltimateName(n)); give('badge:admin', isAdminName(n)); give('badge:mod', isModName(n) && !isAdminName(n)); give('tool:kick', isStaffName(n));
+    const rights = staffBadgesFor(n);
+    for (const b of ['owner', 'ultimate', 'coadmin', 'admin', 'mod']) give('badge:' + b, rights.includes(b));
+    give('tool:kick', isStaffName(n));
+    if (['owner', 'ultimate', 'coadmin', 'admin', 'mod'].includes(SAVE.equipped.badge) && !rights.includes(SAVE.equipped.badge)) SAVE.equipped.badge = 'none';
     if (!isStaffName(n)) { if (SAVE.equipped.tool !== 'none') SAVE.equipped.tool = 'none'; }
-    if (SAVE.equipped.badge === 'admin' && !isAdminName(n)) SAVE.equipped.badge = 'none';
-    if (SAVE.equipped.badge === 'ultimate' && !isUltimateName(n)) SAVE.equipped.badge = 'none';
-    if (SAVE.equipped.badge === 'owner' && !isOwnerName(n)) SAVE.equipped.badge = 'none';
-    if (SAVE.equipped.badge === 'coadmin' && !isCoAdminName(n)) SAVE.equipped.badge = 'none';
-    if (SAVE.equipped.badge === 'mod' && !isModName(n)) SAVE.equipped.badge = 'none';
 }
 export function isOwned(item) { return SAVE.owned.includes(item.slot + ':' + item.id); }
 export function isEquipped(item) { return SAVE.equipped[item.slot] === item.id; }

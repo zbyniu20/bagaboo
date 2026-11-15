@@ -424,7 +424,11 @@ const BADGES = {
     flame: { bg: '#3a0a02', draw: (x) => { for (const [c, k] of [['#ff5a10', 1], ['#ffb020', 0.65], ['#fff0a0', 0.35]]) { x.fillStyle = c; x.beginPath(); x.moveTo(64, 64 - 44 * k - 6); x.bezierCurveTo(64 + 40 * k, 64 - 10 * k, 64 + 30 * k, 64 + 40 * k, 64, 64 + 40 * k); x.bezierCurveTo(64 - 30 * k, 64 + 40 * k, 64 - 40 * k, 64 - 10 * k, 64, 64 - 44 * k - 6); x.fill(); } } },
     owner: { bg: '#3a0612', draw: (x) => { x.fillStyle = '#ffd23a'; x.beginPath(); x.moveTo(30, 82); x.lineTo(30, 44); x.lineTo(47, 60); x.lineTo(64, 32); x.lineTo(81, 60); x.lineTo(98, 44); x.lineTo(98, 82); x.closePath(); x.fill(); x.fillRect(30, 86, 68, 10); x.fillStyle = '#c01030'; for (const cx of [47, 64, 81]) { x.beginPath(); x.arc(cx, 72, 5, 0, 7); x.fill(); } } },
     coadmin: { bg: '#04303a', draw: (x) => { shield(x, '#5af0ff', ''); x.fillStyle = '#04303a'; x.font = 'bold 40px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('CA', 64, 66); } },
-    ultimate: { bg: '#2a1a00', draw: (x) => { star(x, 64, 60, 46, 20, '#ffd23a'); x.fillStyle = '#2a1a00'; x.font = 'bold 34px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('U', 64, 64); } },
+    ultimate: { bg: '#1a0a2a', draw: (x) => {   // Ultimate Admin: złota gwiazda z fioletowym pierścieniem, koroną i napisem
+        x.strokeStyle = '#c060ff'; x.lineWidth = 7; x.beginPath(); x.arc(64, 64, 56, 0, 7); x.stroke();
+        star(x, 64, 66, 44, 19, '#ffd23a');
+        x.fillStyle = '#ff4a2a'; x.beginPath(); x.moveTo(40, 34); x.lineTo(40, 18); x.lineTo(52, 27); x.lineTo(64, 12); x.lineTo(76, 27); x.lineTo(88, 18); x.lineTo(88, 34); x.closePath(); x.fill();
+        x.fillStyle = '#2a1a00'; x.font = 'bold 30px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('UA', 64, 70); } },
     admin: { bg: '#8a0a0a', draw: (x) => shield(x, '#ffd23a', 'A') },
     mod: { bg: '#0a2a7a', draw: (x) => shield(x, '#d8e8ff', 'M') },
     crown: { bg: '#7a0a10', draw: (x) => { x.fillStyle = '#ffd23a'; x.beginPath(); x.moveTo(26, 88); x.lineTo(26, 46); x.lineTo(46, 66); x.lineTo(64, 36); x.lineTo(82, 66); x.lineTo(102, 46); x.lineTo(102, 88); x.closePath(); x.fill(); } }

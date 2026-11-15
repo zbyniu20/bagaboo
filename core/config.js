@@ -137,6 +137,16 @@ export function setLocalMod(name, on) {
     if (on) list.push(low(name));
     try { localStorage.setItem('bagaboo_mods', JSON.stringify(list)); } catch (e) {}
 }
+// Odznaki ekipy, które dany nick może założyć. Ultimate admin ma wszystkie, właściciel (BoyIsGamer) Owner i Admin.
+export function staffBadgesFor(name) {
+    if (isUltimateName(name)) return ['owner', 'ultimate', 'coadmin', 'admin', 'mod'];
+    const out = [];
+    if (isOwnerName(name)) out.push('owner');
+    if (isCoAdminName(name)) out.push('coadmin');
+    if (isAdminName(name)) out.push('admin');
+    if (isModName(name)) out.push('mod');
+    return out;
+}
 export function isOwnerName(name) { return OWNER_NAMES.some(n => low(n) === low(name)); }
 export function isUltimateName(name) { return ULTIMATE_NAMES.some(n => low(n) === low(name)); }
 export function isCoAdminName(name) { return COADMIN_NAMES.some(n => low(n) === low(name)); }
