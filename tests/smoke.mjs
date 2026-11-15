@@ -78,6 +78,18 @@ const data = await run(`
         try { if (!EM.emotePose(a, id, t)) bad.push('emote ' + id + ' not applied at t=' + t); } catch (e) { bad.push('emote ' + id + ' threw: ' + e.message); }
         for (const h of [a.head, a.handL, a.handR]) if (![h.position.x, h.position.y, h.position.z].every(Number.isFinite)) bad.push('emote ' + id + ' produced NaN');
     }
+    // every cosmetic must build into something visible (hats, glasses, masks, badges) or a distinct material (sleeves, gloves, skins)
+    const AV = await import('./core/avatar.js'), ECO = E;
+    for (const it of E.CATALOG) {
+        if (it.id === 'none') continue;
+        try {
+            if (it.slot === 'hat' && AV.buildHat(it.id).children.length === 0 && it.id !== 'cap') bad.push('hat builds empty: ' + it.id);
+            if (it.slot === 'glasses' && AV.buildGlasses(it.id).children.length === 0) bad.push('glasses build empty: ' + it.id);
+            if (it.slot === 'mask' && AV.buildMask(it.id).children.length === 0) bad.push('mask builds empty: ' + it.id);
+            if (it.slot === 'badge' && !AV.buildBadge(it.id)) bad.push('badge missing: ' + it.id);
+            if (['sleeve', 'gloves', 'skin'].includes(it.slot)) { const a = AV.createAvatar(Object.assign({}, E.getLook(), { [it.slot]: it.id })); if (!a.group.children.length) bad.push(it.slot + ' avatar empty: ' + it.id); }
+        } catch (e) { bad.push(it.slot + ':' + it.id + ' threw ' + e.message); }
+    }
     // VR performance governor: slow frames raise the level, long stable frames lower it again
     const XP = await import('./core/xrperf.js'), g = { avg: 0, slow: 0, fast: 0, cool: 0, level: 0 }, budget = 1000 / 72;
     for (let i = 0; i < 400; i++) XP.govern(g, 25, budget);              // ~10 s at 40 fps

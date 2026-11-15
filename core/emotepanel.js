@@ -20,8 +20,8 @@ const panel = new Terminal((t) => {
     t.header('Emotes', 'G / A,X to close', AMBER_DIM);
     const list = owned();
     list.forEach((it, i) => {
-        const col = i % 3, row = (i / 3) | 0;
-        t.btn('em' + it.id, 24 + col * 202, 96 + row * 92, 190, 78, it.name, () => { doEmote(it.id); close(); }, { size: 24, tone: it.id === quickEmote() ? 'ok' : undefined, active: it.id === quickEmote() });
+        const col = i % 4, row = (i / 4) | 0;
+        t.btn('em' + it.id, 24 + col * 152, 96 + row * 68, 146, 62, it.name, () => { doEmote(it.id); close(); }, { size: 19, tone: it.id === quickEmote() ? 'ok' : undefined, active: it.id === quickEmote() });
     });
     t.text('Green = favorite (set it in the shop). Keys 1-9.', 24, 440, 15, AMBER_DIM, 'left');
     t.text('High five: stand close, both pick it.', 24, 462, 15, AMBER_DIM, 'left');

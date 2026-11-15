@@ -15,7 +15,15 @@ export const EMOTES = {
     highfive: { name: 'High five', dur: 4.0 },   // dwóch graczy blisko siebie z tą emotką = przybijają piątkę (core/highfive.js)
     salute: { name: 'Salute', dur: 3.0 },
     shrug: { name: 'Shrug', dur: 3.0 },
-    heart: { name: 'Heart', dur: 3.5 }
+    heart: { name: 'Heart', dur: 3.5 },
+    chestpound: { name: 'Chest pound', dur: 4.5 },
+    thumbsup: { name: 'Thumbs up', dur: 3.0 },
+    facepalm: { name: 'Facepalm', dur: 3.0 },
+    laugh: { name: 'Laugh', dur: 4.0 },
+    dab: { name: 'Dab', dur: 3.0 },
+    think: { name: 'Thinking', dur: 4.0 },
+    victory: { name: 'Victory', dur: 3.5 },
+    robot: { name: 'Robot dance', dur: 5.0 }
 };
 export const EMOTE = { id: null, t0: 0 };
 export function playEmote(id) { if (!EMOTES[id]) return false; EMOTE.id = id; EMOTE.t0 = performance.now(); return true; }
@@ -84,6 +92,40 @@ export function emotePose(a, id, t) {
         const b = 1 + 0.12 * Math.max(0, S(t * 7));
         put(a.handL, -0.09 * b, -0.18, 0.36, 0.9, 0, 0.6); put(a.handR, 0.09 * b, -0.18, 0.36, -0.9, 0, 0.6);
         a.head.quaternion.premultiply(_q.setFromEuler(_e.set(0, 0, 0.1 * fade * S(t * 2), 'YXZ')));
+    } else if (id === 'chestpound') {
+        // klasyczne walenie się w pierś: pięści uderzają na przemian, głowa odchylona, tułów podskakuje
+        const ph = t * 6.5, l = Math.max(0, S(ph)), r = Math.max(0, S(ph + Math.PI));
+        put(a.handL, -0.42 + 0.3 * l, -0.12 - 0.2 * l, 0.1 + 0.07 * l, 0.4, 0, 1); put(a.handR, 0.42 - 0.3 * r, -0.12 - 0.2 * r, 0.1 + 0.07 * r, -0.4, 0, 1);
+        a.head.position.y += 0.025 * Math.abs(S(ph)) * fade;
+        a.head.quaternion.premultiply(_q.setFromEuler(_e.set(-0.28 * fade, 0, 0, 'YXZ')));
+    } else if (id === 'thumbsup') {
+        put(a.handR, 0.26, 0.02 + 0.02 * S(t * 7), 0.42, -0.35, 0, 1);
+        put(a.handL, -0.28, -0.5, 0.05, 0, 0, 0.3);
+        a.head.quaternion.premultiply(_q.setFromEuler(_e.set(0.12 * S(t * 5) * fade, 0, 0, 'YXZ')));
+    } else if (id === 'facepalm') {
+        put(a.handR, 0.0, 0.0, 0.17, 0.1, -0.3, 0); put(a.handL, -0.28, -0.5, 0.05, 0, 0, 0.3);
+        a.head.quaternion.premultiply(_q.setFromEuler(_e.set(0.32 * fade, 0, 0.06 * S(t * 4) * fade, 'YXZ')));
+        a.head.position.y -= 0.02 * fade;
+    } else if (id === 'laugh') {
+        const sh = S(t * 16);
+        a.head.position.y += 0.03 * Math.abs(sh) * fade;
+        a.head.quaternion.premultiply(_q.setFromEuler(_e.set(-0.3 * fade + 0.06 * sh, 0, 0.05 * S(t * 8) * fade, 'YXZ')));
+        put(a.handL, -0.17, -0.42 + 0.02 * sh, 0.2, 0.5, 0, 0.5); put(a.handR, 0.17, -0.42 + 0.02 * sh, 0.2, -0.5, 0, 0.5);
+    } else if (id === 'dab') {
+        put(a.handL, -0.06, -0.03, 0.22, 0.3, 0, 0.5); put(a.handR, 0.5, 0.3, 0.2, -0.9, 0, 0);
+        a.head.quaternion.premultiply(_q.setFromEuler(_e.set(0.4 * fade, -0.45 * fade, 0, 'YXZ')));
+    } else if (id === 'think') {
+        put(a.handR, 0.03, -0.13, 0.19, -0.2, 0, 0.6); put(a.handL, -0.12, -0.36, 0.2, 0.3, 0, 0.3);
+        a.head.quaternion.premultiply(_q.setFromEuler(_e.set(-0.1 * fade, 0.22 * S(t * 0.9) * fade, 0.14 * fade, 'YXZ')));
+    } else if (id === 'victory') {
+        const y = 0.5 + 0.05 * S(t * 9) * fade;
+        put(a.handL, -0.34, y, 0.1, 0.35, 0, 0.7); put(a.handR, 0.34, y, 0.1, -0.35, 0, 0.7);
+        a.head.position.y += 0.03 * Math.abs(S(t * 9)) * fade;
+        a.head.quaternion.premultiply(_q.setFromEuler(_e.set(-0.22 * fade, 0, 0, 'YXZ')));
+    } else if (id === 'robot') {
+        const q = Math.floor(t * 3.2) % 4, hy = [0.12, 0.32, 0.12, -0.12], hy2 = [0.32, 0.12, -0.12, 0.12], yaw = [0.45, -0.45, 0.45, -0.45];
+        put(a.handR, 0.36, hy[q], 0.12, -0.5, 0, 1); put(a.handL, -0.36, hy2[q], 0.12, 0.5, 0, 1);
+        a.head.quaternion.premultiply(_q.setFromEuler(_e.set(0, yaw[q] * fade, 0, 'YXZ')));
     }
     return true;
 }
