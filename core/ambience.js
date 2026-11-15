@@ -5,7 +5,7 @@
 // Dźwięk idzie przez HRTF, więc słychać kierunek i odległość. Głośność = suwak Effects.
 // ==========================================
 import { camera } from './engine.js';
-import { audioBus, spatial, noiseBuf, creak, bang, whisper } from './audio.js';
+import { audioBus, spatial, noiseBuf, creak, bang, whisper, setRoom } from './audio.js';
 
 // loops: stałe źródła [typ, [[x,y,z], ...]], rand: losowe odgłosy { t: typ, e: [min,max] s między, d: [min,max] m od gracza, v: głośność }
 const DEFS = {
@@ -24,7 +24,7 @@ let cur = null, loops = [], timers = [], pending = true;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const _p = { x: 0, y: 0, z: 0 };
 
-export function setAmbience(levelId) { stopLoops(); cur = DEFS[levelId] || null; pending = true; timers = []; }
+export function setAmbience(levelId) { setRoom(levelId); stopLoops(); cur = DEFS[levelId] || null; pending = true; timers = []; }
 function stopLoops() { for (const l of loops) { try { l.stop(); } catch (e) {} } loops = []; }
 
 // ---------- SYNTEZA ----------
@@ -48,7 +48,7 @@ function oneShot(ctx, def, pos) {
 }
 // Stałe źródła: zwraca { stop(), tick(dt) }
 function startLoop(ctx, type, pos) {
-    const dst = pos ? spatial({ x: pos[0], y: pos[1], z: pos[2] }) : audioBus().master, nodes = [];
+    const dst = pos ? spatial({ x: pos[0], y: pos[1], z: pos[2] }, null, true) : audioBus().master, nodes = [];
     const gainNode = ctx.createGain(); gainNode.connect(dst);
     const src = (kind, f, q) => { const s = ctx.createBufferSource(); s.buffer = noiseBuf(2); s.loop = true; const fl = ctx.createBiquadFilter(); fl.type = kind; fl.frequency.value = f; if (q) fl.Q.value = q; s.connect(fl); fl.connect(gainNode); s.start(); nodes.push(s); return fl; };
     const osc = (wave, f) => { const o = ctx.createOscillator(); o.type = wave; o.frequency.value = f; o.connect(gainNode); o.start(); nodes.push(o); return o; };

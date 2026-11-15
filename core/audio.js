@@ -9,13 +9,13 @@ let ctx = null, master = null, droneGain = null, scareBus = null, shaper = null;
 const DRONE = 0.07;
 const hb = { next: 0 };
 // Haki dla muzyki i ambientu (music.js, ambience.js): zmiana głośności, wyciszenie przy jumpscare'ie, poziom zagrożenia
-export const hooks = { onVolumes: null, onDuck: null };
+export const hooks = { onVolumes: null, onDuck: null, onScare: null };
 let threat = { i: 0, until: 0 };
 // Zagrożenie 0..1: bicie serca (im bliżej potwór) i głośne zdarzenia podbijają je na krótko; muzyka robi się szybsza i gęstsza
 export function bumpThreat(i, secs) { if (!ctx) return; const t = ctx.currentTime; if (i >= threat.i || t > threat.until) threat = { i: i, until: t + (secs || 0.4) }; }
 export function threatLevel() { return ctx && ctx.currentTime < threat.until ? threat.i : 0; }
 export function audioBus() { return ctx ? { ctx: ctx, master: master } : null; }
-export function spatial(pos, dest) { return ctx ? outAt(pos, dest) : null; }
+export function spatial(pos, dest, raw) { return ctx ? outAt(pos, dest, raw) : null; }   // raw = bez filtra odległości i pogłosu (dla źródeł działających długo, bo odległość się zmienia)
 export function noiseBuf(sec) { return ctx ? noiseBuffer(sec) : null; }
 
 export function getAudioContext() { return ctx; }
@@ -56,6 +56,7 @@ export function updateListener(camera) {
     if (!ctx) return;
     const e = camera.matrixWorld.elements, L = ctx.listener;
     const px = e[12], py = e[13], pz = e[14];
+    lis.x = px; lis.y = py; lis.z = pz;
     _f.x = -e[8]; _f.y = -e[9]; _f.z = -e[10]; _u.x = e[4]; _u.y = e[5]; _u.z = e[6];
     if (L.positionX) {
         const t = ctx.currentTime;
@@ -64,14 +65,58 @@ export function updateListener(camera) {
         L.upX.setValueAtTime(_u.x, t); L.upY.setValueAtTime(_u.y, t); L.upZ.setValueAtTime(_u.z, t);
     } else { L.setPosition(px, py, pz); L.setOrientation(_f.x, _f.y, _f.z, _u.x, _u.y, _u.z); }
 }
-// Wyjście dźwięku: pozycja 3D {x,y,z}, stary pan -1..1 albo prosto do głośników
-function outAt(pos, dest) {
+// ---------- POGŁOS POMIESZCZENIA ----------
+// Wspólna szyna pogłosu (ConvolverNode z syntetyczną odpowiedzią impulsową): każdy dźwięk 3D wysyła do niej część sygnału, tym więcej, im dalej jest źródło.
+// Dzięki temu bliski krok jest suchy i konkretny, a daleki huk rozmywa się w hali. Parametry zależą od poziomu (setRoom).
+const ROOMS = {
+    levels: { sec: 1.6, wet: 0.16 }, maze: { sec: 2.0, wet: 0.2 }, silence: { sec: 3.2, wet: 0.26 }, well: { sec: 3.6, wet: 0.32 },
+    laundry: { sec: 2.8, wet: 0.26 }, memory: { sec: 2.4, wet: 0.2 }, lava: { sec: 2.2, wet: 0.16 }, hospital: { sec: 2.6, wet: 0.24 },
+    cemetery: { sec: 1.0, wet: 0.07 }, games: { sec: 1.8, wet: 0.13 }, lobby: { sec: 1.5, wet: 0.12 }, wardrobe: { sec: 0.6, wet: 0.06 }
+};
+const ROOM_DEFAULT = { sec: 1.4, wet: 0.1 };
+const rv = { conv: null, ret: null, wet: ROOM_DEFAULT.wet, sec: 0 };
+const lis = { x: 0, y: 0, z: 0 };   // ostatnia pozycja słuchacza (do liczenia odległości źródeł)
+function impulse(sec) {
+    const n = Math.floor(ctx.sampleRate * sec), b = ctx.createBuffer(2, n, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+        const d = b.getChannelData(c); let lp = 0;
+        for (let i = 0; i < n; i++) {
+            const k = i / n, a = 0.15 + 0.7 * (1 - k);          // z czasem coraz ciemniejszy ogon (wysokie tony giną pierwsze)
+            lp += (Math.random() * 2 - 1 - lp) * a;
+            d[i] = lp * Math.pow(1 - k, 2.4) * (i < 400 ? i / 400 : 1);
+        }
+    }
+    return b;
+}
+function ensureReverb() {
+    if (!ctx || rv.conv) return;
+    rv.conv = ctx.createConvolver(); rv.ret = ctx.createGain(); rv.ret.gain.value = 1;
+    rv.conv.connect(rv.ret); rv.ret.connect(master);
+    setRoom(rv.pendingRoom);
+}
+export function setRoom(id) {
+    const r = ROOMS[id] || ROOM_DEFAULT; rv.pendingRoom = id; rv.wet = r.wet;
+    if (!ctx) return;
+    if (!rv.conv) { ensureReverb(); return; }
+    if (Math.abs(rv.sec - r.sec) > 0.05) { rv.conv.buffer = impulse(r.sec); rv.sec = r.sec; }
+}
+// Wyjście dźwięku: pozycja 3D {x,y,z}, stary pan -1..1 albo prosto do głośników.
+// Dźwięk 3D: HRTF, filtr dolnoprzepustowy rosnący z odległością (powietrze tłumi wysokie tony) i wysyłka do pogłosu.
+function outAt(pos, dest, raw) {
+    const toMaster = !raw && (!dest || dest === master);
     dest = dest || master;
     if (pos && typeof pos === 'object') {
         const p = ctx.createPanner();
         p.panningModel = 'HRTF'; p.distanceModel = 'inverse'; p.refDistance = 2.5; p.maxDistance = 60; p.rolloffFactor = 1.1;
         if (p.positionX) { p.positionX.value = pos.x; p.positionY.value = pos.y; p.positionZ.value = pos.z; } else p.setPosition(pos.x, pos.y, pos.z);
-        p.connect(dest); return p;
+        if (!toMaster) { p.connect(dest); return p; }
+        ensureReverb();
+        const dist = Math.hypot(pos.x - lis.x, pos.y - lis.y, pos.z - lis.z);
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.5;
+        lp.frequency.value = Math.max(1800, 18000 / (1 + dist * 0.14));
+        p.connect(lp); lp.connect(dest);
+        if (rv.conv) { const send = ctx.createGain(); send.gain.value = rv.wet * Math.min(2.2, 0.35 + dist / 14); lp.connect(send); send.connect(rv.conv); }
+        return p;
     }
     if (typeof pos === 'number' && ctx.createStereoPanner) { const sp = ctx.createStereoPanner(); sp.pan.value = Math.max(-1, Math.min(1, pos)); sp.connect(dest); return sp; }
     return dest;
@@ -127,6 +172,7 @@ export function scream(pos) {
 // Pełny jumpscare: cisza, potem uderzenie basu, przesterowany wrzask i zgrzyt dysonansu
 export function scare() {
     if (!ctx) return;
+    if (hooks.onScare) hooks.onScare();
     const t0 = ctx.currentTime;
     duckDrone(t0); lastLoud = t0 + 1.2; bumpThreat(1, 5);
     buzz('both', 1.0, 450);   // jumpscare: mocna wibracja obu kontrolerów
@@ -327,4 +373,14 @@ export function bell() {
         const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f;
         env(g, t0 + k * 0.45, 0.25 / (f / 880), 0.003, 1.4); o.connect(g); g.connect(master); o.start(t0 + k * 0.45); o.stop(t0 + k * 0.45 + 1.5);
     }
+}
+
+// Klaśnięcie dłoni (przybita piątka): krótki trzask szumu + niski stuk, z miejsca spotkania dłoni
+export function slap(pos) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, dst = outAt(pos), n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.2);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2400; bp.Q.value = 0.8;
+    const g = ctx.createGain(); env(g, t0, 0.9, 0.002, 0.09); n.connect(bp); bp.connect(g); g.connect(dst); n.start(t0);
+    const o = ctx.createOscillator(), og = ctx.createGain(); o.frequency.setValueAtTime(220, t0); o.frequency.exponentialRampToValueAtTime(90, t0 + 0.08);
+    env(og, t0, 0.5, 0.002, 0.1); o.connect(og); og.connect(dst); o.start(t0); o.stop(t0 + 0.15);
 }
