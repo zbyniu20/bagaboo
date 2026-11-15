@@ -148,8 +148,50 @@ export const CATALOG = [
     { slot: 'emote', id: 'highfive', name: 'High five', price: 0 },   // darmowa: dwóch graczy blisko siebie robi ją naraz = przybijają piątkę
     { slot: 'emote', id: 'salute', name: 'Salute', price: 0, locked: true, hint: 'Clear 25 levels' },
     { slot: 'emote', id: 'shrug', name: 'Shrug', price: 0, locked: true, hint: '25 jumpscares' },
-    { slot: 'emote', id: 'heart', name: 'Heart', price: 0, locked: true, hint: '5 high fives' }
+    { slot: 'emote', id: 'heart', name: 'Heart', price: 0, locked: true, hint: '5 high fives' },
+    // Nowe kosmetyki
+    { slot: 'hat', id: 'viking', name: 'Viking helmet', price: 1300, weekly: true },
+    { slot: 'hat', id: 'chef', name: 'Chef hat', price: 600, weekly: true },
+    { slot: 'hat', id: 'pirate', name: 'Pirate tricorn', price: 1600 },
+    { slot: 'hat', id: 'sprout', name: 'Little sprout', price: 500, weekly: true },
+    { slot: 'hat', id: 'ufo', name: 'UFO', price: 2800 },
+    { slot: 'hat', id: 'foil', name: 'Tinfoil hat', price: 400, weekly: true },
+    { slot: 'hat', id: 'earmuffs', name: 'Frosty earmuffs', price: 900, season: 'winter' },
+    { slot: 'hat', id: 'batcap', name: 'Bat cap', price: 1100, season: 'halloween' },
+    { slot: 'glasses', id: 'aviator', name: 'Gold aviators', price: 650, weekly: true },
+    { slot: 'glasses', id: 'hippie', name: 'Hippie specs', price: 800 },
+    { slot: 'glasses', id: 'steampunk', name: 'Steampunk goggles', price: 1800 },
+    { slot: 'glasses', id: 'catseye', name: 'Cat-eye glasses', price: 700, weekly: true },
+    { slot: 'glasses', id: 'pixel', name: 'Pixel shades', price: 900 },
+    { slot: 'mask', id: 'luchador', name: 'Luchador mask', price: 2200 },
+    { slot: 'mask', id: 'ninja', name: 'Ninja mask', price: 1900 },
+    { slot: 'mask', id: 'robot', name: 'Robot faceplate', price: 2400 },
+    { slot: 'mask', id: 'cat', name: 'Black cat mask', price: 1800, season: 'halloween' },
+    { slot: 'sleeve', id: 'denim', name: 'Denim jacket', price: 500, weekly: true },
+    { slot: 'sleeve', id: 'galaxy', name: 'Galaxy sleeve', price: 3200 },
+    { slot: 'sleeve', id: 'chain', name: 'Chainmail', price: 2000 },
+    { slot: 'gloves', id: 'chrome', name: 'Chrome hands', price: 3000 },
+    { slot: 'gloves', id: 'lavaglove', name: 'Lava hands', price: 2200 },
+    { slot: 'gloves', id: 'candy', name: 'Candy hands', price: 600, weekly: true },
+    { slot: 'gloves', id: 'rainbow', name: 'Rainbow hands', price: 1800 },
+    { slot: 'skin', id: 'sakura', name: 'Sakura ape', price: 2200, season: 'spring' },
+    { slot: 'skin', id: 'lavaape', name: 'Lava ape', price: 3800 },
+    { slot: 'skin', id: 'panda', name: 'Panda ape', price: 2400 },
+    { slot: 'skin', id: 'midnight', name: 'Midnight ape', price: 1800, weekly: true },
+    { slot: 'badge', id: 'heart', name: 'Heart pin', price: 400 },
+    { slot: 'badge', id: 'bolt', name: 'Lightning pin', price: 500 },
+    { slot: 'badge', id: 'clover', name: 'Clover pin', price: 500 },
+    { slot: 'badge', id: 'paw', name: 'Paw print pin', price: 600 },
+    { slot: 'emote', id: 'chestpound', name: 'Chest pound', price: 1500 },
+    { slot: 'emote', id: 'thumbsup', name: 'Thumbs up', price: 400 },
+    { slot: 'emote', id: 'facepalm', name: 'Facepalm', price: 500 },
+    { slot: 'emote', id: 'laugh', name: 'Laugh', price: 700 },
+    { slot: 'emote', id: 'dab', name: 'Dab', price: 800 },
+    { slot: 'emote', id: 'think', name: 'Thinking', price: 400 },
+    { slot: 'emote', id: 'victory', name: 'Victory', price: 600 },
+    { slot: 'emote', id: 'robot', name: 'Robot dance', price: 1000 }
 ];
+
 
 // ---------- SEZONY I TYGODNIOWA ROTACJA SKLEPU ----------
 // Sezonowe przedmioty kupisz tylko w oknie czasowym (daty co roku te same), zdobyte zostają na zawsze.

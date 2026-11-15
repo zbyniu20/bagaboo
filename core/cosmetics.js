@@ -74,6 +74,51 @@ export function extraHat(id) {
         const gold = mat({ color: 0xd4a640, metalness: 1, roughness: 0.3, envMapIntensity: Math.max(0.8, ENV) });
         g.add(at(new THREE.TorusGeometry(0.146, 0.008, 6, 32), gold, 0, 0.085, 0).rotateX(Math.PI / 2));
         for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2, l = at(new THREE.SphereGeometry(0.02, 8, 6), gold, Math.cos(a) * 0.148, 0.09 + (i % 2) * 0.015, Math.sin(a) * 0.148); l.scale.set(1.6, 0.5, 0.7); l.rotation.y = -a; g.add(l); }
+    } else if (id === 'viking') {
+        const steel = mat({ color: 0x9a9ea6, metalness: 0.9, roughness: 0.35, envMapIntensity: Math.max(0.8, ENV) }), bone = mat({ color: 0xece4cc, roughness: 0.6 });
+        const dome = at(new THREE.SphereGeometry(0.145, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), steel, 0, 0.04, 0); dome.scale.y = 0.85; g.add(dome);
+        g.add(at(new THREE.TorusGeometry(0.146, 0.012, 8, 28), steel, 0, 0.045, 0).rotateX(Math.PI / 2));
+        g.add(at(new THREE.BoxGeometry(0.018, 0.09, 0.012), steel, 0, 0.0, -0.142));   // nosal
+        for (const s of [-1, 1]) {
+            const h = at(new THREE.ConeGeometry(0.028, 0.17, 10), bone, s * 0.17, 0.13, 0); h.rotation.z = -s * 0.85; g.add(h);
+            g.add(at(new THREE.CylinderGeometry(0.03, 0.03, 0.025, 10), steel, s * 0.12, 0.075, 0).rotateZ(Math.PI / 2));
+        }
+    } else if (id === 'chef') {
+        const w = mat({ color: 0xfafaf6, roughness: 0.95 });
+        g.add(at(new THREE.CylinderGeometry(0.128, 0.132, 0.07, 20), w, 0, 0.115, 0));
+        const puff = at(new THREE.SphereGeometry(0.15, 18, 12), w, 0, 0.24, 0); puff.scale.set(1, 0.78, 1); g.add(puff);
+        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; g.add(at(new THREE.SphereGeometry(0.06, 10, 8), w, Math.cos(a) * 0.1, 0.27, Math.sin(a) * 0.1)); }
+    } else if (id === 'pirate') {
+        const b = mat({ color: 0x15110f, roughness: 0.85 }), gold = mat({ color: 0xd4a640, metalness: 1, roughness: 0.3 });
+        const dome = at(new THREE.SphereGeometry(0.14, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), b, 0, 0.05, 0); dome.scale.y = 0.75; g.add(dome);
+        const brim = at(new THREE.CylinderGeometry(0.22, 0.22, 0.012, 26), b, 0, 0.055, 0); brim.scale.z = 0.85; g.add(brim);
+        for (const s of [-1, 1]) { const w = at(new THREE.BoxGeometry(0.16, 0.012, 0.2), b, s * 0.16, 0.1, 0); w.rotation.z = s * 0.55; g.add(w); }
+        g.add(at(new THREE.TorusGeometry(0.142, 0.007, 6, 28), gold, 0, 0.075, 0).rotateX(Math.PI / 2));
+        const skull = at(new THREE.SphereGeometry(0.02, 10, 8), mat({ color: 0xf0ece0 }), 0, 0.1, -0.138); g.add(skull);
+        for (const s of [-1, 1]) g.add(at(new THREE.SphereGeometry(0.0055, 6, 5), dark(), s * 0.008, 0.103, -0.157));
+    } else if (id === 'sprout') {
+        const green = mat({ color: 0x3a9a2a, roughness: 0.7 });
+        g.add(at(new THREE.CylinderGeometry(0.008, 0.012, 0.12, 6), green, 0, 0.19, 0));
+        for (const s of [-1, 1]) { const l = at(new THREE.SphereGeometry(0.05, 10, 8), mat({ color: 0x5ad03a, roughness: 0.6 }), s * 0.045, 0.27, 0); l.scale.set(1.4, 0.25, 0.8); l.rotation.z = s * 0.4; g.add(l); }
+    } else if (id === 'ufo') {
+        const silver = mat({ color: 0xc8ccd4, metalness: 1, roughness: 0.2, envMapIntensity: Math.max(0.9, ENV) });
+        const disc = at(new THREE.SphereGeometry(0.17, 24, 10), silver, 0, 0.17, 0); disc.scale.y = 0.22; g.add(disc);
+        g.add(at(new THREE.SphereGeometry(0.075, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x60e8ff, transparent: true, opacity: 0.55, roughness: 0.05, emissive: 0x104050 }), 0, 0.185, 0));
+        for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; g.add(at(new THREE.SphereGeometry(0.012, 6, 5), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xff5a5a : 0x6aff6a }), Math.cos(a) * 0.155, 0.165, Math.sin(a) * 0.155)); }
+    } else if (id === 'foil') {
+        const f = mat({ color: 0xd8dce0, metalness: 1, roughness: 0.18, flatShading: true, envMapIntensity: Math.max(1.0, ENV) });
+        g.add(at(new THREE.ConeGeometry(0.11, 0.3, 7, 3), f, 0, 0.26, 0));
+    } else if (id === 'earmuffs') {
+        const fluff = mat({ color: 0x9ad0f0, roughness: 1 });
+        g.add(at(new THREE.TorusGeometry(0.16, 0.01, 8, 28, Math.PI), mat({ color: 0x2a2a30, metalness: 0.5 }), 0, 0.0, 0).rotateY(Math.PI / 2));
+        for (const s of [-1, 1]) g.add(at(new THREE.SphereGeometry(0.06, 14, 10), fluff, s * 0.162, -0.005, 0));
+    } else if (id === 'batcap') {
+        const b = mat({ color: 0x14101a, roughness: 0.9 });
+        g.add(at(new THREE.TorusGeometry(0.145, 0.014, 8, 28), b, 0, 0.07, 0).rotateX(Math.PI / 2));
+        for (const s of [-1, 1]) {
+            const w = at(new THREE.ConeGeometry(0.07, 0.2, 3), b, s * 0.16, 0.17, 0.02); w.rotation.z = -s * 1.0; w.scale.z = 0.25; g.add(w);
+            g.add(at(new THREE.ConeGeometry(0.02, 0.05, 6), new THREE.MeshBasicMaterial({ color: 0xff2a2a }), s * 0.04, 0.12, -0.12).rotateX(-Math.PI / 2));
+        }
     }
     return g;
 }
@@ -111,6 +156,40 @@ export function extraGlasses(id) {
             g.add(at(new THREE.BoxGeometry(0.01, 0.056, 0.012), w, s * 0.096, 0.02, -0.132));
         }
         g.add(at(new THREE.BoxGeometry(0.01, 0.056, 0.012), w, 0, 0.02, -0.132));
+    } else if (id === 'aviator') {
+        const gold = mat({ color: 0xd4a640, metalness: 1, roughness: 0.25 }), lens = new THREE.MeshStandardMaterial({ color: 0x8a6a3a, transparent: true, opacity: 0.6, roughness: 0.08, metalness: 0.3 });
+        for (const s of [-1, 1]) {
+            const l = at(new THREE.CircleGeometry(0.04, 18), lens, s * 0.05, 0.012, -0.134); l.scale.set(1, 1.15, 1); l.rotation.y = Math.PI; g.add(l);
+            const r = at(new THREE.TorusGeometry(0.04, 0.0035, 6, 24), gold, s * 0.05, 0.012, -0.134); r.scale.set(1, 1.15, 1); g.add(r);
+            g.add(at(new THREE.CylinderGeometry(0.0025, 0.0025, 0.13, 4), gold, s * 0.092, 0.03, -0.065).rotateX(Math.PI / 2));
+        }
+        g.add(at(new THREE.BoxGeometry(0.03, 0.004, 0.004), gold, 0, 0.03, -0.134));
+    } else if (id === 'hippie') {
+        const wire = mat({ color: 0x222222, metalness: 0.6 });
+        for (const [s, col] of [[-1, 0xff9a2a], [1, 0xff4a9a]]) {
+            g.add(at(new THREE.CircleGeometry(0.03, 16), new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: 0.65, roughness: 0.1 }), s * 0.047, 0.02, -0.134).rotateY(Math.PI));
+            g.add(at(new THREE.TorusGeometry(0.03, 0.003, 6, 20), wire, s * 0.047, 0.02, -0.134));
+        }
+        g.add(at(new THREE.BoxGeometry(0.024, 0.004, 0.004), wire, 0, 0.026, -0.134));
+    } else if (id === 'steampunk') {
+        const brass = mat({ color: 0xb8863a, metalness: 1, roughness: 0.35 });
+        for (const s of [-1, 1]) {
+            const c = at(new THREE.CylinderGeometry(0.036, 0.04, 0.035, 18), brass, s * 0.047, 0.022, -0.15); c.rotation.x = Math.PI / 2; g.add(c);
+            const lens = at(new THREE.CircleGeometry(0.03, 16), new THREE.MeshStandardMaterial({ color: 0x40d080, emissive: 0x104a28, emissiveIntensity: 0.8, transparent: true, opacity: 0.8, roughness: 0.05 }), s * 0.047, 0.022, -0.1685); lens.rotation.y = Math.PI; g.add(lens);
+        }
+        g.add(at(new THREE.TorusGeometry(0.135, 0.01, 6, 36), mat({ color: 0x4a2a14, roughness: 0.9 }), 0, 0.03, 0).rotateX(Math.PI / 2));
+    } else if (id === 'catseye') {
+        const pink = mat({ color: 0xff5aa8, roughness: 0.3 });
+        for (const s of [-1, 1]) {
+            g.add(at(new THREE.TorusGeometry(0.034, 0.005, 6, 20), pink, s * 0.047, 0.018, -0.134).rotateY(0));
+            g.add(at(new THREE.ConeGeometry(0.018, 0.04, 3), pink, s * 0.078, 0.048, -0.134).rotateZ(-s * 0.5));
+            g.add(at(new THREE.CircleGeometry(0.032, 16), new THREE.MeshStandardMaterial({ color: 0xffd0e8, transparent: true, opacity: 0.35 }), s * 0.047, 0.018, -0.1335).rotateY(Math.PI));
+        }
+        g.add(at(new THREE.BoxGeometry(0.02, 0.005, 0.005), pink, 0, 0.026, -0.134));
+    } else if (id === 'pixel') {
+        const blk = new THREE.MeshBasicMaterial({ color: 0x050505 });
+        const rows = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 0, 1, 1, 0, 1, 1, 1], [0, 1, 1, 0, 0, 0, 0, 1, 1, 0]], px = 0.022;
+        rows.forEach((row, j) => row.forEach((v, i) => { if (v) g.add(at(new THREE.BoxGeometry(px, px, 0.012), blk, (i - 4.5) * px, 0.04 - j * px, -0.134)); }));
     }
     return g;
 }
@@ -153,6 +232,40 @@ export function extraMask(id) {
         for (const s of [-1, 1]) for (const r of [Math.PI / 4, -Math.PI / 4]) g.add(at(new THREE.BoxGeometry(0.04, 0.007, 0.006), d, s * 0.045, 0.03, -0.159).rotateZ(r));
         g.add(at(new THREE.BoxGeometry(0.11, 0.006, 0.006), d, 0, -0.06, -0.16));
         for (let i = 0; i < 6; i++) g.add(at(new THREE.BoxGeometry(0.006, 0.026, 0.006), d, (i - 2.5) * 0.02, -0.06, -0.16));
+    } else if (id === 'luchador') {
+        shell(mat({ color: 0x2a5ae0, roughness: 0.55 }), 0.13, 0.155, 0.065).position.z = -0.1;
+        const white = mat({ color: 0xf6f6f0, roughness: 0.5 }), gold = mat({ color: 0xffc830, roughness: 0.4 });
+        for (const s of [-1, 1]) {
+            const e = at(new THREE.SphereGeometry(0.034, 14, 10), white, s * 0.046, 0.03, -0.152); e.scale.set(1.1, 0.8, 0.4); g.add(e);
+            g.add(at(new THREE.SphereGeometry(0.013, 8, 6), d, s * 0.046, 0.03, -0.163));
+            const wing = at(new THREE.ConeGeometry(0.03, 0.09, 3), gold, s * 0.07, 0.095, -0.15); wing.rotation.z = -s * 0.9; g.add(wing);
+        }
+        const star = at(new THREE.ConeGeometry(0.035, 0.07, 5), gold, 0, -0.035, -0.162); star.rotation.x = -Math.PI / 2; star.scale.set(1, 1, 0.3); g.add(star);
+        const m = at(new THREE.BoxGeometry(0.07, 0.014, 0.01), white, 0, -0.07, -0.16); g.add(m);
+    } else if (id === 'ninja') {
+        shell(mat({ color: 0x101014, roughness: 0.95 }), 0.135, 0.16, 0.07).position.z = -0.1;
+        g.add(at(new THREE.BoxGeometry(0.2, 0.05, 0.012), mat({ color: 0xd8b890, roughness: 0.6 }), 0, 0.03, -0.162));
+        for (const s of [-1, 1]) { const eye = at(new THREE.BoxGeometry(0.03, 0.01, 0.006), new THREE.MeshBasicMaterial({ color: 0xf8f8f8 }), s * 0.045, 0.03, -0.1685); eye.rotation.z = -s * 0.25; g.add(eye); }
+        g.add(at(new THREE.TorusGeometry(0.14, 0.012, 6, 28), mat({ color: 0xc01818 }), 0, 0.075, -0.02).rotateX(Math.PI / 2 - 0.05));
+        const knot = at(new THREE.BoxGeometry(0.04, 0.025, 0.012), mat({ color: 0xc01818 }), 0.14, 0.07, 0.05); g.add(knot);
+    } else if (id === 'robot') {
+        const metal = mat({ color: 0x7a8090, metalness: 0.9, roughness: 0.3, envMapIntensity: Math.max(0.9, ENV) });
+        const plate = at(new THREE.BoxGeometry(0.25, 0.28, 0.07), metal, 0, 0.0, -0.13); g.add(plate);
+        g.add(at(new THREE.BoxGeometry(0.2, 0.04, 0.01), new THREE.MeshBasicMaterial({ color: 0x40e8ff }), 0, 0.045, -0.168));
+        for (let i = 0; i < 5; i++) g.add(at(new THREE.BoxGeometry(0.14, 0.006, 0.008), d, 0, -0.06 - i * 0.012, -0.167));
+        g.add(at(new THREE.CylinderGeometry(0.006, 0.006, 0.08, 6), metal, 0.07, 0.18, -0.12));
+        g.add(at(new THREE.SphereGeometry(0.014, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3030 }), 0.07, 0.225, -0.12));
+        for (const s of [-1, 1]) g.add(at(new THREE.CylinderGeometry(0.012, 0.012, 0.03, 8), metal, s * 0.138, 0.0, -0.13).rotateZ(Math.PI / 2));
+    } else if (id === 'cat') {
+        shell(mat({ color: 0x18141a, roughness: 0.8 }), 0.13, 0.155, 0.065).position.z = -0.1;
+        for (const s of [-1, 1]) {
+            g.add(at(new THREE.ConeGeometry(0.04, 0.08, 3), mat({ color: 0x18141a }), s * 0.085, 0.17, -0.1).rotateZ(-s * 0.2));
+            g.add(at(new THREE.ConeGeometry(0.022, 0.05, 3), mat({ color: 0xff8ab0 }), s * 0.085, 0.165, -0.108).rotateZ(-s * 0.2));
+            const eye = at(new THREE.SphereGeometry(0.02, 10, 8), new THREE.MeshBasicMaterial({ color: 0xd8ff30 }), s * 0.045, 0.03, -0.158); eye.scale.set(1, 1.3, 0.4); g.add(eye);
+            g.add(at(new THREE.BoxGeometry(0.004, 0.032, 0.004), d, s * 0.045, 0.03, -0.162));
+            for (let i = 0; i < 3; i++) { const w = at(new THREE.BoxGeometry(0.09, 0.0025, 0.0025), mat({ color: 0xf0f0f0 }), s * 0.1, -0.035 - i * 0.012, -0.15); w.rotation.z = s * (0.15 - i * 0.12); g.add(w); }
+        }
+        g.add(at(new THREE.ConeGeometry(0.012, 0.016, 3), mat({ color: 0xff8ab0 }), 0, -0.012, -0.165).rotateX(Math.PI));
     }
     return g;
 }
@@ -181,6 +294,20 @@ export function extraSleeveMat(id, base) {
         x.fillStyle = '#300800'; x.fillRect(0, 0, S, S); x.strokeStyle = '#ffa030'; x.lineWidth = 3;
         for (let i = 0; i < 26; i++) { let px = (i * 97) % S, py = (i * 61) % S; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 5; k++) { px += ((i * 7 + k * 13) % 31) - 15; py += ((i * 11 + k * 17) % 31) - 15; x.lineTo(px, py); } x.stroke(); }
     }) }));
+    if (id === 'denim') return new THREE.MeshStandardMaterial(Object.assign(base, { roughness: 0.95, map: patternTex('denim', (x, S) => {
+        x.fillStyle = '#2a4a86'; x.fillRect(0, 0, S, S);
+        for (let i = 0; i < 4000; i++) { x.fillStyle = 'rgba(' + (i % 2 ? '120,160,220' : '10,20,50') + ',0.12)'; x.fillRect((i * 37) % S, (i * 91) % S, 1, 3); }
+        x.strokeStyle = '#e8c070'; x.lineWidth = 2; x.setLineDash([8, 6]); x.beginPath(); x.moveTo(0, 20); x.lineTo(S, 20); x.moveTo(0, S - 20); x.lineTo(S, S - 20); x.stroke();
+    }) }));
+    if (id === 'galaxy') return new THREE.MeshStandardMaterial(Object.assign(base, { color: 0x1a1240, roughness: 0.7, emissive: 0xffffff, emissiveIntensity: 0.9, emissiveMap: patternTex('galaxy', (x, S) => {
+        x.fillStyle = '#05030f'; x.fillRect(0, 0, S, S);
+        for (let i = 0; i < 90; i++) { const v = 140 + (i * 53) % 115; x.fillStyle = 'rgb(' + v + ',' + v + ',' + (v + 20 > 255 ? 255 : v + 20) + ')'; x.beginPath(); x.arc((i * 89) % S, (i * 151) % S, 0.8 + (i % 4) * 0.5, 0, 7); x.fill(); }
+        const g2 = x.createRadialGradient(150, 110, 4, 150, 110, 90); g2.addColorStop(0, 'rgba(200,90,255,0.55)'); g2.addColorStop(1, 'rgba(60,20,160,0)'); x.fillStyle = g2; x.fillRect(0, 0, S, S);
+    }) }));
+    if (id === 'chain') return new THREE.MeshStandardMaterial(Object.assign(base, { color: 0xffffff, metalness: 0.95, roughness: 0.4, envMapIntensity: Math.max(0.9, ENV), map: patternTex('chain', (x, S) => {
+        x.fillStyle = '#3a3c42'; x.fillRect(0, 0, S, S); x.strokeStyle = '#b8bcc8'; x.lineWidth = 2;
+        for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { x.beginPath(); x.arc(i * 16 + (j % 2) * 8 + 8, j * 12 + 8, 6.5, 0, 7); x.stroke(); }
+    }) }));
     if (id === 'woven') return new THREE.MeshStandardMaterial(Object.assign(base, { roughness: 1, map: patternTex('woven', (x, S) => {
         x.fillStyle = '#c8c0b0'; x.fillRect(0, 0, S, S); x.strokeStyle = 'rgba(70,60,50,0.5)'; x.lineWidth = 2;
         for (let i = 0; i < S; i += 12) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 40, S); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(S, i + 40); x.stroke(); }
@@ -195,6 +322,13 @@ export function extraGloveMat(id) {
     if (id === 'rubber') return new THREE.MeshStandardMaterial({ color: 0xf2d020, roughness: 0.2, envMapIntensity: ENV });
     if (id === 'tar') return new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.05, metalness: 0.5, emissive: 0x1a0020, envMapIntensity: ENV });
     if (id === 'golden') return new THREE.MeshStandardMaterial({ color: 0xd4a640, metalness: 1, roughness: 0.2, envMapIntensity: Math.max(0.8, ENV) });
+    if (id === 'chrome') return new THREE.MeshStandardMaterial({ color: 0xe8ecf0, roughness: 0.06, metalness: 1, envMapIntensity: Math.max(1.2, ENV) });
+    if (id === 'lavaglove') return new THREE.MeshStandardMaterial({ color: 0x1a0a06, roughness: 0.85, emissive: 0xff5a10, emissiveIntensity: 1.1, emissiveMap: patternTex('lavaglove', (x, S) => {
+        x.fillStyle = '#200600'; x.fillRect(0, 0, S, S); x.strokeStyle = '#ffb040'; x.lineWidth = 4; x.lineCap = 'round';
+        for (let i = 0; i < 20; i++) { let px = (i * 83) % S, py = (i * 47) % S; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 5; k++) { px += ((i * 5 + k * 11) % 41) - 20; py += ((i * 9 + k * 19) % 37) - 8; x.lineTo(px, py); } x.stroke(); }
+    }), envMapIntensity: ENV });
+    if (id === 'candy') return new THREE.MeshStandardMaterial({ color: 0xff7ac8, roughness: 0.22, emissive: 0x401030, envMapIntensity: ENV });
+    if (id === 'rainbow') return new THREE.MeshStandardMaterial({ roughness: 0.4, map: patternTex('rainbow', (x, S) => { ['#ff3a3a', '#ff9a2a', '#ffe23a', '#3ad84a', '#3a8aff', '#9a4aff'].forEach((c, i) => { x.fillStyle = c; x.fillRect(0, i * S / 6, S, S / 6 + 1); }); }), envMapIntensity: ENV });
     return null;
 }
 
@@ -204,7 +338,11 @@ export const EXTRA_SKINS = {
     pumpkinape: { fur: 0xd86a10, face: 0x3a2008 },
     zombie: { fur: 0x6a8a4a, face: 0x2a3a1e, glowEyes: true },
     jungle: { fur: 0x2f6a2a, face: 0x12200e },
-    nightmare: { fur: 0x2a0a3a, face: 0x100418, glowEyes: true }
+    nightmare: { fur: 0x2a0a3a, face: 0x100418, glowEyes: true },
+    sakura: { fur: 0xf2b8cc, face: 0x8a4a5a },
+    lavaape: { fur: 0x1c0a06, face: 0x3a0e04, glowEyes: true },
+    panda: { fur: 0xf2f2f0, face: 0x141414 },
+    midnight: { fur: 0x14204a, face: 0x070a1a }
 };
 
 // ---------- ODZNAKI (rysowane na okrągłej przypince; x = kontekst 2D 128x128) ----------
@@ -217,5 +355,9 @@ export const EXTRA_BADGES = {
     sun: { bg: '#3a1a00', draw: (x) => { x.fillStyle = '#ffd030'; x.beginPath(); x.arc(64, 64, 22, 0, 7); x.fill(); x.strokeStyle = '#ffd030'; x.lineWidth = 6; x.lineCap = 'round'; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; x.beginPath(); x.moveTo(64 + Math.cos(a) * 32, 64 + Math.sin(a) * 32); x.lineTo(64 + Math.cos(a) * 44, 64 + Math.sin(a) * 44); x.stroke(); } } },
     present: { bg: '#3a0a1a', draw: (x) => { x.fillStyle = '#e03a5a'; x.fillRect(34, 52, 60, 44); x.fillStyle = '#ffd23a'; x.fillRect(60, 52, 8, 44); x.fillRect(34, 70, 60, 8); x.beginPath(); x.ellipse(52, 46, 14, 9, -0.4, 0, 7); x.ellipse(76, 46, 14, 9, 0.4, 0, 7); x.fill(); } },
     daily: { bg: '#0a2a3a', draw: (x) => { x.fillStyle = '#f4f4f4'; x.fillRect(34, 40, 60, 56); x.fillStyle = '#e03a3a'; x.fillRect(34, 40, 60, 14); x.fillStyle = '#0a2a3a'; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) x.fillRect(42 + i * 18, 62 + j * 11, 10, 6); x.fillRect(46, 32, 6, 14); x.fillRect(76, 32, 6, 14); } },
-    nm: { bg: '#1a0420', draw: (x) => { x.fillStyle = '#ff2a4a'; x.beginPath(); x.moveTo(64, 26); x.lineTo(96, 54); x.lineTo(88, 100); x.lineTo(40, 100); x.lineTo(32, 54); x.closePath(); x.fill(); x.fillStyle = '#1a0420'; x.beginPath(); x.arc(52, 64, 7, 0, 7); x.arc(76, 64, 7, 0, 7); x.fill(); x.fillRect(46, 82, 36, 6); } }
+    nm: { bg: '#1a0420', draw: (x) => { x.fillStyle = '#ff2a4a'; x.beginPath(); x.moveTo(64, 26); x.lineTo(96, 54); x.lineTo(88, 100); x.lineTo(40, 100); x.lineTo(32, 54); x.closePath(); x.fill(); x.fillStyle = '#1a0420'; x.beginPath(); x.arc(52, 64, 7, 0, 7); x.arc(76, 64, 7, 0, 7); x.fill(); x.fillRect(46, 82, 36, 6); } },
+    heart: { bg: '#3a0a1a', draw: (x) => { x.fillStyle = '#ff3a6a'; x.beginPath(); x.moveTo(64, 98); x.bezierCurveTo(14, 62, 30, 24, 64, 48); x.bezierCurveTo(98, 24, 114, 62, 64, 98); x.fill(); } },
+    bolt: { bg: '#10142a', draw: (x) => { x.fillStyle = '#ffe23a'; x.beginPath(); x.moveTo(72, 18); x.lineTo(38, 70); x.lineTo(60, 70); x.lineTo(52, 110); x.lineTo(92, 56); x.lineTo(68, 56); x.closePath(); x.fill(); } },
+    clover: { bg: '#0a2a14', draw: (x) => { x.fillStyle = '#3ad86a'; for (const [cx, cy] of [[48, 48], [80, 48], [48, 80], [80, 80]]) { x.beginPath(); x.arc(cx, cy, 20, 0, 7); x.fill(); } x.fillStyle = '#0a2a14'; x.fillRect(62, 62, 4, 40); } },
+    paw: { bg: '#2a1a0a', draw: (x) => { x.fillStyle = '#e8c890'; x.beginPath(); x.ellipse(64, 78, 24, 20, 0, 0, 7); x.fill(); for (const [cx, cy] of [[34, 56], [52, 38], [76, 38], [94, 56]]) { x.beginPath(); x.ellipse(cx, cy, 9, 12, 0, 0, 7); x.fill(); } } }
 };
