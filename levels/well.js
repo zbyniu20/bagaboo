@@ -20,7 +20,7 @@ import * as SFX from '../core/audio.js';
 import { createEvents } from '../core/events.js';
 import * as N from '../core/network.js';
 import { ARRIVAL_FROM_WELL as ARRIVAL_WELL } from './levels.js';
-import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions , introSeen } from '../core/levelkit.js';
+import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions , introSeen, signTexture } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA (trudność) ----------
 const NP = LIGHT_PRESETS.night;
@@ -206,6 +206,11 @@ function buildHatch() {
     S.hatch = { lid: lid, ob: ob, pulls: 0, open: false, lift: 0, chain: lever };
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xa8c8ff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.5 }));
     glow.scale.set(3, 3, 1); glow.position.set(0, TOP + 1.2, 0); root.add(glow);
+    // Znak EXIT na ścianie szybu tuż pod klapą: wyjście na końcu wspinaczki
+    const exitSign = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.375), new THREE.MeshBasicMaterial({ map: signTexture('EXIT', '#70ff90'), toneMapped: false }));
+    exitSign.position.set(0, TOP - 0.3, -HS + 0.03); root.add(exitSign);
+    const exitGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0x60ff90, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.45 }));
+    exitGlow.scale.set(2.6, 1.3, 1); exitGlow.position.set(0, TOP - 0.3, -HS + 0.1); root.add(exitGlow);
 }
 function buildLobbyDoor() {
     buildDoor({ x: 0, z: HS - 0.02, rotY: Math.PI, label: 'LOBBY', color: '#70ff90', wood: 0x6a7a6a, signY: 2.5,
