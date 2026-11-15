@@ -2,7 +2,7 @@
 // FABRYKA TRYBÓW WYŚCIGOWYCH (Swing Run, Tower Climb): runda oczekiwanie -> odliczanie -> wyścig -> wyniki, kolejność mety,
 // host liczy stan i rozsyła go co 0,2 s, tryb solo to próba czasowa z czasem wzorcowym, rekordem i duchem (core/runkit.js).
 // Mniej więcej to samo robi levels/race.js (Parkour Race) na sztywno; tutaj tor, kryteria mety i dodatkowe reguły podaje konfiguracja.
-//   cfg.build(S)             buduje halę i tor (L.root), zwraca { finish(p) -> bool }; może dopisać pola do S
+//   cfg.build(S)             buduje halę i tor (L.root), zwraca { finish(p) -> bool, exit: opcje drzwi EXIT za metą (buildDoor) }; może dopisać pola do S
 //   cfg.frame(S, dt, p, ctx) co klatkę w wyścigu; zwrócenie 'caught' cofa gracza na start (np. maź), ustawia S.extra do HUD
 //   cfg.respawn              'platform' (po upadku wracasz na ostatnią platformę) albo 'start'
 // ==========================================
@@ -101,6 +101,8 @@ export function createRaceMode(cfg) {
         S.t = N.NET.mode === 'solo' ? SOLO_WAIT : WAIT;
         const built = cfg.build(S); S.finish = built.finish;
         buildDoor(Object.assign({ label: 'GAMES', color: '#d080ff', wood: 0x3a3048, portal: { target: 'games', spawn: cfg.arrival, onEnter: () => toast('Back to BagaBoo Games') } }, cfg.door));
+        // Wyjście na końcu toru (po mecie): drzwi z napisem EXIT wracają do salonu Games, tak jak drzwi GAMES na starcie
+        if (built.exit) buildDoor(Object.assign({ label: 'EXIT', color: '#70ff90', glow: 0x60ff90, wood: 0x3a4a3a, light: true, portal: { target: 'games', spawn: cfg.arrival, onEnter: () => toast('Back to BagaBoo Games') } }, built.exit));
         S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
         S.intro = cameraPanel(1280, 760, 1.0, 0.594, -0.04, -1.05, 995); S.intro.last = -1;
         N.onLevelMsg(onNet);

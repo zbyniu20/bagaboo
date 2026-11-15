@@ -26,42 +26,12 @@ import { updateVrMenu, vrMenuTerminal } from './core/vrmenu.js';
 import { onLevelBuilt, updateVisuals } from './core/visuals.js';
 import { registerLevelLights, updateLightPool } from './core/lightpool.js';
 import { captureEnvironment } from './core/envcapture.js';
+import { LEVEL_DEFS, levelPath } from './core/registry.js';
 import { isReservedNick, checkNickPassword, isStaffName } from './core/config.js';
 
-// Lista poziomów. Nowy poziom = nowy plik w folderze levels/ + wpis tutaj.
-// light: preset oświetlenia z config.js, extras: dodatkowe pliki doładowywane razem z poziomem
-const LEVELS = {
-    lobby: { path: './levels/lobby.js', light: LIGHT_MODE, extras: ['./levels/lobby-door.js'] },
-    maze: { path: './levels/maze.js', light: 'night', extras: [] },
-    silence: { path: './levels/silence.js', light: 'night', extras: [] },
-    well: { path: './levels/well.js', light: 'night', extras: [] },
-    games: { path: './levels/games.js', light: 'arcade', extras: [] },
-    levels: { path: './levels/levels.js', light: 'levels', extras: [] },
-    laundry: { path: './levels/laundry.js', light: 'laundry', extras: [] },
-    memory: { path: './levels/memory.js', light: 'lava', extras: [] },
-    lava: { path: './levels/lava.js', light: 'lava', extras: [] },
-    monster: { path: './levels/monster.js', light: 'station', extras: [] },
-    range: { path: './levels/range.js', light: 'night', extras: [] },
-    hideseek: { path: './levels/hideseek.js', light: 'hideseek', extras: [] },
-    banana: { path: './levels/banana.js', light: 'station', extras: [] },
-    race: { path: './levels/race.js', light: 'arcade', extras: [] },
-    redlight: { path: './levels/redlight.js', light: 'station', extras: [] },
-    potato: { path: './levels/potato.js', light: 'station', extras: [] },
-    lasttile: { path: './levels/lasttile.js', light: 'arcade', extras: [] },
-    treasure: { path: './levels/treasure.js', light: 'hideseek', extras: [] },
-    hospital: { path: './levels/hospital.js', light: 'hospital', extras: [] },
-    cemetery: { path: './levels/cemetery.js', light: 'cemetery', extras: [] },
-    catacombs: { path: './levels/catacombs.js', light: 'catacombs', extras: [] },
-    wardrobe: { path: './levels/wardrobe.js', light: 'staff', extras: [] },
-    koth: { path: './levels/koth.js', light: 'station', extras: [] },
-    infection: { path: './levels/infection.js', light: 'station', extras: [] },
-    dodgeball: { path: './levels/dodgeball.js', light: 'station', extras: [] },
-    statues: { path: './levels/statues.js', light: 'arcade', extras: [] },
-    blindtag: { path: './levels/blindtag.js', light: 'hideseek', extras: [] },
-    swingrun: { path: './levels/swingrun.js', light: 'arcade', extras: [] },
-    towerclimb: { path: './levels/towerclimb.js', light: 'night', extras: [] },
-    staff: { path: './levels/staff.js', light: 'staff', extras: [] }
-};
+// Lista poziomów jest w core/registry.js (nowy poziom = plik w levels/ + wpis w rejestrze).
+// light: preset oświetlenia z config.js ('@mode' = tryb lobby), extras: dodatkowe pliki doładowywane razem z poziomem
+const LEVELS = Object.fromEntries(LEVEL_DEFS.filter(d => d.kind !== 'virtual').map(d => [d.id, { path: levelPath(d), light: d.light === '@mode' ? LIGHT_MODE : d.light, extras: d.extras || [] }]));
 let level = null, extras = [], levelId = null, started = false, switching = false;
 
 export async function loadLevel(id, spawn) {
@@ -100,7 +70,7 @@ export async function loadLevel(id, spawn) {
     markAllDirty();
 }
 // Ekran ładowania przed oczami: zamiast zamrożonego obrazu gracz widzi czerń z napisem
-const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well', lava: 'Floor is Lava', staff: 'Staff room', games: 'BagaBoo Games', levels: 'Levels', laundry: 'The Industrial Laundromat', memory: 'Burning Memory', monster: 'Become the Monster', range: 'Shooting Range', hideseek: 'Hide and Seek', banana: 'Capture the Banana', race: 'Parkour Race', redlight: 'Red Light, Green Light', potato: 'Hot Potato', lasttile: 'Last Tile', treasure: 'Treasure Hunt', hospital: 'The Hospital', cemetery: 'The Cemetery', catacombs: 'The Catacombs', wardrobe: 'Wardrobe', koth: 'King of the Hill', infection: 'Infection', dodgeball: 'Dodgeball', statues: 'Statues', blindtag: 'Blind Tag', swingrun: 'Swing Run', towerclimb: 'Tower Climb' };
+const LEVEL_NAMES = Object.fromEntries(LEVEL_DEFS.filter(d => d.name).map(d => [d.id, d.name]));
 const fade = (() => {
     const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
