@@ -11,6 +11,7 @@ export const SETTINGS = Object.assign({
     haptics: true,     // wibracje kontrolerów
     brightness: 1.0,   // jasność obrazu 0.6..1.8 (mnożnik ekspozycji)
     snapTurn: false,   // obrót prawą gałką krokami co 30° zamiast płynnie (komfort VR)
+    perfScale: 1.0,    // mnożnik rozdzielczości VR zapamiętany przez regulator wydajności (xrperf.js), 0.7..1
     quality: 'medium'  // 'low' | 'medium' | 'high' (zmiana wymaga ponownego uruchomienia gry)
 }, read());
 export function saveSettings() { try { localStorage.setItem(KEY, JSON.stringify(SETTINGS)); } catch (e) {} }

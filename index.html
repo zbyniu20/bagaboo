@@ -6,6 +6,7 @@
 <meta name="description" content="BagaBoo VR. Don't look away.">
 <meta name="theme-color" content="#050308">
 <title>BagaBoo VR - Don't Look Away</title>
+<script>if (/OculusBrowser|Quest|Oculus/i.test(navigator.userAgent)) document.documentElement.classList.add('lite');   // Quest: lżejsza strona startowa</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600&display=swap');
 :root { --blood: #c4161c; --ember: #ff7a2a; --gold: #e9c98c; --bone: #f2e8e2; --ink: #050308; --ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; --serif: 'Cinzel', 'Trajan Pro', Georgia, serif; }
@@ -85,6 +86,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
 
 @media (max-height: 700px) { #foot { display: none; } h1.logo { font-size: clamp(40px, 8vw, 96px); } .tagline { margin-top: 14px; } }
 @media (max-width: 600px) { h1.logo { letter-spacing: 0.16em; margin-right: -0.16em; font-size: clamp(36px, 13vw, 80px); } @keyframes reveal { 0% { opacity: 0; filter: blur(12px); } 100% { opacity: 1; filter: blur(0); } } .tagline { letter-spacing: 0.35em; } }
+.lite #grain { display: none; } .lite #card { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(14,8,12,0.84); } .lite #dark { mix-blend-mode: normal; background: radial-gradient(circle 300px at var(--mx) var(--my), rgba(0,0,0,0) 0%, rgba(4,2,8,0.18) 60%, rgba(4,2,8,0.4) 100%); } .lite #glow { display: none; }
 @media (prefers-reduced-motion: reduce) { #grain, #curtain, h1.logo, h1.logo::before, h1.logo::after, #btnSolo::after { animation: none !important; } #curtain { display: none; } .tagline, #card, #foot { animation: none !important; opacity: 1; } }
 </style>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -93,7 +95,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
 // (nowy numer co 5 minut, więc po wgraniu zmian na GitHub nie trzeba już dopisywać ?v= do adresu).
 // Dodając nowy plik .js do gry, dopisz go do listy FILES.
 (function () {
-  var FILES = ["main.js", "core/audio.js", "core/avatar.js", "core/config.js", "core/debug.js", "core/desktop.js", "core/economy.js", "core/engine.js", "core/hammer.js", "core/haptics.js", "core/levelkit.js", "core/mannequin.js", "core/monsterskins.js", "core/murals.js", "core/network.js", "core/pause.js", "core/player.js", "core/presence.js", "core/settings.js", "core/terminal.js", "core/textures.js", "core/ui.js", "core/visuals.js", "core/vrmenu.js", "levels/games.js", "levels/laundry.js", "levels/lava.js", "levels/levels.js", "levels/lobby-door.js", "levels/lobby.js", "levels/maze.js", "levels/memory.js", "levels/monster.js", "levels/range.js", "levels/silence.js", "levels/staff.js", "levels/well.js", "core/runkit.js", "levels/hideseek.js", "levels/banana.js", "levels/race.js", "levels/koth.js", "levels/wardrobe.js", "levels/hospital.js", "levels/redlight.js", "levels/potato.js", "levels/lasttile.js", "levels/treasure.js", "levels/cemetery.js", "levels/infection.js", "levels/dodgeball.js", "core/roundkit.js", "core/music.js", "core/emotes.js", "core/emotepanel.js", "core/ambience.js", "core/lightpool.js", "core/liquids.js", "core/envcapture.js", "core/botkit.js", "core/cosmetics.js", "core/events.js", "core/highfive.js"];
+  var FILES = ["main.js", "core/audio.js", "core/avatar.js", "core/config.js", "core/debug.js", "core/desktop.js", "core/economy.js", "core/engine.js", "core/hammer.js", "core/haptics.js", "core/levelkit.js", "core/mannequin.js", "core/monsterskins.js", "core/murals.js", "core/network.js", "core/pause.js", "core/player.js", "core/presence.js", "core/settings.js", "core/terminal.js", "core/textures.js", "core/ui.js", "core/visuals.js", "core/vrmenu.js", "levels/games.js", "levels/laundry.js", "levels/lava.js", "levels/levels.js", "levels/lobby-door.js", "levels/lobby.js", "levels/maze.js", "levels/memory.js", "levels/monster.js", "levels/range.js", "levels/silence.js", "levels/staff.js", "levels/well.js", "core/runkit.js", "levels/hideseek.js", "levels/banana.js", "levels/race.js", "levels/koth.js", "levels/wardrobe.js", "levels/hospital.js", "levels/redlight.js", "levels/potato.js", "levels/lasttile.js", "levels/treasure.js", "levels/cemetery.js", "levels/infection.js", "levels/dodgeball.js", "core/roundkit.js", "core/music.js", "core/emotes.js", "core/emotepanel.js", "core/ambience.js", "core/lightpool.js", "core/liquids.js", "core/envcapture.js", "core/botkit.js", "core/cosmetics.js", "core/events.js", "core/highfive.js", "core/device.js", "core/xrperf.js"];
   var VERSION = String(Math.floor(Date.now() / 300000));
   var imports = {
     "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
@@ -163,6 +165,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
 (function () {
   var lobby = document.getElementById('lobby'), cv = document.getElementById('scene'), g = cv.getContext('2d');
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var LITE = document.documentElement.classList.contains('lite'), FRAME_MS = LITE ? 48 : 30;
   var W = 0, H = 0, DPR = 1, M = 44, layers = {}, fog = null, t0 = performance.now(), DT = 1 / 30, lastDraw = 0;
   var mouse = { x: 0.5, y: 0.4, tx: 0.5, ty: 0.4, real: false };
   function rng(seed) { var s = seed >>> 0; return function () { s = (s + 0x6D2B79F5) >>> 0; var t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -200,7 +203,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
   var wins = [], stars = [], embers = [], eyes = [], flash = { a: 0, next: 7 }, moon = { x: 0, y: 0, r: 0 }, apeAt = { x: 0, y: 0, s: 1 }, horizon = 0;
 
   function build() {
-    DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+    DPR = LITE ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
     W = lobby.clientWidth; H = lobby.clientHeight; horizon = H * 0.8;
     cv.width = Math.floor(W * DPR); cv.height = Math.floor(H * DPR);
     var r = rng(1313), narrow = W < 800;
@@ -232,7 +235,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
     });
     fog = document.createElement('canvas'); fog.width = 900; fog.height = 160; var f = fog.getContext('2d'), fr = rng(77);
     for (i = 0; i < 40; i++) { var fx = fr() * 900, fy = 40 + fr() * 80, rr = 40 + fr() * 70, gg = f.createRadialGradient(fx, fy, 0, fx, fy, rr); gg.addColorStop(0, 'rgba(190,150,150,0.20)'); gg.addColorStop(1, 'rgba(190,150,150,0)'); f.fillStyle = gg; f.fillRect(fx - rr, fy - rr, rr * 2, rr * 2); }
-    embers = []; for (i = 0; i < (W < 700 ? 30 : 70); i++) embers.push({ x: Math.random() * W, y: Math.random() * H, v: 12 + Math.random() * 34, s: 0.6 + Math.random() * 1.8, p: Math.random() * 6 });
+    embers = []; for (i = 0; i < (LITE ? 24 : (W < 700 ? 30 : 70)); i++) embers.push({ x: Math.random() * W, y: Math.random() * H, v: 12 + Math.random() * 34, s: 0.6 + Math.random() * 1.8, p: Math.random() * 6 });
     eyes = []; for (i = 0; i < 6; i++) eyes.push(newEyes());
   }
   function newEyes() { return { x: W * (0.04 + Math.random() * 0.92), y: horizon + (Math.random() - 0.2) * H * 0.15 - (Math.random() < 0.3 ? H * 0.2 : 0), gap: 7 + Math.random() * 7, ph: Math.random() * 20, t: Math.random() * 6, hide: 0 }; }
@@ -292,7 +295,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
 
   function frame(now) {
     if (lobby.style.display === 'none') return;           // gra wystartowała: scena przestaje się rysować
-    if (!document.hidden && now - lastDraw >= 30) {         // ok. 30 klatek/s: strona startowa nie ma obciążać gogli ani słabych telefonów
+    if (!document.hidden && now - lastDraw >= FRAME_MS) {         // ok. 30 klatek/s: strona startowa nie ma obciążać gogli ani słabych telefonów
       DT = Math.min(0.1, (now - lastDraw) / 1000); lastDraw = now;
       if (!mouse.real) { var k = (now - t0) / 1000; mouse.tx = 0.5 + Math.sin(k * 0.35) * 0.32; mouse.ty = 0.42 + Math.sin(k * 0.52 + 1) * 0.2; }
       mouse.x += (mouse.tx - mouse.x) * 0.09; mouse.y += (mouse.ty - mouse.y) * 0.09;

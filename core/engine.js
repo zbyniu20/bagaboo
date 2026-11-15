@@ -21,7 +21,7 @@ playerRig.add(camera); scene.add(playerRig);
 export const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
-renderer.xr.setFramebufferScaleFactor(GFX.xrScale);
+renderer.xr.setFramebufferScaleFactor(GFX.xrScale * Math.max(0.7, Math.min(1, SETTINGS.perfScale || 1)));   // perfScale: niższa rozdzielczość zapamiętana, gdy gogle nie wyrabiały (xrperf.js)
 renderer.xr.setFoveation(GFX.foveation);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -104,8 +104,9 @@ export function clearLevel() {
     // Zwolnienie pamięci karty graficznej po starym poziomie
     L.root.traverse((o) => {
         if (o.geometry) o.geometry.dispose();
+        if (o.isInstancedMesh) o.dispose();   // bufor macierzy instancji
         const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
-        for (const m of mats) { for (const k of ['map', 'emissiveMap', 'bumpMap', 'roughnessMap']) if (m[k]) m[k].dispose(); m.dispose(); }
+        for (const m of mats) { for (const k of ['map', 'emissiveMap', 'bumpMap', 'roughnessMap', 'normalMap', 'metalnessMap', 'alphaMap', 'aoMap', 'lightMap']) if (m[k]) m[k].dispose(); m.dispose(); }
     });
     L.root.clear();
 }
