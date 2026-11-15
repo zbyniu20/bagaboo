@@ -17,6 +17,7 @@ import { createGhost } from '../core/runkit.js';
 import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_CATACOMBS } from './levels.js';
+import { createGridMaze } from '../core/gridmaze.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
 
 const N = 8, P = 5.5, WT = 0.8, H = 3.4, X = N * P / 2;              // siatka 8 x 8 komórek po 5,5 m (44 x 44 m), ściany 0,8 m
@@ -28,59 +29,12 @@ let S = null;
 const _q = new THREE.Vector3();
 
 // ---------- UKŁAD LABIRYNTU (deterministyczny: DFS z ziarnem + kilka dodatkowych przejść, żeby dało się uciekać pętlami) ----------
-const cx = (i) => -X + (i + 0.5) * P, cz = (j) => -(j + 0.5) * P;
-const cellOf = (x, z) => [Math.max(0, Math.min(N - 1, Math.floor((x + X) / P))), Math.max(0, Math.min(N - 1, Math.floor(-z / P)))];
-function genMaze() {
-    const R = T.mkRng(8888), open = new Set(), seen = new Set(), key = (a, b) => (a < b ? a + '|' + b : b + '|' + a), id = (i, j) => j * N + i;
-    const stack = [[0, 0]]; seen.add(0);
-    while (stack.length) {
-        const [i, j] = stack[stack.length - 1], nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(d => [i + d[0], j + d[1]]).filter(q => q[0] >= 0 && q[1] >= 0 && q[0] < N && q[1] < N && !seen.has(id(q[0], q[1])));
-        if (!nb.length) { stack.pop(); continue; }
-        const q = nb[(R() * nb.length) | 0]; open.add(key(id(i, j), id(q[0], q[1]))); seen.add(id(q[0], q[1])); stack.push(q);
-    }
-    for (let k = 0; k < 9; k++) {   // pętle
-        const i = (R() * (N - 1)) | 0, j = (R() * (N - 1)) | 0, d = R() < 0.5 ? [1, 0] : [0, 1];
-        open.add(key(id(i, j), id(i + d[0], j + d[1])));
-    }
-    const link = (i, j, di, dj) => { const a = i + di, b = j + dj; return a >= 0 && b >= 0 && a < N && b < N && open.has(key(id(i, j), id(a, b))); };
-    return { link: link };
-}
-const MZ = genMaze();
-function bfs(from, to) {   // lista komórek [i,j] od następnej po 'from' do 'to'
-    const prev = new Map(), id = (c) => c[1] * N + c[0], q = [from]; prev.set(id(from), null);
-    while (q.length) {
-        const c = q.shift(); if (c[0] === to[0] && c[1] === to[1]) break;
-        for (const d of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = [c[0] + d[0], c[1] + d[1]]; if (!MZ.link(c[0], c[1], d[0], d[1]) || prev.has(id(n))) continue; prev.set(id(n), c); q.push(n); }
-    }
-    const path = []; let c = to; if (!prev.has(id(c))) return path;
-    while (c && !(c[0] === from[0] && c[1] === from[1])) { path.unshift(c); c = prev.get(id(c)); }
-    return path;
-}
-function distMap(from) {
-    const dist = new Map(), q = [from], id = (c) => c[1] * N + c[0]; dist.set(id(from), 0);
-    while (q.length) { const c = q.shift(); for (const d of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = [c[0] + d[0], c[1] + d[1]]; if (!MZ.link(c[0], c[1], d[0], d[1]) || dist.has(id(n))) continue; dist.set(id(n), dist.get(id(c)) + 1); q.push(n); } }
-    return dist;
-}
+const GM = createGridMaze({ N: N, P: P, WT: WT, H: H, seed: 8888, loops: 9 });   // układ i pathfinding: core/gridmaze.js
+const { cx, cz, cellOf, bfs } = GM;
 const START = [0, 0], EXIT_CELL = [N - 1, N - 1];
 const EXIT_Z = -N * P + WT / 2 + 0.03, GATE_Z = -N * P + P * 0.55;
 // Klucze: 4 ślepe zaułki jak najdalej od siebie i od startu
-function pickKeys() {
-    const dm = distMap(START), ends = [];
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-        if ((i === START[0] && j === START[1]) || (i === EXIT_CELL[0] && j === EXIT_CELL[1])) continue;
-        const deg = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(d => MZ.link(i, j, d[0], d[1])).length;
-        if (deg === 1 && dm.get(j * N + i) >= 4) ends.push([i, j]);
-    }
-    if (ends.length < KEYS) for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) if (!ends.some(e => e[0] === i && e[1] === j) && dm.get(j * N + i) >= 6 && !(i === EXIT_CELL[0] && j === EXIT_CELL[1])) ends.push([i, j]);
-    const picked = [ends.sort((a, b) => dm.get(b[1] * N + b[0]) - dm.get(a[1] * N + a[0]))[0]];
-    while (picked.length < KEYS && picked.length < ends.length) {
-        let best = null, bd = -1;
-        for (const e of ends) { if (picked.includes(e)) continue; const d = Math.min(...picked.map(p => Math.hypot(p[0] - e[0], p[1] - e[1]))); if (d > bd) { bd = d; best = e; } }
-        picked.push(best);
-    }
-    return picked;
-}
-const KEY_CELLS = pickKeys();
+const KEY_CELLS = GM.pickDeadEnds(KEYS, START, [START, EXIT_CELL], 4);
 const KEY_POS = KEY_CELLS.map(c => [cx(c[0]), cz(c[1])]);
 // Stosy kości: w korytarzach (nie w komórkach startu, wyjścia i kluczy), ok. co trzecia komórka
 function pickBones() {
@@ -111,28 +65,7 @@ export function build() {
 }
 
 // ---------- BUDOWA ----------
-function buildWalls() {
-    const wall = 0x6e6454, e = 0x0c0a08;
-    addCrispBlock(0, -0.5, -N * P / 2, X * 2 + 4, 1, N * P + 4, 0x4a4238, 0x0a0806, tex.floor, { rough: tex.floorRough });
-    addCrispBlock(0, H + 0.5, -N * P / 2, X * 2 + 4, 1, N * P + 4, 0x2a241e, 0x0a0806, tex.wall);
-    // Ściany poziome i pionowe scalone w ciągi (mniej brył i wywołań rysowania)
-    for (let k = 0; k <= N; k++) {
-        let run = -1;
-        for (let i = 0; i <= N; i++) {
-            const solid = i < N && (k === 0 || k === N || !MZ.link(i, k - 1, 0, 1));
-            if (solid && run < 0) run = i;
-            if (!solid && run >= 0) { addCrispBlock(-X + (run + i) * P / 2, H / 2, -k * P, (i - run) * P + WT, H, WT, wall, e, tex.wall); run = -1; }
-        }
-    }
-    for (let k = 0; k <= N; k++) {
-        let run = -1;
-        for (let j = 0; j <= N; j++) {
-            const solid = j < N && (k === 0 || k === N || !MZ.link(k - 1, j, 1, 0));
-            if (solid && run < 0) run = j;
-            if (!solid && run >= 0) { const len = (j - run) * P - WT; addCrispBlock(-X + k * P, H / 2, -(run + j) * P / 2, WT, H, len, wall, e, tex.wall); run = -1; }
-        }
-    }
-}
+function buildWalls() { GM.buildWalls({ wall: 0x6e6454, edge: 0x0c0a08, floor: 0x4a4238, ceil: 0x2a241e }); }
 // Czaszki we wnękach i stosy kości (po jednym InstancedMesh), pochodnie, ułudy z czerwonymi oczami
 function buildDecor() {
     const R = T.mkRng(9191);

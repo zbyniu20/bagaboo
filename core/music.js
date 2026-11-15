@@ -16,6 +16,7 @@ export const THEMES = {
     calm: { root: 45, scale: 'pent', bpm: 60, pad: 'sine', lp: 1400, arp: 0.18, lead: 'triangle', bass: false, vol: 0.9 },
     dread: { root: 40, scale: 'phrygian', bpm: 54, pad: 'sawtooth', lp: 420, arp: 0.06, lead: 'sine', bass: false, vol: 1 },
     hospital: { root: 43, scale: 'dim', bpm: 50, pad: 'triangle', lp: 800, arp: 0.1, lead: 'sine', bass: false, vol: 1 },
+    nursery: { root: 60, scale: 'pent', bpm: 62, pad: 'sine', lp: 1800, arp: 0.35, lead: 'triangle', bass: false, vol: 0.8 },
     catacombs: { root: 34, scale: 'dim', bpm: 44, pad: 'sine', lp: 600, arp: 0.07, lead: 'sine', bass: false, vol: 1 },
     cemetery: { root: 38, scale: 'minor', bpm: 48, pad: 'sine', lp: 1000, arp: 0.09, lead: 'triangle', bass: false, vol: 1 },
     industrial: { root: 36, scale: 'phrygian', bpm: 78, pad: 'square', lp: 320, arp: 0.05, lead: 'sawtooth', bass: true, vol: 0.9 },
