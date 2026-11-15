@@ -22,10 +22,12 @@ const THEMES = {
     chase: { root: 41, scale: 'phrygian', bpm: 96, pad: 'sawtooth', lp: 600, arp: 0.2, lead: 'sawtooth', bass: true, vol: 0.9 }
 };
 const LEVEL_THEME = { lobby: 'calm', wardrobe: 'calm', staff: 'calm', levels: 'dread', maze: 'dread', silence: 'dread', well: 'dread', laundry: 'industrial', memory: 'lava', lava: 'lava',
-    hospital: 'hospital', cemetery: 'cemetery', games: 'arcade', range: 'arcade', banana: 'arcade', koth: 'arcade', dodgeball: 'arcade', race: 'arcade', monster: 'chase', infection: 'chase', hideseek: 'dread', redlight: 'chase', potato: 'arcade', lasttile: 'arcade', treasure: 'dread' };
-let theme = THEMES.calm, bus = null, nextT = 0, step = 0, deg = 0;
+    hospital: 'hospital', cemetery: 'cemetery', games: 'arcade', range: 'arcade', banana: 'arcade', koth: 'arcade', dodgeball: 'arcade', race: 'arcade', monster: 'chase', infection: 'chase', hideseek: 'dread', redlight: 'chase', potato: 'arcade', lasttile: 'arcade', treasure: 'dread', statues: 'arcade', blindtag: 'dread', swingrun: 'arcade', towerclimb: 'dread' };
+let theme = THEMES.calm, bus = null, nextT = 0, step = 0, deg = 0, muted = false;
 const BASE = 0.32;   // głośność bazowa muzyki względem efektów
 
+// Tryby, w których cisza jest częścią zasad (Statues, Blind Tag): chwilowe wyciszenie muzyki poziomu (ucina też brzmiące pady)
+export function setMusicMute(on) { muted = !!on; if (bus) bus.gain.gain.setTargetAtTime(muted ? 0.0001 : BASE * SETTINGS.music, bus.ctx.currentTime, 0.04); }
 export function setLevelMusic(levelId) { theme = THEMES[LEVEL_THEME[levelId] || 'calm']; step = 0; }
 
 function ensureBus(ctx) {
@@ -34,7 +36,7 @@ function ensureBus(ctx) {
     bus = { ctx: ctx, gain: g };
     return bus;
 }
-hooks.onVolumes = () => { if (bus) bus.gain.gain.setTargetAtTime(BASE * SETTINGS.music, bus.ctx.currentTime, 0.1); };
+hooks.onVolumes = () => { if (bus) bus.gain.gain.setTargetAtTime(muted ? 0.0001 : BASE * SETTINGS.music, bus.ctx.currentTime, 0.1); };
 hooks.onDuck = (t0) => { if (!bus) return; const g = bus.gain.gain; g.cancelScheduledValues(t0); g.setValueAtTime(BASE * SETTINGS.music * 0.12, t0); g.linearRampToValueAtTime(BASE * SETTINGS.music, t0 + 3); };
 
 function note(ctx, t, freq, dur, wave, vol, lp, attack) {
@@ -81,6 +83,7 @@ function tick() {
     const ctx = getAudioContext();
     if (!ctx || ctx.state !== 'running' || SETTINGS.music <= 0.01) return;
     ensureBus(ctx);
+    if (muted) { nextT = 0; return; }
     const th = threatLevel(), bpm = theme.bpm * (1 + th * 0.75), stepDur = 60 / bpm / 2;
     if (nextT < ctx.currentTime - 0.5 || nextT === 0) { nextT = ctx.currentTime + 0.1; }   // po przerwie (karta w tle) zaczynamy od nowa
     while (nextT < ctx.currentTime + 0.3) { scheduleStep(ctx, nextT, step, th, stepDur); nextT += stepDur; step++; }

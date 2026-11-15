@@ -55,6 +55,10 @@ const LEVELS = {
     koth: { path: './levels/koth.js', light: 'station', extras: [] },
     infection: { path: './levels/infection.js', light: 'station', extras: [] },
     dodgeball: { path: './levels/dodgeball.js', light: 'station', extras: [] },
+    statues: { path: './levels/statues.js', light: 'arcade', extras: [] },
+    blindtag: { path: './levels/blindtag.js', light: 'hideseek', extras: [] },
+    swingrun: { path: './levels/swingrun.js', light: 'arcade', extras: [] },
+    towerclimb: { path: './levels/towerclimb.js', light: 'night', extras: [] },
     staff: { path: './levels/staff.js', light: 'staff', extras: [] }
 };
 let level = null, extras = [], levelId = null, started = false, switching = false;
@@ -95,7 +99,7 @@ export async function loadLevel(id, spawn) {
     markAllDirty();
 }
 // Ekran ładowania przed oczami: zamiast zamrożonego obrazu gracz widzi czerń z napisem
-const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well', lava: 'Floor is Lava', staff: 'Staff room', games: 'BagaBoo Games', levels: 'Levels', laundry: 'The Industrial Laundromat', memory: 'Burning Memory', monster: 'Become the Monster', range: 'Shooting Range', hideseek: 'Hide and Seek', banana: 'Capture the Banana', race: 'Parkour Race', redlight: 'Red Light, Green Light', potato: 'Hot Potato', lasttile: 'Last Tile', treasure: 'Treasure Hunt', hospital: 'The Hospital', cemetery: 'The Cemetery', wardrobe: 'Wardrobe', koth: 'King of the Hill', infection: 'Infection', dodgeball: 'Dodgeball' };
+const LEVEL_NAMES = { lobby: 'Lobby', maze: 'The Maze', silence: 'Absolute Silence', well: 'The Well', lava: 'Floor is Lava', staff: 'Staff room', games: 'BagaBoo Games', levels: 'Levels', laundry: 'The Industrial Laundromat', memory: 'Burning Memory', monster: 'Become the Monster', range: 'Shooting Range', hideseek: 'Hide and Seek', banana: 'Capture the Banana', race: 'Parkour Race', redlight: 'Red Light, Green Light', potato: 'Hot Potato', lasttile: 'Last Tile', treasure: 'Treasure Hunt', hospital: 'The Hospital', cemetery: 'The Cemetery', wardrobe: 'Wardrobe', koth: 'King of the Hill', infection: 'Infection', dodgeball: 'Dodgeball', statues: 'Statues', blindtag: 'Blind Tag', swingrun: 'Swing Run', towerclimb: 'Tower Climb' };
 const fade = (() => {
     const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;

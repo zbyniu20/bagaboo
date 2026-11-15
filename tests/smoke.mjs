@@ -15,7 +15,7 @@ import { fileURLToPath } from 'url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.resolve(HERE, '..'), DEPS = path.join(HERE, 'node_modules');
 const PORT = +process.env.PORT || 8766;
-const LEVELS = (process.argv[2] || 'lobby,levels,maze,silence,well,laundry,memory,lava,hospital,cemetery,games,wardrobe,hideseek').split(',');
+const LEVELS = (process.argv[2] || 'lobby,levels,maze,silence,well,laundry,memory,lava,hospital,cemetery,games,wardrobe,hideseek,statues,blindtag,swingrun,towerclimb').split(',');
 // Draw-call budget per level (medium quality, renderer.info.render.calls on the first frames). Raise only on purpose.
 const BUDGET = { default: 260, laundry: 230, memory: 310 };
 const MAX_POINT_LIGHTS = 12;
@@ -161,8 +161,8 @@ for (const lv of LEVELS) {
         const rules = await run(`const E = await import('./core/engine.js'), A = await import('./core/avatar.js'); return { floorY: E.L.floorY, moveScale: E.L.moveScale, tagsHidden: A.TAGS.hidden, maxZ: E.L.bounds.maxZ, minZ: E.L.bounds.minZ, minX: E.L.bounds.minX, maxX: E.L.bounds.maxX };`);
         if ((lv === 'lasttile' || lv === 'race') && !(rules.floorY < -5)) fail(`${lv}: no pit floor (floorY=${rules.floorY}): players cannot fall`);
         if ((lv === 'games' || lv === 'wardrobe') && rules.moveScale !== 1.15) fail(`${lv}: movement scale ${rules.moveScale}, expected the lobby value 1.15`);
-        if (lv === 'hideseek' && !rules.tagsHidden) fail('hideseek: name tags are not hidden');
-        if (lv !== 'hideseek' && rules.tagsHidden) fail(`${lv}: name tags still hidden after leaving hide and seek`);
+        if ((lv === 'hideseek' || lv === 'blindtag') && !rules.tagsHidden) fail(`${lv}: name tags are not hidden`);
+        if (lv !== 'hideseek' && lv !== 'blindtag' && rules.tagsHidden) fail(`${lv}: name tags still hidden after leaving a hiding mode`);
         if (lv === 'redlight' && !(rules.maxX - rules.minX > 24 && rules.maxZ - rules.minZ > 70)) fail('redlight: hall is not big enough');
         if (['lasttile', 'race', 'maze', 'lava'].includes(lv)) {
             // pit levels: with no floor under the player he must fall; floor levels: the global floor must still hold him up
@@ -204,6 +204,44 @@ await qpage.click('#btnSolo', { timeout: 90000 }); await qpage.waitForTimeout(15
 const qinfo = await qpage.evaluate(async () => { const D = await import('./core/device.js'), M = await import('./main.js'); await M.loadLevel('maze'); const E = await import('./core/engine.js'); return { quest: D.IS_QUEST, aniso: E.tex.wall.anisotropy }; });
 if (!qinfo.quest || qinfo.aniso > 2) fail('quest: device detection or anisotropy cap failed ' + JSON.stringify(qinfo)); else ok('quest: detected, anisotropy capped at ' + qinfo.aniso);
 if (qerr.length) qerr.forEach((e) => fail('quest: ' + e)); await qctx.close();
+
+// ---- new game modes: simulate rounds by stepping each level's update() ----
+phase = 'modes';
+const modeSim = await run(`
+    const M = await import('./main.js'), PL = await import('./core/player.js'), ENG = await import('./core/engine.js'), E = await import('./core/economy.js');
+    const bad = [], ctx = { body: PL.playerBody, pos: PL.playerBody.position, goto() {} };
+    const load = async (id) => { await M.loadLevel(id); return await import('./levels/' + id + '.js'); };
+    let T = 0; const step = (mod, n, fn) => { for (let i = 0; i < n; i++) { if (fn) fn(i); mod.update(0.1, T += 0.1, ctx); } };
+    const until = (mod, cond, max, fn) => { for (let i = 0; i < max; i++) { if (fn) fn(i); mod.update(0.1, T += 0.1, ctx); if (cond(mod.debug())) return true; } return false; };
+    // Swing Run
+    let m = await load('swingrun');
+    if (ENG.L.ropes.length < 15) bad.push('swingrun: only ' + ENG.L.ropes.length + ' ropes');
+    if (!(ENG.L.floorY < -5)) bad.push('swingrun: no pit');
+    if (!until(m, d => d.phase === 'race', 200)) bad.push('swingrun: race never started');
+    PL.playerBody.position.set(0, -10, -20); step(m, 1); if (!(PL.playerBody.position.y > 0) || m.debug().falls !== 1) bad.push('swingrun: no respawn after a fall (y=' + PL.playerBody.position.y.toFixed(1) + ')');
+    PL.playerBody.position.set(0, 3, -101); step(m, 1); if (!m.debug().finished) bad.push('swingrun: finish line not detected');
+    if (!until(m, d => d.phase === 'results', 100)) bad.push('swingrun: round did not end after the finish'); if (!(E.SAVE.records.swingrun > 0)) bad.push('swingrun: time not recorded');
+    // Tower Climb: the ooze must catch an idle player, and the top ledge must finish the run
+    m = await load('towerclimb');
+    if (!until(m, d => d.phase === 'race', 200)) bad.push('towerclimb: race never started');
+    if (!until(m, d => d.falls >= 1, 700, () => { PL.playerBody.position.set(0, 1.0, -0.4); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('towerclimb: ooze never caught an idle player');
+    PL.playerBody.position.set(0, 38.2, -2.5); step(m, 1); if (!m.debug().finished) bad.push('towerclimb: finish ledge not detected');
+    if (!until(m, d => d.phase === 'results', 100)) bad.push('towerclimb: round did not end after the finish'); if (!(E.SAVE.records.towerclimb > 0)) bad.push('towerclimb: time not recorded');
+    // Statues: standing still survives a silence, moving in a silence puts you out on the balcony
+    m = await load('statues');
+    PL.playerBody.velocity.set(0, 0, 0);
+    if (!until(m, d => d.phase === 'play' && d.cycle >= 1, 600, () => { PL.playerBody.velocity.set(0, 0, 0); })) bad.push('statues: no silence passed while standing still');
+    else if (m.debug().out) bad.push('statues: a frozen player was eliminated');
+    m = await load('statues');
+    if (!until(m, d => d.out, 800, () => { PL.playerBody.velocity.set(3, 0, 0); })) bad.push('statues: a moving player was not eliminated');
+    else if (!(PL.playerBody.position.y > 5)) bad.push('statues: eliminated player not moved to the balcony (y=' + PL.playerBody.position.y.toFixed(1) + ')');
+    // Blind Tag: solo bot hunts a noisy player nearby
+    m = await load('blindtag');
+    if (!until(m, d => d.phase === 'hunt', 300)) bad.push('blindtag: hunt never started');
+    if (!until(m, d => d.caught >= 1 || d.phase === 'results', 200, () => { PL.playerBody.position.set(1.2, 1.0, 0.2); PL.playerBody.velocity.set(4, 0, 0); })) bad.push('blindtag: the bot did not catch a noisy player next to it');
+    return bad;
+`);
+if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Statues and Blind Tag rounds simulate correctly');
 
 // ---- stats / achievements / audio ----
 phase = 'stats';
