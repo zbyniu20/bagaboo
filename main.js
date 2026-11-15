@@ -228,6 +228,7 @@ async function canStart(allowBanned) {
             $('status').innerText = 'The nickname "' + name + '" is reserved. Enter the correct password.'; passVis(); return false;
         }
         if ($('rememberPass').checked) rememberPassword(name, $('playerPass').value); else forgetPassword(name);
+        ECO.markNickVerified(name);   // hasło poprawne: tylko wtedy ekipa dostaje jednorazową premię (economy.js)
     }
     return true;
 }

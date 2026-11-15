@@ -6,6 +6,7 @@
 import { emoteState, emotePose } from './emotes.js';
 import { THREE, camera, scene, L, CANNON, containBall, playerRig } from './engine.js';
 import { createAvatar, poseHand, lookKey, animateFace, TAGS } from './avatar.js';
+import { createVoiceHub } from './voicehub.js';
 import { getLook, SESSION, SAVE } from './economy.js';
 import { markAllDirty, toast } from './terminal.js';
 import { rankOf, setLocalMod, isStaffName, isOwnerName, isUltimateName, canPunish, BANS_CLEARED } from './config.js';
@@ -175,6 +176,8 @@ export function myVoice() {
     if (!myAn && ac && voice.stream) { try { myAn = makeAnalyser(ac, ac.createMediaStreamSource(voice.stream)); } catch (e) {} }
     return voice.on ? readVoice(myAn) : { level: 0, pitch: 0.5 };
 }
+// Gość słyszy miks hosta, więc poziomu głosu poszczególnych graczy nie wyliczy ze strumienia: każdy gracz podaje swój poziom (vl, vp) w stanie
+function stateVoice(id) { const st = playersState[id]; const l = st && +st.vl, p = st && +st.vp; return { level: l > 0 ? Math.min(1, l) : 0, pitch: p >= 0 && p <= 1 ? p : 0.5 }; }
 // Co klatkę: usta i mimika innych graczy w rytm ich głosu
 const _cw = new THREE.Vector3(), _hw = new THREE.Vector3();
 export function animateFaces(dt) {
@@ -184,7 +187,7 @@ export function animateFaces(dt) {
         const close = _hw.distanceTo(_cw) < 0.9;   // inny gracz tuż przy tobie: widzisz tylko jego dłonie, a nie wnętrze jego ciała
         for (const c of a.group.children) if (c !== a.handL && c !== a.handR) c.visible = !close;
     }
-    for (const id in remoteAvatars) { const v = mutedPeers.has(id) ? { level: 0, pitch: 0.5 } : readVoice(voiceAn[id]); animateFace(remoteAvatars[id].head, v.level, v.pitch, dt); }
+    for (const id in remoteAvatars) { const v = mutedPeers.has(id) ? { level: 0, pitch: 0.5 } : (NET.mode === 'guest' ? stateVoice(id) : readVoice(voiceAn[id])); animateFace(remoteAvatars[id].head, v.level, v.pitch, dt); }
 }
 let meshT = 0;
 let silent = null;
@@ -206,7 +209,7 @@ window.addEventListener('keydown', unlockVoices);
 function playAudioStream(stream, peerId) {
     removeAudio(peerId, true);
     const a = document.createElement('audio'); a.srcObject = stream; a.autoplay = true; a.playsInline = true;
-    a.muted = mutedPeers.has(peerId); a.volume = 1;
+    a.muted = NET.mode !== 'guest' && mutedPeers.has(peerId); a.volume = 1;   // gość słucha miksu hosta: wyciszanie robi host
     document.getElementById('audio-container').appendChild(a); audioEls[peerId] = a;
     tryPlay(a);
     const ac = getAudioContext();
@@ -218,11 +221,20 @@ function removeAudio(id, keepCall) {
     if (!keepCall && voiceCalls[id]) { try { voiceCalls[id].close(); } catch (e) {} delete voiceCalls[id]; }
     if (audioEls[id]) { audioEls[id].srcObject = null; audioEls[id].remove(); delete audioEls[id]; }
 }
+// Centrala głosu hosta (miksuje głosy dla gości, patrz voicehub.js). Źródło hosta ma id hosta.
+let hub = null, hubHostMic = false;
+function getHub() {
+    const ac = getAudioContext(); if (!ac) return null;
+    if (!hub || hub.ac !== ac) { hub = createVoiceHub(ac); hub.ac = ac; hubHostMic = false; }
+    if (!hubHostMic && voice.stream) { hub.addSource(myPeerId, voice.stream); hubHostMic = true; }
+    return hub;
+}
 function answerCall(call) {
-    const s = outStream(); if (s) call.answer(s); else call.answer();
+    const h = NET.mode === 'host' ? getHub() : null;   // host odpowiada miksem pozostałych; gość nie odbiera już połączeń od gości
+    const s = h ? h.mixFor(call.peer) : outStream(); if (s) call.answer(s); else call.answer();
     voiceCalls[call.peer] = call;
-    call.on('stream', (st) => playAudioStream(st, call.peer));
-    call.on('close', () => { if (voiceCalls[call.peer] === call) delete voiceCalls[call.peer]; });
+    call.on('stream', (st) => { playAudioStream(st, call.peer); if (h) h.addSource(call.peer, st); });
+    call.on('close', () => { if (voiceCalls[call.peer] === call) delete voiceCalls[call.peer]; if (h) h.removeListener(call.peer); });
 }
 const callAt = {};   // kiedy zaczęliśmy dzwonić do danego gracza (do ponawiania połączeń, które nie doszły)
 function callPeer(id) {
@@ -242,13 +254,8 @@ function retryStaleCall(id) {
     if (c && !audioEls[id] && performance.now() - (callAt[id] || 0) > 10000) { try { c.close(); } catch (e) {} delete voiceCalls[id]; callPeer(id); }
 }
 function meshVoice() {
-    if (NET.mode !== 'guest') return;
-    retryStaleCall(GAME_PREFIX + NET.code);   // głos hosta
-    for (const id in playersState) {
-        if (id === myPeerId || isHostId(id)) continue;
-        if (voiceCalls[id]) { if (myPeerId < id) retryStaleCall(id); continue; }
-        if (myPeerId < id) callPeer(id);
-    }
+    // Gość łączy się głosowo tylko z hostem (host miksuje resztę). Zawieszone połączenie z hostem ponawiamy.
+    if (NET.mode === 'guest') retryStaleCall(GAME_PREFIX + NET.code);
 }
 
 // --- Awatary innych graczy ---
@@ -298,6 +305,7 @@ function resetPeer() {
     if (peer) { try { peer.destroy(); } catch (e) {} } peer = null;
     for (const id in remoteAvatars) removeRemote(id);
     for (const id in audioEls) removeAudio(id);
+    hub = null; hubHostMic = false;
     playersState = {};
     leaving = false;
 }
@@ -353,6 +361,7 @@ function handleGuest(conn) {
             if (data.to === myPeerId) { if (routedHandler) routedHandler(m, conn.peer); }
             else { const c = clientConnections.find(x => x.peer === data.to); if (c && c.open) c.send({ type: 'routed', from: conn.peer, msg: m }); }
         }
+        else if (data.type === 'mute') { const h = getHub(); if (h && typeof data.id === 'string') h.setMuted(conn.peer, data.id.slice(0, 80), !!data.on); }
         else if (data.type === 'modreq') performMod(data.action, data.target === myPeerId ? null : data.target, nameOf(conn.peer), data.extra);
         else if (data.type === 'report' && data.payload) {
             const from = (playersState[conn.peer] && playersState[conn.peer].profile) ? playersState[conn.peer].profile.name : 'Guest';
@@ -363,7 +372,7 @@ function handleGuest(conn) {
     });
     conn.on('close', () => {
         clientConnections = clientConnections.filter(c => c !== conn);
-        delete playersState[conn.peer]; removeRemote(conn.peer); removeAudio(conn.peer);
+        delete playersState[conn.peer]; removeRemote(conn.peer); removeAudio(conn.peer); if (hub) hub.removeListener(conn.peer);
         if (!leaving && NET.mode === 'host') hostStatus();
     });
 }
@@ -395,6 +404,7 @@ export function startJoin(code, cb) {
             setStatus('Joined room ' + code + ' as a guest.');
             if (cb.ok) cb.ok();
             callPeer(GAME_PREFIX + code);   // głos z hostem (także bez mikrofonu, żeby słyszeć innych)
+            mutedPeers.forEach((id) => { try { conn.send({ type: 'mute', id: id, on: true }); } catch (e) {} });   // host zna twoją listę wyciszonych
         });
         conn.on('data', (data) => {
             if (!data) return;
@@ -423,7 +433,7 @@ export function startJoin(code, cb) {
                 for (const objId in objs) if (L.heldId !== objId) syncObject(objId, objs[objId]);
             }
         });
-        conn.on('close', () => { if (!leaving && NET.mode === 'guest') leaveNetwork('The host left room ' + code + '. Playing solo.'); });
+        conn.on('close', () => { if (!leaving && NET.mode === 'guest') migrateHost(code); });
     });
     p.on('error', (err) => {
         clearTimeout(to); if (peer !== p) return;
@@ -431,6 +441,37 @@ export function startJoin(code, cb) {
         leaveNetwork(err.type === 'peer-unavailable' ? 'No host is online in room ' + code + '. The host has to log in first.' : 'Network error (' + err.type + '). Playing solo.');
         if (cb.fail) cb.fail();
     });
+}
+
+
+// ---------- MIGRACJA HOSTA ----------
+// Gdy host wyjdzie, pokój nie ginie: goście wybierają nowego hosta spośród siebie i wracają pod ten sam kod pokoju (id hosta zależy od kodu,
+// więc nowy host po prostu zajmuje zwolnione id). Kandydaci są uszeregowani po id; kandydat o randze r zaczyna próbować po r * 5 s,
+// więc zwykle zostaje hostem pierwszy, a gdy go nie ma (np. też wyszedł), przejmuje kolejny. Pozostali dołączają do nowego hosta.
+export function electNewHost(selfId, ids, oldHostId) {
+    const order = Array.from(new Set(ids.concat([selfId]))).filter(id => id !== oldHostId).sort();
+    return { order: order, rank: order.indexOf(selfId) };
+}
+export const MIGRATE = { stepMs: 5000, retryMs: 2500, giveUpMs: 60000 };
+let migrating = false;
+function migrateHost(code) {
+    if (migrating) return;
+    migrating = true;
+    const oldHost = GAME_PREFIX + code, { rank } = electNewHost(myPeerId, Object.keys(playersState), oldHost), t0 = performance.now();
+    resetPeer(); NET.mode = 'solo'; NET.busy = false;
+    setStatus('The host left room ' + code + '. Choosing a new host...');
+    toast('The host left. Choosing a new host...', '#ffb030');
+    const finish = (hosting) => { migrating = false; toast(hosting ? 'You are the new host of room ' + code : 'Reconnected to room ' + code, '#9aff60'); };
+    const attempt = () => {
+        if (!migrating) return;
+        const elapsed = performance.now() - t0;
+        if (elapsed > MIGRATE.giveUpMs) { migrating = false; leaveNetwork('The host left room ' + code + '. Playing solo.'); return; }
+        const myTurn = elapsed >= rank * MIGRATE.stepMs;
+        const retry = () => setTimeout(attempt, MIGRATE.retryMs);
+        // Najpierw sprawdzamy, czy ktoś już został hostem (dołączamy), dopiero potem sami próbujemy nim zostać
+        startJoin(code, { ok: () => finish(false), fail: () => { if (myTurn) startHost(code, { ok: () => finish(true), fail: retry }); else retry(); } });
+    };
+    setTimeout(attempt, 800);   // chwila, żeby serwer zwolnił id zamkniętego hosta
 }
 
 export function sendReport(target, reason) {
@@ -445,7 +486,8 @@ export function sendReport(target, reason) {
 }
 export function toggleMute(id) {
     if (mutedPeers.has(id)) mutedPeers.delete(id); else mutedPeers.add(id);
-    if (audioEls[id]) audioEls[id].muted = mutedPeers.has(id);
+    if (NET.mode === 'guest') { if (hostConnection && hostConnection.open) hostConnection.send({ type: 'mute', id: id, on: mutedPeers.has(id) }); }   // host wyłącza ten głos w twoim miksie
+    else if (audioEls[id]) audioEls[id].muted = mutedPeers.has(id);
 }
 export function toggleVoice() {
     voice.on = !voice.on;
@@ -465,6 +507,7 @@ export function otherPlayers() {
 // Wysyłanie stanu ~30 razy na sekundę
 export function networkTick(handL, handR) {
     if (NET.mode === 'solo' || !handL || !handR) return;
+    const mv = myVoice();
     const hp = new THREE.Vector3(), hq = new THREE.Quaternion(); camera.getWorldPosition(hp); camera.getWorldQuaternion(hq);
     const l1p = new THREE.Vector3(), l1q = new THREE.Quaternion(); handL.getWorldPosition(l1p); handL.getWorldQuaternion(l1q);
     const l2p = new THREE.Vector3(), l2q = new THREE.Quaternion(); handR.getWorldPosition(l2p); handR.getWorldQuaternion(l2q);
@@ -477,6 +520,7 @@ export function networkTick(handL, handR) {
         sb: unbannedNow ? 0 : myBanUntil(),   // ban zapisany na tym urządzeniu (host może go zdjąć, jeśli właściciel odbanował gracza)
         sl: playerRig.userData.sliding ? 1 : 0,   // ślizg na brzuchu
         em: emoteState(),                         // trwająca emotka {id, t}
+        vl: Math.round(mv.level * 100) / 100, vp: Math.round(mv.pitch * 100) / 100,   // poziom i wysokość mojego głosu (usta u innych)
         s: { h: SESSION.maxH, j: SESSION.jumps, e: (Date.now() - SESSION.since) / 1000 }
     };
     if (NET.mode === 'host') {

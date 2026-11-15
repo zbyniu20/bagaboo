@@ -90,6 +90,36 @@ const data = await run(`
             if (['sleeve', 'gloves', 'skin'].includes(it.slot)) { const a = AV.createAvatar(Object.assign({}, E.getLook(), { [it.slot]: it.id })); if (!a.group.children.length) bad.push(it.slot + ' avatar empty: ' + it.id); }
         } catch (e) { bad.push(it.slot + ':' + it.id + ' threw ' + e.message); }
     }
+    // host migration election: deterministic order, old host excluded, rank 0 first
+    const NW = await import('./core/network.js');
+    const e1 = NW.electNewHost('b', ['a', 'b', 'c', 'H'], 'H'); if (e1.order.join() !== 'a,b,c' || e1.rank !== 1) bad.push('election order/rank wrong: ' + JSON.stringify(e1));
+    const e2 = NW.electNewHost('solo', [], 'H'); if (e2.rank !== 0) bad.push('lone guest should be rank 0');
+    // staff bonus: only password-verified permanent staff, once, never for locally promoted moderators
+    const MODS = E.SAVE.profile.name, w0 = E.SAVE.wallet;
+    localStorage.setItem('bagaboo_mods', JSON.stringify(['hacker'])); E.markNickVerified('hacker'); E.setProfile({ name: 'hacker' });
+    if (E.SAVE.wallet !== w0) bad.push('locally promoted moderator received the staff bonus');
+    localStorage.removeItem('bagaboo_mods'); E.setProfile({ name: 'lincolnvr' });
+    if (E.SAVE.wallet !== w0) bad.push('staff name without a verified password received the bonus');
+    E.markNickVerified('lincolnvr'); E.setProfile({ name: 'lincolnvr' });
+    if (E.SAVE.wallet < w0 + 10000) bad.push('verified staff did not receive the bonus');
+    const w1 = E.SAVE.wallet; E.setProfile({ name: 'lincolnvr' }); if (E.SAVE.wallet !== w1) bad.push('staff bonus paid twice');
+    E.markNickVerified(''); E.setProfile({ name: MODS });
+    // voice hub: each listener hears everyone except himself; mute works
+    const A0 = await import('./core/audio.js'); A0.initAudio(); const ac = A0.getAudioContext();
+    if (ac) {
+        try { await ac.resume(); } catch (e) {}
+        const VH = await import('./core/voicehub.js'), hub = VH.createVoiceHub(ac);
+        const tone = (f) => { const o = ac.createOscillator(); o.frequency.value = f; const d = ac.createMediaStreamDestination(); o.connect(d); o.start(); return d.stream; };
+        hub.addSource('host', tone(1760)); const mixA = hub.mixFor('A'); hub.addSource('A', tone(440)); hub.addSource('B', tone(880)); const mixB = hub.mixFor('B');
+        const level = async (stream, f) => { const an = ac.createAnalyser(); an.fftSize = 4096; ac.createMediaStreamSource(stream).connect(an); await new Promise(r => setTimeout(r, 500)); const d = new Float32Array(an.frequencyBinCount); an.getFloatFrequencyData(d); const k = Math.round(f / (ac.sampleRate / 2) * d.length); return Math.max(d[k - 1], d[k], d[k + 1]); };
+        if (ac.state === 'running') {
+            const a440 = await level(mixA, 440), a880 = await level(mixA, 880), a1760 = await level(mixA, 1760), b880 = await level(mixB, 880), b440 = await level(mixB, 440);
+            if (!(a880 > -70 && a1760 > -70)) bad.push('listener A does not hear B and host (' + a880.toFixed(0) + ', ' + a1760.toFixed(0) + ' dB)');
+            if (!(a440 < -90)) bad.push('listener A hears his own voice (' + a440.toFixed(0) + ' dB)');
+            if (!(b440 > -70 && b880 < -90)) bad.push('listener B mix wrong (' + b440.toFixed(0) + ', ' + b880.toFixed(0) + ' dB)');
+            hub.setMuted('A', 'B', true); const a880m = await level(mixA, 880); if (!(a880m < -90)) bad.push('muted source still audible (' + a880m.toFixed(0) + ' dB)');
+        } else console.log('voice hub mixing not measured: AudioContext is ' + ac.state);
+    }
     // VR performance governor: slow frames raise the level, long stable frames lower it again
     const XP = await import('./core/xrperf.js'), g = { avg: 0, slow: 0, fast: 0, cool: 0, level: 0 }, budget = 1000 / 72;
     for (let i = 0; i < 400; i++) XP.govern(g, 25, budget);              // ~10 s at 40 fps
@@ -117,6 +147,12 @@ for (const lv of LEVELS) {
         if (lv === 'hideseek' && !rules.tagsHidden) fail('hideseek: name tags are not hidden');
         if (lv !== 'hideseek' && rules.tagsHidden) fail(`${lv}: name tags still hidden after leaving hide and seek`);
         if (lv === 'redlight' && !(rules.maxX - rules.minX > 24 && rules.maxZ - rules.minZ > 70)) fail('redlight: hall is not big enough');
+        if (['lasttile', 'race', 'maze', 'lava'].includes(lv)) {
+            // pit levels: with no floor under the player he must fall; floor levels: the global floor must still hold him up
+            const fell = await run(`const E = await import('./core/engine.js'), PL = await import('./core/player.js'); E.L.obstacles.length = 0; PL.setPlayerPosition(0, 2, 0); for (let i = 0; i < 150; i++) PL.updatePlayer(1 / 60, i / 60); return PL.playerBody.position.y;`);
+            if ((lv === 'lasttile' || lv === 'race') && !(fell < -2)) fail(`${lv}: player did not fall without a floor (y=${fell.toFixed(2)})`);
+            if ((lv === 'maze' || lv === 'lava') && !(fell > 0.2)) fail(`${lv}: player fell through the floor (y=${fell.toFixed(2)})`);
+        }
         const budget = BUDGET[lv] || BUDGET.default;
         if (!(r.calls > 0)) fail(`${lv}: nothing was rendered`);
         else if (r.calls > budget) fail(`${lv}: ${r.calls} draw calls exceed budget ${budget}`);

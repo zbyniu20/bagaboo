@@ -7,7 +7,7 @@
 // rzadkie (2200-3500) w 3-5 dni, a legendarne (6000) w około tydzień regularnej gry.
 // ==========================================
 import { toast, markAllDirty } from './terminal.js';
-import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName } from './config.js';
+import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isReservedNick } from './config.js';
 
 const SAVE_KEY = 'bagaboo_save_v1';
 export const LOGIN_INTERVAL = 6 * 3600 * 1000;      // nagroda za logowanie co 6 godzin
@@ -434,11 +434,25 @@ export function setHideTag(on) { SAVE.profile.hideTag = !!on; saveGame(); notify
 export function markCheater() { if (isStaffName(SAVE.profile.name)) return; if (!SAVE.cheater) { SAVE.cheater = true; if (!SAVE.owned.includes('skin:cheater')) SAVE.owned.push('skin:cheater'); SAVE.equipped.skin = 'cheater'; saveGame(); notifyLook(); } }
 export function setProfile(p) { Object.assign(SAVE.profile, p); refreshStaffItems(); saveGame(); notifyLook(); }
 // Odznaki Admin / Moderator i młotek Kick należą się tylko ekipie (wg nicku); reszcie są zabierane
+// Nick potwierdzony hasłem w tej sesji (ustawia main.js po checkNickPassword); nie jest zapisywany
+let verifiedNick = '';
+export function markNickVerified(name) { verifiedNick = String(name || '').trim().toLowerCase(); }
+const BONUS_KEY = 'bagaboo_staff_bonus_';
+function grantStaffBonus() {
+    const n = SAVE.profile.name, k = String(n || '').trim().toLowerCase();
+    if (!isStaffName(n) || !isReservedNick(n) || verifiedNick !== k) return;   // stała ekipa + hasło potwierdzone teraz
+    let claimed = false; try { claimed = !!localStorage.getItem(BONUS_KEY + k); } catch (e) {}
+    if (claimed || SAVE.staffBonus10k) { SAVE.staffBonus10k = true; return; }
+    SAVE.staffBonus10k = true; try { localStorage.setItem(BONUS_KEY + k, String(Date.now())); } catch (e) {}
+    addBones(STAFF_BONUS, 'staff bonus');
+}
 export function refreshStaffItems() {
     // Ekipa (admin, moderator) nigdy nie jest CHEATEREM: skórka z błędnego włamania jest zdejmowana
     if (SAVE.cheater && isStaffName(SAVE.profile.name)) { SAVE.cheater = false; const i = SAVE.owned.indexOf('skin:cheater'); if (i >= 0) SAVE.owned.splice(i, 1); if (SAVE.equipped.skin === 'cheater') SAVE.equipped.skin = 'none'; }
-    // Premia dla ekipy: jednorazowo 10000 Bagabucks na każdy zapis, gdy gra jest uruchomiona z nickiem ekipy (admin lub moderator)
-    if (isStaffName(SAVE.profile.name) && !SAVE.staffBonus10k) { SAVE.staffBonus10k = true; addBones(STAFF_BONUS, 'staff bonus'); }
+    // Premia dla ekipy: jednorazowo 10000 Bagabucks, ale TYLKO dla stałej ekipy (nicki z hasłem w config.js), po poprawnym haśle w tej sesji.
+    // Moderatorzy mianowani w grze (localMods) i każdy, kto ręcznie wpisze nick ekipy w pamięci przeglądarki, jej nie dostają.
+    // Znacznik odebrania leży osobno od zapisu gry (kasowanie zapisu nie daje drugiej premii na tym urządzeniu).
+    grantStaffBonus();
     const n = SAVE.profile.name, give = (key, on) => { const has = SAVE.owned.includes(key); if (on && !has) SAVE.owned.push(key); if (!on && has) SAVE.owned.splice(SAVE.owned.indexOf(key), 1); };
     if ((isOwnerName(n) || isUltimateName(n)) && !SAVE.owned.includes('tool:ban')) SAVE.owned.push('tool:ban');   // Ban hammer za darmo dla właściciela i ultimate admina
     give('badge:owner', isOwnerName(n)); give('badge:coadmin', isCoAdminName(n)); give('badge:ultimate', isUltimateName(n)); give('badge:admin', isAdminName(n)); give('badge:mod', isModName(n) && !isAdminName(n)); give('tool:kick', isStaffName(n));
