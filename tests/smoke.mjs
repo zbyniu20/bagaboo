@@ -177,6 +177,28 @@ for (const pth of reg.paths) if (!fs.existsSync(path.join(ROOT, pth))) missing.p
 missing.forEach((m) => fail('registry/index.html: ' + m));
 if (!reg.bad.length && !missing.length) ok('registry: levels, files, index.html FILES, records and Nightmare achievements agree');
 
+// ---- Quest browser: user agent detection, light landing page, level still loads ----
+// (runs before the level loop on purpose: after many levels the shared headless browser can no longer create a second WebGL context, which left #btnSolo disabled in CI)
+phase = 'quest';
+const qctx = await browser.newContext({ viewport: { width: 1000, height: 640 }, userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/33.0 SamsungBrowser/4.0 Chrome/126.0 VR Safari/537.36' });
+const qpage = await qctx.newPage();
+const qerr = []; qpage.on('pageerror', (e) => qerr.push(e.message));
+await qctx.route(/unpkg\.com/, async (route) => { const u = route.request().url(); let f = null;
+    if (u.includes('three@0.160.0/build/three.module.js')) f = DEPS + '/three/build/three.module.js';
+    else if (u.includes('three@0.160.0/examples/jsm/')) f = DEPS + '/three/examples/jsm/' + u.split('examples/jsm/')[1].split('?')[0];
+    else if (u.includes('cannon-es')) f = DEPS + '/cannon-es/dist/cannon-es.js'; else if (u.includes('peerjs')) f = DEPS + '/peerjs/dist/peerjs.min.js';
+    if (f && fs.existsSync(f)) route.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(f) }); else route.fulfill({ status: 404, body: '' }); });
+await qpage.goto(`http://localhost:${PORT}/`);
+await qpage.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 90000 });
+const lite = await qpage.evaluate(() => document.documentElement.classList.contains('lite'));
+if (!lite) fail('quest: landing page did not switch to lite mode for an OculusBrowser user agent'); else ok('quest: lite landing page');
+const qstatus = await qpage.evaluate(() => document.getElementById('status').innerText); if (/Could not/.test(qstatus)) fail('quest: game did not start: ' + qstatus);
+await qpage.click('#btnSolo', { timeout: 90000 }); await qpage.waitForTimeout(1500);
+const qinfo = await qpage.evaluate(async () => { const D = await import('./core/device.js'), M = await import('./main.js'); await M.loadLevel('maze'); const E = await import('./core/engine.js'); return { quest: D.IS_QUEST, aniso: E.tex.wall.anisotropy }; });
+if (!qinfo.quest || qinfo.aniso > 2) fail('quest: device detection or anisotropy cap failed ' + JSON.stringify(qinfo)); else ok('quest: detected, anisotropy capped at ' + qinfo.aniso);
+if (qerr.length) qerr.forEach((e) => fail('quest: ' + e)); await qctx.close();
+
+
 // ---- levels ----
 for (const lv of LEVELS) {
     phase = lv;
@@ -212,25 +234,6 @@ const memAfterCycle = async () => { for (const lv of CYCLE) { await run(`const M
 const m1 = await memAfterCycle(), m2 = await memAfterCycle(), m3 = await memAfterCycle();
 console.log('     memory after cycles:', JSON.stringify([m1, m2, m3]));
 if (m3.tex > m2.tex + 30 || m3.geo > m2.geo + 100) fail(`memory: resources keep growing across level changes (${JSON.stringify(m2)} -> ${JSON.stringify(m3)})`); else ok('memory: textures/geometries stable across level cycles');
-
-// ---- Quest browser: user agent detection, light landing page, level still loads ----
-phase = 'quest';
-const qctx = await browser.newContext({ viewport: { width: 1000, height: 640 }, userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/33.0 SamsungBrowser/4.0 Chrome/126.0 VR Safari/537.36' });
-const qpage = await qctx.newPage();
-const qerr = []; qpage.on('pageerror', (e) => qerr.push(e.message));
-await qctx.route(/unpkg\.com/, async (route) => { const u = route.request().url(); let f = null;
-    if (u.includes('three@0.160.0/build/three.module.js')) f = DEPS + '/three/build/three.module.js';
-    else if (u.includes('three@0.160.0/examples/jsm/')) f = DEPS + '/three/examples/jsm/' + u.split('examples/jsm/')[1].split('?')[0];
-    else if (u.includes('cannon-es')) f = DEPS + '/cannon-es/dist/cannon-es.js'; else if (u.includes('peerjs')) f = DEPS + '/peerjs/dist/peerjs.min.js';
-    if (f && fs.existsSync(f)) route.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(f) }); else route.fulfill({ status: 404, body: '' }); });
-await qpage.goto(`http://localhost:${PORT}/`);
-await qpage.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 90000 });
-const lite = await qpage.evaluate(() => document.documentElement.classList.contains('lite'));
-if (!lite) fail('quest: landing page did not switch to lite mode for an OculusBrowser user agent'); else ok('quest: lite landing page');
-await qpage.click('#btnSolo', { timeout: 90000 }); await qpage.waitForTimeout(1500);
-const qinfo = await qpage.evaluate(async () => { const D = await import('./core/device.js'), M = await import('./main.js'); await M.loadLevel('maze'); const E = await import('./core/engine.js'); return { quest: D.IS_QUEST, aniso: E.tex.wall.anisotropy }; });
-if (!qinfo.quest || qinfo.aniso > 2) fail('quest: device detection or anisotropy cap failed ' + JSON.stringify(qinfo)); else ok('quest: detected, anisotropy capped at ' + qinfo.aniso);
-if (qerr.length) qerr.forEach((e) => fail('quest: ' + e)); await qctx.close();
 
 // ---- new game modes: simulate rounds by stepping each level's update() ----
 phase = 'modes';
