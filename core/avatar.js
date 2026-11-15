@@ -79,7 +79,7 @@ function furMat(look, shade) {
 function faceMat(look) {
     const k = SKINS[look.skin];
     if (k && k.metal && k.face) return new THREE.MeshStandardMaterial({ color: k.face, metalness: 0.9, roughness: 0.3, envMapIntensity: Math.max(0.8, ENV) });
-    return new THREE.MeshPhysicalMaterial({ color: k && k.face ? k.face : 0x2a2422, roughness: 0.5, normalMap: normalFor(tex.skin, 2), normalScale: new THREE.Vector2(0.8, 0.8), clearcoat: 0.25, clearcoatRoughness: 0.4, envMapIntensity: Math.max(0.6, ENV) });
+    return new THREE.MeshPhysicalMaterial({ color: k && k.face ? k.face : 0x2a2422, roughness: 0.62, normalMap: normalFor(tex.skin, 2), normalScale: new THREE.Vector2(0.8, 0.8), clearcoat: 0.12, clearcoatRoughness: 0.5, envMapIntensity: Math.max(0.6, ENV) });
 }
 function skinMaterial(look) {
     const eg = extraGloveMat(look.gloves); if (eg) return eg;
@@ -321,24 +321,90 @@ function createNameSprite(message) {
     return sp;
 }
 // Głowa goryla: kwadratowa, cała w futrze, tylko twarz bez owłosienia (dla innych graczy, lustra i sklepu)
+
+// ---------- PREMIUM: tekstury twarzy i oczu, cieniowanie wierzchołków, kępki sierści ----------
+// Twarz: skóra z drobnymi zmarszczkami (nad brwiami, wokół nosa i ust). Tekstura jest jasnoszara i mnoży się przez kolor skóry (skórki mają własny).
+function faceTexture(kind) {
+    if (cosTex['face' + kind]) return cosTex['face' + kind];
+    const S = 256, c = makeCanvas(S, S), x = c.getContext('2d'), R = mkRng(kind === 'muzzle' ? 91 : 53);
+    const g = x.createRadialGradient(S * 0.75 * 0 + S / 2, S / 2, 10, S / 2, S / 2, S * 0.7);
+    g.addColorStop(0, '#f0f0f0'); g.addColorStop(0.7, '#cfcfcf'); g.addColorStop(1, '#a8a8a8'); x.fillStyle = g; x.fillRect(0, 0, S, S);
+    for (let i = 0; i < 1400; i++) { const px = R() * S, py = R() * S, v = (150 + R() * 100) | 0; x.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',0.35)'; x.fillRect(px, py, 1 + R() * 2, 1 + R() * 2); }   // pory
+    x.lineCap = 'round'; x.strokeStyle = 'rgba(60,60,60,0.45)';
+    const wr = (pts, w) => { x.lineWidth = w; x.beginPath(); x.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) x.quadraticCurveTo(pts[i][0], pts[i][1], pts[i][0] + 4, pts[i][1] + 1); x.stroke(); };
+    if (kind === 'face') {
+        for (let i = 0; i < 4; i++) wr([[40, 52 + i * 7], [128, 44 + i * 7], [216, 52 + i * 7]], 1.4);        // zmarszczki czoła nad brwiami
+        wr([[78, 150], [96, 176], [100, 205]], 2.2); wr([[178, 150], [160, 176], [156, 205]], 2.2);            // bruzdy od nosa
+        for (const sx of [86, 170]) for (let i = 0; i < 3; i++) wr([[sx - 16, 112 + i * 6], [sx, 118 + i * 6], [sx + 16, 112 + i * 6]], 1.1);   // powieki
+    } else {
+        x.fillStyle = 'rgba(40,20,20,0.55)'; for (const sx of [100, 156]) { x.beginPath(); x.ellipse(sx, 120, 9, 6, 0, 0, 7); x.fill(); }   // nozdrza
+        wr([[70, 168], [128, 182], [186, 168]], 2.6);                                                          // linia ust
+        wr([[100, 200], [128, 208], [156, 200]], 1.6);
+    }
+    return (cosTex['face' + kind] = toTex(c, true));
+}
+// Oko goryla: ciemna twardówka, bursztynowa tęczówka z obwódką i źrenica (na kuli: przód oka w -Z to u = 0.75)
+function eyeTexture() {
+    if (cosTex.eye) return cosTex.eye;
+    const W = 256, H = 128, c = makeCanvas(W, H), x = c.getContext('2d');
+    x.fillStyle = '#1c0e08'; x.fillRect(0, 0, W, H);
+    const cx = W * 0.75, cy = H / 2, ig = x.createRadialGradient(cx, cy, 2, cx, cy, 30);
+    ig.addColorStop(0, '#d89030'); ig.addColorStop(0.5, '#a05a14'); ig.addColorStop(0.85, '#5a2c0a'); ig.addColorStop(1, '#1a0a04');
+    x.fillStyle = ig; x.beginPath(); x.ellipse(cx, cy, 30, 30, 0, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(20,8,2,0.9)'; x.lineWidth = 3; x.beginPath(); x.ellipse(cx, cy, 29, 29, 0, 0, 7); x.stroke();     // obwódka tęczówki
+    x.fillStyle = '#050202'; x.beginPath(); x.ellipse(cx, cy, 11, 11, 0, 0, 7); x.fill();                                     // źrenica
+    return (cosTex.eye = toTex(c, true));
+}
+// Ciemniejsze wgłębienia i jaśniejsze wypukłości futra (zamiast płaskiego koloru): shade(x, y, z) -> 0..1 mnoży kolor wierzchołka
+function bakeShade(geo, shade) {
+    const pos = geo.attributes.position, col = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) { const v = Math.max(0.35, Math.min(1.1, shade(pos.getX(i), pos.getY(i), pos.getZ(i)))); col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = v; }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return geo;
+}
+const smooth = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+// Kępka sierści: wąski stożek od punktu (px,py,pz) w stronę kierunku (nx,ny,nz)
+const _tu = new THREE.Vector3(), _tq = new THREE.Quaternion(), _Yup = new THREE.Vector3(0, 1, 0);
+function tuftGeo(px, py, pz, nx, ny, nz, len, r) {
+    const g = new THREE.ConeGeometry(r, len, 5, 1); g.translate(0, len / 2, 0);
+    _tq.setFromUnitVectors(_Yup, _tu.set(nx, ny, nz).normalize()); g.applyQuaternion(_tq); g.translate(px, py, pz);
+    return g;
+}
+// Elipsoida jako geometria (do scalania w jedną siatkę): promienie rx,ry,rz, środek x,y,z
+const ellGeo = (rx, ry, rz, x, y, z, rotX) => { const g = new THREE.SphereGeometry(1, 20, 14); g.scale(rx, ry, rz); if (rotX) g.rotateX(rotX); g.translate(x, y, z); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 3).fill(1), 3)); return g; };
+const ellMesh = (geos, mat) => { const m = new THREE.Mesh(mergeGeometries(geos), mat); m.castShadow = true; m.receiveShadow = true; return m; };
 export function createHead(look, withName) {
     const head = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
     const masked = look.mask && look.mask !== 'none';
-    const skull = meshAt(new RoundedBoxGeometry(0.26, 0.26, 0.25, 4, 0.045), fur, 0, 0.005, 0.0); head.add(skull);
-    // Twarz: płaska, ciemna, bez futra, z futrzanym daszkiem brwi nad nią
-    const plate = meshAt(new RoundedBoxGeometry(0.19, 0.16, 0.03, 3, 0.012), face, 0, -0.025, -0.118); head.add(plate);
-    const brow = meshAt(new RoundedBoxGeometry(0.22, 0.035, 0.05, 2, 0.012), fur, 0, 0.065, -0.115); head.add(brow);
-    head.userData.face = { brow: brow, mouth: null, eyes: [], level: 0 };
-    for (const s of [-1, 1]) head.add(meshAt(new RoundedBoxGeometry(0.03, 0.05, 0.04, 2, 0.01), fur, s * 0.135, 0.0, -0.01));   // uszy
+    // Czaszka goryla: owalna z kopułą (grzebieniem) na czubku, wydatnymi policzkami i uszami: jedna siatka futra
+    const skullGeos = [ellGeo(0.135, 0.138, 0.13, 0, 0.005, 0), ellGeo(0.05, 0.04, 0.095, 0, 0.097, 0.03), ellGeo(0.045, 0.055, 0.055, -0.095, -0.045, -0.055), ellGeo(0.045, 0.055, 0.055, 0.095, -0.045, -0.055),
+        ellGeo(0.02, 0.036, 0.03, -0.138, 0.0, -0.01), ellGeo(0.02, 0.036, 0.03, 0.138, 0.0, -0.01)];
+    if (!look.hat || look.hat === 'none') for (let i = 0; i < 6; i++) { const z = -0.03 + i * 0.03, y = 0.097 + 0.04 * Math.sqrt(Math.max(0, 1 - ((z - 0.03) / 0.095) ** 2)); skullGeos.push(tuftGeo(0, y - 0.004, z, 0, 1, 0.45 + i * 0.12, 0.02, 0.013)); }   // grzebień z kępek
+    for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) skullGeos.push(tuftGeo(sx * 0.13, -0.02 - i * 0.035, -0.03, sx, -0.25 * i, 0.25, 0.02, 0.012));   // baczki
+    skullGeos.forEach(g => bakeShade(g, (x, y, z) => 0.8 + 0.3 * smooth(-0.13, 0.1, y) - 0.12 * smooth(0.06, 0.12, Math.abs(x)) * (y < 0 ? 1 : 0.3)));   // pod brodą i po bokach ciemniej, czubek jaśniejszy
+    fur.vertexColors = true;
+    head.add(ellMesh(skullGeos, fur));
+    // Twarz bez futra: lekko wypukła płyta z pyskiem; nad nią ciężka kość brwiowa
+    const faceM = face.clone(), muzzleM = face.clone(); faceM.map = faceTexture('face'); muzzleM.map = faceTexture('muzzle');
+    head.add(ellMesh([ellGeo(0.098, 0.088, 0.04, 0, -0.02, -0.1)], faceM));
+    if (!masked) head.add(ellMesh([ellGeo(0.058, 0.038, 0.035, 0, -0.07, -0.118)], muzzleM));
+    const brow = ellMesh([ellGeo(0.108, 0.03, 0.045, 0, 0.058, -0.103)], fur);
+    head.add(brow);
+    head.userData.face = { brow: brow, browY: 0.058, mouth: null, eyes: [], level: 0, blinkT: 2 + Math.random() * 3, blink: 0 };
     if (!masked) {
         const dark = new THREE.MeshBasicMaterial({ color: 0x0a0605 });
-        const muzzle = meshAt(new RoundedBoxGeometry(0.11, 0.06, 0.03, 2, 0.012), face, 0, -0.065, -0.135); head.add(muzzle);
-        for (const s of [-1, 1]) head.add(meshAt(new THREE.SphereGeometry(0.009, 8, 6), dark, s * 0.018, -0.05, -0.151));
+        head.add(ellMesh([ellGeo(0.011, 0.007, 0.006, -0.019, -0.062, -0.151), ellGeo(0.011, 0.007, 0.006, 0.019, -0.062, -0.151)], dark));   // nozdrza
+        // Oczodoły: ciemne zagłębienia, w których siedzą oczy (głębia twarzy)
+        head.add(ellMesh([ellGeo(0.03, 0.026, 0.02, -0.045, 0.02, -0.126), ellGeo(0.03, 0.026, 0.02, 0.045, 0.02, -0.126)], new THREE.MeshStandardMaterial({ color: 0x120a08, roughness: 1 })));
         // Usta: ciemny owal, który otwiera się w rytm głosu (rozmowa przez mikrofon)
         const mouth = meshAt(new THREE.SphereGeometry(0.035, 14, 8), new THREE.MeshBasicMaterial({ color: 0x1a0606 }), 0, -0.085, -0.145);
         mouth.scale.set(1, 0.12, 0.35); head.add(mouth); head.userData.face.mouth = mouth;
-        const eyeMat = k.glowEyes ? new THREE.MeshBasicMaterial({ color: 0xff2a10 }) : new THREE.MeshPhysicalMaterial({ color: 0x2a160c, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 2.2, reflectivity: 1 });   // mokre oko: ostre odbicie otoczenia
-        for (const s of [-1, 1]) { const e = meshAt(new THREE.SphereGeometry(0.0165, 16, 12), eyeMat, s * 0.045, 0.02, -0.132); head.add(e); head.userData.face.eyes.push(e); }
+        const eyeMat = k.glowEyes ? new THREE.MeshBasicMaterial({ color: 0xff2a10 }) : new THREE.MeshPhysicalMaterial({ map: eyeTexture(), color: 0xffffff, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 2.2, reflectivity: 0.9 });
+        const spark = new THREE.MeshBasicMaterial({ color: 0xfff4e8 });
+        for (const s of [-1, 1]) {
+            const e = meshAt(new THREE.SphereGeometry(0.0165, 16, 12), eyeMat, s * 0.045, 0.02, -0.136); head.add(e); head.userData.face.eyes.push(e);
+            if (!k.glowEyes) { const c = new THREE.Mesh(new THREE.SphereGeometry(0.0042, 8, 6), spark); c.position.set(-0.0055, 0.0062, -0.0135); e.add(c); }   // odblask: oko wygląda na żywe
+        }
     }
     head.add(buildMask(look.mask)); head.add(buildHat(look.hat)); head.add(buildGlasses(look.glasses));
     if (withName) {
@@ -392,21 +458,33 @@ export function buildBadge(id) {
 // Tułów: zwykła sylwetka (nie gruba, nie chuda), cały w futrze, z łysym plackiem na brzuchu (środek = 0.35 m pod głową)
 export function createGorillaTorso(look) {
     const g = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
-    g.userData.chest = meshAt(new RoundedBoxGeometry(0.42, 0.5, 0.24, 4, 0.08), fur, 0, -0.06, 0.0); g.add(g.userData.chest);
-    for (const s of [-1, 1]) g.add(meshAt(new THREE.SphereGeometry(0.085, 14, 10), fur, s * 0.21, 0.15, 0));   // barki
-    g.add(meshAt(new RoundedBoxGeometry(0.22, 0.24, 0.02, 3, 0.01), face, 0, -0.12, -0.12));                // łysy placek na brzuchu
-    if (k.back) g.add(meshAt(new RoundedBoxGeometry(0.34, 0.3, 0.02, 3, 0.01), new THREE.MeshStandardMaterial({ map: furTexture(), color: k.back, roughness: 0.9 }), 0, 0.0, 0.122));
+    // Beczkowata klatka piersiowa, brzuch, kaptur mięśni karku i potężne barki: jedna siatka futra (oddycha, patrz onBeforeRender w createAvatar)
+    const bodyGeos = [ellGeo(0.225, 0.25, 0.145, 0, -0.03, 0), ellGeo(0.19, 0.15, 0.14, 0, -0.2, 0), ellGeo(0.17, 0.075, 0.11, 0, 0.19, 0.02),
+        ellGeo(0.095, 0.095, 0.095, -0.215, 0.14, 0), ellGeo(0.095, 0.095, 0.095, 0.215, 0.14, 0)];
+    // Grzywa: kępki sierści na karku, barkach i plecach (sylwetka nie jest gładką bryłą)
+    for (let i = 0; i < 7; i++) { const a = (i / 6 - 0.5) * 2.2; bodyGeos.push(tuftGeo(Math.sin(a) * 0.17, 0.235 + Math.cos(a) * 0.02, 0.03, Math.sin(a) * 0.6, 1, 0.5, 0.024, 0.016)); }
+    for (const sx of [-1, 1]) for (let i = 0; i < 5; i++) { const a = 0.4 + i * 0.5; bodyGeos.push(tuftGeo(sx * (0.215 + Math.sin(a) * 0.08), 0.14 + Math.cos(a) * 0.08, 0, sx * Math.sin(a), Math.cos(a), 0.2, 0.022, 0.016)); }
+    for (let i = 0; i < 8; i++) { const a = (i / 7 - 0.5) * 2.0; bodyGeos.push(tuftGeo(Math.sin(a) * 0.19, -0.08 - (i % 3) * 0.06, 0.12, Math.sin(a) * 0.5, -0.2, 1, 0.022, 0.016)); }   // plecy
+    // Cieniowanie: pachy i dół brzucha ciemniejsze, barki i kark jaśniejsze (głębia futra)
+    bodyGeos.forEach(gm => bakeShade(gm, (x, y, z) => 0.78 + 0.32 * smooth(-0.3, 0.22, y) - 0.18 * smooth(0.12, 0.2, Math.abs(x)) * (1 - smooth(0.05, 0.18, y)) + 0.05 * (z < 0 ? 1 : 0)));
+    fur.vertexColors = true;
+    g.userData.chest = ellMesh(bodyGeos, fur);
+    g.add(g.userData.chest);
+    // Łysy placek na piersi (dwa mięśnie piersiowe) i brzuchu
+    g.add(ellMesh([ellGeo(0.075, 0.085, 0.022, -0.062, -0.035, -0.125), ellGeo(0.075, 0.085, 0.022, 0.062, -0.035, -0.125), ellGeo(0.1, 0.1, 0.02, 0, -0.19, -0.125)], face));
+    if (k.back) g.add(meshAt(ellGeo(0.17, 0.17, 0.02, 0, -0.02, 0.138), new THREE.MeshStandardMaterial({ map: furTexture(), color: k.back, roughness: 0.9 }), 0, 0, 0));
     const badge = buildBadge(look.badge);
-    if (badge) { badge.position.set(0.11, 0.09, -0.128); g.add(badge); }
+    if (badge) { badge.position.set(0.11, 0.09, -0.112); g.add(badge); }
     if (k.cape) {
-        const cape = meshAt(new THREE.BoxGeometry(0.5, 0.62, 0.02), new THREE.MeshStandardMaterial({ color: 0x9a0a10, roughness: 0.7, side: THREE.DoubleSide }), 0, -0.14, 0.14);
+        const cape = meshAt(new THREE.BoxGeometry(0.5, 0.62, 0.02), new THREE.MeshStandardMaterial({ color: 0x9a0a10, roughness: 0.7, side: THREE.DoubleSide }), 0, -0.14, 0.17);
         cape.rotation.x = 0.12; g.add(cape);
         for (const s of [-1, 1]) g.add(meshAt(new THREE.SphereGeometry(0.03, 10, 8), new THREE.MeshStandardMaterial({ color: 0xd4a640, metalness: 1, roughness: 0.25 }), s * 0.18, 0.15, -0.1));
     }
     return g;
 }
 // Ramię goryla: cylinder od barku do nadgarstka, ustawiany co klatkę
-const ARM_GEO = new THREE.CylinderGeometry(0.055, 0.075, 1, 12).translate(0, 0.5, 0);
+// Profil ramienia (promień wg wysokości 0 = bark .. 1 = nadgarstek): masywna ręka, zwężenie w łokciu, mocne przedramię
+const ARM_GEO = new THREE.LatheGeometry([[0.07, 0], [0.088, 0.1], [0.09, 0.28], [0.066, 0.5], [0.074, 0.68], [0.062, 0.88], [0.05, 1]].map(p => new THREE.Vector2(p[0], p[1])), 14);
 export function createGorillaArm(look) { const m = new THREE.Mesh(ARM_GEO, furMat(look)); m.castShadow = true; return m; }
 const _Y = new THREE.Vector3(0, 1, 0), _sh = new THREE.Vector3(), _hp = new THREE.Vector3(), _dir = new THREE.Vector3();
 export function placeArm(arm, torso, side, hand) {
@@ -530,7 +608,13 @@ export function createAvatar(look) {
     group.add(handL, handR, armL, armR);
     const hammer = buildHammer(look.tool); if (hammer) handR.add(hammer);   // inni gracze widzą młotek w dłoni
     // Ramiona dociągane do dłoni tuż przed rysowaniem
-    torso.userData.chest.onBeforeRender = () => { placeArm(armL, torso, -1, handL); placeArm(armR, torso, 1, handR); };
+    // Oddychanie: klatka piersiowa lekko pulsuje (każdy avatar ma własną fazę). Zmiana skali działa od następnej klatki, więc jest płynna.
+    const breathPh = Math.random() * 6.28, chest = torso.userData.chest;
+    torso.userData.chest.onBeforeRender = () => {
+        placeArm(armL, torso, -1, handL); placeArm(armR, torso, 1, handR);
+        const b = Math.sin(performance.now() * 0.0016 + breathPh) * 0.5 + 0.5;
+        chest.scale.set(1 + b * 0.012, 1 + b * 0.022, 1 + b * 0.03);
+    };
     return { group, torso, head, handL, handR, key: lookKey(look), torsoDrop: 0.35 * sc };
 }
 
@@ -541,6 +625,9 @@ export function animateFace(head, level, pitch, dt) {
     f.level += (level - f.level) * Math.min(1, dt * (level > f.level ? 22 : 10));
     const L = f.level, p = pitch || 0.5;
     if (f.mouth) { f.mouth.scale.y = 0.12 + L * 0.95; f.mouth.scale.x = 1.15 - p * 0.45 + L * 0.15; }
-    if (f.brow) f.brow.position.y = 0.065 + L * 0.018 + (p - 0.5) * 0.008;
-    for (const e of f.eyes) e.scale.setScalar(1 + L * 0.35);
+    if (f.brow) f.brow.position.y = (f.browY || 0.058) + L * 0.018 + (p - 0.5) * 0.008;
+    // Mruganie co 2-5 s (powieka: oko spłaszcza się na ułamek sekundy)
+    f.blinkT -= dt; if (f.blinkT <= 0) { f.blink = 0.13; f.blinkT = 2 + Math.random() * 3.5; }
+    let lid = 1; if (f.blink > 0) { f.blink -= dt; lid = Math.max(0.08, Math.abs(f.blink / 0.13 - 0.5) * 2); }
+    for (const e of f.eyes) { const sc = 1 + L * 0.35; e.scale.set(sc, sc * lid, sc); }
 }
