@@ -3,31 +3,89 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BagaBoo VR - Dusk Nightmare Parkour</title>
+<meta name="description" content="BagaBoo VR: a horror parkour playground. Survive seven nightmare levels, play party games with friends, in VR or on desktop.">
+<meta name="theme-color" content="#07050a">
+<title>BagaBoo VR - Don't Look Away</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
-body { margin: 0; overflow: hidden; background-color: #2a2833; font-family: sans-serif; }
-#lobby { position: absolute; inset: 0; background: radial-gradient(circle at 28% 30%, #c98563 0%, #6e5468 38%, #2b2b3d 72%, #15151f 100%); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; color: #f0e6e0; }
-#lobby h1.logo { font-family: 'Creepster', cursive; font-size: 85px; color: #b00000; margin: 0 0 5px; letter-spacing: 4px; text-shadow: 0 0 22px rgba(255, 80, 0, 0.55), 3px 3px 0 #1a0505; }
-#lobby p.subtitle { margin: 0 0 26px; color: #f2c8a8; font-size: 16px; font-weight: bold; letter-spacing: 1px; text-shadow: 1px 1px 3px #000; }
-.form-group { margin-bottom: 14px; display: flex; align-items: center; gap: 10px; width: 340px; justify-content: space-between; }
-.form-group label { font-weight: bold; color: #f0e0d6; text-shadow: 1px 1px 2px #000; }
-input, select { padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #8a5a4a; background: rgba(25,20,30,0.75); color: #f5ece6; width: 180px; box-shadow: inset 2px 2px 6px rgba(0,0,0,0.5); }
-input[type="color"] { padding: 0; height: 40px; cursor: pointer; border: none; }
-.btn-group { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; justify-content: center; max-width: 520px; }
-button { padding: 15px 20px; font-size: 16px; font-weight: bold; border: 1px solid #aa3300; border-radius: 8px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.45); color: #fff; }
-#btnHost { background: #8a1a0a; } #btnJoin { background: #a8360f; } #btnSolo { background: #3a4058; border-color: #4b5270; }
-#btnNew { background: transparent; border-color: #8a5a4a; color: #f2c8a8; padding: 8px 14px; font-size: 13px; margin-top: 12px; box-shadow: none; }
-button:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(255,110,40,0.4); }
-button:focus-visible { outline: 3px solid #ffd27a; outline-offset: 2px; }
-button:disabled { background: #5a4848 !important; color: #b8a0a0 !important; border-color: #4a3838 !important; cursor: not-allowed; transform: none; box-shadow: none; }
-#saveInfo { margin-top: 16px; font-size: 14px; color: #ffd27a; text-align: center; max-width: 440px; text-shadow: 1px 1px 3px #000; }
-#status { margin-top: 10px; font-weight: bold; font-size: 16px; color: #f2c8a8; text-align: center; max-width: 440px; text-shadow: 1px 1px 3px #000; }
-#rules { margin-top: 10px; font-size: 13px; color: #d8c0b0; max-width: 440px; text-align: center; }
+@import url('https://fonts.googleapis.com/css2?family=Creepster&family=Special+Elite&display=swap');
+:root { --blood: #c4161c; --ember: #ff7a2a; --gold: #ffd27a; --bone: #f0e6e0; --ink: #07050a; }
+* { box-sizing: border-box; }
+body { margin: 0; overflow: hidden; background-color: var(--ink); font-family: 'Special Elite', 'Courier New', monospace; }
+
+/* ---------- STRONA STARTOWA ---------- */
+#lobby { position: absolute; inset: 0; z-index: 1000; color: var(--bone); background: var(--ink); overflow: hidden; --mx: 50%; --my: 40%; }
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* Ciemność z latarką podążającą za kursorem (na dotyku: latarka dryfuje sama) */
+#dark { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle 260px at var(--mx) var(--my), rgba(0,0,0,0) 0%, rgba(4,2,8,0.08) 55%, rgba(4,2,8,0.5) 100%); mix-blend-mode: multiply; }
+#glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle 200px at var(--mx) var(--my), rgba(255,190,120,0.16), rgba(255,190,120,0) 70%); mix-blend-mode: screen; }
+#vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.6) 100%); }
+#grain { position: absolute; inset: -50%; pointer-events: none; opacity: 0.09; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); animation: grain 0.9s steps(6) infinite; }
+@keyframes grain { 0% { transform: translate(0,0); } 20% { transform: translate(-3%,2%); } 40% { transform: translate(2%,-3%); } 60% { transform: translate(-2%,-1%); } 80% { transform: translate(3%,3%); } 100% { transform: translate(0,0); } }
+
+#stage { position: relative; z-index: 2; height: 100%; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(340px, 440px); gap: clamp(24px, 5vw, 80px); align-items: safe center; overflow-y: auto; padding: clamp(18px, 4vh, 48px) clamp(20px, 6vw, 96px); max-width: 1480px; margin: 0 auto; }
+#hero { min-width: 0; }
+.kicker { font-size: 13px; letter-spacing: 0.42em; text-transform: uppercase; color: var(--ember); margin: 0 0 6px 4px; text-shadow: 0 0 12px rgba(255,100,20,0.6); }
+h1.logo { position: relative; margin: 0; font-family: 'Creepster', 'Special Elite', cursive; font-weight: normal; font-size: clamp(58px, 11vw, 168px); line-height: 0.92; letter-spacing: 0.04em; color: var(--blood);
+  text-shadow: 0 0 28px rgba(255,40,10,0.55), 0 0 90px rgba(200,10,10,0.35), 4px 5px 0 #1a0305; animation: flick 7s infinite; }
+h1.logo .vr { display: block; font-size: 0.5em; color: var(--bone); letter-spacing: 0.35em; text-shadow: 0 0 18px rgba(255,255,255,0.35), 3px 3px 0 #1a0305; margin: 2px 0 0 0.06em; }
+h1.logo::before, h1.logo::after { content: attr(data-t); position: absolute; left: 0; top: 0; width: 100%; pointer-events: none; opacity: 0; }
+h1.logo::before { color: #00e5ff; mix-blend-mode: screen; animation: glitchA 7s infinite; }
+h1.logo::after { color: #ff2a6a; mix-blend-mode: screen; animation: glitchB 7s infinite; }
+@keyframes flick { 0%,4%,9%,52%,56%,100% { opacity: 1; } 5% { opacity: 0.35; } 7% { opacity: 0.85; } 53% { opacity: 0.5; } 54.5% { opacity: 1; } 55% { opacity: 0.25; } }
+@keyframes glitchA { 0%,93%,100% { opacity: 0; transform: none; } 94% { opacity: 0.7; transform: translate(-6px, 1px); clip-path: inset(10% 0 55% 0); } 96% { opacity: 0.6; transform: translate(5px, -2px); clip-path: inset(60% 0 8% 0); } 98% { opacity: 0; } }
+@keyframes glitchB { 0%,93%,100% { opacity: 0; transform: none; } 95% { opacity: 0.6; transform: translate(6px, 2px); clip-path: inset(40% 0 30% 0); } 97% { opacity: 0.7; transform: translate(-5px, -1px); clip-path: inset(5% 0 70% 0); } 99% { opacity: 0; } }
+.tagline { margin: 22px 0 6px 4px; font-size: clamp(17px, 2.1vw, 24px); color: #f2c8a8; text-shadow: 1px 1px 4px #000, 0 0 16px rgba(255,120,40,0.35); max-width: 34em; line-height: 1.35; }
+#tip { margin: 0 0 22px 4px; min-height: 1.5em; font-size: 15px; color: #b89a8c; transition: opacity 0.8s; text-shadow: 1px 1px 3px #000; }
+#tip.off { opacity: 0; }
+#tip::before { content: '\25B8  '; color: var(--blood); }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 22px 4px; padding: 0; list-style: none; }
+.chips li { padding: 8px 14px; border: 1px solid rgba(255,122,42,0.35); border-radius: 999px; background: rgba(20,8,10,0.55); backdrop-filter: blur(3px); font-size: 14px; color: #ffd9bd; letter-spacing: 0.03em; }
+.chips b { color: var(--gold); font-weight: normal; }
+.places { margin: 0 0 0 4px; font-size: 13px; color: #8f7a72; letter-spacing: 0.08em; line-height: 1.8; max-width: 44em; }
+.places span { color: #c9a58f; white-space: nowrap; }
+.places span + span::before { content: '  \00B7  '; color: #5a3a34; }
+
+/* ---------- KARTA LOGOWANIA ---------- */
+#card { position: relative; padding: 26px 26px 20px; border-radius: 14px; background: linear-gradient(160deg, rgba(34,14,16,0.82), rgba(14,8,12,0.88)); border: 1px solid rgba(255,100,40,0.28); box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 24px 80px rgba(0,0,0,0.7), 0 0 60px rgba(200,20,10,0.16); backdrop-filter: blur(6px); }
+#card::before { content: ''; position: absolute; left: 22px; right: 22px; top: -1px; height: 2px; background: linear-gradient(90deg, transparent, var(--blood), var(--ember), var(--blood), transparent); filter: blur(0.5px); }
+#card h2 { margin: 0 0 16px; font-family: 'Creepster', cursive; font-weight: normal; font-size: 30px; letter-spacing: 0.08em; color: var(--bone); }
+.form-group { margin-bottom: 12px; display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.form-group label { font-size: 14px; color: #e8cfc2; letter-spacing: 0.04em; }
+input, select { padding: 10px 12px; font: inherit; font-size: 15px; border-radius: 6px; border: 1px solid #5a3a34; background: rgba(8,5,8,0.8); color: #f5ece6; width: 200px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.6); transition: border-color .2s, box-shadow .2s; }
+input:focus, select:focus { outline: none; border-color: var(--ember); box-shadow: inset 0 2px 8px rgba(0,0,0,0.6), 0 0 0 3px rgba(255,122,42,0.25); }
+input[type="color"] { padding: 0; height: 40px; cursor: pointer; }
+input[type="checkbox"] { width: 20px; height: 20px; box-shadow: none; accent-color: var(--blood); }
+button { font: inherit; letter-spacing: 0.05em; cursor: pointer; color: #fff; border: 1px solid #aa3300; border-radius: 8px; transition: transform .15s, box-shadow .2s, background .2s; }
+#btnSolo { width: 100%; margin-top: 8px; padding: 17px 20px; font-size: 20px; border: 1px solid #ff6a30; background: linear-gradient(180deg, #d4231f, #8a0e0e); box-shadow: 0 0 0 0 rgba(255,60,20,0.6), 0 8px 28px rgba(150,10,10,0.55); animation: pulse 2.4s ease-in-out infinite; text-shadow: 0 2px 4px rgba(0,0,0,0.6); }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,60,20,0.45), 0 8px 28px rgba(150,10,10,0.55); } 50% { box-shadow: 0 0 0 9px rgba(255,60,20,0), 0 8px 34px rgba(220,30,10,0.7); } }
+.sep { display: flex; align-items: center; gap: 12px; margin: 18px 0 12px; font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase; color: #8f7a72; }
+.sep::before, .sep::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,120,60,0.35), transparent); }
+.btn-group { display: flex; gap: 10px; margin-top: 12px; }
+#btnHost, #btnJoin { flex: 1; padding: 12px 10px; font-size: 15px; box-shadow: 0 4px 14px rgba(0,0,0,0.45); }
+#btnHost { background: #6a1208; } #btnJoin { background: #7a2a10; }
+#btnNew { background: transparent; border-color: #5a3a34; color: #b89a8c; padding: 7px 12px; font-size: 12px; margin-top: 14px; box-shadow: none; }
+button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(255,110,40,0.4); filter: brightness(1.12); }
+#btnSolo:hover:not(:disabled) { animation-play-state: paused; box-shadow: 0 0 0 0 transparent, 0 10px 36px rgba(255,70,20,0.75); }
+button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+button:disabled { background: #3a2a2a !important; color: #8a7070 !important; border-color: #3a2a2a !important; cursor: not-allowed; transform: none; box-shadow: none; animation: none; filter: none; }
+#saveInfo { margin-top: 14px; font-size: 13px; color: var(--gold); text-align: center; text-shadow: 1px 1px 3px #000; line-height: 1.4; }
+#status { margin-top: 8px; font-size: 14px; color: #f2c8a8; text-align: center; text-shadow: 1px 1px 3px #000; min-height: 1.3em; }
+#rules { margin-top: 10px; font-size: 12px; color: #8f7a72; text-align: center; line-height: 1.5; }
+#vrhint { margin: 14px 0 0; padding: 10px 12px; border: 1px dashed rgba(255,122,42,0.3); border-radius: 8px; font-size: 12px; line-height: 1.45; color: #c9a58f; text-align: center; }
+#vrhint b { color: var(--gold); font-weight: normal; }
 #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #fff; font-weight: bold; font-size: 18px; z-index: 100; text-shadow: 2px 2px 4px black; display: none; }
 /* Przycisk ENTER VR pojawia się dopiero po starcie gry (na stronie startowej go nie ma, żeby niczego nie zasłaniał) */
 #VRButton { display: none !important; }
 .connected #VRButton { display: block !important; border-color: #ff6a20 !important; color: #ff8a40 !important; background: rgba(40,20,20,0.85) !important; }
+
+@media (max-width: 900px) {
+  #stage { grid-template-columns: 1fr; align-content: start; overflow-y: auto; gap: 18px; padding: 18px 16px 28px; }
+  #hero { text-align: center; } .chips { justify-content: center; margin-left: 0; } .kicker, .tagline, #tip, .places { margin-left: 0; margin-right: 0; margin-inline: auto; }
+  .places { display: none; } h1.logo { font-size: clamp(52px, 18vw, 110px); }
+  #card { width: 100%; max-width: 460px; margin: 0 auto; }
+}
+@media (max-height: 640px) and (min-width: 901px) { .places, #tip { display: none; } .tagline { margin-bottom: 14px; } }
+@media (prefers-reduced-motion: reduce) { #grain, h1.logo, h1.logo::before, h1.logo::after, #btnSolo { animation: none !important; } }
 </style>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
@@ -59,27 +117,213 @@ button:disabled { background: #5a4848 !important; color: #b8a0a0 !important; bor
 </head>
 <body>
 <div id="lobby">
-  <h1 class="logo">BagaBoo VR</h1>
-  <p class="subtitle">Dusk Nightmare Parkour | Don't Look Away</p>
-  <div class="form-group"><label for="playerName">Nickname:</label><input type="text" id="playerName" value="Acrobat" maxlength="16"></div>
-  <div class="form-group" id="passRow" style="display:none"><label for="playerPass">Password:</label><input type="password" id="playerPass" maxlength="40" autocomplete="current-password"></div>
-  <div class="form-group" id="rememberRow" style="display:none;justify-content:flex-start;gap:8px"><input type="checkbox" id="rememberPass" style="width:20px;height:20px;box-shadow:none"><label for="rememberPass" style="font-weight:normal">Remember password on this device</label></div>
-  <div class="form-group"><label for="playerColor">Body color:</label><input type="color" id="playerColor" value="#3d2314"></div>
-  <div class="form-group"><label for="roomCode">Room code:</label><input type="text" id="roomCode" value="MAIN" maxlength="12"></div>
-  <div class="form-group"><label for="quality">Graphics:</label>
-    <select id="quality"><option value="low">Low (fastest)</option><option value="medium">Medium</option><option value="high">High</option></select></div>
-  <div class="btn-group">
-    <button id="btnHost">Host room</button>
-    <button id="btnJoin">Join as guest</button>
-    <button id="btnSolo">Play solo</button>
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div id="dark"></div><div id="glow"></div><div id="vignette"></div><div id="grain"></div>
+  <div id="stage">
+    <section id="hero">
+      <p class="kicker">A horror parkour playground</p>
+      <h1 class="logo" data-t="BagaBoo">BagaBoo<span class="vr">VR</span></h1>
+      <p class="tagline">Seven nightmare levels. A warehouse full of games. Friends who will not be able to save you.</p>
+      <p id="tip"></p>
+      <ul class="chips">
+        <li><b>7</b> horror levels</li>
+        <li><b>12</b> party games</li>
+        <li><b>10</b> players per room</li>
+        <li>VR <b>&amp;</b> desktop</li>
+      </ul>
+      <p class="places"><span>The Maze</span>
+<span>Absolute Silence</span>
+<span>The Well</span>
+<span>The Laundromat</span>
+<span>Burning Memory</span>
+<span>The Hospital</span>
+<span>The Cemetery</span></p>
+    </section>
+    <main id="card">
+      <h2>Step inside</h2>
+      <div class="form-group"><label for="playerName">Nickname</label><input type="text" id="playerName" value="Acrobat" maxlength="16" autocomplete="nickname"></div>
+      <div class="form-group" id="passRow" style="display:none"><label for="playerPass">Password</label><input type="password" id="playerPass" maxlength="40" autocomplete="current-password"></div>
+      <div class="form-group" id="rememberRow" style="display:none;justify-content:flex-start;gap:8px"><input type="checkbox" id="rememberPass"><label for="rememberPass" style="font-weight:normal">Remember password on this device</label></div>
+      <div class="form-group"><label for="playerColor">Fur color</label><input type="color" id="playerColor" value="#3d2314"></div>
+      <div class="form-group"><label for="quality">Graphics</label>
+        <select id="quality"><option value="low">Low (fastest)</option><option value="medium">Medium</option><option value="high">High</option></select></div>
+      <button id="btnSolo">Play solo</button>
+      <div class="sep">or play with friends</div>
+      <div class="form-group"><label for="roomCode">Room code</label><input type="text" id="roomCode" value="MAIN" maxlength="12" autocomplete="off"></div>
+      <div class="btn-group">
+        <button id="btnHost">Host room</button>
+        <button id="btnJoin">Join as guest</button>
+      </div>
+      <div id="saveInfo"></div>
+      <div id="status">Checking microphone...</div>
+      <p id="vrhint"><b>Got a headset?</b> Open this page in your VR browser, start the game, then press <b>ENTER VR</b>. On desktop use WASD and the mouse.</p>
+      <div id="rules">One host per room, up to 9 guests; guests can join once the host is online. Cosmetics are bought with Bagabucks in the lobby shop. Staff nicknames are protected with a password. In VR press Y, B or a stick to pause.</div>
+      <button id="btnNew">New game (delete save)</button>
+    </main>
   </div>
-  <button id="btnNew">New game (delete save)</button>
-  <div id="saveInfo"></div>
-  <div id="status">Checking microphone...</div>
-  <div id="rules">One host per room, up to 9 guests. Guests can join only after the host is online. Hats, glasses, masks, badges, sleeves and gloves are bought with Bagabucks in the shop inside the lobby. Staff nicknames are protected with a password. In VR press Y, B or a stick to pause.</div>
 </div>
 <div id="info">The sun is setting... don't look away.</div>
 <div id="audio-container" style="display:none;"></div>
+<script>
+// ---------- Scena strony startowej: noc, krwawy księżyc, magazyn, mgła, iskry, oczy w ciemności, latarka za kursorem ----------
+(function () {
+  var lobby = document.getElementById('lobby'), cv = document.getElementById('scene'), g = cv.getContext('2d');
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var W = 0, H = 0, DPR = 1, bg = null, fog = null, t0 = performance.now(), DT = 1 / 30, lastDraw = 0;
+  var mouse = { x: 0.5, y: 0.4, tx: 0.5, ty: 0.4, real: false };
+  function rng(seed) { var s = seed >>> 0; return function () { s = (s + 0x6D2B79F5) >>> 0; var t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
+  // ----- sylwetki -----
+  function tree(c, r, x, y, len, ang, wid, depth) {
+    if (depth <= 0 || len < 4) return;
+    var x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len;
+    c.lineWidth = wid; c.beginPath(); c.moveTo(x, y); c.lineTo(x2, y2); c.stroke();
+    var n = r() < 0.7 ? 2 : 3;
+    for (var i = 0; i < n; i++) tree(c, r, x2, y2, len * (0.68 + r() * 0.14), ang + (r() - 0.5) * 1.15, wid * 0.7, depth - 1);
+  }
+  function ape(c, x, y, s) {
+    c.save(); c.translate(x, y); c.scale(s, s);
+    var body = function () {
+      c.beginPath(); c.ellipse(0, -125, 92, 120, -0.08, 0, 7); c.fill();                 // tułów
+      c.beginPath(); c.ellipse(8, -218, 125, 58, 0, 0, 7); c.fill();                     // garb barków
+      c.beginPath(); c.ellipse(30, -262, 40, 38, 0.1, 0, 7); c.fill();                   // głowa
+      c.beginPath(); c.ellipse(-48, -34, 52, 40, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(58, -34, 52, 40, 0, 0, 7); c.fill();   // nogi
+      c.lineCap = 'round'; c.lineWidth = 58;
+      c.beginPath(); c.moveTo(-85, -205); c.quadraticCurveTo(-165, -110, -112, -12); c.stroke();   // lewa ręka
+      c.beginPath(); c.moveTo(95, -205); c.quadraticCurveTo(178, -100, 128, -12); c.stroke();      // prawa ręka
+      c.beginPath(); c.ellipse(-112, -8, 40, 24, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(128, -8, 40, 24, 0, 0, 7); c.fill();  // kłykcie
+    };
+    c.fillStyle = c.strokeStyle = 'rgba(255,90,40,0.22)'; c.translate(-3, -3); body(); c.translate(3, 3);   // czerwona poświata od księżyca z tyłu
+    c.fillStyle = c.strokeStyle = '#030204'; body();
+    c.restore();
+  }
+  function warehouse(c, x, base, w, h, teeth, col) {
+    c.fillStyle = col; c.beginPath(); c.moveTo(x, base); c.lineTo(x, base - h);
+    var tw = w / teeth; for (var i = 0; i < teeth; i++) { c.lineTo(x + i * tw, base - h - tw * 0.55); c.lineTo(x + (i + 1) * tw, base - h); }
+    c.lineTo(x + w, base); c.closePath(); c.fill();
+  }
+
+  var wins = [], stars = [], embers = [], eyes = [], flash = { a: 0, next: 6 }, moon = { x: 0, y: 0, r: 0 }, apeAt = { x: 0, y: 0, s: 1 };
+
+  function build() {
+    DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+    W = lobby.clientWidth; H = lobby.clientHeight;
+    cv.width = Math.floor(W * DPR); cv.height = Math.floor(H * DPR);
+    bg = document.createElement('canvas'); bg.width = cv.width; bg.height = cv.height;
+    var c = bg.getContext('2d'); c.scale(DPR, DPR);
+    var r = rng(1313), horizon = H * 0.80;
+    // niebo
+    var sky = c.createLinearGradient(0, 0, 0, horizon);
+    sky.addColorStop(0, '#05030a'); sky.addColorStop(0.55, '#1a0812'); sky.addColorStop(0.88, '#4a1214'); sky.addColorStop(1, '#7a2414');
+    c.fillStyle = sky; c.fillRect(0, 0, W, H);
+    stars = []; for (var i = 0; i < 140; i++) { var sx = r() * W, sy = r() * horizon * 0.8; stars.push({ x: sx, y: sy, a: 0.25 + r() * 0.6, p: r() * 6 }); }
+    // księżyc
+    moon.r = Math.min(W, H) * 0.12; moon.x = W < 900 ? W * 0.8 : W * 0.5; moon.y = H * (W < 900 ? 0.1 : 0.14);
+    // dalekie wzgórza i magazyny
+    c.fillStyle = '#1a0a10'; c.beginPath(); c.moveTo(0, horizon); for (var x = 0; x <= W; x += 20) c.lineTo(x, horizon - 30 - Math.sin(x * 0.004) * 22 - r() * 6); c.lineTo(W, horizon); c.fill();
+    var bx = -40; while (bx < W) { var bw = 120 + r() * 220, bh = 30 + r() * 70; warehouse(c, bx, horizon + 4, bw, bh, 2 + ((r() * 4) | 0), '#0d060b'); if (r() < 0.35) { c.fillStyle = '#0d060b'; c.fillRect(bx + bw * 0.7, horizon - bh - 80, 16, 90); } bx += bw + 10 + r() * 40; }
+    // okna (migoczą w animacji)
+    wins = []; for (i = 0; i < 18; i++) wins.push({ x: r() * W, y: horizon - 12 - r() * 50, ph: r() * 10, on: r() < 0.5 });
+    // ziemia
+    var gr = c.createLinearGradient(0, horizon, 0, H); gr.addColorStop(0, '#0e0709'); gr.addColorStop(1, '#030204');
+    c.fillStyle = gr; c.fillRect(0, horizon, W, H - horizon);
+    // drzewa po bokach
+    c.strokeStyle = '#030204'; c.lineCap = 'round';
+    tree(c, r, W * 0.04, horizon + 20, H * 0.17, -Math.PI / 2 + 0.1, 12, 7); tree(c, r, W * 0.97, horizon + 20, H * 0.2, -Math.PI / 2 - 0.12, 14, 7); tree(c, r, W * 0.42, horizon + 6, H * 0.09, -Math.PI / 2, 6, 6);
+    // płot i nagrobki
+    c.fillStyle = '#030204'; for (x = 0; x < W; x += 18) { c.fillRect(x, horizon + 22, 4, 26); } c.fillRect(0, horizon + 28, W, 3);
+    for (i = 0; i < 9; i++) { var gx = r() * W, gh = 26 + r() * 30, gw = 18 + r() * 14; c.beginPath(); c.moveTo(gx, H); c.lineTo(gx, H - gh); c.quadraticCurveTo(gx + gw / 2, H - gh - gw * 0.6, gx + gw, H - gh); c.lineTo(gx + gw, H); c.fill(); }
+    // goryl w tle
+    var s = Math.min(H / 470, 1.5); apeAt.s = s; apeAt.x = W < 900 ? W * 0.5 : W * 0.47; apeAt.y = H + 6;
+    c.save(); c.globalAlpha = 0.95; ape(c, apeAt.x, apeAt.y, s); c.restore();
+    // sprite mgły
+    fog = document.createElement('canvas'); fog.width = 900; fog.height = 160; var f = fog.getContext('2d'), fr = rng(77);
+    for (i = 0; i < 40; i++) { var fx = fr() * 900, fy = 40 + fr() * 80, rr = 40 + fr() * 70, gg = f.createRadialGradient(fx, fy, 0, fx, fy, rr); gg.addColorStop(0, 'rgba(190,150,150,0.20)'); gg.addColorStop(1, 'rgba(190,150,150,0)'); f.fillStyle = gg; f.fillRect(fx - rr, fy - rr, rr * 2, rr * 2); }
+    // iskry
+    embers = []; for (i = 0; i < (W < 700 ? 30 : 70); i++) embers.push({ x: Math.random() * W, y: Math.random() * H, v: 12 + Math.random() * 34, s: 0.6 + Math.random() * 1.8, p: Math.random() * 6 });
+    eyes = []; for (i = 0; i < 6; i++) eyes.push(newEyes(i));
+  }
+  function newEyes(i) {
+    var horizon = H * 0.8, side = Math.random();
+    return { x: W * (0.04 + Math.random() * 0.92), y: horizon + (Math.random() - 0.2) * H * 0.15 - (side < 0.3 ? H * 0.2 : 0), gap: 7 + Math.random() * 7, ph: Math.random() * 20, t: Math.random() * 6, hide: 0, big: 1 };
+  }
+
+  function draw(now) {
+    var t = (now - t0) / 1000;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(bg, 0, 0); g.scale(DPR, DPR);
+    var horizon = H * 0.8;
+    // gwiazdy
+    for (var i = 0; i < stars.length; i++) { var st = stars[i], a = st.a * (reduce ? 1 : 0.65 + 0.35 * Math.sin(t * 1.4 + st.p)); g.fillStyle = 'rgba(255,230,220,' + a + ')'; g.fillRect(st.x, st.y, 1.4, 1.4); }
+    // księżyc: pulsująca poświata
+    var pulse = reduce ? 1 : 1 + 0.05 * Math.sin(t * 0.9);
+    var mg = g.createRadialGradient(moon.x, moon.y, moon.r * 0.5, moon.x, moon.y, moon.r * 4.2 * pulse);
+    mg.addColorStop(0, 'rgba(255,60,30,0.38)'); mg.addColorStop(0.35, 'rgba(180,20,20,0.16)'); mg.addColorStop(1, 'rgba(120,10,10,0)');
+    g.fillStyle = mg; g.fillRect(moon.x - moon.r * 5, moon.y - moon.r * 5, moon.r * 10, moon.r * 10);
+    var md = g.createRadialGradient(moon.x - moon.r * 0.3, moon.y - moon.r * 0.3, moon.r * 0.1, moon.x, moon.y, moon.r);
+    md.addColorStop(0, '#ff9a6a'); md.addColorStop(0.55, '#d8301c'); md.addColorStop(1, '#7a0c10');
+    g.fillStyle = md; g.beginPath(); g.arc(moon.x, moon.y, moon.r, 0, 7); g.fill();
+    g.fillStyle = 'rgba(60,0,0,0.25)'; [[-0.35, -0.2, 0.22], [0.25, 0.15, 0.28], [-0.1, 0.4, 0.15], [0.4, -0.35, 0.12]].forEach(function (k) { g.beginPath(); g.arc(moon.x + k[0] * moon.r, moon.y + k[1] * moon.r, k[2] * moon.r, 0, 7); g.fill(); });
+    // nietoperze przelatujące przez księżyc
+    if (!reduce) for (i = 0; i < 3; i++) { var bp = ((t * 0.045 + i * 0.37) % 1), bxp = -40 + bp * (W + 80), byp = moon.y + Math.sin(bp * 9 + i) * moon.r * 0.9 + i * 40, fl = Math.sin(t * 14 + i * 2) * 5; g.fillStyle = '#020104'; g.beginPath(); g.moveTo(bxp, byp); g.quadraticCurveTo(bxp - 9, byp - 8 - fl, bxp - 18, byp - 2); g.quadraticCurveTo(bxp - 9, byp - 1, bxp, byp + 3); g.quadraticCurveTo(bxp + 9, byp - 1, bxp + 18, byp - 2); g.quadraticCurveTo(bxp + 9, byp - 8 - fl, bxp, byp); g.fill(); }
+    // okna magazynów
+    for (i = 0; i < wins.length; i++) { var w = wins[i]; var on = w.on ? (0.55 + 0.45 * Math.sin(t * 3 + w.ph) * Math.sin(t * 7.3 + w.ph * 2)) : (Math.sin(t * 0.7 + w.ph) > 0.97 ? 0.8 : 0); if (on > 0.05) { g.fillStyle = 'rgba(255,150,50,' + Math.min(0.9, on) + ')'; g.fillRect(w.x, w.y, 5, 7); } }
+    // mgła: trzy warstwy płynące z różną prędkością
+    for (var L = 0; L < 3; L++) {
+      var sp = (L + 1) * 9, off = reduce ? 0 : -((t * sp) % 900), fy = horizon - 70 + L * 34, sc = 0.9 + L * 0.35;
+      g.globalAlpha = 0.55 + L * 0.2;
+      for (var k = -1; k * 900 * sc < W + 900; k++) g.drawImage(fog, off * sc + k * 900 * sc, fy, 900 * sc, 160 * sc);
+    }
+    g.globalAlpha = 1;
+    // iskry
+    var dt = DT;
+    for (i = 0; i < embers.length; i++) { var e = embers[i]; if (!reduce) { e.y -= e.v * dt; e.x += Math.sin(t * 0.8 + e.p) * 0.25; } if (e.y < -10) { e.y = H + 10; e.x = Math.random() * W; }
+      var ea = 0.3 + 0.5 * Math.abs(Math.sin(t * 2 + e.p)); g.fillStyle = 'rgba(255,' + (110 + (e.s * 40) | 0) + ',40,' + ea + ')'; g.beginPath(); g.arc(e.x, e.y, e.s, 0, 7); g.fill(); }
+    // oczy w ciemności: mrugają i znikają, gdy trafi je latarka
+    var mx = mouse.x * W, my = mouse.y * H;
+    for (i = 0; i < eyes.length; i++) {
+      var ey = eyes[i]; ey.t += dt;
+      var near = Math.hypot(ey.x - mx, ey.y - my) < 190;
+      if (near) ey.hide = 2.5 + Math.random() * 2;
+      if (ey.hide > 0) { ey.hide -= dt; if (ey.hide <= 0) { eyes[i] = newEyes(i); } continue; }
+      var cyc = (ey.t + ey.ph) % 9, al = cyc < 1 ? cyc : cyc < 6.5 ? 1 : Math.max(0, 1 - (cyc - 6.5) / 0.6);
+      if (cyc > 3.0 && cyc < 3.12) al *= 0.05;   // mrugnięcie
+      if (al <= 0.02) continue;
+      for (var sx = -1; sx <= 1; sx += 2) { var px = ey.x + sx * ey.gap, gl = g.createRadialGradient(px, ey.y, 0, px, ey.y, 12); gl.addColorStop(0, 'rgba(255,40,20,' + 0.9 * al + ')'); gl.addColorStop(1, 'rgba(255,20,10,0)'); g.fillStyle = gl; g.fillRect(px - 12, ey.y - 12, 24, 24); g.fillStyle = 'rgba(255,200,170,' + al + ')'; g.fillRect(px - 2, ey.y - 1, 4, 2); }
+    }
+    // oczy goryla (mrugają razem z cyklem)
+    var ap = Math.max(0, Math.sin(t * 0.5)) * 0.8 + 0.2, ex = apeAt.x + 30 * apeAt.s, eyy = apeAt.y - 266 * apeAt.s;
+    for (sx = -1; sx <= 1; sx += 2) { var gx = ex + sx * 9 * apeAt.s; var og = g.createRadialGradient(gx, eyy, 0, gx, eyy, 16 * apeAt.s); og.addColorStop(0, 'rgba(255,50,20,' + ap + ')'); og.addColorStop(1, 'rgba(255,20,10,0)'); g.fillStyle = og; g.fillRect(gx - 16 * apeAt.s, eyy - 16 * apeAt.s, 32 * apeAt.s, 32 * apeAt.s); g.fillStyle = 'rgba(255,230,200,' + ap + ')'; g.fillRect(gx - 2, eyy - 1, 4, 2); }
+    // błyskawica: rzadki, krótki rozbłysk nieba
+    if (!reduce) { flash.next -= dt; if (flash.next <= 0) { flash.a = 1; flash.next = 9 + Math.random() * 9; } }
+    if (flash.a > 0) { var fa = flash.a > 0.6 ? flash.a : flash.a * (Math.sin(t * 60) > 0 ? 1 : 0.2); g.fillStyle = 'rgba(190,200,255,' + (0.2 * fa) + ')'; g.fillRect(0, 0, W, H); flash.a -= dt * 2.4; }
+  }
+
+  // ----- pętla i sterowanie latarką -----
+  function frame(now) {
+    if (lobby.style.display === 'none') return;           // gra wystartowała: scena przestaje się rysować
+    if (!document.hidden) {
+      if (!mouse.real) { var k = (now - t0) / 1000; mouse.tx = 0.5 + Math.sin(k * 0.35) * 0.32; mouse.ty = 0.42 + Math.sin(k * 0.52 + 1) * 0.2; }
+      if (now - lastDraw < 30) { requestAnimationFrame(frame); return; }   // ok. 30 klatek/s: strona startowa nie ma obciążać gogli ani słabych telefonów
+      DT = Math.min(0.1, (now - lastDraw) / 1000); lastDraw = now;
+      mouse.x += (mouse.tx - mouse.x) * 0.09; mouse.y += (mouse.ty - mouse.y) * 0.09;
+      lobby.style.setProperty('--mx', (mouse.x * 100).toFixed(2) + '%'); lobby.style.setProperty('--my', (mouse.y * 100).toFixed(2) + '%');
+      draw(now);
+    }
+    requestAnimationFrame(frame);
+  }
+  window.addEventListener('pointermove', function (e) { mouse.real = true; mouse.tx = e.clientX / Math.max(1, W); mouse.ty = e.clientY / Math.max(1, H); });
+  window.addEventListener('resize', build);
+  build(); requestAnimationFrame(frame);
+
+  // ----- wskazówki z gry (prawdziwe zasady poziomów) -----
+  var tips = ["Don't look away.", "Hide inside open washer drums, or climb above 3 meters.", "The gravedigger hears you from 7 m. Walk, do not run.", "The floor is lava. Not even your hands may touch it.", "Press G to open the emote panel. Stand close to a friend and high five.", "Pick NIGHTMARE at the level doors for bigger rewards and your own records.", "In Absolute Silence, even a thrown ball is a mistake."];
+  var tipEl = document.getElementById('tip'), ti = (Math.random() * tips.length) | 0;
+  function showTip() { tipEl.className = 'off'; setTimeout(function () { tipEl.textContent = tips[ti++ % tips.length]; tipEl.className = ''; }, 700); }
+  tipEl.textContent = tips[ti++ % tips.length]; setInterval(function () { if (lobby.style.display !== 'none') showTip(); }, 6500);
+
+  // Enter w polu nicku = graj solo
+  document.getElementById('playerName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { var b = document.getElementById('btnSolo'); if (b && !b.disabled) b.click(); } });
+})();
+</script>
 </body>
 </html>

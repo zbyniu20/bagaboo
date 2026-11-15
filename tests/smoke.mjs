@@ -52,7 +52,7 @@ page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed 
 
 await page.goto(`http://localhost:${PORT}/`);
 await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 90000 });
-await page.click('#btnSolo');
+await page.click('#btnSolo', { timeout: 90000 });
 await page.waitForTimeout(1500);
 
 const run = (code, arg) => page.evaluate(async ([code, arg]) => { const F = Object.getPrototypeOf(async function () {}).constructor; return await new F('arg', code)(arg); }, [code, arg]);
