@@ -5,6 +5,7 @@
 // ==========================================
 import { SETTINGS } from './settings.js';
 import { buzz } from './haptics.js';
+import { LEVEL_DEFS } from './registry.js';
 let ctx = null, master = null, droneGain = null, scareBus = null, shaper = null;
 const DRONE = 0.07;
 const hb = { next: 0 };
@@ -68,11 +69,7 @@ export function updateListener(camera) {
 // ---------- POGŁOS POMIESZCZENIA ----------
 // Wspólna szyna pogłosu (ConvolverNode z syntetyczną odpowiedzią impulsową): każdy dźwięk 3D wysyła do niej część sygnału, tym więcej, im dalej jest źródło.
 // Dzięki temu bliski krok jest suchy i konkretny, a daleki huk rozmywa się w hali. Parametry zależą od poziomu (setRoom).
-const ROOMS = {
-    levels: { sec: 1.6, wet: 0.16 }, maze: { sec: 2.0, wet: 0.2 }, silence: { sec: 3.2, wet: 0.26 }, well: { sec: 3.6, wet: 0.32 },
-    laundry: { sec: 2.8, wet: 0.26 }, memory: { sec: 2.4, wet: 0.2 }, lava: { sec: 2.2, wet: 0.16 }, hospital: { sec: 2.6, wet: 0.24 },
-    cemetery: { sec: 1.0, wet: 0.07 }, catacombs: { sec: 3.2, wet: 0.3 }, games: { sec: 1.8, wet: 0.13 }, lobby: { sec: 1.5, wet: 0.12 }, wardrobe: { sec: 0.6, wet: 0.06 }
-};
+const ROOMS = Object.fromEntries(LEVEL_DEFS.filter(d => d.room).map(d => [d.id, d.room]));   // z core/registry.js
 const ROOM_DEFAULT = { sec: 1.4, wet: 0.1 };
 const rv = { conv: null, ret: null, wet: ROOM_DEFAULT.wet, sec: 0 };
 const lis = { x: 0, y: 0, z: 0 };   // ostatnia pozycja słuchacza (do liczenia odległości źródeł)

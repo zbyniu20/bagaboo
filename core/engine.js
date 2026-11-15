@@ -185,6 +185,23 @@ export function addCrispBlock(x, y, z, w, h, d, color, edgeColor, texture, opts)
     addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)), mesh, false);
     return mesh;
 }
+// Wiele małych bloków (nagrobki, skrzynie, słupki) w jednym wywołaniu rysowania: InstancedMesh + sama kolizja gracza.
+// list: [{ x, y, z, w, h, d, rotY, color }]. Bez obwódki krawędzi i bez bryły fizycznej Cannona (to dekoracje: gracz i boty zderzają się przez L.obstacles).
+export function addInstancedBlocks(list, texture, opts) {
+    if (!list.length) return null;
+    opts = opts || {}; texture = texture || tex.wall;
+    const mat = new THREE.MeshStandardMaterial({ map: texture, normalMap: T.normalFor(texture, 3), normalScale: new THREE.Vector2(1.1, 1.1), roughness: 0.8, metalness: 0.1, envMapIntensity: LP.envIntensity });
+    const geo = new THREE.BoxGeometry(1, 1, 1); scaleBoxUVs(geo, 1, 1, 1, opts.uvMeters || 2);
+    const im = new THREE.InstancedMesh(geo, mat, list.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), s = new THREE.Vector3(), c = new THREE.Color();
+    list.forEach((b, i) => {
+        e.set(0, b.rotY || 0, 0); q.setFromEuler(e); p.set(b.x, b.y, b.z); s.set(b.w, b.h, b.d); m4.compose(p, q, s); im.setMatrixAt(i, m4);
+        im.setColorAt(i, c.set(b.color !== undefined ? b.color : 0xffffff));
+        const ca = Math.abs(Math.cos(b.rotY || 0)), sa = Math.abs(Math.sin(b.rotY || 0)), hx = (b.w * ca + b.d * sa) / 2, hz = (b.w * sa + b.d * ca) / 2;   // obrys obrócony: kolizja jako pudełko osiowe
+        addCollider(b.x - hx, b.y - b.h / 2, b.z - hz, b.x + hx, b.y + b.h / 2, b.z + hz);
+    });
+    im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false; L.root.add(im);
+    return im;
+}
 // Miękki cień kontaktowy pod przedmiotem
 const blobAOMat = new THREE.MeshBasicMaterial({ map: tex.dot, color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
 export function addBlobAO(x, z, size) {

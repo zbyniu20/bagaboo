@@ -4,7 +4,8 @@
 // Widzi przed sobą (do 14 m) i tylko gdy nic go nie zasłania, a biegnącego słyszy z 7 m. Chowaj się w kryptach i za żywopłotami.
 // Układ jest stały (działa duch). Po każdej relikwii zapisuje się punkt kontrolny (Easy i Normal).
 // ==========================================
-import { THREE, L, tex, camera, addCrispBlock } from '../core/engine.js';
+import { THREE, L, tex, camera, addCrispBlock, addInstancedBlocks } from '../core/engine.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { levelReward, recordTime, diffOf } from '../core/economy.js';
@@ -92,24 +93,26 @@ function buildCrypts() {
 }
 // Nagrobki w rzędach (z lukami przy kryptach i w alejkach pionowych), żywopłoty i martwe drzewa
 function buildDecor() {
-    const R = T.mkRng(7070), cols = [0x7a8280, 0x6a7270, 0x8a9290];
+    const R = T.mkRng(7070), cols = [0x7a8280, 0x6a7270, 0x8a9290], stones = [];
     for (const z of ROWS_Z) {
         for (let x = -X + 2.5; x < X - 1.5; x += 2.6 + R() * 0.8) {
             if (AISLES_X.some(a => Math.abs(x - a) < 2.2) || (Math.abs(x) < 4.6 && z < -54)) continue;
             if (CRYPTS.some(c => Math.abs(x - c[0]) < 3.2 && Math.abs(z - c[1]) < 4)) continue;
-            const h = 0.8 + R() * 0.8;
-            const m = addCrispBlock(x, h / 2, z + (R() - 0.5) * 0.8, 0.8, h, 0.25, cols[(R() * 3) | 0], 0x101414, tex.wall);
-            if (R() < 0.3) m.rotation.y = (R() - 0.5) * 0.3;
+            const h = 0.8 + R() * 0.8, zz = z + (R() - 0.5) * 0.8, col = cols[(R() * 3) | 0];
+            stones.push({ x: x, y: h / 2, z: zz, w: 0.8, h: h, d: 0.25, color: col, rotY: R() < 0.3 ? (R() - 0.5) * 0.3 : 0 });
         }
     }
+    addInstancedBlocks(stones, tex.wall);   // wszystkie nagrobki w jednym wywołaniu rysowania
     const hedge = new THREE.MeshStandardMaterial({ color: 0x1f3a1f, roughness: 1, bumpMap: tex.plaster, bumpScale: 3 });
     for (const [x, z, w, d] of [[-16, -8, 7, 1], [16, -8, 7, 1], [16, -24, 7, 1], [-16, -24, 7, 1], [16, -40, 7, 1], [-16, -40, 7, 1], [16, -56, 7, 1], [-16, -56, 7, 1]]) {
         const b = addCrispBlock(x, 1.0, z, w, 2.0, d, 0x1f3a1f, 0x0a140a); b.material = hedge;   // żywopłot (niski mur, blokuje wzrok)
     }
+    const branches = [];
     for (const [x, z] of [[-18, -2], [17, -6], [-5, -18], [6, -42], [-18, -58], [18, -30]]) {   // martwe drzewa
         const tr = addCrispBlock(x, 2.2, z, 0.5, 4.4, 0.5, 0x3a2a20, 0x100a06, tex.wood); void tr;
-        for (let k = 0; k < 4; k++) { const br = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.08, 1.6, 5), new THREE.MeshStandardMaterial({ color: 0x3a2a20 })); br.position.set(x + (k % 2 ? 0.7 : -0.7), 3.6 + k * 0.15, z + (k > 1 ? 0.5 : -0.5)); br.rotation.z = (k % 2 ? -1 : 1) * 0.9; L.root.add(br); }
+        for (let k = 0; k < 4; k++) { const g = new THREE.CylinderGeometry(0.04, 0.08, 1.6, 5); g.rotateZ((k % 2 ? -1 : 1) * 0.9); g.translate(x + (k % 2 ? 0.7 : -0.7), 3.6 + k * 0.15, z + (k > 1 ? 0.5 : -0.5)); branches.push(g); }
     }
+    const bm = new THREE.Mesh(mergeGeometries(branches), new THREE.MeshStandardMaterial({ color: 0x3a2a20 })); bm.frustumCulled = false; L.root.add(bm);   // gałęzie wszystkich drzew w jednym obiekcie
     // Mgła przy ziemi
     const n = 220, pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { pos[i * 3] = (R() * 2 - 1) * X; pos[i * 3 + 1] = 0.2 + R() * 1.2; pos[i * 3 + 2] = Z0 - R() * (Z0 - Z1); }
