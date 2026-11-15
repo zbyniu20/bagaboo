@@ -16,7 +16,7 @@ import { fileURLToPath } from 'url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.resolve(HERE, '..'), DEPS = path.join(HERE, 'node_modules');
 const PORT = +process.env.PORT || 8766;
-const LEVELS = (process.argv[2] || 'lobby,levels,maze,silence,well,laundry,memory,lava,hospital,cemetery,catacombs,games,wardrobe,hideseek,statues,blindtag,swingrun,towerclimb').split(',');
+const LEVELS = (process.argv[2] || 'lobby,levels,maze,silence,well,laundry,memory,lava,hospital,cemetery,catacombs,nursery,games,wardrobe,hideseek,statues,blindtag,swingrun,towerclimb').split(',');
 // Draw-call budget per level (medium quality, renderer.info.render.calls on the first frames). Raise only on purpose.
 const BUDGET = { default: 260, laundry: 230, memory: 310 };
 const MAX_POINT_LIGHTS = 12;
@@ -265,6 +265,14 @@ const modeSim = await run(`
     if (!until(m, d => d.falls >= 1, 700, () => { PL.playerBody.position.set(0, 1.0, -0.4); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('towerclimb: ooze never caught an idle player');
     PL.playerBody.position.set(0, 38.2, -2.5); step(m, 1); if (!m.debug().finished) bad.push('towerclimb: finish ledge not detected');
     if (!until(m, d => d.phase === 'results', 100)) bad.push('towerclimb: round did not end after the finish'); if (!(E.SAVE.records.towerclimb > 0)) bad.push('towerclimb: time not recorded');
+    // Nursery: the music box drains, winding refills it, a teddy eats part of it, and a silent music box wakes the doll who catches an idle player
+    m = await load('nursery');
+    if (!until(m, d => d.phase === 'play', 200)) bad.push('nursery: never left the intro');
+    const n0 = m.debug(); if (!n0.modes.every(x => x === 'asleep')) bad.push('nursery: doll should sleep while the music plays');
+    if (!until(m, d => d.music < d.m0 * 0.6, 400, () => { PL.playerBody.position.set(-19.5, 1.0, -1.6); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('nursery: music never drained');
+    const st0 = n0.stationPos[0]; PL.playerBody.position.set(st0[0], 1.0, st0[1]); step(m, 2); if (!(m.debug().music > n0.m0 * 0.95)) bad.push('nursery: winding did not refill the music box (' + m.debug().music.toFixed(1) + ')');
+    const kp = n0.keyPos[0]; PL.playerBody.position.set(kp[0], 1.0, kp[1]); step(m, 2); const nk = m.debug(); if (nk.keys !== 1 || !(nk.music < n0.m0 * 0.85)) bad.push('nursery: teddy not taken or did not eat the music (keys=' + nk.keys + ', music=' + nk.music.toFixed(1) + ')');
+    if (!until(m, d => d.caught, 1500, () => { PL.playerBody.position.set(-19.5, 1.0, -1.6); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('nursery: the awake doll never caught an idle player (modes=' + m.debug().modes + ')');
     // Statues: standing still survives a silence, moving in a silence puts you out on the balcony
     m = await load('statues');
     PL.playerBody.velocity.set(0, 0, 0);
@@ -279,7 +287,7 @@ const modeSim = await run(`
     if (!until(m, d => d.caught >= 1 || d.phase === 'results', 200, () => { PL.playerBody.position.set(1.2, 1.0, 0.2); PL.playerBody.velocity.set(4, 0, 0); })) bad.push('blindtag: the bot did not catch a noisy player next to it');
     return bad;
 `);
-if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Statues and Blind Tag rounds simulate correctly');
+if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Statues and Blind Tag simulate correctly');
 
 // ---- stats / achievements / audio ----
 phase = 'stats';

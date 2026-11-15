@@ -105,6 +105,7 @@ export const CATALOG = [
     { slot: 'hat', id: 'headphones', name: 'Headphones', price: 0, locked: true, hint: 'Daily quests x5' },
     { slot: 'hat', id: 'laurel', name: 'Golden laurel', price: 0, locked: true, hint: 'All 3 quests, 7 days' },
     { slot: 'hat', id: 'nursecap', name: 'Nurse cap', price: 0, locked: true, hint: 'Hospital on Nightmare' },
+    { slot: 'hat', id: 'teddyears', name: 'Teddy ears', price: 0, locked: true, hint: 'Nursery on Nightmare' },
     { slot: 'hat', id: 'skullcrown', name: 'Skull crown', price: 0, locked: true, hint: 'Catacombs on Nightmare' },
     { slot: 'hat', id: 'lanternhat', name: 'Lantern hat', price: 0, locked: true, hint: 'Cemetery on Nightmare' },
     { slot: 'glasses', id: 'monocle', name: 'Gold monocle', price: 600, weekly: true },
@@ -287,6 +288,7 @@ export const ACHIEVEMENTS = [
     { id: 'nm_memory', name: 'Burning brain', desc: 'Cross Burning Memory on Nightmare', reward: ['sleeve', 'ember'], rewardName: 'Ember cloth' },
     { id: 'nm_hospital', name: 'Do not blink', desc: 'Escape The Hospital on Nightmare', reward: ['hat', 'nursecap'], rewardName: 'Nurse cap' },
     { id: 'nm_cemetery', name: 'Rest in peace', desc: 'Escape The Cemetery on Nightmare', reward: ['hat', 'lanternhat'], rewardName: 'Lantern hat' },
+    { id: 'nm_nursery', name: 'Lullaby', desc: 'Escape The Nursery on Nightmare', reward: ['hat', 'teddyears'], rewardName: 'Teddy ears' },
     { id: 'nm_catacombs', name: 'Bone collector', desc: 'Escape The Catacombs on Nightmare', reward: ['hat', 'skullcrown'], rewardName: 'Skull crown' },
     { id: 'nm_all', name: 'Nightmare master', desc: 'Clear all ' + DIFF_LEVEL_IDS.length + ' levels on Nightmare', reward: ['skin', 'nightmare'], rewardName: 'Nightmare ape', goal: DIFF_LEVEL_IDS.length, val: () => Object.keys(SAVE.nmWins || {}).length },
     // --- Tryby gry ---

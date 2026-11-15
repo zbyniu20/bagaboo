@@ -63,6 +63,10 @@ export function extraHat(id) {
         const red = mat({ color: 0xd01818 });
         g.add(at(new THREE.BoxGeometry(0.05, 0.016, 0.012), red, 0, 0.155, -0.138));
         g.add(at(new THREE.BoxGeometry(0.016, 0.05, 0.012), red, 0, 0.155, -0.138));
+    } else if (id === 'teddyears') {
+        const fur = mat({ color: 0xa87038, roughness: 0.95 }), inner = mat({ color: 0xe8a0a0, roughness: 0.9 });
+        for (const s of [-1, 1]) { const e = at(new THREE.SphereGeometry(0.06, 10, 8), fur, s * 0.1, 0.15, 0); e.scale.z = 0.7; g.add(e); const i2 = at(new THREE.SphereGeometry(0.035, 8, 6), inner, s * 0.1, 0.15, -0.025); i2.scale.z = 0.5; g.add(i2); }
+        g.add(at(new THREE.TorusGeometry(0.14, 0.012, 6, 24, Math.PI), fur, 0, 0.09, 0).rotateY(Math.PI / 2));
     } else if (id === 'skullcrown') {
         const bone = mat({ color: 0xe6dcc0, roughness: 0.6 }), dark = mat({ color: 0x1a1412 });
         g.add(at(new THREE.CylinderGeometry(0.14, 0.15, 0.06, 16), bone, 0, 0.1, 0));

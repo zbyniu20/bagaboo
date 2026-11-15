@@ -99,6 +99,12 @@ LIGHT_PRESETS.hospital = {   // szpital: zimne, zielonkawe światło i latarka (
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.3,
     flashlight: { color: 0xf4fff8, intensity: 90, distance: 30, angle: 0.6, penumbra: 0.5, decay: 2 }
 };
+LIGHT_PRESETS.nursery = {   // pokój dziecięcy: ciepły półmrok, lekka mgła i latarka
+    background: 0x140a08, fogColor: 0x20140e, fogDensity: 0.03, exposure: 1.35,
+    hemiSky: 0xd0a888, hemiGround: 0x4a3028, hemiIntensity: 1.5,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.2,
+    flashlight: { color: 0xfff0d8, intensity: 85, distance: 22, angle: 0.55, penumbra: 0.65, decay: 2 }
+};
 LIGHT_PRESETS.catacombs = {   // katakumby: prawie całkowita ciemność, gęsta mgła i słaba latarka
     background: 0x030303, fogColor: 0x060504, fogDensity: 0.05, exposure: 1.3,
     hemiSky: 0x806050, hemiGround: 0x201814, hemiIntensity: 0.9,
