@@ -120,6 +120,23 @@ const data = await run(`
             hub.setMuted('A', 'B', true); const a880m = await level(mixA, 880); if (!(a880m < -90)) bad.push('muted source still audible (' + a880m.toFixed(0) + ' dB)');
         } else console.log('voice hub mixing not measured: AudioContext is ' + ac.state);
     }
+    // Gorilla Machine: every category lists items, trying shows them on the model only, buying then wearing works; shop sells only unowned items and has no try/wear
+    const GM = await import('./core/gorillamachine.js'), UIM = await import('./core/ui.js');
+    for (const c of GM.CATS) if (!GM.itemsFor(c.id).length) bad.push('machine category empty: ' + c.id);
+    GM.machine.redraw(); const catBtns = GM.machine.buttons.filter(b => b.id.startsWith('cat')).length; if (catBtns !== GM.CATS.length) bad.push('machine shows ' + catBtns + ' category buttons');
+    GM.machine.buttons.find(b => b.id === 'cathat').action(); GM.machine.redraw();
+    const beanieBtn = GM.machine.buttons.find(b => b.id === 'ithatbeanie'); if (!beanieBtn) bad.push('machine: beanie row missing'); else {
+        const worn0 = E.getLook().hat; beanieBtn.action();
+        if (GM.machineLook().hat !== 'beanie') bad.push('machine: trying a hat does not show it on the model');
+        if (E.getLook().hat !== worn0) bad.push('machine: trying a hat changed the real outfit');
+        GM.machine.redraw(); if (GM.machine.buttons.find(b => b.id === 'wearhatbeanie')) bad.push('machine: unowned item can be worn');
+        E.SAVE.wallet += 5000; E.buyItem(E.CATALOG.find(i => i.slot === 'hat' && i.id === 'beanie')); GM.machine.redraw();
+        const wear = GM.machine.buttons.find(b => b.id === 'wearhatbeanie'); if (!wear) bad.push('machine: bought item has no Wear button'); else { wear.action(); if (E.getLook().hat !== 'beanie') bad.push('machine: Wear did not equip'); if (GM.M.sel.hat) bad.push('machine: try state not cleared after wearing'); }
+        E.equipItem(E.CATALOG.find(i => i.slot === 'hat' && i.id === worn0)); GM.resetTry();
+    }
+    UIM.shop.redraw(); const sb = UIM.shop.buttons.map(b => b.id);
+    if (sb.some(id => id.startsWith('try') || id.startsWith('wear') || id.startsWith('worn'))) bad.push('shop still has try/wear buttons: ' + sb.filter(id => /^(try|wear|worn)/.test(id)).join());
+    for (const it of E.CATALOG.filter(i => i.slot === 'skin' && E.isOwned(i))) if (sb.includes('buy' + it.slot + it.id) || sb.includes('lock' + it.slot + it.id)) bad.push('shop still lists owned item ' + it.id);
     // VR performance governor: slow frames raise the level, long stable frames lower it again
     const XP = await import('./core/xrperf.js'), g = { avg: 0, slow: 0, fast: 0, cool: 0, level: 0 }, budget = 1000 / 72;
     for (let i = 0; i < 400; i++) XP.govern(g, 25, budget);              // ~10 s at 40 fps

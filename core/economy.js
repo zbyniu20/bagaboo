@@ -600,10 +600,9 @@ export function buyItem(item) {
     if (isLocked(item)) return 'locked';
     const price = priceOf(item);
     if (SAVE.wallet < price) { toast('Not enough ' + CURRENCY + ' for ' + item.name, '#e0533f'); return 'poor'; }
-    SAVE.wallet -= price; SAVE.owned.push(item.slot + ':' + item.id);
-    SAVE.equipped[item.slot] = item.id;
-    toast('Bought ' + item.name + ' (-' + price + ')', '#7fc47f');
-    track('shop'); saveGame(); notifyLook();
+    SAVE.wallet -= price; SAVE.owned.push(item.slot + ':' + item.id);   // zakładanie jest w Maszynie goryla (nie tu): kupiony przedmiot trafia do niej
+    toast('Bought ' + item.name + ' (-' + price + '). Wear it at the Gorilla Machine.', '#7fc47f');
+    track('shop'); saveGame(); markAllDirty();
     return 'ok';
 }
 export function equipItem(item) {

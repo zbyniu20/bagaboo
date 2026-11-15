@@ -1,8 +1,8 @@
 // ==========================================
 // SZATNIA (WARDROBE): wejście z lobby (drzwi w północnej ścianie)
-// Na środku obrotowy podest z twoim pełnym avatarem. Terminal obok pozwala przewijać WSZYSTKIE kosmetyki (także te, których jeszcze
-// nie masz), założyć je na podglądzie, kupić albo zdjąć. Przycisk Photo robi zdjęcie avatara: ląduje na ścianie, a na komputerze
-// zapisuje się też jako plik PNG.
+// Studio zdjęciowe: na środku obrotowy podest z twoim goryla w aktualnym stroju, niebieski ekran do nagrywania wideo (chroma key) i
+// przycisk Photo (zdjęcie ląduje na ścianie, a na komputerze zapisuje się też jako PNG). Przymierzanie, sprawdzanie i zakładanie
+// kosmetyków jest w Maszynie goryla w lobby, obok sklepu (core/gorillamachine.js), a nie tutaj.
 // ==========================================
 import { THREE, L, tex, scene, camera, renderer, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
@@ -17,50 +17,43 @@ import { LOBBY_MOVE_SCALE } from '../core/config.js';
 
 const W = 9, D = 7, H = 5;
 const PODIUM = [0, -1.5];
-const SLOTS = [['skin', 'Skin'], ['hat', 'Hat'], ['glasses', 'Glasses'], ['mask', 'Mask'], ['sleeve', 'Sleeve'], ['gloves', 'Hands'], ['badge', 'Badge'], ['emote', 'Emote']];
-const STAFF_HINTS = ['Owner', 'Ultimate', 'Co-admin', 'Admin', 'Moderator', 'Staff', 'For hackers'];
 export const info = { id: 'wardrobe', name: 'Wardrobe', spawn: [0, 1.0, 4.5] };
 let S = null;
 
-// Lista przedmiotów do przewijania w danym dziale (bez tych tylko dla ekipy)
-const listFor = (slot) => E.CATALOG.filter(it => it.slot === slot && !(it.locked && STAFF_HINTS.includes(it.hint)));
-const UI = { idx: {}, auto: true, spin: 0, emoting: false, blue: false };
+// Stan studia: wybrana emotka do pozy na zdjęciu (indeks na liście posiadanych emotek, null = bez emotki)
+const UI = { auto: true, spin: 0, emote: null, blue: false };
 const BLUE = 0x0a3cff;   // niebieski do kluczowania (chroma key) przy nagrywaniu wideo
-function equippedIndex(slot) { const l = listFor(slot), cur = E.SAVE.equipped[slot]; return Math.max(0, l.findIndex(it => it.id === cur)); }
-function resetIdx() { for (const [s] of SLOTS) UI.idx[s] = equippedIndex(s); }
-function current(slot) { const l = listFor(slot); return l[((UI.idx[slot] || 0) % l.length + l.length) % l.length]; }
-function previewLook() {
-    const look = E.getLook();
-    for (const [s] of SLOTS) { const it = current(s); if (it) look[s] = it.id; }
-    return look;
+const ownedEmotes = () => E.CATALOG.filter(it => it.slot === 'emote' && E.isOwned(it) && EMOTES[it.id]);
+const previewLook = () => E.getLook();
+function cycleEmote(d) {
+    const l = ownedEmotes(); if (!l.length) return;
+    const cur = UI.emote === null ? -1 : UI.emote;
+    const n = cur + d; UI.emote = n < 0 ? (d < 0 ? l.length - 1 : null) : (n >= l.length ? null : n);
 }
-function cycle(slot, d) { const l = listFor(slot); UI.idx[slot] = ((UI.idx[slot] || 0) + d + l.length) % l.length; S.dirtyLook = true; if (slot === 'emote') UI.emoting = true; }   // przewijanie emotek włącza ich podgląd
 
 // ---------- TERMINAL ----------
 const panel = new Terminal((t) => {
     const c = t.ctx;
     t.background();
-    t.header('Wardrobe', E.CURRENCY + ': ' + E.SAVE.wallet, GOLD);
-    SLOTS.forEach(([slot, label], i) => {
-        const y = 80 + i * 54, it = current(slot); if (!it) return;
-        const owned = E.isOwned(it), worn = E.isEquipped(it), locked = E.isLocked(it), price = E.priceOf(it);
-        c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(20, y, 984, 50);
-        t.text(label, 36, y + 25, 24, GOLD, 'left', true);
-        t.btn('prev' + slot, 190, y + 5, 56, 40, '<', () => cycle(slot, -1), { size: 26 });
-        t.text(it.name, 410, y + 25, it.name.length > 20 ? 19 : 23, worn ? OK_COL : AMBER, 'center', true);
-        t.btn('next' + slot, 574, y + 5, 56, 40, '>', () => cycle(slot, 1), { size: 26 });
-        const info = worn ? 'Wearing' : (owned ? 'Owned' : (locked ? E.lockText(it) : (price === 0 ? 'Free' : price + (E.isFeatured(it) ? ' (-20%)' : (it.season ? ' ' + E.SEASONS[it.season].name : '')))));
-        t.text(info, 650, y + 25, info.length > 16 ? 15 : 19, worn ? OK_COL : (owned ? AMBER_DIM : (locked ? BAD_COL : GOLD)), 'left');
-        if (owned && !worn) t.btn('wear' + slot, 850, y + 5, 140, 40, slot === 'emote' ? 'Favorite' : 'Wear', () => { E.equipItem(it); S.dirtyLook = true; markAllDirty(); }, { size: 20, tone: 'ok' });
-        else if (!owned && !locked) t.btn('buy' + slot, 850, y + 5, 140, 40, E.SAVE.wallet >= price ? 'Buy' : 'Need ' + (price - E.SAVE.wallet), () => { E.buyItem(it); S.dirtyLook = true; markAllDirty(); }, { size: 18, tone: 'gold', disabled: E.SAVE.wallet < price });
-    });
+    t.header('Photo studio', E.SAVE.profile.name, GOLD);
+    c.fillStyle = 'rgba(255,176,0,0.08)'; c.fillRect(20, 96, 984, 150);
+    t.text('Your gorilla is on the turntable in the outfit you are wearing.', 36, 130, 24, AMBER, 'left', true);
+    t.text('To try on, check and wear cosmetics use the GORILLA MACHINE', 36, 176, 22, GOLD, 'left');
+    t.text('in the lobby, next to the Bagabucks shop.', 36, 208, 22, GOLD, 'left');
+    // Pozowanie emotką do zdjęcia
+    const l = ownedEmotes(), em = UI.emote !== null ? l[UI.emote] : null;
+    t.text('Pose', 36, 296, 26, GOLD, 'left', true);
+    t.btn('prevemote', 190, 270, 56, 52, '<', () => cycleEmote(-1), { size: 26 });
+    t.text(em ? em.name : 'No emote', 410, 296, 26, em ? OK_COL : AMBER, 'center', true);
+    t.btn('nextemote', 574, 270, 56, 52, '>', () => cycleEmote(1), { size: 26 });
+    t.text('Pick an emote to freeze a pose for the photo.', 36, 350, 18, AMBER_DIM, 'left');
+    t.text('Blue screen: a flat blue wall and floor for chroma-key video.', 36, 384, 18, AMBER_DIM, 'left');
     t.btn('spin', 20, 520, 235, 52, UI.auto ? 'Turntable: auto' : 'Turntable: stopped', () => { UI.auto = !UI.auto; }, { size: 21, tone: UI.auto ? 'ok' : undefined });
     t.btn('left', 265, 520, 70, 52, '<<', () => { UI.spin -= 0.6; UI.auto = false; }, { size: 24 });
     t.btn('right', 345, 520, 70, 52, '>>', () => { UI.spin += 0.6; UI.auto = false; }, { size: 24 });
-    t.btn('reset', 425, 520, 140, 52, 'Reset', () => { resetIdx(); UI.emoting = false; S.dirtyLook = true; }, { size: 21 });
     t.btn('blue', 575, 520, 175, 52, UI.blue ? 'Blue screen: on' : 'Blue screen: off', () => { UI.blue = !UI.blue; applyBlue(); }, { size: 19, tone: UI.blue ? 'ok' : undefined });
     t.btn('photo', 760, 520, 244, 52, 'Take photo', () => { S.photoReq = true; }, { tone: 'gold', size: 24 });
-    t.text('Preview any item. Locked items show how to earn them. Photos appear on the wall.', 36, 604, 18, AMBER_DIM, 'left');
+    t.text('Photos appear on the wall.', 36, 604, 18, AMBER_DIM, 'left');
     t.scanlines();
 }, 1024, 640);
 
@@ -70,7 +63,6 @@ export function build() {
     L.bounds = { minX: -W + 0.4, maxX: W - 0.4, minZ: -D + 0.4, maxZ: D - 0.4, maxY: H - 0.4 };
     L.moveScale = LOBBY_MOVE_SCALE;   // ruch dłońmi taki sam jak w lobby
     S = { clock: 0, dirtyLook: true, avatar: null, photos: [], photoReq: false, flash: 0, frames: [], lights: [] };
-    resetIdx();
     addCrispBlock(0, -0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x6a5a4e, 0x181008, tex.floor, { rough: tex.floorRough });
     addCrispBlock(0, H + 0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x4a3c3e, 0x181008);
     for (const [x, z, w, d] of [[0, -D - 0.5, W * 2 + 2, 1], [0, D + 0.5, W * 2 + 2, 1], [-W - 0.5, 0, 1, D * 2], [W + 0.5, 0, 1, D * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x8a7a72, 0x181008, tex.wall);
@@ -170,8 +162,8 @@ export function update(dt, t) {
     if (S.avatar) {
         S.avatar.pivot.rotation.y = Math.PI + UI.spin;
         // Wybrana emotka gra w pętli na podeście (z krótką przerwą), żeby było ją widać także na zdjęciu
-        const em = current('emote');
-        if (UI.emoting && em && EMOTES[em.id]) { baseAvatarPose(S.avatar); const d = EMOTES[em.id].dur + 0.8; emotePose(S.avatar, em.id, S.clock % d); S.avatar.torso.position.set(S.avatar.head.position.x, S.avatar.head.position.y - (S.avatar.torsoDrop || 0.35), S.avatar.head.position.z); }
+        const el = ownedEmotes(), em = UI.emote !== null ? el[UI.emote] : null;
+        if (em && EMOTES[em.id]) { baseAvatarPose(S.avatar); const d = EMOTES[em.id].dur + 0.8; emotePose(S.avatar, em.id, S.clock % d); S.avatar.torso.position.set(S.avatar.head.position.x, S.avatar.head.position.y - (S.avatar.torsoDrop || 0.35), S.avatar.head.position.z); }
     }
     S.disc.rotation.y = UI.spin;
     if (S.photoReq) takePhoto();
