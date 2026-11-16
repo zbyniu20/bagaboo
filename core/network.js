@@ -22,6 +22,10 @@ export const voice = { stream: null, on: true };
 export let playersState = Object.create(null);
 export const remoteAvatars = {};
 export const audioEls = {}, mutedPeers = new Set(), bannedNames = new Set(), reports = [];
+const HOST_PROOF_WAIT_MS = 12000;   // tyle host ma na dowód, zanim jego nick ekipy uznamy za fałszywy
+const HOST_AUD_PREFIX = 'H:';
+// Dowód hosta z ponawianiem: chwilowy błąd sieci nie może zrobić z prawdziwego hosta podejrzanego (gość czeka na dowód HOST_PROOF_WAIT_MS)
+function vouchRetry(aud, nonce, tries) { return vouch(aud, nonce).then((p) => p || (tries > 1 ? new Promise((r) => setTimeout(r, 1500)).then(() => vouchRetry(aud, nonce, tries - 1)) : null)); }   // adresat dowodu hosta (dowód gościa ma sam GAME_PREFIX + kod)
 let peer = null, hostConnection = null, clientConnections = [], myPeerId = 'solo-player', leaving = false;
 const sharedObjectsState = Object.create(null);
 // Wiadomości poziomu (np. stan potwora w trybie Cisza). Poziom rejestruje jeden odbiornik.
@@ -365,6 +369,10 @@ function handleGuest(conn) {
                 const st = playersState[conn.peer]; if (st && st.profile) st.profile.name = nick;
                 markAllDirty();
             });
+        } else if (data.type === 'hostAuth') {   // gość chce sprawdzić, kim jest host: dowód z serwera kont na ten pokój i nonce gościa (adresat z przedrostkiem H:, żeby nie pomylić go z dowodem gościa)
+            if (conn.hostAuthDone || typeof data.nonce !== 'string' || data.nonce.length < 8 || data.nonce.length > 80) return;
+            conn.hostAuthDone = true;   // jedna prośba na połączenie: bez zalewania serwera kont
+            vouchRetry(HOST_AUD_PREFIX + GAME_PREFIX + NET.code, data.nonce, 3).then((proof) => { if (proof && conn.open) { try { conn.send({ type: 'hostProof', proof: proof }); } catch (e) {} } });
         } else if (data.type === 'playerUpdate') {
             const pl = data.payload;
             if (!pl || typeof pl !== 'object' || !pl.profile || typeof pl.profile !== 'object') return;
@@ -443,10 +451,21 @@ export function startJoin(code, cb) {
     p.on('open', (id) => {
         myPeerId = id;
         const conn = p.connect(GAME_PREFIX + code, { reliable: true }); hostConnection = conn;
+        // Tożsamość hosta: host podszywający się pod ekipę (nick zastrzeżony) bez dowodu z serwera kont wyrzuca gościa z pokoju
+        const hostNonce = randomNonce(); let hostNick = null, hostGraceOver = false;
+        const checkHost = () => {
+            if (NET.mode !== 'guest' || peer !== p) return;
+            const st = playersState[GAME_PREFIX + code], nm = st && st.profile && typeof st.profile.name === 'string' ? st.profile.name : '';
+            if (!nm || !isReservedNick(nm) || (hostNick && hostNick.toLowerCase() === nm.toLowerCase())) return;
+            leaveNetwork('This host uses the staff nickname "' + nm + '" but could not prove it. It may be an impersonator, so you left the room.');
+            toast('Impersonator detected: you left the room', '#e0533f');
+        };
         conn.on('open', () => {
             clearTimeout(to); NET.busy = false; NET.mode = 'guest';
             setStatus('Joined room ' + code + ' as a guest.');
             if (cb.ok) cb.ok();
+            conn.send({ type: 'hostAuth', nonce: hostNonce });   // prosimy hosta o dowód tożsamości z serwera kont
+            setTimeout(() => { hostGraceOver = true; checkHost(); }, HOST_PROOF_WAIT_MS);
             callPeer(GAME_PREFIX + code);   // głos z hostem (także bez mikrofonu, żeby słyszeć innych)
             mutedPeers.forEach((id) => { try { conn.send({ type: 'mute', id: id, on: true }); } catch (e) {} });   // host zna twoją listę wyciszonych
         });
@@ -459,6 +478,10 @@ export function startJoin(code, cb) {
             }
             if (data.type === 'authRequired') { leaveNetwork('This nickname is reserved for the staff. Log in to your account first.'); toast('Log in to use this nickname', '#e0533f'); return; }
             if (data.type === 'authOk') return;
+            if (data.type === 'hostProof') {
+                if (typeof data.proof === 'string' && data.proof.length <= 2000) verifyProof(data.proof, HOST_AUD_PREFIX + GAME_PREFIX + code, hostNonce).then((nick) => { if (nick) hostNick = nick; });
+                return;
+            }
             if (data.type === 'kicked') { leaveNetwork(data.temp ? 'You were kicked from room ' + code + ' by ' + (data.by || 'the host') + '. You can join again.' : 'The host removed you from room ' + code + '.'); toast('You were kicked from the room', '#e0533f'); return; }
             if (data.type === 'banned') {
                 try { localStorage.setItem(MY_BAN_KEY, String(data.until || Date.now() + DAY)); } catch (e) {}
@@ -477,6 +500,7 @@ export function startJoin(code, cb) {
             if (data.type === 'gameState') { if (performance.now() - (meshT || 0) > 2000) { meshT = performance.now(); setTimeout(meshVoice, 0); }
                 const pl = data.payload.players || {};
                 for (const pId in pl) { if (pId === myPeerId) continue; playersState[pId] = pl[pId]; updateRemote(pId, pl[pId]); }
+                if (hostGraceOver) checkHost();   // po czasie na dowód: nick ekipy bez dowodu = podszywacz
                 for (const pId in remoteAvatars) if (!pl[pId]) removeRemote(pId);
                 for (const pId in playersState) if (!pl[pId]) { delete playersState[pId]; removeAudio(pId); }
                 const objs = data.payload.objects || {};
