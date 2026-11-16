@@ -19,7 +19,7 @@ const cross = document.createElement('div');
 cross.style.cssText = 'position:fixed;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:#ffd27a;box-shadow:0 0 6px #000;z-index:200;display:none;pointer-events:none';
 const help = document.createElement('div');
 help.style.cssText = 'position:fixed;left:12px;bottom:12px;padding:10px 14px;background:rgba(10,8,8,0.75);color:#e8dcc8;font:13px/1.5 sans-serif;border-radius:8px;z-index:200;display:none;max-width:360px';
-help.innerHTML = '<b>Desktop test mode</b><br>Click the view to capture the mouse.<br>WASD move, Shift run, Space jump, mouse look.<br>Left click: reach with your hand, press screens.<br>E: grab (ropes, balls, chains), Q: pull down.<br>F: fly mode (Space up, C down). Esc: pause.';
+help.innerHTML = '<b>Desktop test mode</b><br>Click the view to capture the mouse.<br>WASD move, Shift run, Space jump, mouse look.<br>Left click: reach with your hand, press screens.<br>E: grab (ropes, balls, chains), Q: pull down.<br>G: flashlight on/off (Hotel).<br>F: fly mode (Space up, C down). Esc: pause.';
 document.body.appendChild(cross); document.body.appendChild(help);
 
 export function enableDesktop() { DESKTOP.enabled = true; }
@@ -31,6 +31,7 @@ window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if (e.code === 'KeyE') squeeze(1, true);
     if (e.code === 'KeyF') fly = !fly;
+    if (e.code === 'KeyG' && L.onKeyG) L.onKeyG();   // klawisz G: akcja poziomu (np. latarka w Hotelu)
 });
 window.addEventListener('keyup', (e) => {
     if (!keys[e.code]) return;

@@ -6,7 +6,8 @@
 // zanim ugryzie, inaczej tracisz serce), Ślepy Lokaj, blackouty i szepty. Trzy serca, doleczasz je przy odblokowaniu drzwi.
 // Pokoje są budowane na bieżąco (3-4 naraz) i usuwane za plecami gracza: mało obiektów, dowolna długość. Układ stały (działa duch).
 // ==========================================
-import { THREE, L, tex, camera, addCollider } from '../core/engine.js';
+import { THREE, L, tex, camera, addCollider, renderer, lighting } from '../core/engine.js';
+import { setFlashHolder } from '../core/visuals.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { levelReward, recordTime, diffOf } from '../core/economy.js';
@@ -67,6 +68,39 @@ function faceTexture(kind) {   // 'rush' = czarna masa z oczami i szczeliną pys
     return T.toTex(c, false);
 }
 
+// ---------- LATARKA ----------
+// Ręczna latarka w prawej dłoni: światło i wiązka idą za ręką (kierunek = oś -z dłoni, jak lufa pistoletu na strzelnicy).
+// Włącznik: spust prawego kontrolera (VR) albo klawisz G (komputer). Bez dłoni (tryby bez rąk) zostaje latarka przy głowie.
+const _fq = new THREE.Quaternion();
+function buildFlashlight() {
+    const g = new THREE.Group(), metal = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, metalness: 0.8, roughness: 0.35 });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.032, 0.17, 14), metal); body.rotation.x = Math.PI / 2; body.position.set(0, 0, -0.04); g.add(body);
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.03, 0.06, 14), metal); head.rotation.x = Math.PI / 2; head.position.set(0, 0, -0.15); g.add(head);
+    const lens = new THREE.Mesh(new THREE.CircleGeometry(0.04, 16), new THREE.MeshBasicMaterial({ color: 0xfff0d0 })); lens.position.set(0, 0, -0.181); lens.rotation.y = Math.PI; g.add(lens);
+    const sw = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 0.03), new THREE.MeshStandardMaterial({ color: 0xc03020, roughness: 0.5 })); sw.position.set(0, 0.034, -0.03); g.add(sw);
+    g.frustumCulled = false; L.root.add(g);
+    return { group: g, lens: lens, on: true, held: false, setup: false };
+}
+function toggleFlash() {
+    if (!S || !S.flash) return;
+    S.flash.on = !S.flash.on; SFX.beep(S.flash.on ? 1100 : 700, 0.12, 0.05); buzz(1, 0.3, 40);
+}
+function updateFlashlight() {
+    const F = S.flash, lamp = lighting.headLamp;
+    if (!F.setup) {   // przy pierwszej klatce (po zbudowaniu efektów poziomu) przenieś lampę i wiązkę z głowy do ręki
+        F.setup = true;
+        if (hands.R) { F.held = true; F.group.add(lamp); F.group.add(lamp.target); lamp.position.set(0, 0, -0.18); lamp.target.position.set(0, 0, -6); setFlashHolder(F.group); }
+        else F.group.visible = false;
+    }
+    if (F.held && hands.R) { F.group.position.copy(hands.R.position); hands.R.getWorldQuaternion(_fq); F.group.quaternion.copy(_fq); }
+    lamp.visible = F.on; F.lens.material.color.setHex(F.on ? 0xfff0d0 : 0x2a2420);
+}
+function restoreFlashlight() {   // lampa wraca do kamery (inne poziomy mają latarkę przy głowie)
+    const lamp = lighting.headLamp;
+    if (S && S.flash && S.flash.held) { camera.add(lamp); camera.add(lamp.target); lamp.position.set(0, 0, 0); lamp.target.position.set(0, 0, -6); setFlashHolder(null); }
+    L.onTrigger = null; L.onKeyG = null;
+}
+
 export function build() {
     L.spawn = info.spawn.slice();
     const df = diffOf('hotel'), n = ROOMS[df.id] || ROOMS.normal;
@@ -74,6 +108,9 @@ export function build() {
     L.bounds = { minX: -HALF + 0.35, maxX: HALF - 0.35, minZ: zs[n] - 3 + 0.4, maxZ: -0.45, maxY: H - 0.3 };
     S = { df: df, n: n, zs: zs, sq: [false, false], mats: makeMats(), ghost: createGhost('hotel'), ev: createEvents('hotel', { skip: ['fog'] }), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', hp: MAX_HP, hasKey: false, cp: 0, cur: 0, best: 0, rooms: new Map(), lights: [], caughtT: -1, leaving: false, hudT: 0, hidden: false, carried: false,
         rush: { state: 'wait', t: 0, z: 0, next: 18 }, screech: { state: 'none', t: 0, room: -1, tried: -1, dir: 0 }, hint: '', msgT: 0 };
+    S.flash = buildFlashlight();
+    L.onTrigger = (i) => { if (renderer.xr.isPresenting && i === 1) toggleFlash(); };   // VR: spust prawej ręki (na komputerze: klawisz G)
+    L.onKeyG = toggleFlash;
     for (let i = 0; i < 4; i++) { const l = new THREE.PointLight(0xffb070, 16, 22, 1.8); l.position.set(0, 2.6, -8 * (i + 0.5)); L.root.add(l); S.lights.push(l); }   // stałe światła, przenoszone do pokoi (pula świateł)
     ensureRooms(0);
     // Wejście (LEVELS) w południowej ścianie pokoju 0 i wyjście na końcu: wnęka z drzwiami EXIT za ostatnimi (zamkniętymi na klucz) drzwiami
@@ -257,6 +294,7 @@ const INTRO = [
     'RUSH: lights flicker, a rumble grows. Open a wardrobe (grab the handle), step in and press the latch inside to shut the doors, or you die.',
     'PSST: if you hear it, turn around and LOOK at the face within 2 seconds, or it bites (you have 3 hearts).',
     'From room 7 a blind butler patrols the key rooms. He hears running: sneak. Wardrobes hide you from him too.',
+    'Your flashlight is in your right hand: trigger (VR) or G (desktop) switches it on and off.',
     'Unlocking a door saves a checkpoint and heals you (not on Nightmare). Reach the last door and escape.'
 ];
 function isHidden(p, room) {   // ukryty = w środku szafy przy w pełni zamkniętych drzwiach
@@ -282,6 +320,7 @@ export function update(dt, t, ctx) {
     const cur = Math.min(S.n - 1, roomOf(p.z));
     if (cur !== S.cur && p.z <= 0) { S.cur = cur; S.best = Math.max(S.best, cur); ensureRooms(cur); }
     const room = S.rooms.get(S.cur);
+    updateFlashlight();
     updateWardrobes(dt, t, p);
     S.hidden = isHidden(p, room);
     // Migotanie świateł (ostrzeżenie przed Łomotem) i ruch kluczy
@@ -401,8 +440,11 @@ function drawHud() {
     S.hud.update();
 }
 export function dispose() {
+    restoreFlashlight();
     if (S) { for (const i of [...S.rooms.keys()]) dropRoom(i); S.ev.dispose(); S.ghost.dispose(); S.hud.dispose(); S.intro.dispose(); S.scare.dispose(); }
     S = null;
 }
 export const debug = () => S ? { phase: S.phase, cur: S.cur, rooms: [...S.rooms.keys()], hp: S.hp, hasKey: S.hasKey, hidden: S.hidden, caught: S.caughtT >= 0, rush: S.rush.state, screech: S.screech.state, n: S.n, zs: S.zs.slice(), obstacles: L.obstacles.length, cp: S.cp, wardrobes: [...S.rooms.values()].flatMap(r => r.wardrobes.map(w => [r.i, w.x, w.z, w.open, w.t, w.knob.x, w.knob.y, w.knob.z, w.latch.x, w.latch.y, w.latch.z])), keys: [...S.rooms.values()].map(r => r.keyPos ? [r.i, r.keyPos[0], r.keyPos[1]] : null), doorsOpen: [...S.rooms.values()].map(r => [r.i, r.door.open]) } : null;   // dla testów
+export const _toggleFlash = () => toggleFlash();   // dla testów
+export const _flash = () => S ? { on: S.flash.on, held: S.flash.held, lampOnCamera: lighting.headLamp.parent === camera, lampVisible: lighting.headLamp.visible } : null;   // dla testów
 export const _forceRush = () => { if (S) { S.rush.state = 'warn'; S.rush.t = 0.3; } };   // dla testów

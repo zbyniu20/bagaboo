@@ -282,6 +282,9 @@ const modeSim = await run(`
     // and close from inside with the latch; RUSH spares a player in a CLOSED wardrobe and kills one in the open or behind open doors
     m = await load('hotel');
     if (!until(m, d => d.phase === 'play', 200)) bad.push('hotel: never left the intro');
+    let fl = m._flash(); if (!fl.held || fl.lampOnCamera || !fl.on || !fl.lampVisible) bad.push('hotel: flashlight should be in the right hand and on at the start ' + JSON.stringify(fl));
+    m._toggleFlash(); step(m, 1); fl = m._flash(); if (fl.on || fl.lampVisible) bad.push('hotel: flashlight switch did not turn it off ' + JSON.stringify(fl));
+    m._toggleFlash(); step(m, 1); fl = m._flash(); if (!fl.on || !fl.lampVisible) bad.push('hotel: flashlight switch did not turn it on again ' + JSON.stringify(fl));
     let hd = m.debug(); if (hd.rooms.join() !== '0,1,2') bad.push('hotel: expected rooms 0,1,2 at the start, got ' + hd.rooms);
     const zs = hd.zs, mid = (i) => (zs[i] + zs[i + 1]) / 2, len = (i) => zs[i] - zs[i + 1];
     if (!(len(0) >= 16 && len(3) >= 24)) bad.push('hotel: rooms should be big (16 m, key rooms 24 m): ' + len(0) + ', ' + len(3));
@@ -320,7 +323,7 @@ const modeSim = await run(`
     // Levels terminal: picking a row and difficulty works, OPEN THE DOOR sends you to that level, the secret door scares on the 2nd knock
     {
         const TM = await import('./core/terminal.js'); let went = null; const gctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
-        m = await load('levels'); const tick = (n) => { for (let i = 0; i < n; i++) m.update(0.1, T += 0.1, gctx); TM.redrawTerminals(); };
+        m = await load('levels'); if (ENG.lighting.headLamp.parent !== ENG.camera) bad.push('levels: the flashlight lamp was not returned to the camera after leaving the hotel'); const tick = (n) => { for (let i = 0; i < n; i++) m.update(0.1, T += 0.1, gctx); TM.redrawTerminals(); };
         tick(3); let ld = m.debug(); if (ld.screens !== 5) bad.push('levels: expected 5 terminal screens, got ' + ld.screens); if (!(ld.visitors >= 1)) bad.push('levels: visitor count wrong'); if (!ld || !ld.buttons.includes('enter') || ld.buttons.filter(x => x.startsWith('row')).length !== 11) bad.push('levels: terminal buttons missing (' + (ld && ld.buttons.length) + ')');
         if (!m._press('row2')) bad.push('levels: row2 not clickable'); tick(1); if (m.debug().sel !== 2) bad.push('levels: row click did not select');
         const E2 = await import('./core/economy.js'); E2.setDiff('well', 'normal');
