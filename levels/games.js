@@ -185,7 +185,7 @@ export function build() {
     ensureAssets(1152, 720);
     if (!term) term = new Terminal(drawGames, 1152, 720);
     term.dirty = true;
-    addComputers(term, STATIONS, { label: 'COMPUTER' });
+    addComputers(term, STATIONS, { label: 'TERMINAL' });
     for (const f of ['24px VT323', '24px "IM Fell English SC"', 'italic 24px "IM Fell English"']) { try { document.fonts.load(f).then(() => { if (term) term.dirty = true; }); } catch (e) { /* bez czcionek: Courier */ } }
     buildDoor({ x: 0, z: D - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x3a3048, portal: { target: 'lobby', spawn: ARRIVAL_GAMES, onEnter: () => toast('Back to the lobby') } });
 }
