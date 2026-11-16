@@ -299,7 +299,7 @@ const clock = new THREE.Clock();
 const _stepP = new THREE.Vector3(), _stepLast = new THREE.Vector3();
 audioHooks.onScare = () => ECO.bumpStat('scares');
 let uiTimer = 0;
-const goobyScare = createJumpscare({});   // Nothing Hammer (młotek Gooby): jumpscare dla trafionego gracza, działa na każdym poziomie
+const goobyScare = createJumpscare({ gooby: true });   // Nothing Hammer (młotek Gooby): jedyny jumpscare z Gooby (obraz i głos), dla trafionego gracza na każdym poziomie
 NETM.onGooby(() => goobyScare.trigger());
 renderer.setAnimationLoop(() => {
     const rawDt = clock.getDelta(), dt = Math.min(rawDt, 0.1), t = clock.elapsedTime;

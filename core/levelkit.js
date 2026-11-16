@@ -5,6 +5,7 @@
 import { THREE, L, tex, camera, addStaticBody, addBlobAO, CANNON } from './engine.js';
 import { LP } from './config.js';
 import * as T from './textures.js';
+import { buildMannequin } from './mannequin.js';
 import { goobyTexture } from './gooby.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as SFX from './audio.js';
@@ -113,30 +114,40 @@ export function drawInstructions(p, title, lines, footer, theme) {
 }
 
 // Jumpscare: twarz wyskakuje z ciemności pod sam nos, czerwono-czarny stroboskop, głośny dźwięk.
-// o = { head (własna głowa, domyślnie manekin), scale, y, restZ, fromZ, eyes }
+// o = { head (własna głowa, domyślnie manekin), scale, y, restZ, fromZ, eyes, gooby }
+// o.gooby = true: zamiast głowy płaski obraz Gooby z głosem "gooby" (tylko Nothing Hammer, main.js); bez niego zawsze stary, straszny jumpscare.
 export function createJumpscare(o) {
     o = o || {};
-    // W całej grze straszy ten sam obraz (wzorowany na memie Gooby, core/gooby.js); własne głowy z poziomów (o.head, o.eyes, o.scale) nie są już używane
-    const head = new THREE.Group();
-    const face = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ map: goobyTexture(), transparent: true, depthTest: false, toneMapped: false }));
-    face.renderOrder = 1000; head.add(face);
-    head.scale.setScalar(2.3);
+    const gooby = !!o.gooby;
+    let head;
+    if (gooby) {   // płaski obraz (core/gooby.js) centrowany przed oczami
+        head = new THREE.Group();
+        const face = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ map: goobyTexture(), transparent: true, depthTest: false, toneMapped: false }));
+        face.renderOrder = 1000; head.add(face);
+        head.scale.setScalar(2.3);
+    } else {
+        head = o.head;
+        if (!head) { const m = buildMannequin(T.mkRng(o.seed || 4242)); head = m.head; head.parent.remove(head); }
+        head.traverse((c) => { if (c.material) { c.material = c.material.clone(); c.material.depthTest = false; c.material.transparent = true; c.renderOrder = 1000; } });
+        if (o.eyes !== false) for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1000, transparent: true, blending: THREE.AdditiveBlending, depthTest: false })); e.scale.set(0.16, 0.16, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 1001; head.add(e); }
+        head.scale.setScalar(o.scale || 2.4);
+    }
     const plane = (col) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, depthTest: false })); p.position.z = -0.25; return p; };
     const black = plane(0x000000), red = plane(o.flash !== undefined ? o.flash : 0xff0000); black.renderOrder = 998; red.renderOrder = 999;
     const g = new THREE.Group(); g.add(black, red, head); g.visible = false; camera.add(g);
     // Wszystko przy samych oczach: wyłączamy odrzucanie obiektów poza kadrem (w goglach potrafiło ukryć duże modele tuż przy kamerze)
     g.traverse((c) => { c.frustumCulled = false; });
-    const y = 0, rest = -0.4, from = -2.0;   // płaski obraz centrowany przed oczami, wyskakuje z oddali pod sam nos
+    const y = gooby ? 0 : (o.y !== undefined ? o.y : -0.36), rest = gooby ? -0.4 : (o.restZ !== undefined ? o.restZ : -0.32), from = gooby ? -2.0 : (o.fromZ !== undefined ? o.fromZ : -1.9);
     let t = -1;
     return {
         active() { return t >= 0; },
-        trigger() { if (t >= 0) return false; t = 0; g.visible = true; SFX.scare(); return true; },
+        trigger() { if (t >= 0) return false; t = 0; g.visible = true; SFX.scare(gooby); return true; },
         update(dt) {
             if (t < 0) return;
             t += dt;
             const j = (a) => (Math.random() - 0.5) * a;
-            const z = (t < 0.1 ? from + (rest - from) * (t / 0.1) : rest) + Math.min(0.12, t * 0.1);   // po wyskoczeniu obraz jeszcze powoli najeżdża na twarz
-            head.scale.setScalar(2.3 + Math.min(0.5, t * 0.45));
+            let z = t < 0.1 ? from + (rest - from) * (t / 0.1) : rest;
+            if (gooby) { z += Math.min(0.12, t * 0.1); head.scale.setScalar(2.3 + Math.min(0.5, t * 0.45)); }   // Gooby po wyskoczeniu powoli najeżdża na twarz
             head.position.set(j(0.03), y + j(0.02), z + j(0.015));
             head.rotation.set((o.tilt || 0) + j(0.15), j(0.2), j(0.35));
             const ph = Math.floor(t / 0.05) % 3;
