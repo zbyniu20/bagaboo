@@ -15,7 +15,7 @@ export const CATS = [
     { id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badges' }, { id: 'nametag', name: 'Name tag' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' },
     { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }, { id: 'emote', name: 'Emotes' }, { id: 'mskin', name: 'Monster skins' }
 ];
-const STAFF_HINTS = ['Owner', 'Ultimate', 'Ultimate Admin', 'Co-admin', 'Admin', 'Moderator', 'Staff', 'For hackers'];   // przedmioty tylko dla ekipy: pokazane wyłącznie tym, którzy je mają (np. odznaki Owner i Admin dla BoyIsGamer)
+const STAFF_HINTS = ['Owner', 'Ultimate', 'Ultimate Admin', 'Co-admin', 'Admin', 'Moderator', 'Staff', 'Furas', 'For hackers'];   // przedmioty tylko dla ekipy: pokazane wyłącznie tym, którzy je mają (np. odznaki Owner i Admin dla BoyIsGamer)
 export const itemsFor = (slot) => E.CATALOG.filter(it => it.slot === slot && !(it.locked && STAFF_HINTS.includes(it.hint) && !E.isOwned(it)));
 const PER = 7;
 
@@ -60,7 +60,7 @@ export const machine = new Terminal((t) => {
     const items = M.slot === 'nametag' ? [] : itemsFor(M.slot), pages = Math.max(1, Math.ceil(items.length / PER));
     M.pg = Math.min(M.pg, pages - 1);
     const cat = CATS.find(x => x.id === M.slot);
-    t.text(M.slot === 'nametag' ? 'Name tag: pick 1, 2 or 3 roles to show' : cat.name + ' (' + items.filter(it => E.isOwned(it)).length + ' / ' + items.length + ' owned)', 276, 100, 24, GOLD, 'left', true);
+    t.text(M.slot === 'nametag' ? 'Name tag: pick the roles to show' : cat.name + ' (' + items.filter(it => E.isOwned(it)).length + ' / ' + items.length + ' owned)', 276, 100, 24, GOLD, 'left', true);
     if (M.slot === 'nametag') {   // po jednym przełączniku na rolę; zawsze zostaje przynajmniej jedna, model w gablocie pokazuje wybór od razu
         const on = E.activeRoleTags() || [];
         tagOpts.forEach((o, i) => {

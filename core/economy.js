@@ -8,7 +8,7 @@
 // ==========================================
 import { toast, markAllDirty } from './terminal.js';
 import { RECORD_DEFS, DIFF_LEVEL_IDS } from './registry.js';
-import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isReservedNick, staffBadgesFor, roleTagsFor } from './config.js';
+import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isFurasName, isReservedNick, staffBadgesFor, roleTagsFor } from './config.js';
 
 const SAVE_KEY = 'bagaboo_save_v1';
 export const LOGIN_INTERVAL = 6 * 3600 * 1000;      // nagroda za logowanie co 6 godzin
@@ -59,6 +59,7 @@ export const CATALOG = [
     { slot: 'skin', id: 'shadow', name: 'Shadow (glowing eyes)', price: 3800 },
     { slot: 'skin', id: 'king', name: 'Parkour King', price: 0, locked: true, hint: 'Red route' },   // tylko za czerwoną trasę w lobby
     { slot: 'skin', id: 'bloodmoon', name: 'Bloodmoon', price: 0, locked: true, hint: 'Achievement' },
+    { slot: 'skin', id: 'furas', name: 'Furas (cat mask + fluffy tail)', price: 0, locked: true, hint: 'Furas' },   // ranga FURAS: maska kota i puchaty ogon
     { slot: 'skin', id: 'cheater', name: 'CHEATER', price: 0, locked: true, hint: 'For hackers' },   // nadawana za włamanie do pokoju szefa, nie da się jej zdjąć
     // Skórki potworów: zakładka "BagaBoo Games", działają tylko w trybie Become the Monster
     { slot: 'mskin', id: 'none', name: 'Classic monster', price: 0 },
@@ -80,6 +81,7 @@ export const CATALOG = [
     { slot: 'badge', id: 'coadmin', name: 'Co-admin', price: 0, locked: true, hint: 'Co-admin' },
     { slot: 'badge', id: 'admin', name: 'Admin', price: 0, locked: true, hint: 'Admin' },
     { slot: 'badge', id: 'mod', name: 'Moderator', price: 0, locked: true, hint: 'Moderator' },
+    { slot: 'badge', id: 'furas', name: 'Furas (kitty)', price: 0, locked: true, hint: 'Furas' },
     // Młotki (kupowane i zakładane na komputerze w pokoju szefa, nie w sklepie)
     { slot: 'tool', id: 'none', name: 'No hammer', price: 0 },
     { slot: 'tool', id: 'kick', name: 'Kick hammer', price: 0, locked: true, hint: 'Staff' },
@@ -476,10 +478,14 @@ export function refreshStaffItems() {
     const n = SAVE.profile.name, give = (key, on) => { const has = SAVE.owned.includes(key); if (on && !has) SAVE.owned.push(key); if (!on && has) SAVE.owned.splice(SAVE.owned.indexOf(key), 1); };
     if ((isOwnerName(n) || isUltimateName(n)) && !SAVE.owned.includes('tool:ban')) SAVE.owned.push('tool:ban');   // Ban hammer za darmo dla właściciela i ultimate admina
     const rights = staffBadgesFor(n);
-    for (const b of ['owner', 'ultimate', 'coadmin', 'admin', 'mod']) give('badge:' + b, rights.includes(b));
+    for (const b of ['owner', 'ultimate', 'coadmin', 'admin', 'mod']) give('badge:' + b, rights.includes(b));   // odznaka furas jest niżej, razem ze skórką
+    const furas = isFurasName(n), hadFuras = SAVE.owned.includes('skin:furas');   // ranga FURAS: skórka (maska kota + ogon) i odznaka z kotkiem
+    give('badge:furas', furas); give('skin:furas', furas);
+    if (furas && !hadFuras && SAVE.equipped.skin === 'none') SAVE.equipped.skin = 'furas';   // przy pierwszym nadaniu skórka od razu się zakłada
+    if (!furas && SAVE.equipped.skin === 'furas') SAVE.equipped.skin = 'none';
     give('tool:kick', isStaffName(n));
     give('tool:gooby', isStaffName(n));   // Nothing Hammer (Gooby) dla całej ekipy
-    if (['owner', 'ultimate', 'coadmin', 'admin', 'mod'].includes(SAVE.equipped.badge) && !rights.includes(SAVE.equipped.badge)) SAVE.equipped.badge = 'none';
+    if (['owner', 'ultimate', 'coadmin', 'admin', 'mod', 'furas'].includes(SAVE.equipped.badge) && !rights.includes(SAVE.equipped.badge)) SAVE.equipped.badge = 'none';
     if (!isStaffName(n)) { if (SAVE.equipped.tool !== 'none') SAVE.equipped.tool = 'none'; }
 }
 export function isOwned(item) { return SAVE.owned.includes(item.slot + ':' + item.id); }

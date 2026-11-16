@@ -120,7 +120,7 @@ export function createJumpscare(o) {
     const head = new THREE.Group();
     const face = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ map: goobyTexture(), transparent: true, depthTest: false, toneMapped: false }));
     face.renderOrder = 1000; head.add(face);
-    head.scale.setScalar(1.8);
+    head.scale.setScalar(2.3);
     const plane = (col) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, depthTest: false })); p.position.z = -0.25; return p; };
     const black = plane(0x000000), red = plane(o.flash !== undefined ? o.flash : 0xff0000); black.renderOrder = 998; red.renderOrder = 999;
     const g = new THREE.Group(); g.add(black, red, head); g.visible = false; camera.add(g);
@@ -135,7 +135,8 @@ export function createJumpscare(o) {
             if (t < 0) return;
             t += dt;
             const j = (a) => (Math.random() - 0.5) * a;
-            const z = t < 0.1 ? from + (rest - from) * (t / 0.1) : rest;
+            const z = (t < 0.1 ? from + (rest - from) * (t / 0.1) : rest) + Math.min(0.12, t * 0.1);   // po wyskoczeniu obraz jeszcze powoli najeżdża na twarz
+            head.scale.setScalar(2.3 + Math.min(0.5, t * 0.45));
             head.position.set(j(0.03), y + j(0.02), z + j(0.015));
             head.rotation.set((o.tilt || 0) + j(0.15), j(0.2), j(0.35));
             const ph = Math.floor(t / 0.05) % 3;
