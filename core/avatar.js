@@ -376,7 +376,8 @@ const ellGeo = (rx, ry, rz, x, y, z, rotX) => { const g = new THREE.SphereGeomet
 const ellMesh = (geos, mat) => { const m = new THREE.Mesh(mergeGeometries(geos), mat); m.castShadow = true; m.receiveShadow = true; return m; };
 export function createHead(look, withName) {
     const head = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
-    const masked = look.mask && look.mask !== 'none';
+    const maskId = (look.skin === 'furas' && (!look.mask || look.mask === 'none')) ? 'furascat' : look.mask;   // skórka Furas ma własną maskę kota (inna założona maska ma pierwszeństwo)
+    const masked = maskId && maskId !== 'none';
     // Czaszka goryla: owalna z kopułą (grzebieniem) na czubku, wydatnymi policzkami i uszami: jedna siatka futra
     const skullGeos = [ellGeo(0.135, 0.138, 0.13, 0, 0.005, 0), ellGeo(0.05, 0.04, 0.095, 0, 0.097, 0.03), ellGeo(0.045, 0.055, 0.055, -0.095, -0.045, -0.055), ellGeo(0.045, 0.055, 0.055, 0.095, -0.045, -0.055),
         ellGeo(0.02, 0.036, 0.03, -0.138, 0.0, -0.01), ellGeo(0.02, 0.036, 0.03, 0.138, 0.0, -0.01)];
@@ -407,7 +408,7 @@ export function createHead(look, withName) {
             if (!k.glowEyes) { const c = new THREE.Mesh(new THREE.SphereGeometry(0.0042, 8, 6), spark); c.position.set(-0.0055, 0.0062, -0.0135); e.add(c); }   // odblask: oko wygląda na żywe
         }
     }
-    head.add(buildMask(look.mask)); head.add(buildHat(look.hat)); head.add(buildGlasses(look.glasses));
+    head.add(buildMask(maskId)); head.add(buildHat(look.hat)); head.add(buildGlasses(look.glasses));
     if (withName) {
         const tag = createNameSprite(String(look.name || 'Player').slice(0, 16)); tag.position.set(0, 0.5, 0); tag.scale.set(0.72, 0.18, 1); head.add(tag);
         head.userData.tags = [tag];   // napisy nad głową: tryby ukrywania (Hide and Seek) wyłączają je przez TAGS.hidden
@@ -485,6 +486,19 @@ export function createGorillaTorso(look) {
         const cape = meshAt(new THREE.BoxGeometry(0.5, 0.62, 0.02), new THREE.MeshStandardMaterial({ color: 0x9a0a10, roughness: 0.7, side: THREE.DoubleSide }), 0, -0.14, 0.17);
         cape.rotation.x = 0.12; g.add(cape);
         for (const s of [-1, 1]) g.add(meshAt(new THREE.SphereGeometry(0.03, 10, 8), new THREE.MeshStandardMaterial({ color: 0xd4a640, metalness: 1, roughness: 0.25 }), s * 0.18, 0.15, -0.1));
+    }
+    if (k.tail) {   // skórka Furas: puchaty, zadarty ogon (merda w createAvatar); łańcuch elips z kępkami sierści i jasną kitką
+        const tg = new THREE.Group(), geos = [];
+        tg.position.set(0, -0.23, 0.12);
+        for (let i = 0; i < 7; i++) {
+            const y = 0.0075 * i * i, z = 0.04 + i * 0.046, r = 0.04 + Math.min(i, 5) * 0.0075;
+            geos.push(ellGeo(r, r, r * 1.05, 0, y, z));
+            for (let j = 0; j < 5; j++) { const a = j * 1.2566 + i * 0.7; geos.push(tuftGeo(Math.cos(a) * r * 0.7, y + Math.sin(a) * r * 0.7, z, Math.cos(a), Math.sin(a), 0.35, 0.034, 0.016)); }
+        }
+        geos.forEach((gm, i) => bakeShade(gm, (x, y, z) => 0.85 + 0.25 * smooth(0, 0.3, y)));
+        tg.add(ellMesh(geos, fur));
+        const tip = meshAt(new THREE.SphereGeometry(0.058, 14, 10), new THREE.MeshStandardMaterial({ map: furTexture(), color: 0xfff6ec, roughness: 0.95 }), 0, 0.0075 * 49 + 0.012, 0.04 + 7 * 0.046); tip.scale.set(1, 1.15, 1.05); tg.add(tip);
+        g.add(tg); g.userData.tail = tg;
     }
     return g;
 }
@@ -630,6 +644,7 @@ export function createAvatar(look) {
         placeArm(armL, torso, -1, handL); placeArm(armR, torso, 1, handR);
         const b = Math.sin(performance.now() * 0.0016 + breathPh) * 0.5 + 0.5;
         chest.scale.set(1 + b * 0.012, 1 + b * 0.022, 1 + b * 0.03);
+        if (torso.userData.tail) { const tm = performance.now() * 0.004 + breathPh; torso.userData.tail.rotation.y = Math.sin(tm) * 0.32; torso.userData.tail.rotation.x = Math.sin(tm * 0.5) * 0.06; }   // ogon Furas merda
     };
     return { group, torso, head, handL, handR, armL, armR, base: sc, key: lookKey(look), torsoDrop: 0.35 * sc };
 }

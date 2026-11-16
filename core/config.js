@@ -130,6 +130,7 @@ export const ULTIMATE_NAMES = ['zbyniu'];
 export const ADMIN_NAMES = ['BoyIsGamer'];
 export const COADMIN_NAMES = ['spikyvr'];   // co-admin: uprawnienia admina, własny napis CO-ADMIN i odznaka
 export const OWNER_NAMES = ['BoyIsGamer'];   // właściciel gry: napis OWNER nad głową i odznaka Owner
+export const FURAS_NAMES = ['BoyIsGamer'];   // ranga FURAS: napis FURAS nad głową, odznaka z kotkiem i skórka Furas (maska kota + puchaty ogon); sama ranga nie daje żadnych uprawnień
 export const MOD_NAMES = ['lincolnvr', 'victoryboy', 'BoyIsGamer'];   // BoyIsGamer: właściciel + admin + moderator (wszystkie trzy napisy nad głową i odznaki)
 const low = (n) => String(n || '').trim().toLowerCase();
 // BagaBooModMenu (core/modmenu.js): sekretne menu admina, otwierane przytrzymaniem B przez 5 s. Mają je tylko te konta (po nicku zweryfikowanym przez serwer kont).
@@ -138,7 +139,7 @@ const MODMENU_SET = new Set(MODMENU_NAMES.map(low));
 export function isModMenuUser(name) { return MODMENU_SET.has(low(name)); }
 // Zastrzeżone nicki (stała ekipa): grać pod nimi może tylko zalogowane konto o tym nicku (core/auth.js).
 // Host nie wpuści gościa z takim nickiem bez dowodu z serwera kont (core/network.js). Konta ekipy zakłada admin w bazie (bagaboo-api, ADMIN_KEY).
-export const RESERVED_NICKS = new Set([...ULTIMATE_NAMES, ...ADMIN_NAMES, ...COADMIN_NAMES, ...OWNER_NAMES, ...MOD_NAMES].map(low));
+export const RESERVED_NICKS = new Set([...ULTIMATE_NAMES, ...ADMIN_NAMES, ...COADMIN_NAMES, ...OWNER_NAMES, ...MOD_NAMES, ...FURAS_NAMES].map(low));
 // Moderatorzy wybrani przez admina w grze (zapisani na tym urządzeniu)
 export function localMods() { try { return JSON.parse(localStorage.getItem('bagaboo_mods')) || []; } catch (e) { return []; } }
 export function setLocalMod(name, on) {
@@ -154,8 +155,10 @@ export function staffBadgesFor(name) {
     if (isCoAdminName(name)) out.push('coadmin');
     if (isAdminName(name)) out.push('admin');
     if (isModName(name)) out.push('mod');
+    if (isFurasName(name)) out.push('furas');
     return out;
 }
+export function isFurasName(name) { return FURAS_NAMES.some(n => low(n) === low(name)); }
 export function isOwnerName(name) { return OWNER_NAMES.some(n => low(n) === low(name)); }
 export function isUltimateName(name) { return ULTIMATE_NAMES.some(n => low(n) === low(name)); }
 export function isCoAdminName(name) { return COADMIN_NAMES.some(n => low(n) === low(name)); }
@@ -169,9 +172,9 @@ export function roleTagFor(name) {
     if (isModName(name)) return { text: 'MODERATOR', color: '#8ab8ff', glow: '#3a6aff' };
     return null;
 }
-// Wszystkie napisy roli nad głową, od najwyższej: właściciel z adminem i moderatorem (BoyIsGamer) ma OWNER, ADMIN i MODERATOR naraz.
+// Wszystkie napisy roli nad głową, od najwyższej: właściciel z adminem i moderatorem (BoyIsGamer) ma OWNER, ADMIN, MODERATOR i FURAS naraz.
 // Ultimate admin i co-admin zostają przy jednym napisie jak dotąd.
-// Każdy napis ma id (owner / admin / mod / ultimate / coadmin), po którym gracz wybiera w Gorilla Machine, które z nich pokazać.
+// Każdy napis ma id (owner / admin / mod / ultimate / coadmin / furas), po którym gracz wybiera w Gorilla Machine, które z nich pokazać.
 export function roleTagsFor(name) {
     if (isUltimateName(name)) return [Object.assign({ id: 'ultimate' }, roleTagFor(name))];
     const out = [], base = roleTagFor(name);
@@ -179,6 +182,7 @@ export function roleTagsFor(name) {
     else if (base) out.push(Object.assign({ id: isCoAdminName(name) ? 'coadmin' : (isModName(name) && !isAdminName(name) ? 'mod' : 'admin') }, base));
     if (isOwnerName(name) && ADMIN_NAMES.some(n => low(n) === low(name))) out.push({ id: 'admin', text: 'ADMIN', color: '#ff8a5a', glow: '#ff4a10' });
     if (isOwnerName(name) && isModName(name)) out.push({ id: 'mod', text: 'MODERATOR', color: '#8ab8ff', glow: '#3a6aff' });
+    if (isFurasName(name)) out.push({ id: 'furas', text: 'FURAS', color: '#ffb8e0', glow: '#ff5ab8' });   // ranga FURAS, najniżej pod rolami ekipy
     return out;
 }
 // Ranga: 4 ultimate admin (zbyniu), 3 właściciel (BoyIsGamer), 2 admin / co-admin, 1 moderator, 0 gracz.

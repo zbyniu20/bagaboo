@@ -20,7 +20,7 @@ const LEVELS = (process.argv[2] || 'lobby,levels,maze,silence,well,laundry,memor
 // Draw-call budget per level (medium quality, renderer.info.render.calls on the first frames). Raise only on purpose.
 const BUDGET = { default: 260, laundry: 230, memory: 310 };
 const MAX_POINT_LIGHTS = 12;
-const MIME = { '.js': 'text/javascript', '.html': 'text/html', '.png': 'image/png', '.json': 'application/json' };
+const MIME = { '.js': 'text/javascript', '.html': 'text/html', '.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json' };
 
 const server = http.createServer((req, res) => {
     let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html';
@@ -115,9 +115,9 @@ const data = await run(`
     }
     // staff badges: the owner/admin/ultimate badges must be offered in the wardrobe (Gorilla Machine) to the people who may wear them, and to nobody else
     const GMACH = await import('./core/gorillamachine.js'), prevName = E.SAVE.profile.name;
-    const badgesFor = (n) => { E.setProfile({ name: n }); return GMACH.itemsFor('badge').map(i => i.id).filter(id => ['owner', 'ultimate', 'coadmin', 'admin', 'mod'].includes(id)).sort().join(); };
+    const badgesFor = (n) => { E.setProfile({ name: n }); return GMACH.itemsFor('badge').map(i => i.id).filter(id => ['owner', 'ultimate', 'coadmin', 'admin', 'mod', 'furas'].includes(id)).sort().join(); };
     const bB = badgesFor('BoyIsGamer'), bZ = badgesFor('zbyniu'), bX = badgesFor('RandomPlayer');
-    if (bB !== 'admin,owner') bad.push('BoyIsGamer should be offered admin+owner badges, got: ' + bB);
+    if (bB !== 'admin,furas,mod,owner') bad.push('BoyIsGamer should be offered admin+furas+mod+owner badges, got: ' + bB);
     if (bZ !== 'admin,coadmin,mod,owner,ultimate') bad.push('zbyniu should be offered all 5 staff badges, got: ' + bZ);
     if (bX !== '') bad.push('a normal player must not be offered staff badges, got: ' + bX);
     E.setProfile({ name: prevName });

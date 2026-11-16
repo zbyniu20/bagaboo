@@ -279,6 +279,23 @@ export function extraMask(id) {
             for (let i = 0; i < 3; i++) { const w = at(new THREE.BoxGeometry(0.09, 0.0025, 0.0025), mat({ color: 0xf0f0f0 }), s * 0.1, -0.035 - i * 0.012, -0.15); w.rotation.z = s * (0.15 - i * 0.12); g.add(w); }
         }
         g.add(at(new THREE.ConeGeometry(0.012, 0.016, 3), mat({ color: 0xff8ab0 }), 0, -0.012, -0.165).rotateX(Math.PI));
+    } else if (id === 'furascat') {   // maska kota ze skórki Furas (nie ma jej w sklepie): kremowa, różowe uszy i nos, kępki futra na policzkach
+        const cream = mat({ color: 0xf6e6d4, roughness: 0.95 }), pink = mat({ color: 0xff8ab8, roughness: 0.6 });
+        shell(cream, 0.13, 0.155, 0.065).position.z = -0.1;
+        for (const s of [-1, 1]) {
+            g.add(at(new THREE.ConeGeometry(0.045, 0.095, 4), cream, s * 0.085, 0.175, -0.1).rotateZ(-s * 0.22));
+            g.add(at(new THREE.ConeGeometry(0.026, 0.062, 4), pink, s * 0.085, 0.168, -0.112).rotateZ(-s * 0.22));
+            const eye = at(new THREE.SphereGeometry(0.021, 12, 10), new THREE.MeshBasicMaterial({ color: 0x7dff9a }), s * 0.045, 0.03, -0.158); eye.scale.set(1, 1.35, 0.4); g.add(eye);
+            g.add(at(new THREE.BoxGeometry(0.004, 0.034, 0.004), d, s * 0.045, 0.03, -0.162));
+            const blush = at(new THREE.SphereGeometry(0.02, 10, 8), mat({ color: 0xff9ab8, roughness: 0.8 }), s * 0.07, -0.02, -0.152); blush.scale.set(1.2, 0.7, 0.3); g.add(blush);
+            for (let i = 0; i < 3; i++) {
+                const w = at(new THREE.BoxGeometry(0.09, 0.0025, 0.0025), mat({ color: 0xffffff }), s * 0.105, -0.035 - i * 0.012, -0.15); w.rotation.z = s * (0.15 - i * 0.12); g.add(w);   // wąsy
+                const tuft = at(new THREE.ConeGeometry(0.014, 0.045, 5), cream, s * (0.12 + i * 0.006), -0.045 - i * 0.03, -0.11).rotateZ(s * (1.2 + i * 0.25)); g.add(tuft);   // kępki na policzkach
+            }
+        }
+        g.add(at(new THREE.ConeGeometry(0.014, 0.018, 3), pink, 0, -0.012, -0.165).rotateX(Math.PI));   // nos
+        const m = at(new THREE.TorusGeometry(0.014, 0.0028, 6, 12, Math.PI), d, -0.014, -0.036, -0.162); m.rotation.z = Math.PI; g.add(m);
+        const m2 = at(new THREE.TorusGeometry(0.014, 0.0028, 6, 12, Math.PI), d, 0.014, -0.036, -0.162); m2.rotation.z = Math.PI; g.add(m2);   // pyszczek "w"
     }
     return g;
 }
@@ -355,7 +372,8 @@ export const EXTRA_SKINS = {
     sakura: { fur: 0xf2b8cc, face: 0x8a4a5a },
     lavaape: { fur: 0x1c0a06, face: 0x3a0e04, glowEyes: true },
     panda: { fur: 0xf2f2f0, face: 0x141414 },
-    midnight: { fur: 0x14204a, face: 0x070a1a }
+    midnight: { fur: 0x14204a, face: 0x070a1a },
+    furas: { fur: 0xf6e2cc, face: 0xc89a88, tail: true }   // ranga FURAS (BoyIsGamer): kremowe futro; maskę kota i puchaty ogon dokłada avatar.js
 };
 
 // ---------- ODZNAKI (rysowane na okrągłej przypince; x = kontekst 2D 128x128) ----------
@@ -372,5 +390,12 @@ export const EXTRA_BADGES = {
     heart: { bg: '#3a0a1a', draw: (x) => { x.fillStyle = '#ff3a6a'; x.beginPath(); x.moveTo(64, 98); x.bezierCurveTo(14, 62, 30, 24, 64, 48); x.bezierCurveTo(98, 24, 114, 62, 64, 98); x.fill(); } },
     bolt: { bg: '#10142a', draw: (x) => { x.fillStyle = '#ffe23a'; x.beginPath(); x.moveTo(72, 18); x.lineTo(38, 70); x.lineTo(60, 70); x.lineTo(52, 110); x.lineTo(92, 56); x.lineTo(68, 56); x.closePath(); x.fill(); } },
     clover: { bg: '#0a2a14', draw: (x) => { x.fillStyle = '#3ad86a'; for (const [cx, cy] of [[48, 48], [80, 48], [48, 80], [80, 80]]) { x.beginPath(); x.arc(cx, cy, 20, 0, 7); x.fill(); } x.fillStyle = '#0a2a14'; x.fillRect(62, 62, 4, 40); } },
+    furas: { bg: '#3a0a2a', draw: (x) => {   // ranga FURAS: biały kotek z różowymi uszami, zielonymi oczami i wąsami
+        x.fillStyle = '#fff2e4'; x.beginPath(); x.moveTo(28, 70); x.lineTo(32, 26); x.lineTo(58, 44); x.lineTo(70, 44); x.lineTo(96, 26); x.lineTo(100, 70); x.quadraticCurveTo(100, 108, 64, 108); x.quadraticCurveTo(28, 108, 28, 70); x.closePath(); x.fill();
+        x.fillStyle = '#ff8ab8'; x.beginPath(); x.moveTo(37, 40); x.lineTo(50, 50); x.lineTo(40, 62); x.closePath(); x.moveTo(91, 40); x.lineTo(78, 50); x.lineTo(88, 62); x.closePath(); x.fill();
+        x.fillStyle = '#5aff8a'; for (const cx of [48, 80]) { x.beginPath(); x.ellipse(cx, 66, 7, 9, 0, 0, 7); x.fill(); } x.fillStyle = '#111'; for (const cx of [48, 80]) x.fillRect(cx - 1.5, 58, 3, 16);
+        x.fillStyle = '#ff6a9a'; x.beginPath(); x.moveTo(58, 80); x.lineTo(70, 80); x.lineTo(64, 87); x.closePath(); x.fill();
+        x.strokeStyle = '#2a1a1a'; x.lineWidth = 3; x.lineCap = 'round'; x.beginPath(); x.arc(58, 88, 6, 0.2, Math.PI - 0.2); x.arc(70, 88, 6, 0.2, Math.PI - 0.2); x.stroke();
+        x.strokeStyle = '#ffffff'; x.lineWidth = 2; for (const s of [-1, 1]) for (let i = 0; i < 2; i++) { x.beginPath(); x.moveTo(64 + s * 26, 82 + i * 6); x.lineTo(64 + s * 46, 78 + i * 12); x.stroke(); } } },
     paw: { bg: '#2a1a0a', draw: (x) => { x.fillStyle = '#e8c890'; x.beginPath(); x.ellipse(64, 78, 24, 20, 0, 0, 7); x.fill(); for (const [cx, cy] of [[34, 56], [52, 38], [76, 38], [94, 56]]) { x.beginPath(); x.ellipse(cx, cy, 9, 12, 0, 0, 7); x.fill(); } } }
 };

@@ -166,6 +166,39 @@ export function scream(pos) {
     n.connect(bp); bp.connect(g); g.connect(shaper); n.start(t0);
     for (const f of [880, 933, 1240]) saw(t0, f, f * 0.45, 1.1, 0.2, shaper);
 }
+// Głos "gooby" (syntezowany, bez pliku dźwiękowego): źródło krtaniowe (dwie piły, lekkie vibrato) przechodzi przez trzy ruchome filtry formantowe.
+// Samogłoski kolejno: "u" (goo), zwarcie "b", "a" i "i" (by). f0 = wysokość głosu w Hz, vol = głośność.
+function goobyVoice(t0, f0, vol) {
+    const dur = 1.05, g = ctx.createGain(), out = ctx.createGain(), dirt = ctx.createGain();
+    out.gain.value = vol; dirt.gain.value = 0.3;   // dirt: część głosu idzie przez przester, żeby był chropowaty
+    out.connect(scareBus); out.connect(dirt); dirt.connect(shaper);   // do wyjścia trafia tylko głos przepuszczony przez formanty
+    // amplituda: "goo", cisza zwarcia przy "b", potem "by" i wybrzmienie
+    g.gain.setValueAtTime(0.0001, t0);
+    for (const [dt, v] of [[0.05, 1], [0.4, 0.9], [0.47, 0.08], [0.55, 0.08], [0.62, 1], [0.9, 0.85], [dur, 0.0001]]) g.gain.linearRampToValueAtTime(v, t0 + dt);
+    // wysokość: "goo" opada, "by" idzie w górę i opada
+    const src = [ctx.createOscillator(), ctx.createOscillator()];
+    src.forEach((o, i) => {
+        o.type = 'sawtooth'; o.detune.value = i ? 14 : 0;
+        o.frequency.setValueAtTime(f0 * 1.12, t0);
+        for (const [dt, m] of [[0.35, 0.95], [0.5, 0.9], [0.62, 1.2], [0.85, 1.38], [dur, 0.85]]) o.frequency.linearRampToValueAtTime(f0 * m, t0 + dt);
+        o.connect(g); o.start(t0); o.stop(t0 + dur + 0.05);
+    });
+    const vib = ctx.createOscillator(), vg = ctx.createGain(); vib.frequency.value = 6; vg.gain.value = f0 * 0.025;
+    vib.connect(vg); src.forEach(o => vg.connect(o.frequency)); vib.start(t0); vib.stop(t0 + dur + 0.05);
+    // formanty F1, F2, F3 w czasie: [czas, F1, F2, F3]
+    const path = [[0, 350, 1100, 2300], [0.08, 300, 870, 2240], [0.42, 300, 870, 2240], [0.56, 700, 1220, 2600], [0.72, 640, 1400, 2500], [0.9, 290, 2250, 3010], [dur, 290, 2250, 3010]];
+    [[1, 9, 1.0], [2, 11, 0.75], [3, 13, 0.45]].forEach(([k, q, gain]) => {
+        const bp = ctx.createBiquadFilter(), fg = ctx.createGain(); bp.type = 'bandpass'; bp.Q.value = q; fg.gain.value = gain * 3;
+        bp.frequency.setValueAtTime(path[0][k], t0);
+        for (const row of path) bp.frequency.linearRampToValueAtTime(row[k], t0 + row[0]);
+        g.connect(bp); bp.connect(fg); fg.connect(out);
+    });
+    // krótki "p" przy "b": szmer szumu
+    const n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.1);
+    const nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 900; nf.Q.value = 1.5;
+    const ng = ctx.createGain(); env(ng, t0 + 0.5, 0.6, 0.004, 0.05);
+    n.connect(nf); nf.connect(ng); ng.connect(out); n.start(t0 + 0.5);
+}
 // Pełny jumpscare: cisza, potem uderzenie basu, przesterowany wrzask i zgrzyt dysonansu
 export function scare() {
     if (!ctx) return;
@@ -182,6 +215,7 @@ export function scare() {
     const ng = ctx.createGain(); env(ng, t0, 1.0, 0.006, 1.45);
     n.connect(bp); bp.connect(ng); ng.connect(shaper); n.start(t0);
     for (const f of [740, 784, 1046, 1480, 1568]) saw(t0, f, f * 0.42, 1.35, 0.22, shaper);
+    goobyVoice(t0 + 0.08, 150, 2.4); goobyVoice(t0 + 0.08, 75, 1.8);   // "gooby": wysoki głos i demoniczna warstwa o oktawę niżej
 }
 // Krótki, ostry zgrzyt, gdy znika zjawa
 export function stinger(pos) {
