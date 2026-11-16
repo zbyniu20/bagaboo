@@ -171,13 +171,14 @@ export function roleTagFor(name) {
 }
 // Wszystkie napisy roli nad głową, od najwyższej: właściciel z adminem i moderatorem (BoyIsGamer) ma OWNER, ADMIN i MODERATOR naraz.
 // Ultimate admin i co-admin zostają przy jednym napisie jak dotąd.
+// Każdy napis ma id (owner / admin / mod / ultimate / coadmin), po którym gracz wybiera w Gorilla Machine, które z nich pokazać.
 export function roleTagsFor(name) {
-    if (isUltimateName(name)) return [roleTagFor(name)];
+    if (isUltimateName(name)) return [Object.assign({ id: 'ultimate' }, roleTagFor(name))];
     const out = [], base = roleTagFor(name);
-    if (isOwnerName(name)) out.push(roleTagFor(name));   // OWNER
-    else if (base) out.push(base);
-    if (isOwnerName(name) && ADMIN_NAMES.some(n => low(n) === low(name))) out.push({ text: 'ADMIN', color: '#ff8a5a', glow: '#ff4a10' });
-    if (isOwnerName(name) && isModName(name)) out.push({ text: 'MODERATOR', color: '#8ab8ff', glow: '#3a6aff' });
+    if (isOwnerName(name)) out.push(Object.assign({ id: 'owner' }, base));   // OWNER
+    else if (base) out.push(Object.assign({ id: isCoAdminName(name) ? 'coadmin' : (isModName(name) && !isAdminName(name) ? 'mod' : 'admin') }, base));
+    if (isOwnerName(name) && ADMIN_NAMES.some(n => low(n) === low(name))) out.push({ id: 'admin', text: 'ADMIN', color: '#ff8a5a', glow: '#ff4a10' });
+    if (isOwnerName(name) && isModName(name)) out.push({ id: 'mod', text: 'MODERATOR', color: '#8ab8ff', glow: '#3a6aff' });
     return out;
 }
 // Ranga: 4 ultimate admin (zbyniu), 3 właściciel (BoyIsGamer), 2 admin / co-admin, 1 moderator, 0 gracz.
