@@ -199,11 +199,16 @@ async function canStart(allowBanned) {
     if (ban && !allowBanned) { $('status').innerText = 'You are banned until ' + new Date(ban).toLocaleString() + '.'; return false; }
     const acc = AUTH.account();
     if (acc) $('playerName').value = acc.nick;   // zalogowany gracz gra pod nickiem swojego konta
-    else {
+    else if (!guestMode) {   // najpierw logowanie albo świadomy wybór gry jako gość (dotyczy też przycisków z menu w goglach)
+        showStage('auth'); acctMsg('Log in, create an account, or play as a guest first.', false);
+        $('status').innerText = 'Log in or choose "Play as guest" on the start page first.';
+        return false;
+    } else {
         const name = ($('playerName').value || '').trim();
         if (isReservedNick(name)) {
-            $('status').innerText = 'The nickname "' + name + '" is reserved for the staff. Log in to your account or choose another nickname.';
-            if (!$('account').classList.contains('open')) $('tabAccount').click();
+            guestMode = false; showStage('auth');
+            acctMsg('The nickname "' + name + '" is reserved for the staff. Log in to your account or play as a guest under another nickname.', false);
+            $('status').innerText = 'The nickname "' + name + '" is reserved for the staff. Log in to your account first.';
             return false;
         }
     }
@@ -217,44 +222,54 @@ $('btnJoin').onclick = async () => { if (!(await canStart(true))) return; initAu
 try { localStorage.removeItem('bagaboo_saved_pw'); } catch (e) {}
 let confirmedNick = '';   // nick potwierdzony przez serwer kont w tej sesji (po logowaniu albo po udanym sprawdzeniu sesji)
 const acctMsg = (text, good) => { const m = $('acctMsg'); m.innerText = text || ''; m.style.color = good ? '#9aff60' : '#ff8a70'; };
-function acctBusy(on) { ['btnLogin', 'btnRegister', 'btnReset', 'btnLogout'].forEach(id => { $(id).disabled = on; }); }
+function acctBusy(on) { ['btnLogin', 'btnRegister', 'btnReset', 'btnGuest'].forEach(id => { $(id).disabled = on; }); }
+// Dwa ekrany: najpierw logowanie ('auth'), potem menu z trybami gry ('menu'). Do menu wchodzi się po zalogowaniu albo jako gość.
+let guestMode = false, recoveryPending = false;
+function showStage(stage) { $('authStage').style.display = stage === 'auth' ? 'block' : 'none'; $('menuStage').style.display = stage === 'menu' ? 'block' : 'none'; }
 function syncAccountUi() {
     const a = AUTH.account(), nm = $('playerName');
-    $('acctIn').style.display = a ? 'block' : 'none'; $('acctOut').style.display = a ? 'none' : 'block';
-    $('acctWho').innerText = a ? a.nick : '';
-    $('tabAccount').innerText = a ? a.nick : 'Log in';
+    $('acctWho').innerText = a ? 'Signed in as ' + a.nick : 'Playing as a guest';
+    $('btnLogout').style.display = a ? 'inline-block' : 'none'; $('btnToLogin').style.display = a ? 'none' : 'inline-block';
+    $('authForm').style.display = recoveryPending ? 'none' : 'block';
     nm.readOnly = !!a; nm.title = a ? 'Your account nickname. Log out to use another.' : '';
     if (a) nm.value = a.nick;
-    else if (isReservedNick(nm.value)) nm.value = 'Acrobat';   // po wylogowaniu nick ekipy nie zostaje w polu
+    else if (isReservedNick(nm.value)) nm.value = 'Acrobat';   // bez konta nick ekipy nie zostaje w polu
     ECO.markNickVerified(a && confirmedNick === a.nick ? a.nick : '');   // premia ekipy (economy.js) tylko po potwierdzeniu przez serwer
+    if (recoveryPending) showStage('auth');   // najpierw kod odzyskiwania, dopiero potem menu
+    else showStage(a || guestMode ? 'menu' : 'auth');
 }
 AUTH.onAuthChange(syncAccountUi);
 function showRecovery(code) { $('recoveryCode').innerText = code; $('recoveryBox').style.display = 'block'; }
 async function runAuth(kind) {
     const nick = $('acctNick').value.trim(), pass = $('acctPass').value;
+    recoveryPending = kind === 'register';   // po rejestracji pokazujemy kod odzyskiwania przed wejściem do menu
     acctBusy(true); acctMsg('Contacting the account server...', true);
     const res = kind === 'register' ? await AUTH.register(nick, pass) : await AUTH.login(nick, pass);
     acctBusy(false);
-    if (!res.ok) { acctMsg(AUTH.errorText(res), false); return; }
-    $('acctPass').value = ''; confirmedNick = res.account.nick;
-    if (res.recoveryCode) showRecovery(res.recoveryCode);
-    syncAccountUi(); acctMsg(kind === 'register' ? 'Account created. You are signed in.' : 'Signed in.', true);
+    if (!res.ok) { recoveryPending = false; acctMsg(AUTH.errorText(res), false); return; }
+    $('acctPass').value = ''; confirmedNick = res.account.nick; acctMsg('');
+    if (res.recoveryCode) showRecovery(res.recoveryCode); else recoveryPending = false;
+    syncAccountUi();
 }
 $('btnLogin').onclick = () => runAuth('login');
 $('btnRegister').onclick = () => runAuth('register');
 $('acctPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') runAuth('login'); });
+$('acctNick').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('acctPass').focus(); });
 $('btnForgot').onclick = () => { const r = $('acctReset'); r.style.display = r.style.display === 'none' ? 'block' : 'none'; };
 $('btnReset').onclick = async () => {
+    recoveryPending = true;
     acctBusy(true); acctMsg('Contacting the account server...', true);
     const res = await AUTH.resetPassword($('acctNick').value.trim(), $('acctCode').value, $('acctNewPass').value);
     acctBusy(false);
-    if (!res.ok) { acctMsg(AUTH.errorText(res), false); return; }
-    $('acctCode').value = $('acctNewPass').value = ''; $('acctReset').style.display = 'none'; confirmedNick = res.account.nick;
-    if (res.recoveryCode) showRecovery(res.recoveryCode);   // stary kod przestaje działać, więc pokazujemy nowy
-    syncAccountUi(); acctMsg('New password set. You are signed in.', true);
+    if (!res.ok) { recoveryPending = false; acctMsg(AUTH.errorText(res), false); return; }
+    $('acctCode').value = $('acctNewPass').value = ''; $('acctReset').style.display = 'none'; confirmedNick = res.account.nick; acctMsg('');
+    if (res.recoveryCode) showRecovery(res.recoveryCode); else recoveryPending = false;   // stary kod przestaje działać, więc pokazujemy nowy
+    syncAccountUi();
 };
-$('btnLogout').onclick = () => { confirmedNick = ''; AUTH.logout(); acctMsg('Signed out.', true); };
-$('btnRecoverySaved').onclick = () => { $('recoveryBox').style.display = 'none'; $('recoveryCode').innerText = ''; };
+$('btnGuest').onclick = () => { guestMode = true; acctMsg(''); syncAccountUi(); };
+$('btnToLogin').onclick = () => { guestMode = false; acctMsg(''); syncAccountUi(); };
+$('btnLogout').onclick = () => { confirmedNick = ''; guestMode = false; AUTH.logout(); acctMsg('Signed out.', true); };
+$('btnRecoverySaved').onclick = () => { recoveryPending = false; $('recoveryBox').style.display = 'none'; $('recoveryCode').innerText = ''; syncAccountUi(); };
 syncAccountUi();
 AUTH.refresh().then((a) => { if (a) confirmedNick = a.nick; syncAccountUi(); });   // zapisana sesja: serwer potwierdza ją albo wylogowuje
 // Jakość grafiki: zapis ustawienia i ponowne uruchomienie (tekstury i cienie tworzą się przy starcie)

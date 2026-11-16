@@ -50,7 +50,7 @@ await qpage.waitForFunction(() => /Ready|Could not/.test(document.getElementById
 const lite = await qpage.evaluate(() => document.documentElement.classList.contains('lite'));
 if (!lite) fail('quest: landing page did not switch to lite mode for an OculusBrowser user agent'); else ok('quest: lite landing page');
 const qstatus = await qpage.evaluate(() => document.getElementById('status').innerText); if (/Could not/.test(qstatus)) fail('quest: game did not start: ' + qstatus);
-await qpage.click('#btnSolo', { timeout: 240000 }); await qpage.waitForTimeout(1500);
+await qpage.click('#btnGuest', { timeout: 240000 }); await qpage.click('#btnSolo', { timeout: 240000 });   // pierwszy ekran to logowanie: test gra jako gość await qpage.waitForTimeout(1500);
 const qinfo = await qpage.evaluate(async () => { const D = await import('./core/device.js'), M = await import('./main.js'); await M.loadLevel('maze'); const E = await import('./core/engine.js'); return { quest: D.IS_QUEST, aniso: E.tex.wall.anisotropy }; });
 if (!qinfo.quest || qinfo.aniso > 2) fail('quest: device detection or anisotropy cap failed ' + JSON.stringify(qinfo)); else ok('quest: detected, anisotropy capped at ' + qinfo.aniso);
 if (qerr.length) qerr.forEach((e) => fail('quest: ' + e)); await qctx.close();
@@ -75,7 +75,7 @@ page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed 
 
 await page.goto(`http://localhost:${PORT}/`);
 await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 90000 });
-await page.click('#btnSolo', { timeout: 90000 });
+await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });   // pierwszy ekran to logowanie: test gra jako gość
 await page.waitForTimeout(1500);
 
 const run = (code, arg) => page.evaluate(async ([code, arg]) => { const F = Object.getPrototypeOf(async function () {}).constructor; return await new F('arg', code)(arg); }, [code, arg]);

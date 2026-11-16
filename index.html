@@ -67,13 +67,17 @@ button { font: inherit; cursor: pointer; border: 0; color: #fff; transition: tra
 #btnHost, #btnJoin { flex: 1; padding: 12px 10px; font-size: 13px; font-weight: 500; letter-spacing: 0.1em; border-radius: 10px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14); }
 #btnHost:hover:not(:disabled), #btnJoin:hover:not(:disabled) { background: rgba(255,90,40,0.22); border-color: rgba(255,110,60,0.6); }
 /* konto: logowanie, rejestracja, odzyskiwanie hasła */
-#btnLogin, #btnRegister, #btnReset, #btnLogout, #btnRecoverySaved { flex: 1; padding: 11px 10px; font-size: 13px; font-weight: 500; letter-spacing: 0.08em; border-radius: 10px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14); }
-#btnLogin:hover:not(:disabled), #btnRegister:hover:not(:disabled), #btnReset:hover:not(:disabled), #btnLogout:hover:not(:disabled), #btnRecoverySaved:hover:not(:disabled) { background: rgba(255,90,40,0.22); border-color: rgba(255,110,60,0.6); }
-#btnReset, #btnLogout { display: block; width: 100%; margin-top: 12px; }
-#btnForgot { display: block; margin: 8px auto 0; }
+#btnLogin, #btnRegister, #btnReset, #btnRecoverySaved { flex: 1; padding: 12px 10px; font-size: 13px; font-weight: 500; letter-spacing: 0.08em; border-radius: 10px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14); }
+#btnLogin { background: linear-gradient(180deg, #e0292a 0%, #9c0f14 100%); border-color: rgba(255,255,255,0.18); }
+#btnLogin:hover:not(:disabled), #btnRegister:hover:not(:disabled), #btnReset:hover:not(:disabled), #btnRecoverySaved:hover:not(:disabled) { background: rgba(255,90,40,0.28); border-color: rgba(255,110,60,0.6); }
+#btnReset, #btnRecoverySaved { display: block; width: 100%; margin-top: 12px; }
+#btnForgot, #btnGuest { display: block; margin: 8px auto 0; }
+#btnGuest { color: #8a736b; }
 #acctReset, #recoveryBox { margin-top: 10px; }
-#acctReset label, #acctIn .eyebrow { margin-top: 10px; }
-#acctWho { font-size: 17px; color: var(--gold); letter-spacing: 0.04em; }
+#acctReset label { margin-top: 10px; }
+#authTitle { font-size: 13px; letter-spacing: 0.3em; color: var(--gold); margin: 0 0 14px; text-align: center; }
+#acctBar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -6px 0 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+#acctWho { font-size: 14px; color: var(--gold); letter-spacing: 0.04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #recoveryBox { padding: 12px; border-radius: 10px; background: rgba(120,20,10,0.25); border: 1px solid rgba(255,110,60,0.5); font-size: 12.5px; line-height: 1.5; color: #f0ddd2; }
 #recoveryCode { display: block; margin: 8px 0; padding: 10px; text-align: center; font-family: 'Courier New', monospace; font-size: 18px; letter-spacing: 0.12em; color: #fff; background: rgba(0,0,0,0.45); border-radius: 8px; user-select: all; }
 #acctMsg { margin-top: 10px; font-size: 12px; line-height: 1.4; text-align: center; min-height: 1.2em; }
@@ -138,29 +142,15 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
       <p class="tagline">Don't look away</p>
     </header>
     <main id="card">
-      <label class="eyebrow" for="playerName">Nickname</label>
-      <div class="row">
-        <input type="text" id="playerName" value="Acrobat" maxlength="16" autocomplete="nickname" spellcheck="false">
-        <input type="color" id="playerColor" value="#3d2314" title="Fur color" aria-label="Fur color">
-      </div>
-      <button id="btnSolo">Play solo</button>
-      <div class="links">
-        <button class="link" type="button" id="tabFriends" aria-expanded="false" aria-controls="friends">Play with friends</button><i></i>
-        <button class="link" type="button" id="tabAccount" aria-expanded="false" aria-controls="account">Log in</button><i></i>
-        <button class="link" type="button" id="tabOptions" aria-expanded="false" aria-controls="options">Options</button>
-      </div>
-      <div class="panel" id="account">
+      <!-- Ekran 1: logowanie. Dopiero po zalogowaniu (albo wybraniu gry jako gość) pojawia się menu z trybami gry. -->
+      <div id="authStage">
         <div id="recoveryBox" style="display:none">
           <b>Save your recovery code now.</b> It is shown only once. You need it to set a new password if you forget this one.
           <code id="recoveryCode"></code>
-          <button id="btnRecoverySaved" type="button">I saved it</button>
+          <button id="btnRecoverySaved" type="button">I saved it, continue</button>
         </div>
-        <div id="acctIn" style="display:none">
-          <span class="eyebrow">Signed in as</span>
-          <div id="acctWho"></div>
-          <button id="btnLogout" type="button">Log out</button>
-        </div>
-        <div id="acctOut">
+        <div id="authForm">
+          <span class="eyebrow" id="authTitle">Sign in to play</span>
           <label class="eyebrow" for="acctNick">Account nickname</label>
           <input type="text" id="acctNick" maxlength="16" autocomplete="username" spellcheck="false">
           <label class="eyebrow" for="acctPass" style="margin-top:10px">Password (at least 8 characters)</label>
@@ -174,9 +164,23 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
             <input type="password" id="acctNewPass" maxlength="100" autocomplete="new-password">
             <button id="btnReset" type="button">Set new password</button>
           </div>
+          <button class="link" type="button" id="btnGuest">Play as guest (no account)</button>
         </div>
         <div id="acctMsg" role="status"></div>
       </div>
+      <!-- Ekran 2: menu gry -->
+      <div id="menuStage" style="display:none">
+        <div id="acctBar"><span id="acctWho">Guest</span><button class="link" type="button" id="btnLogout">Log out</button><button class="link" type="button" id="btnToLogin">Log in</button></div>
+        <label class="eyebrow" for="playerName">Nickname</label>
+        <div class="row">
+          <input type="text" id="playerName" value="Acrobat" maxlength="16" autocomplete="nickname" spellcheck="false">
+          <input type="color" id="playerColor" value="#3d2314" title="Fur color" aria-label="Fur color">
+        </div>
+        <button id="btnSolo">Play solo</button>
+        <div class="links">
+          <button class="link" type="button" id="tabFriends" aria-expanded="false" aria-controls="friends">Play with friends</button><i></i>
+          <button class="link" type="button" id="tabOptions" aria-expanded="false" aria-controls="options">Options</button>
+        </div>
       <div class="panel" id="friends">
         <label class="eyebrow" for="roomCode">Room code</label>
         <input type="text" id="roomCode" value="MAIN" maxlength="12" autocomplete="off" spellcheck="false">
@@ -187,8 +191,9 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
         <select id="quality"><option value="low">Low (fastest)</option><option value="medium">Medium</option><option value="high">High</option></select>
       </div>
       <div id="saveInfo"></div>
-      <div id="status">Checking microphone...</div>
       <button id="btnNew">Delete save and start over</button>
+      </div>
+      <div id="status">Checking microphone...</div>
     </main>
     <footer id="foot">
       <span id="vrhint">Best in VR &nbsp;·&nbsp; Desktop supported</span>
@@ -347,7 +352,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
   build(); requestAnimationFrame(frame);
 
   // panele "Play with friends" i "Options" (tylko jeden otwarty naraz)
-  var panels = { tabFriends: document.getElementById('friends'), tabAccount: document.getElementById('account'), tabOptions: document.getElementById('options') };
+  var panels = { tabFriends: document.getElementById('friends'), tabOptions: document.getElementById('options') };
   Object.keys(panels).forEach(function (id) {
     var b = document.getElementById(id);
     b.addEventListener('click', function () {
