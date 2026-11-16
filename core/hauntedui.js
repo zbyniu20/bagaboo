@@ -3,7 +3,8 @@
 // zaciemnienie, tabliczki i budowa stanowisk (kilka ekranów z jedną grafiką). Rysowaniem treści zajmuje się sala (levels.js, games.js).
 // Stan animacji ("podchodzenie" postaci) trzyma obiekt z makeDread(): { t, dread, blackT, flick, scared }.
 // ==========================================
-import { THREE, L, tex, addCrispBlock } from './engine.js';
+import { THREE, L, tex } from './engine.js';
+import { buildComputerDesk } from './computerdesk.js';
 import * as T from './textures.js';
 import { fmtDuration } from './economy.js';
 import { IS_QUEST } from './device.js';
@@ -126,27 +127,14 @@ export function drawGlass(c, W2, H2, t, S) {
     }
 }
 
-// Stanowiska: obudowa + pulpit + ekran(y) z tą samą grafiką + tabliczka + poświata (bez światła punktowego). st: { x, z, rotY, both }
-// rotY=0: ekran patrzy na +z; both: wolnostojący pylon z ekranami po obu stronach (drugi obrócony o pi)
-export function addStations(term, stations, drawCfg) {
+// Stanowiska: stojące komputery jak w lobby (core/computerdesk.js), wszystkie z tą samą grafiką terminala (jedno płótno, jedno rysowanie).
+// list: [{ x, z, rotY }], rotY: lokalne +z komputera = strona, z której stoi gracz. opt: { scale (domyślnie 1.25), label }
+export function addComputers(term, list, opt) {
+    opt = opt || {}; const scale = opt.scale || 1.25;
     let first = !term.mesh;   // po zmianie poziomu główny ekran jest zerowany: pierwszy ekran tworzy grafikę od nowa, reszta dokłada widoki
-    stations.forEach((st, k) => {
-        const faces = st.both ? [st.rotY, st.rotY + Math.PI] : [st.rotY];
-        const horiz = Math.abs(Math.sin(st.rotY)) < 0.5;
-        const baseAlong = (r, dx, dz) => [st.x + Math.cos(r) * dx + Math.sin(r) * dz, st.z - Math.sin(r) * dx + Math.cos(r) * dz];
-        const r0 = st.rotY, bez = st.both ? [st.x, st.z] : baseAlong(r0, 0, 0.18), desk = st.both ? [st.x, st.z] : baseAlong(r0, 0, 1.0);
-        addCrispBlock(bez[0], 2.65, bez[1], horiz ? 5.5 : 0.36, 3.55, horiz ? 0.36 : 5.5, 0x14100e, 0x2a1a14);
-        if (st.both) addCrispBlock(desk[0], 0.45, desk[1], horiz ? 6.2 : 2.6, 0.9, horiz ? 2.6 : 6.2, 0x2a1a14, 0x100808);
-        else addCrispBlock(desk[0], 0.45, desk[1], horiz ? 6.2 : 1.2, 0.9, horiz ? 1.2 : 6.2, 0x2a1a14, 0x100808);
-        faces.forEach((r, fi) => {
-            const off = st.both ? 0.19 : 0.37, scr = baseAlong(r, 0, st.both ? off : off);
-            const sp0 = st.both ? [st.x + Math.sin(r) * off, st.z + Math.cos(r) * off] : scr;
-            const screen = first ? term.createMesh(4.8, 3.0) : term.addMesh(4.8, 3.0); first = false;
-            screen.position.set(sp0[0], 2.65, sp0[1]); screen.rotation.y = r; L.root.add(screen);
-            const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.3), new THREE.MeshBasicMaterial({ map: plateTexture((drawCfg && drawCfg.label ? drawCfg.label : 'TERMINAL') + ' ' + (k * faces.length + fi + 1)), transparent: true, toneMapped: false }));
-            const pl = st.both ? [st.x + Math.sin(r) * 0.22, st.z + Math.cos(r) * 0.22] : baseAlong(r, 0, 0.4); plate.position.set(pl[0], 4.72, pl[1]); plate.rotation.y = r; L.root.add(plate);
-            const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: (drawCfg && drawCfg.halo) || 0xff3020, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.35 }));
-            const hp = st.both ? [st.x + Math.sin(r) * 1.4, st.z + Math.cos(r) * 1.4] : baseAlong(r, 0, 1.2); halo.scale.set(6.5, 4.2, 1); halo.position.set(hp[0], 2.65, hp[1]); L.root.add(halo);
-        });
+    list.forEach((c, k) => {
+        const d = buildComputerDesk(c.x, c.z, c.rotY, scale, (w, h) => { const m = first ? term.createMesh(w, h) : term.addMesh(w, h); first = false; return m; });
+        const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.09), new THREE.MeshBasicMaterial({ map: plateTexture((opt.label || 'TERMINAL') + ' ' + (k + 1)), transparent: true, toneMapped: false }));
+        plate.position.set(0, 1.42, -0.14); d.group.add(plate);   // tabliczka z numerem nad monitorem
     });
 }

@@ -331,7 +331,7 @@ const modeSim = await run(`
         tick(1); m._press('enter'); if (went !== 'well') bad.push('levels: OPEN THE DOOR did not go to the well (went=' + went + ')');
         went = null; tick(1); m._press('row10'); tick(1); m._press('enter'); m._press('enter'); if (m.debug().knocks < 2 || went) bad.push('levels: secret door knocking wrong (knocks=' + m.debug().knocks + ', went=' + went + ')');
     }
-    // Games terminals: 6 screens on 3 pylons, category tabs, pick a mode, PLAY goes to it
+    // Games terminals: 6 computers in a ring, category tabs, pick a mode, PLAY goes to it
     {
         const TM = await import('./core/terminal.js'); let went = null; const gctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
         m = await load('games'); const tick = (n) => { for (let i = 0; i < n; i++) m.update(0.1, T += 0.1, gctx); TM.redrawTerminals(); };
