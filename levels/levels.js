@@ -12,7 +12,7 @@ import { DIFFS, DIFF_ORDER, getDiff, setDiff, topTimes, dailyOn, setDailyMode, d
 import { Terminal, toast, wrapText } from '../core/terminal.js';
 import { buildDoor, createJumpscare } from '../core/levelkit.js';
 import * as SFX from '../core/audio.js';
-import { PROX, TICKER, MONO, SERIF, ITAL, BONE, BLOOD, AMB, AMBD, mmss, visitorsHere, ensureAssets, sp, tx, drawEcg, drawEye, drawGlass, addComputers, stepDread, drawCard } from '../core/hauntedui.js';
+import { PROX, TICKER, MONO, SERIF, ITAL, BONE, BLOOD, AMB, AMBD, mmss, visitorsHere, ensureAssets, sp, tx, drawGlass, addComputers, stepDread, drawCard } from '../core/hauntedui.js';
 import { IS_QUEST } from '../core/device.js';
 import { CARDS } from '../core/levelcards.js';
 import { ARRIVAL_LEVELS } from './lobby-door.js';
@@ -81,75 +81,59 @@ function drawScreen(t) {
     c.fillStyle = '#3a1812'; c.fillRect(0, 46, W2, 2);
     tx(c, 'BAGABOO', 30, 24, 28, BLOOD, 'left', MONO, 8); tx(c, 'VISITOR TERMINAL // LEVEL ACCESS // 03:07', 168, 24, 22, AMBD);
     tx(c, 'PRESENCE BEHIND TERMINAL', W2 - 150, 24, 20, AMBD, 'right'); tx(c, PROX[dread], W2 - 30, 24, 24, BLOOD, 'right', MONO, 8);
-    // lista poziomów
-    tx(c, '> SELECT A DOOR' + (Math.floor(now * 2) % 2 ? '_' : ' '), 30, 74, 20, AMBD);
+    // lista poziomów na CAŁY ekran terminala: duże nazwy; opis poziomu jest tylko na ekranie nad terminalami (drawWall)
+    const RH = 44, LY = 70;
+    tx(c, '> SELECT A DOOR' + (Math.floor(now * 2) % 2 ? '_' : ' '), 30, 58, 20, AMBD);
+    const gl = Math.floor(now * 10) % 61 === 0 || nm;   // kopie chromatyczne wybranej nazwy w Nightmare i krótkie zakłócenia co kilka sekund
     LV.forEach((l, i) => {
-        const y = 92 + i * 41, on = TS.sel === i, hov = t.hover.has('row' + i);
-        if (on || hov) { c.fillStyle = on ? 'rgba(255,59,42,0.17)' : 'rgba(255,59,42,0.08)'; c.fillRect(8, y, 372, 38); if (on) { c.strokeStyle = 'rgba(255,59,42,0.4)'; c.lineWidth = 1; c.strokeRect(8.5, y + 0.5, 371, 37); } }
+        const y = LY + i * RH, cy = y + RH / 2, on = TS.sel === i, hov = t.hover.has('row' + i);
+        if (on || hov) { c.fillStyle = on ? 'rgba(255,59,42,0.17)' : 'rgba(255,59,42,0.08)'; c.fillRect(10, y, W2 - 20, RH - 4); if (on) { c.strokeStyle = 'rgba(255,59,42,0.4)'; c.lineWidth = 1; c.strokeRect(10.5, y + 0.5, W2 - 21, RH - 5); } }
         const col = on || hov ? '#f4e8d2' : (l.secret ? '#8a6a5a' : '#b8a78a');
-        tx(c, on ? '>' : ' ', 22, y + 20, 24, BLOOD); tx(c, String(i + 1).padStart(2, '0'), 54, y + 20, 22, col); tx(c, l.label, 98, y + 20, 24, col, 'left', MONO, on ? 6 : 0);
+        tx(c, on ? '>' : ' ', 28, cy, 34, BLOOD); tx(c, String(i + 1).padStart(2, '0'), 66, cy, 30, col);
+        if (on && gl) { tx(c, l.label, 154, cy, 36, 'rgba(0,240,224,0.45)', 'left', MONO); tx(c, l.label, 146, cy, 36, 'rgba(255,0,80,0.55)', 'left', MONO); }
+        tx(c, l.label, 150, cy, 36, col, 'left', MONO, on ? 6 : 0);
+        tx(c, l.type, 640, cy, 24, on ? AMB : AMBD, 'left');
         let pips = ''; if (l.secret) pips = '?????'; else for (let k = 0; k < 5; k++) pips += k < l.threat ? '|' : '.';
-        tx(c, pips, 368, y + 20, 20, BLOOD, 'right');
-        t.buttons.push({ id: 'row' + i, x: 8, y: y, w: 372, h: 38, action: () => pick(i) });
+        tx(c, pips, W2 - 34, cy, 32, BLOOD, 'right');
+        t.buttons.push({ id: 'row' + i, x: 10, y: y, w: W2 - 20, h: RH - 4, action: () => pick(i) });
     });
-    tx(c, '> MEMORY CHECK ........ OK', 30, 560 + 70, 19, AMBD); tx(c, '> VISITORS PRESENT .... ' + visitorsHere('levels'), 30, 580 + 70, 19, AMBD); tx(c, '> VISITORS EXPECTED ... 0', 30, 600 + 70, 19, AMBD);
-    c.fillStyle = '#3a1812'; c.fillRect(392, 48, 2, 640);
-    // panel poziomu = KARTA (miejsce, cel, jak grać, na co uważać), niżej trudność, rekordy i wejście (w Nightmare lekko drży)
+    // dolny pasek: trudność, Daily Run, rekordy i wejście (opis poziomu jest na ekranie nad terminalami)
     c.save(); if (nm) c.translate(Math.sin(now * 38) > 0 ? 1.5 : 0, Math.sin(now * 29) > 0.4 ? -1 : 0);
-    const X0 = 418, XR = W2 - 30, card = CARDS[secret ? 'room000' : d.target];
-    tx(c, 'ENTRY ' + String(TS.sel + 1).padStart(2, '0') + ' OF ' + LV.length + '  /  ' + d.type, X0, 74, 20, AMBD);
-    drawEye(c, XR - 62, 76, t, S);
-    // tytuł (kopie chromatyczne w Nightmare i krótkie zakłócenia co kilka sekund)
-    const gl = Math.floor(now * 10) % 61 === 0 || nm;
-    if (gl) { tx(c, d.label, X0 + 4, 118, 52, 'rgba(0,240,224,0.45)', 'left', SERIF); tx(c, d.label, X0 - 4, 118, 52, 'rgba(255,0,80,0.55)', 'left', SERIF); }
-    tx(c, d.label, X0, 118, 52, '#efe3cc', 'left', SERIF, nm ? 26 : 18);
-    tx(c, '“' + d.msg + '”', X0, 154, 25, AMB, 'left', ITAL);
-    // zagrożenie i monitor tętna
-    tx(c, 'THREAT', X0, 190, 20, AMBD);
-    for (let k = 0; k < 5; k++) { c.fillStyle = k < d.threat ? (secret ? BONE : BLOOD) : '#3a1a16'; c.fillRect(X0 + 96 + k * 28, 183, 22, 14); }
-    tx(c, secret ? 'UNKNOWN' : WORDS[d.threat], X0 + 250, 190, 20, BLOOD, 'left', MONO, 8);
-    const bpm = Math.round(62 + d.threat * 13 + dread * 4 + (nm ? 16 : 0)), ecgCol = bpm > 140 ? BLOOD : AMB;
-    drawEcg(c, XR - 250, 172, 190, 36, now, bpm, ecgCol);
-    tx(c, String(bpm), XR, 190, 26, ecgCol, 'right', MONO, 8);
-    drawCard(c, card, X0, 226, 540, nm ? BLOOD : AMB);
-    // dolny pasek: trudność, rekordy, Daily Run i wejście
-    c.fillStyle = '#3a1812'; c.fillRect(X0, 540, XR - X0, 1);
-    const df = DIFFS[diff];
+    c.fillStyle = '#3a1812'; c.fillRect(0, 572, W2, 2);
+    const df = DIFFS[diff], X0 = 14, XR = W2 - 14;
     if (!secret) {
         DIFF_ORDER.forEach((id, k) => {
-            const bx = X0 + k * 232, on = id === diff, q = DIFFS[id], hov = t.hover.has('diff-' + id);
-            c.fillStyle = on ? q.color : (hov ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'); c.fillRect(bx, 548, 222, 32);
-            c.strokeStyle = on ? q.color : '#3a1812'; c.lineWidth = 2; c.strokeRect(bx + 1, 549, 220, 30);
-            tx(c, q.name.toUpperCase(), bx + 111, 565, 22, on ? '#120403' : '#b8a78a', 'center');
-            t.buttons.push({ id: 'diff-' + id, x: bx, y: 548, w: 222, h: 32, action: () => { setDiff(d.rec, id); t.dirty = true; } });
+            const bx = X0 + k * 208, on = id === diff, q = DIFFS[id], hov = t.hover.has('diff-' + id);
+            c.fillStyle = on ? q.color : (hov ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'); c.fillRect(bx, 580, 200, 34);
+            c.strokeStyle = on ? q.color : '#3a1812'; c.lineWidth = 2; c.strokeRect(bx + 1, 581, 198, 32);
+            tx(c, q.name.toUpperCase(), bx + 100, 597, 22, on ? '#120403' : '#b8a78a', 'center');
+            t.buttons.push({ id: 'diff-' + id, x: bx, y: 580, w: 200, h: 34, action: () => { setDiff(d.rec, id); t.dirty = true; } });
         });
-        tx(c, df.info.split('. ')[0].replace(/\.$/, '') + '.', X0, 598, 18, df.color);
         const dl = d.daily && diff !== 'easy', dm = dl && dailyOn(d.rec);
-        tx(c, diff === 'easy' ? 'BEST TIMES' : ((dm ? "TODAY'S BEST" : 'BEST TIMES') + ' (' + df.name.toUpperCase() + ')'), X0, 624, 17, AMBD);
-        if (diff === 'easy') tx(c, 'Easy runs are not ranked.', X0, 652, 20, '#9a8c78');
-        else {
-            const top = topTimes(d.rec, diff, dm);
-            if (!top.length) tx(c, dm ? 'Nobody has finished today.' : 'Not finished yet.', X0, 652, 20, '#9a8c78');
-            top.slice(0, 3).forEach((s2, k) => tx(c, (k + 1) + '. ' + mmss(s2), X0 + k * 126, 652, 20, k === 0 ? '#ffd27a' : '#d8c8ac'));
-            if (top.length && (!d.daily || dm)) tx(c, 'Ghost of #1 runs with you', X0, 674, 15, '#7fe8ff');
-        }
         if (d.daily) {   // Daily Run: ten sam układ dla wszystkich graczy w danym dniu
             const on = dl && dm, hov = t.hover.has('daily');
-            c.fillStyle = on ? '#7fe8ff' : (hov ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'); c.fillRect(808, 590, 300, 30);
-            c.strokeStyle = on ? '#7fe8ff' : '#3a1812'; c.lineWidth = 2; c.strokeRect(809, 591, 298, 28);
-            tx(c, diff === 'easy' ? 'DAILY RUN: not ranked' : (on ? 'DAILY RUN: ON ' + dailyDate() : 'DAILY RUN: off'), 958, 605, 19, on ? '#041418' : (diff === 'easy' ? '#6a5c4c' : '#b8a78a'), 'center');
-            if (diff !== 'easy') t.buttons.push({ id: 'daily', x: 808, y: 590, w: 300, h: 30, action: () => { setDailyMode(d.rec, !dailyOn(d.rec)); t.dirty = true; } });
+            c.fillStyle = on ? '#7fe8ff' : (hov ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'); c.fillRect(660, 580, XR - 660, 34);
+            c.strokeStyle = on ? '#7fe8ff' : '#3a1812'; c.lineWidth = 2; c.strokeRect(661, 581, XR - 662, 32);
+            tx(c, diff === 'easy' ? 'DAILY RUN: not ranked' : (on ? 'DAILY RUN: ON ' + dailyDate() : 'DAILY RUN: off'), (660 + XR) / 2, 597, 21, on ? '#041418' : (diff === 'easy' ? '#6a5c4c' : '#b8a78a'), 'center');
+            if (diff !== 'easy') t.buttons.push({ id: 'daily', x: 660, y: 580, w: XR - 660, h: 34, action: () => { setDailyMode(d.rec, !dailyOn(d.rec)); t.dirty = true; } });
+        }
+        tx(c, diff === 'easy' ? 'BEST TIMES' : ((dm ? "TODAY'S BEST" : 'BEST TIMES') + ' (' + df.name.toUpperCase() + ')'), X0, 634, 17, AMBD);
+        if (diff === 'easy') tx(c, 'Easy runs are not ranked.', X0, 660, 20, '#9a8c78');
+        else {
+            const top = topTimes(d.rec, diff, dm);
+            if (!top.length) tx(c, dm ? 'Nobody has finished today.' : 'Not finished yet.', X0, 660, 20, '#9a8c78');
+            top.slice(0, 3).forEach((s2, k) => tx(c, (k + 1) + '. ' + mmss(s2), X0 + k * 126, 660, 20, k === 0 ? '#ffd27a' : '#d8c8ac'));
+            if (top.length && (!d.daily || dm)) tx(c, 'Ghost of #1 runs with you', X0 + 390, 660, 15, '#7fe8ff');
         }
     } else {
-        tx(c, 'THIS DOOR HAS NO DIFFICULTY.', X0, 566, 22, '#ff6a52');
-        tx(c, 'BEST TIMES', X0, 624, 17, AMBD); for (let k = 0; k < 3; k++) tx(c, (k + 1) + '. --:--', X0 + k * 126, 652, 20, '#8a7456');
+        tx(c, S.entered ? (TS.knock >= 3 ? 'IT IS ALREADY OPEN.' : (TS.knock === 2 ? 'I TOLD YOU.' : 'SOMETHING KNOCKED BACK.')) : 'THIS DOOR HAS NO DIFFICULTY.', X0, 597, 22, '#ff6a52');
+        tx(c, 'BEST TIMES', X0, 634, 17, AMBD); for (let k = 0; k < 3; k++) tx(c, (k + 1) + '. --:--', X0 + k * 126, 660, 20, '#8a7456');
     }
     // przycisk wejścia
-    const hov = t.hover.has('enter'), bx = 808, by = 628, bw = 300, bh = 52;
+    const hov = t.hover.has('enter'), bx = 600, by = 622, bw = XR - 600, bh = 54;
     c.fillStyle = hov ? '#ff6a52' : BLOOD; c.shadowColor = BLOOD; c.shadowBlur = hov ? 30 : 18; c.fillRect(bx, by, bw, bh); c.shadowBlur = 0;
-    tx(c, (secret ? 'KNOCK' : 'OPEN THE DOOR') + ' >', bx + bw / 2, by + bh / 2 + 1, 28, '#140503', 'center');
+    tx(c, (secret ? 'KNOCK' : 'OPEN THE DOOR') + ' >', bx + bw / 2, by + bh / 2 + 1, 30, '#140503', 'center');
     t.buttons.push({ id: 'enter', x: bx, y: by, w: bw, h: bh, action: enter });
-    if (S.entered && secret) tx(c, TS.knock >= 3 ? 'IT IS ALREADY OPEN.' : (TS.knock === 2 ? 'I TOLD YOU.' : 'SOMETHING KNOCKED BACK.'), bx + bw / 2, by - 12, 18, '#ff6a52', 'center');
     c.restore();
     // pasek na dole: przewijany napis
     c.fillStyle = '#3a1812'; c.fillRect(0, 686, W2, 2);

@@ -64,7 +64,7 @@ let sliding = false, slideAir = 0, slideBuzz = 0, standRef = 0;
 export function isSliding() { return sliding; }
 // Ślizg: start, gdy gracz jest na podłodze, szybki i nisko przykucnięty; koniec, gdy wstanie, zwolni albo spadnie
 function updateSlide(p, v) {
-    if (!renderer.xr.isPresenting || ropeConstraint) { sliding = false; playerRig.userData.sliding = false; return; }
+    if (!renderer.xr.isPresenting || ropeConstraint || MOD.fly) { sliding = false; playerRig.userData.sliding = false; return; }   // podczas FLY nie ma ślizgu (hamowałby lot)
     // Zwykła wysokość głowy gracza (najwyższa ostatnio, powoli maleje, więc dopasowuje się też do gry na siedząco)
     const head = camera.position.y;
     standRef = Math.max(standRef - 0.03 / 90, head);
@@ -332,7 +332,8 @@ export function updatePlayer(dt, t) {
         clampHand(controllers[0], hands.L); clampHand(controllers[1], hands.R);
         handTarget(hands.L.userData.rig, 0, handleMovement(0, dt));
         handTarget(hands.R.userData.rig, 1, handleMovement(1, dt));
-        applyAnchors();
+        if (MOD.fly) { anchorVel[0] = anchorVel[1] = null; velHist.length = 0; wasAnchored = false; }   // FLY steruje prędkością sam: dłonie na powierzchni (zwłaszcza przy NO CLIP) nie mogą jej nadpisywać ani wyrzucać gracza
+        else applyAnchors();
     }
     if (hands.L) { poseHand(hands.L.userData.rig, dt); poseHand(hands.R.userData.rig, dt); hands.L.scale.setScalar(MOD.size); hands.R.scale.setScalar(MOD.size); }
     if (ropeConstraint && ropeHand >= 0) { ropeConstraint.pivotA.copy(ropePivot(ropeHand)); hands[ropeHand === 0 ? 'L' : 'R'].userData.rig.target = 1.0; }
