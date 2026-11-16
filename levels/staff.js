@@ -102,7 +102,7 @@ const staffPC = new Terminal((t) => {
             const y = 130 + i * 115, owned = isOwned(it), worn = SAVE.equipped.tool === it.id;
             c.fillStyle = 'rgba(255,176,0,0.06)'; c.fillRect(24, y, 976, 104);
             t.text(it.name, 40, y + 34, 30, worn ? OK_COL : GOLD, 'left', true);
-            t.text(it.id === 'ban' ? '1000 Bagabucks' : (it.id === 'kick' ? 'Free for staff' : ''), 40, y + 74, 22, AMBER, 'left');
+            t.text(it.id === 'ban' ? '1000 Bagabucks' : (it.id === 'kick' ? 'Free for staff' : (it.id === 'gooby' ? 'Free for staff: hit a player to give them a Gooby jumpscare' : '')), 40, y + 74, 22, AMBER, 'left');
             if (worn) t.btn('w' + it.id, 700, y + 26, 290, 52, 'In your hand', null, { disabled: true });
             else if (owned) t.btn('e' + it.id, 700, y + 26, 290, 52, it.id === 'none' ? 'Put away' : 'Hold it', () => equipItem(it), { tone: 'ok' });
             else t.btn('bu' + it.id, 700, y + 26, 290, 52, 'Buy ' + it.price, () => buyItem(it), { tone: 'gold', disabled: SAVE.wallet < it.price });

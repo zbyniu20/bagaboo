@@ -84,6 +84,7 @@ export const CATALOG = [
     { slot: 'tool', id: 'none', name: 'No hammer', price: 0 },
     { slot: 'tool', id: 'kick', name: 'Kick hammer', price: 0, locked: true, hint: 'Staff' },
     { slot: 'tool', id: 'ban', name: 'Ban hammer', price: 1000 },
+    { slot: 'tool', id: 'gooby', name: 'Nothing Hammer', price: 0, locked: true, hint: 'Staff' },   // Gooby hammer: trafiony gracz dostaje jumpscare Gooby
     { slot: 'mask', id: 'none', name: 'No mask', price: 0 },
     { slot: 'mask', id: 'hockey', name: 'Hockey mask', price: 900 },
     { slot: 'mask', id: 'gas', name: 'Gas mask', price: 1300 },
@@ -477,6 +478,7 @@ export function refreshStaffItems() {
     const rights = staffBadgesFor(n);
     for (const b of ['owner', 'ultimate', 'coadmin', 'admin', 'mod']) give('badge:' + b, rights.includes(b));
     give('tool:kick', isStaffName(n));
+    give('tool:gooby', isStaffName(n));   // Nothing Hammer (Gooby) dla całej ekipy
     if (['owner', 'ultimate', 'coadmin', 'admin', 'mod'].includes(SAVE.equipped.badge) && !rights.includes(SAVE.equipped.badge)) SAVE.equipped.badge = 'none';
     if (!isStaffName(n)) { if (SAVE.equipped.tool !== 'none') SAVE.equipped.tool = 'none'; }
 }

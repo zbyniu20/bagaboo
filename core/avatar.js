@@ -8,6 +8,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP } from './config.js';
 import { makeCanvas, toTex, mkRng, normalFor } from './textures.js';
 import { roleTagsFor } from './config.js';
+import { goobyTexture } from './gooby.js';
 import { rimify } from './visuals.js';
 import { extraHat, extraGlasses, extraMask, extraSleeveMat, extraGloveMat, EXTRA_SKINS, EXTRA_BADGES } from './cosmetics.js';
 
@@ -506,10 +507,10 @@ export function placeArm(arm, torso, side, hand) {
 // pulsujący pas rdzenia, płytki z napisem na czterech bokach, owinięta rękojeść, klejnot na końcu,
 // poświata i iskry krążące wokół główki. Animuje się sam przy każdym rysowaniu (u ciebie i u innych).
 const hammerCache = {};
-function hammerTextures(ban) {
-    const key = ban ? 'ban' : 'kick';
+function hammerTextures(key) {   // key: 'ban' | 'kick' | 'gooby' (Nothing Hammer)
     if (hammerCache[key]) return hammerCache[key];
-    const glow = ban ? '#ff2a1a' : '#ffd21a', deep = ban ? '#1a0606' : '#2a1e04', text = ban ? 'BAN' : 'KICK';
+    const ban = key === 'ban', gooby = key === 'gooby';
+    const glow = gooby ? '#ff7ad9' : (ban ? '#ff2a1a' : '#ffd21a'), deep = gooby ? '#2a0a24' : (ban ? '#1a0606' : '#2a1e04'), text = gooby ? 'NOTHING' : (ban ? 'BAN' : 'KICK');
     // Płytka z napisem: ciemne tło, świecąca ramka z runami, jasny napis z poświatą
     const c = makeCanvas(512, 224), x = c.getContext('2d');
     x.fillStyle = deep; x.fillRect(0, 0, 512, 224);
@@ -518,8 +519,9 @@ function hammerTextures(ban) {
     x.lineWidth = 3; x.strokeRect(30, 30, 452, 164);
     x.font = 'bold 22px monospace'; x.fillStyle = glow; x.textAlign = 'center';
     for (let i = 0; i < 9; i++) { x.fillText('ᚱᛟᚾᛞᛖᚷ'[i % 6], 56 + i * 50, 48); x.fillText('ᛋᛏᚨᚠᚠ'[i % 5], 56 + i * 50, 196); }
-    x.font = 'bold 104px sans-serif'; x.textBaseline = 'middle'; x.shadowBlur = 40; x.fillStyle = '#ffffff'; x.fillText(text, 256, 116);
-    x.shadowBlur = 0; x.fillStyle = glow; x.globalAlpha = 0.35; x.fillText(text, 256, 116); x.globalAlpha = 1;
+    const lines = gooby ? [['NOTHING', 90], ['HAMMER', 158]] : [[text, 116]];   // Nothing Hammer: napis w dwóch linijkach
+    x.font = 'bold ' + (gooby ? 68 : 104) + 'px sans-serif'; x.textBaseline = 'middle'; x.shadowBlur = 40; x.fillStyle = '#ffffff'; for (const [s, yy] of lines) x.fillText(s, 256, yy);
+    x.shadowBlur = 0; x.fillStyle = glow; x.globalAlpha = 0.35; for (const [s, yy] of lines) x.fillText(s, 256, yy); x.globalAlpha = 1;
     // Owijka rękojeści: skośne paski skóry
     const w = makeCanvas(128, 256), wx = w.getContext('2d');
     wx.fillStyle = ban ? '#1a0e0a' : '#2a1a0a'; wx.fillRect(0, 0, 128, 256);
@@ -535,11 +537,11 @@ function hammerTextures(ban) {
     return (hammerCache[key] = { label: label, wrap: wrap, disc: disc, glow: new THREE.Color(glow) });
 }
 export function buildHammer(tool) {
-    if (tool !== 'kick' && tool !== 'ban') return null;
-    const ban = tool === 'ban', tx = hammerTextures(ban), g = new THREE.Group();
+    if (tool !== 'kick' && tool !== 'ban' && tool !== 'gooby') return null;
+    const ban = tool === 'ban', gooby = tool === 'gooby', tx = hammerTextures(tool), g = new THREE.Group();
     const glowCol = tx.glow.getHex();
-    const metal = new THREE.MeshPhysicalMaterial({ color: ban ? 0x1c1c22 : 0xc8a030, metalness: 1, roughness: ban ? 0.22 : 0.18, clearcoat: 1, clearcoatRoughness: 0.15, envMapIntensity: Math.max(1.0, ENV * 2) });
-    const trim = new THREE.MeshPhysicalMaterial({ color: ban ? 0x8a1010 : 0xffe080, metalness: 1, roughness: 0.15, clearcoat: 1, envMapIntensity: Math.max(1.0, ENV * 2) });
+    const metal = new THREE.MeshPhysicalMaterial({ color: gooby ? 0xd890c8 : (ban ? 0x1c1c22 : 0xc8a030), metalness: 1, roughness: ban ? 0.22 : 0.18, clearcoat: 1, clearcoatRoughness: 0.15, envMapIntensity: Math.max(1.0, ENV * 2) });
+    const trim = new THREE.MeshPhysicalMaterial({ color: gooby ? 0xffd0f0 : (ban ? 0x8a1010 : 0xffe080), metalness: 1, roughness: 0.15, clearcoat: 1, envMapIntensity: Math.max(1.0, ENV * 2) });
     const energy = new THREE.MeshStandardMaterial({ color: glowCol, emissive: glowCol, emissiveIntensity: 2.2, roughness: 0.3, toneMapped: false });
     // Rękojeść z owijką, metalowe okucia i klejnot na końcu
     const handle = meshAt(new THREE.CylinderGeometry(0.019, 0.023, 0.4, 16), new THREE.MeshStandardMaterial({ map: tx.wrap, roughness: 0.75, bumpMap: tx.wrap, bumpScale: 1.5 }), 0, 0, -0.2); handle.rotation.x = Math.PI / 2; g.add(handle);
@@ -553,7 +555,7 @@ export function buildHammer(tool) {
     for (const bx of [-0.112, 0.112]) g.add(meshAt(new THREE.BoxGeometry(0.014, 0.146, 0.146), energy, bx, 0, -0.44));
     for (const sx of [-1, 1]) {
         const rim = meshAt(new THREE.TorusGeometry(0.058, 0.007, 10, 32), energy, sx * 0.142, 0, -0.44); rim.rotation.y = Math.PI / 2; g.add(rim);
-        const face = meshAt(new THREE.CircleGeometry(0.055, 32), new THREE.MeshBasicMaterial({ map: tx.disc, toneMapped: false }), sx * 0.1415, 0, -0.44); face.rotation.y = sx * Math.PI / 2; g.add(face);
+        const face = meshAt(new THREE.CircleGeometry(0.055, 32), new THREE.MeshBasicMaterial(gooby ? { map: goobyTexture(), transparent: true, toneMapped: false } : { map: tx.disc, toneMapped: false }), sx * 0.1415, 0, -0.44); face.rotation.y = sx * Math.PI / 2; g.add(face);
         const trimRing = meshAt(new THREE.TorusGeometry(0.066, 0.006, 8, 32), trim, sx * 0.13, 0, -0.44); trimRing.rotation.y = Math.PI / 2; g.add(trimRing);
     }
     // Płytki z napisem na trzech bokach (góra, dół i czoło od strony przeciwnej do rękojeści), lekko nad powierzchnią

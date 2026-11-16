@@ -5,7 +5,7 @@
 import { THREE, L, tex, camera, addStaticBody, addBlobAO, CANNON } from './engine.js';
 import { LP } from './config.js';
 import * as T from './textures.js';
-import { buildMannequin } from './mannequin.js';
+import { goobyTexture } from './gooby.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as SFX from './audio.js';
 
@@ -116,17 +116,17 @@ export function drawInstructions(p, title, lines, footer, theme) {
 // o = { head (własna głowa, domyślnie manekin), scale, y, restZ, fromZ, eyes }
 export function createJumpscare(o) {
     o = o || {};
-    let head = o.head;
-    if (!head) { const m = buildMannequin(T.mkRng(o.seed || 4242)); head = m.head; head.parent.remove(head); }
-    head.traverse((c) => { if (c.material) { c.material = c.material.clone(); c.material.depthTest = false; c.material.transparent = true; c.renderOrder = 1000; } });
-    if (o.eyes !== false) for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1000, transparent: true, blending: THREE.AdditiveBlending, depthTest: false })); e.scale.set(0.16, 0.16, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 1001; head.add(e); }
-    head.scale.setScalar(o.scale || 2.4);
+    // W całej grze straszy ten sam obraz (wzorowany na memie Gooby, core/gooby.js); własne głowy z poziomów (o.head, o.eyes, o.scale) nie są już używane
+    const head = new THREE.Group();
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ map: goobyTexture(), transparent: true, depthTest: false, toneMapped: false }));
+    face.renderOrder = 1000; head.add(face);
+    head.scale.setScalar(1.8);
     const plane = (col) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, depthTest: false })); p.position.z = -0.25; return p; };
     const black = plane(0x000000), red = plane(o.flash !== undefined ? o.flash : 0xff0000); black.renderOrder = 998; red.renderOrder = 999;
     const g = new THREE.Group(); g.add(black, red, head); g.visible = false; camera.add(g);
     // Wszystko przy samych oczach: wyłączamy odrzucanie obiektów poza kadrem (w goglach potrafiło ukryć duże modele tuż przy kamerze)
     g.traverse((c) => { c.frustumCulled = false; });
-    const y = o.y !== undefined ? o.y : -0.36, rest = o.restZ !== undefined ? o.restZ : -0.32, from = o.fromZ !== undefined ? o.fromZ : -1.9;
+    const y = 0, rest = -0.4, from = -2.0;   // płaski obraz centrowany przed oczami, wyskakuje z oddali pod sam nos
     let t = -1;
     return {
         active() { return t >= 0; },
