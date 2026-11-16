@@ -1,17 +1,18 @@
 // ==========================================
 // POZIOM 10: THE HOTEL (nieskończony hotel, kolejne numerowane pokoje)
-// Idziesz przez ciąg pokoi, każdy za zamkniętymi drzwiami z numerem. Co czwarte drzwi są zamknięte na klucz, który leży w tym pokoju
+// Idziesz przez ciąg dużych pokoi (zwykłe 16 m, z kluczem 24 m), każdy za zamkniętymi drzwiami z numerem. Co czwarte drzwi są zamknięte na klucz, który leży w tym pokoju
 // (a w pokojach od 7. patroluje go Ślepy Lokaj: słyszy bieg, więc skradaj się). Chowaj się w szafach.
 // Zdarzenia: ŁOMOT (po ostrzeżeniu pędzi przez wszystkie pokoje; kto nie siedzi w szafie, ginie), SZEPT (usłysz "psst", obróć się i spójrz,
 // zanim ugryzie, inaczej tracisz serce), Ślepy Lokaj, blackouty i szepty. Trzy serca, doleczasz je przy odblokowaniu drzwi.
 // Pokoje są budowane na bieżąco (3-4 naraz) i usuwane za plecami gracza: mało obiektów, dowolna długość. Układ stały (działa duch).
 // ==========================================
-import { THREE, L, tex, camera, addCollider } from '../core/engine.js';
+import { THREE, L, tex, camera, addCollider, renderer, lighting } from '../core/engine.js';
+import { setFlashHolder } from '../core/visuals.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { levelReward, recordTime, diffOf } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
-import { setPlayerPosition, releaseAll } from '../core/player.js';
+import { setPlayerPosition, releaseAll, hands } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { createGhost } from '../core/runkit.js';
@@ -20,14 +21,16 @@ import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_HOTEL } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
 
-const RW = 9, RL = 12, H = 3.4, HALF = RW / 2, DOOR_W = 1.7, DOOR_H = 2.6, WALL_T = 0.4;   // pokój 9 x 12 m, wysokość 3,4 m
+const RW = 12, H = 3.4, HALF = RW / 2, DOOR_W = 1.7, DOOR_H = 2.6, WALL_T = 0.4;   // szerokość pokoju 12 m, wysokość 3,4 m
+const LEN_NORMAL = 16, LEN_KEY = 24;                                                // długość zwykłego pokoju i pokoju z kluczem (większy: więcej mebli i kryjówek)
 const ROOMS = { easy: 16, normal: 24, nightmare: 32 };                                      // liczba pokoi (ostatni zawsze z kluczem: indeks % 4 == 3)
 const RUSH = { wait: [24, 45], warn: 5, speed: 26 }, SCREECH = { chance: 0.35, window: 1.8 }, WEEPER = { walk: 1.7, chase: 4.0, hear: 10, minRoom: 7 };
 const REWARD_FIRST = 3600, REWARD_REPEAT = 360, INTRO_TIME = 10, MAX_HP = 3;
 export const info = { id: 'hotel', name: 'The Hotel', spawn: [0, 1.0, -1.6] };
 let S = null;
-const z0 = (i) => -i * RL;                      // południowa krawędź pokoju i (pokój ma z od z0 do z0 - RL)
-const roomOf = (z) => Math.max(0, Math.floor(-z / RL));
+const z0 = (i) => S.zs[i];                       // południowa krawędź pokoju i (pokój ma z od z0(i) do z0(i+1))
+const roomLen = (i) => S.zs[i] - S.zs[i + 1];
+const roomOf = (z) => { for (let i = 0; i < S.n; i++) if (z > S.zs[i + 1]) return i; return S.n - 1; };
 const _v = new THREE.Vector3(), _w = new THREE.Vector3();
 
 // ---------- WSPÓLNE MATERIAŁY I TEKSTURY (jedna instancja na poziom) ----------
@@ -65,13 +68,50 @@ function faceTexture(kind) {   // 'rush' = czarna masa z oczami i szczeliną pys
     return T.toTex(c, false);
 }
 
+// ---------- LATARKA ----------
+// Ręczna latarka w prawej dłoni: światło i wiązka idą za ręką (kierunek = oś -z dłoni, jak lufa pistoletu na strzelnicy).
+// Włącznik: spust prawego kontrolera (VR) albo klawisz G (komputer). Bez dłoni (tryby bez rąk) zostaje latarka przy głowie.
+const _fq = new THREE.Quaternion();
+function buildFlashlight() {
+    const g = new THREE.Group(), metal = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, metalness: 0.8, roughness: 0.35 });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.032, 0.17, 14), metal); body.rotation.x = Math.PI / 2; body.position.set(0, 0, -0.04); g.add(body);
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.03, 0.06, 14), metal); head.rotation.x = Math.PI / 2; head.position.set(0, 0, -0.15); g.add(head);
+    const lens = new THREE.Mesh(new THREE.CircleGeometry(0.04, 16), new THREE.MeshBasicMaterial({ color: 0xfff0d0 })); lens.position.set(0, 0, -0.181); lens.rotation.y = Math.PI; g.add(lens);
+    const sw = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.012, 0.03), new THREE.MeshStandardMaterial({ color: 0xc03020, roughness: 0.5 })); sw.position.set(0, 0.034, -0.03); g.add(sw);
+    g.frustumCulled = false; L.root.add(g);
+    return { group: g, lens: lens, on: true, held: false, setup: false };
+}
+function toggleFlash() {
+    if (!S || !S.flash) return;
+    S.flash.on = !S.flash.on; SFX.beep(S.flash.on ? 1100 : 700, 0.12, 0.05); buzz(1, 0.3, 40);
+}
+function updateFlashlight() {
+    const F = S.flash, lamp = lighting.headLamp;
+    if (!F.setup) {   // przy pierwszej klatce (po zbudowaniu efektów poziomu) przenieś lampę i wiązkę z głowy do ręki
+        F.setup = true;
+        if (hands.R) { F.held = true; F.group.add(lamp); F.group.add(lamp.target); lamp.position.set(0, 0, -0.18); lamp.target.position.set(0, 0, -6); setFlashHolder(F.group); }
+        else F.group.visible = false;
+    }
+    if (F.held && hands.R) { F.group.position.copy(hands.R.position); hands.R.getWorldQuaternion(_fq); F.group.quaternion.copy(_fq); }
+    lamp.visible = F.on; F.lens.material.color.setHex(F.on ? 0xfff0d0 : 0x2a2420);
+}
+function restoreFlashlight() {   // lampa wraca do kamery (inne poziomy mają latarkę przy głowie)
+    const lamp = lighting.headLamp;
+    if (S && S.flash && S.flash.held) { camera.add(lamp); camera.add(lamp.target); lamp.position.set(0, 0, 0); lamp.target.position.set(0, 0, -6); setFlashHolder(null); }
+    L.onTrigger = null; L.onKeyG = null;
+}
+
 export function build() {
     L.spawn = info.spawn.slice();
     const df = diffOf('hotel'), n = ROOMS[df.id] || ROOMS.normal;
-    L.bounds = { minX: -HALF + 0.35, maxX: HALF - 0.35, minZ: z0(n) - 3 + 0.4, maxZ: -0.45, maxY: H - 0.3 };
-    S = { df: df, n: n, mats: makeMats(), ghost: createGhost('hotel'), ev: createEvents('hotel', { skip: ['fog'] }), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', hp: MAX_HP, hasKey: false, cp: 0, cur: 0, best: 0, rooms: new Map(), lights: [], caughtT: -1, leaving: false, hudT: 0, hidden: false, carried: false,
+    const zs = [0]; for (let i = 0; i < n; i++) zs.push(zs[i] - (i % 4 === 3 ? LEN_KEY : LEN_NORMAL));   // kolejne krawędzie pokoi (co 4. pokój z kluczem jest dłuższy)
+    L.bounds = { minX: -HALF + 0.35, maxX: HALF - 0.35, minZ: zs[n] - 3 + 0.4, maxZ: -0.45, maxY: H - 0.3 };
+    S = { df: df, n: n, zs: zs, sq: [false, false], mats: makeMats(), ghost: createGhost('hotel'), ev: createEvents('hotel', { skip: ['fog'] }), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', hp: MAX_HP, hasKey: false, cp: 0, cur: 0, best: 0, rooms: new Map(), lights: [], caughtT: -1, leaving: false, hudT: 0, hidden: false, carried: false,
         rush: { state: 'wait', t: 0, z: 0, next: 18 }, screech: { state: 'none', t: 0, room: -1, tried: -1, dir: 0 }, hint: '', msgT: 0 };
-    for (let i = 0; i < 4; i++) { const l = new THREE.PointLight(0xffb070, 12, 14, 1.8); l.position.set(0, 2.6, -RL * (i + 0.5)); L.root.add(l); S.lights.push(l); }   // stałe światła, przenoszone do pokoi (pula świateł)
+    S.flash = buildFlashlight();
+    L.onTrigger = (i) => { if (renderer.xr.isPresenting && i === 1) toggleFlash(); };   // VR: spust prawej ręki (na komputerze: klawisz G)
+    L.onKeyG = toggleFlash;
+    for (let i = 0; i < 4; i++) { const l = new THREE.PointLight(0xffb070, 16, 22, 1.8); l.position.set(0, 2.6, -8 * (i + 0.5)); L.root.add(l); S.lights.push(l); }   // stałe światła, przenoszone do pokoi (pula świateł)
     ensureRooms(0);
     // Wejście (LEVELS) w południowej ścianie pokoju 0 i wyjście na końcu: wnęka z drzwiami EXIT za ostatnimi (zamkniętymi na klucz) drzwiami
     buildDoor({ x: 0, z: -WALL_T / 2 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#ffd8b8', wood: 0x4a3224, portal: { target: 'levels', spawn: ARRIVAL_FROM_HOTEL, onEnter: () => toast('Back to the levels') } });
@@ -91,13 +131,13 @@ function box(room, x, y, z, w, h, d, mat, collide) {
     return m;
 }
 function buildRoom(i) {
-    const R = T.mkRng(4000 + i * 131), a = z0(i), b = a - RL, mid = (a + b) / 2, last = i === S.n - 1;
-    const room = { i: i, group: new THREE.Group(), cols: [], items: [], keyObj: null, wardrobe: null, door: null, weeper: null, locked: i % 4 === 3 };
+    const len = roomLen(i), R = T.mkRng(4000 + i * 131), a = z0(i), b = a - len, mid = (a + b) / 2, last = i === S.n - 1;
+    const room = { i: i, group: new THREE.Group(), cols: [], items: [], keyObj: null, wardrobe: null, wardrobes: [], door: null, weeper: null, locked: i % 4 === 3 };
     L.root.add(room.group);
     const M = S.mats;
-    box(room, 0, -0.05, mid, RW + 0.2, 0.1, RL + 0.2, M.floor, false);                     // podłoga (bez kolizji: poziom podłogi załatwia silnik)
-    box(room, 0, H + 0.05, mid, RW + 0.2, 0.1, RL + 0.2, M.ceil, false);
-    for (const s of [-1, 1]) box(room, s * (HALF + WALL_T / 2), H / 2, mid, WALL_T, H, RL + WALL_T, M.wall, true);
+    box(room, 0, -0.05, mid, RW + 0.2, 0.1, len + 0.2, M.floor, false);                     // podłoga (bez kolizji: poziom podłogi załatwia silnik)
+    box(room, 0, H + 0.05, mid, RW + 0.2, 0.1, len + 0.2, M.ceil, false);
+    for (const s of [-1, 1]) box(room, s * (HALF + WALL_T / 2), H / 2, mid, WALL_T, H, len + WALL_T, M.wall, true);
     if (i === 0) box(room, 0, H / 2, a, RW + WALL_T * 2, H, WALL_T, M.wall, true);          // południowa ściana tylko w pokoju 0 (reszta to północna ściana poprzedniego)
     // Północna ściana z otworem na drzwi + nadproże + drzwi (z kolizją, dopóki zamknięte)
     const sideW = (RW - DOOR_W) / 2;
@@ -115,18 +155,18 @@ function buildRoom(i) {
     // Meble (rzędy po bokach, środek wolny na przejście x w [-1,1,3]); szafa do chowania w większości pokoi
     const rects = [];
     const free = (x, z, w, d) => rects.every(r => Math.abs(r[0] - x) > (r[2] + w) / 2 + 0.3 || Math.abs(r[1] - z) > (r[3] + d) / 2 + 0.3);
-    const place = (w, h, d, mat, tries) => { for (let k = 0; k < (tries || 12); k++) { const s = R() < 0.5 ? -1 : 1, x = s * (1.9 + R() * (HALF - 2.6 - 0.4)), z = a - 1.8 - R() * (RL - 3.6); if (free(x, z, w, d)) { rects.push([x, z, w, d]); box(room, x, h / 2, z, w, h, d, mat, true); return [x, z, h]; } } return null; };
-    if (i > 0 && (R() < 0.7 || room.locked || i % 3 === 1)) {   // szafa na bocznej ścianie: wnętrze otwarte w stronę środka
-        const s = R() < 0.5 ? -1 : 1, wz = a - 2.5 - R() * (RL - 5), cxw = s * (HALF - 0.65);
-        if (free(cxw, wz, 1.3, 1.6)) {
-            rects.push([cxw, wz, 1.3, 1.6]);
-            box(room, cxw, 2.3, wz, 1.3, 0.1, 1.6, M.wood, true);
-            for (const dz of [-0.78, 0.78]) box(room, cxw, 1.15, wz + dz, 1.3, 2.3, 0.08, M.wood, true);
-            const glow = new THREE.Mesh(M.box, M.dark); glow.scale.set(0.05, 2.2, 1.4); glow.position.set(s * (HALF - 0.06), 1.15, wz); room.group.add(glow);
-            room.wardrobe = { x: cxw, z: wz, s: s };
+    const place = (w, h, d, mat, tries) => { for (let k = 0; k < (tries || 12); k++) { const s = R() < 0.5 ? -1 : 1, x = s * (1.9 + R() * (HALF - 2.6 - 0.4)), z = a - 1.8 - R() * (len - 3.6); if (free(x, z, w, d)) { rects.push([x, z, w, d]); box(room, x, h / 2, z, w, h, d, mat, true); return [x, z, h]; } } return null; };
+    // Szafy do chowania: w pokoju z kluczem dwie (po obu stronach), w innych zwykle jedna; mają drzwi i zapadkę (patrz buildWardrobe)
+    const nWard = i === 0 ? 0 : (room.locked ? 2 : (R() < 0.75 || i % 3 === 1 ? 1 : 0)), side0 = R() < 0.5 ? -1 : 1;
+    for (let k = 0; k < nWard; k++) {
+        const s = k === 0 ? side0 : -side0;
+        for (let tr = 0; tr < 8; tr++) {
+            const wz = a - 2.5 - R() * (len - 5), cxw = s * (HALF - 0.65);
+            if (free(cxw, wz, 1.3, 1.6)) { rects.push([cxw, wz, 1.3, 1.6]); room.wardrobes.push(buildWardrobe(room, cxw, wz, s)); break; }
         }
     }
-    const nPieces = 2 + ((R() * 3) | 0);
+    room.wardrobe = room.wardrobes[0] || null;
+    const nPieces = 3 + ((R() * 3) | 0) + (room.locked ? 5 : 2);   // duże pokoje: więcej mebli (osłon i miejsc na klucz)
     for (let k = 0; k < nPieces; k++) { const type = (R() * 3) | 0; if (type === 0) place(1.9, 0.9, 0.9, R() < 0.5 ? M.cloth : M.cloth2); else if (type === 1) place(1.1, 0.8, 1.1, M.wood); else place(2.0, 2.2, 0.5, M.wood); }
     if (room.locked) {   // klucz leży na stoliku
         const t = place(1.2, 0.8, 1.2, M.wood, 40) || [2.5, a - 3, 0.8];
@@ -143,10 +183,70 @@ function buildRoom(i) {
         m.group.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: 0x14100e, roughness: 1 }); });
         m.head.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: 0.6 }); });
         const st = createBot(0, a - 2); st.mode = 'patrol'; st.wp = 0; m.group.position.set(st.x, 0, st.z);
-        room.weeper = { m: m, st: st, path: [[-2.2, a - 2.5], [2.2, a - 6], [-2.2, a - 9.5], [2.2, a - 6]] };
+        room.weeper = { m: m, st: st, path: [[-3.4, a - len * 0.14], [3.4, a - len * 0.36], [-3.4, a - len * 0.6], [3.4, a - len * 0.84], [0, a - len * 0.5]] };
     }
     S.rooms.set(i, room);
     return room;
+}
+// ---------- SZAFY ----------
+// Szafa stoi przy bocznej ścianie, otwarta do środka sali, z dwuskrzydłowymi drzwiami. Żeby się schować: chwyć gałkę (dłoń blisko + zaciśnięty chwyt),
+// drzwi się otwierają; wejdź do środka i naciśnij zapadkę przy bocznej ściance, żeby zamknąć drzwi. Ukrycie działa tylko przy zamkniętych drzwiach.
+function buildWardrobe(room, cxw, wz, s) {
+    const M = S.mats, front = s * (HALF - 1.3), hz = 0.78;
+    box(room, cxw, 2.3, wz, 1.3, 0.1, 1.6, M.wood, true);                                   // dach
+    for (const dz of [-hz, hz]) box(room, cxw, 1.15, wz + dz, 1.3, 2.3, 0.08, M.wood, true); // boki
+    box(room, cxw - s * 0.05, 2.43, wz, 1.4, 0.14, 1.72, M.wood, false);                    // gzyms
+    box(room, cxw - s * 0.04, 0.06, wz, 1.38, 0.12, 1.7, M.wood, false);                    // cokół
+    const back = new THREE.Mesh(M.box, M.dark); back.scale.set(0.05, 2.2, 1.4); back.position.set(s * (HALF - 0.06), 1.15, wz); room.group.add(back);
+    for (let k = -1; k <= 1; k++) box(room, cxw + s * 0.32, 1.35, wz + k * 0.4, 0.12, 1.5, 0.3, M.cloth2, false);   // płaszcze na wieszaku, żeby w środku nie było pusto
+    const w = { x: cxw, z: wz, s: s, t: 0, open: false, doors: [], cols: [], knob: new THREE.Vector3(front - s * 0.12, 1.05, wz), latch: new THREE.Vector3(cxw, 1.25, wz + hz - 0.1), room: room.i };
+    for (const side of [-1, 1]) {   // side = -1: zawias po stronie -z, skrzydło idzie w +z (i odwrotnie)
+        const dir = -side, pivot = new THREE.Group(); pivot.position.set(front, 0, wz + side * hz); room.group.add(pivot);
+        const leaf = new THREE.Mesh(M.box, M.door); leaf.scale.set(0.05, 2.2, 0.78); leaf.position.set(0, 1.15, dir * 0.4); pivot.add(leaf);
+        const inset = new THREE.Mesh(M.box, M.wood); inset.scale.set(0.02, 1.8, 0.5); inset.position.set(-s * 0.03, 1.15, dir * 0.4); pivot.add(inset);
+        const knob = new THREE.Mesh(M.box, M.gold); knob.scale.set(0.07, 0.07, 0.07); knob.position.set(-s * 0.07, 1.05, dir * 0.7); pivot.add(knob);
+        w.doors.push({ pivot: pivot, openAngle: (dir === 1 ? -s : s) * Math.PI / 2 });
+        const zmin = Math.min(wz + side * hz, wz), zmax = Math.max(wz + side * hz, wz);
+        addCollider(front - 0.05, 0, zmin, front + 0.05, 2.3, zmax); const col = L.obstacles[L.obstacles.length - 1]; w.cols.push(col); room.cols.push(col);   // zamknięte drzwi blokują wejście
+    }
+    // zapadka w środku (na wewnętrznej ściance) i poświata gałki (pulsuje podczas ostrzeżenia przed Łomotem)
+    const latch = new THREE.Mesh(M.box, M.gold); latch.scale.set(0.14, 0.14, 0.06); latch.position.copy(w.latch); latch.position.z += 0.07; room.group.add(latch);
+    w.latchGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffd060, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.0 })); w.latchGlow.scale.set(0.8, 0.8, 1); w.latchGlow.position.copy(w.latch); w.latchGlow.position.z += 0.1; room.group.add(w.latchGlow);
+    w.knobGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffd060, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.0 })); w.knobGlow.scale.set(0.9, 0.9, 1); w.knobGlow.position.copy(w.knob); room.group.add(w.knobGlow);
+    return w;
+}
+const inZone = (p, w) => Math.abs(p.z - w.z) < 0.6 && Math.abs(p.x - w.x) < 0.5 && p.y < 2.4;   // w środku szafy (za płaszczyzną drzwi)
+function setWardrobe(w, open, p) {
+    if (w.open === open) return; w.open = open;
+    const pos = { x: w.x, y: 1.2, z: w.z };
+    if (open) { for (const c of w.cols) { const k = L.obstacles.indexOf(c); if (k >= 0) L.obstacles.splice(k, 1); } SFX.creak(0.8, pos); }
+    else {
+        for (const c of w.cols) if (!L.obstacles.includes(c)) L.obstacles.push(c);
+        if (p && Math.abs(p.x - w.x) > 0.25) setPlayerPosition(w.x, p.y, Math.max(w.z - 0.4, Math.min(w.z + 0.4, p.z)));   // wsuń gracza na środek, żeby drzwi go nie wypchnęły
+        SFX.bang(pos);
+    }
+}
+const isSqueezing = (h) => !!(h && h.userData && h.userData.rig && h.userData.rig.target === 1.0);
+// Naciśnięcie = dłoń blisko punktu + świeże zaciśnięcie chwytu (jak dźwignie w Studni). Animacja drzwi i poświata gałek.
+function updateWardrobes(dt, t, p) {
+    const edge = [false, false];
+    [hands.L, hands.R].forEach((h, i) => { const now = isSqueezing(h); edge[i] = now && !S.sq[i]; S.sq[i] = now; });
+    const pressAt = (pt) => [hands.L, hands.R].some((h, i) => edge[i] && h && h.position.distanceTo(pt) < 0.5);
+    const warn = S.rush.state === 'warn' || S.rush.state === 'run';
+    S.inWardrobe = false; S.hint = '';
+    for (const r of S.rooms.values()) for (const w of r.wardrobes) {
+        const inside = inZone(p, w);
+        if (!w.open && !inside && pressAt(w.knob)) setWardrobe(w, true, p);
+        else if (inside && pressAt(w.latch)) setWardrobe(w, !w.open, p);
+        const target = w.open ? 1 : 0; w.t += Math.sign(target - w.t) * Math.min(Math.abs(target - w.t), dt * 1.8);
+        const e = w.t * w.t * (3 - 2 * w.t);
+        for (const d of w.doors) d.pivot.rotation.y = d.openAngle * e;
+        const pulse = 0.45 + 0.35 * Math.sin(t * 9);
+        w.knobGlow.material.opacity = warn && !w.open && !inside ? pulse : 0;
+        w.latchGlow.material.opacity = inside ? (warn || w.open ? pulse : 0.25) : 0;
+        if (inside) { S.inWardrobe = true; S.hint = w.open ? 'Press the latch (grip) to close the doors' : 'Hidden. Press the latch to get out'; }
+        else if (r.i === S.cur && !w.open && Math.hypot(p.x - w.knob.x, p.z - w.knob.z) < 2.4) S.hint = 'Grab the handle (grip) to open the wardrobe';
+    }
 }
 function dropRoom(i) {
     const room = S.rooms.get(i); if (!room) return;
@@ -161,7 +261,7 @@ function ensureRooms(cur) {
     for (let i = Math.max(0, cur - 1); i <= Math.min(S.n - 1, cur + 2); i++) if (!S.rooms.has(i)) buildRoom(i);
     for (const i of [...S.rooms.keys()]) if (i < cur - 1 || i > cur + 2) dropRoom(i);
     // stałe światła: po jednym nad pokojem poprzednim, bieżącym i dwoma następnymi
-    let k = 0; for (let i = Math.max(0, cur - 1); i <= cur + 2 && k < S.lights.length; i++, k++) { S.lights[k].position.set(0, 2.7, z0(i) - RL / 2); S.lights[k].userData.room = i; }
+    let k = 0; for (let i = Math.max(0, cur - 1); i <= cur + 2 && k < S.lights.length; i++, k++) { S.lights[k].position.set(0, 2.7, z0(i) - roomLen(i) / 2); S.lights[k].userData.room = i; }
 }
 function buildAlcove() {   // wnęka za ostatnimi drzwiami: do niej wchodzi się po otwarciu drzwi nr n, a na końcu stoją drzwi EXIT
     const M = S.mats, a = z0(S.n), g = new THREE.Group(); L.root.add(g);
@@ -191,14 +291,14 @@ function hurt(why) {
 }
 const INTRO = [
     'Walk through the rooms and open the numbered doors. Every 4th door is locked: its key lies in the same room.',
-    'RUSH: lights flicker and a rumble grows. HIDE in a wardrobe (step inside) before it passes, or you die.',
+    'RUSH: lights flicker, a rumble grows. Open a wardrobe (grab the handle), step in and press the latch inside to shut the doors, or you die.',
     'PSST: if you hear it, turn around and LOOK at the face within 2 seconds, or it bites (you have 3 hearts).',
     'From room 7 a blind butler patrols the key rooms. He hears running: sneak. Wardrobes hide you from him too.',
+    'Your flashlight is in your right hand: trigger (VR) or G (desktop) switches it on and off.',
     'Unlocking a door saves a checkpoint and heals you (not on Nightmare). Reach the last door and escape.'
 ];
-function isHidden(p, room) {
-    const w = room && room.wardrobe; if (!w) return false;
-    return Math.abs(p.z - w.z) < 0.6 && Math.abs(p.x - w.x) < 0.55 && p.y < 2.4;
+function isHidden(p, room) {   // ukryty = w środku szafy przy w pełni zamkniętych drzwiach
+    return !!room && room.wardrobes.some(w => inZone(p, w) && w.t === 0 && !w.open);
 }
 
 // ---------- CO KLATKĘ ----------
@@ -220,10 +320,12 @@ export function update(dt, t, ctx) {
     const cur = Math.min(S.n - 1, roomOf(p.z));
     if (cur !== S.cur && p.z <= 0) { S.cur = cur; S.best = Math.max(S.best, cur); ensureRooms(cur); }
     const room = S.rooms.get(S.cur);
+    updateFlashlight();
+    updateWardrobes(dt, t, p);
     S.hidden = isHidden(p, room);
     // Migotanie świateł (ostrzeżenie przed Łomotem) i ruch kluczy
     const flick = S.rush.state === 'warn' ? (0.25 + 0.75 * (Math.sin(t * 40) > 0 ? 1 : 0.1)) : 1;
-    S.lights.forEach((l, k) => { l.intensity = 12 * flick * (0.8 + 0.2 * Math.sin(t * 7 + k)); });
+    S.lights.forEach((l, k) => { l.intensity = 16 * flick * (0.8 + 0.2 * Math.sin(t * 7 + k)); });
     for (const r of S.rooms.values()) if (r.keyObj && r.keyObj.visible) { r.keyObj.rotation.y = t * 1.4; r.keyObj.position.y = 1.15 + Math.sin(t * 2) * 0.06; }
     if (S.caughtT >= 0) {
         S.caughtT += dt;
@@ -251,7 +353,7 @@ function respawn(ctx) {
 // Drzwi: podejdź, a otworzą się (zamknięte na klucz wymagają klucza z tego pokoju)
 function doors(p, dt, room) {
     for (const r of S.rooms.values()) {
-        const d = r.door, dz = z0(r.i) - RL;
+        const d = r.door, dz = z0(r.i + 1);
         if (!d.open && Math.abs(p.z - dz) < 1.7 && Math.abs(p.x) < 1.6 && p.z > dz) {
             if (d.locked && !S.hasKey) { if (S.msgT <= 0) { toast('Locked. The key is in this room.', '#ff6a4a'); SFX.creak(0.5, { x: 0, y: 1.5, z: dz }); S.msgT = 3; } }
             else {
@@ -273,11 +375,11 @@ function rush(dt, t, p, room) {
     const R = S.rush;
     if (R.state === 'wait') {
         R.next -= dt;
-        if (R.next <= 0 && S.cur >= 1 && room && room.wardrobe && p.z < z0(S.cur) - 1.5) { R.state = 'warn'; R.t = RUSH.warn; toast('Something is coming. HIDE!', '#ff4a2a'); SFX.stinger({ x: 0, y: 1.5, z: z0(S.cur) + 6 }); }
+        if (R.next <= 0 && S.cur >= 1 && room && room.wardrobes.length && p.z < z0(S.cur) - 1.5) { R.state = 'warn'; R.t = RUSH.warn; toast('Something is coming. HIDE!', '#ff4a2a'); SFX.stinger({ x: 0, y: 1.5, z: z0(S.cur) + 6 }); }
         else if (R.next <= 0) R.next = 2;
     } else if (R.state === 'warn') {
         R.t -= dt; if (Math.floor(R.t * 3) !== Math.floor((R.t + dt) * 3)) { SFX.heartbeat(1); SFX.bang({ x: 0, y: 1, z: z0(S.cur) + 8 }); }
-        if (R.t <= 0) { R.state = 'run'; R.z = z0(Math.max(0, S.cur - 1)) + 4; R.endZ = z0(S.cur) - RL - 1; SFX.roar(1, { x: 0, y: 1.7, z: R.z }); buzz('both', 0.9, 600); S.rushMesh.visible = true; }
+        if (R.t <= 0) { R.state = 'run'; R.z = z0(Math.max(0, S.cur - 1)) + 4; R.endZ = z0(S.cur + 1) - 1; SFX.roar(1, { x: 0, y: 1.7, z: R.z }); buzz('both', 0.9, 600); S.rushMesh.visible = true; }
     } else if (R.state === 'run') {
         R.z -= RUSH.speed * dt; S.rushMesh.position.set(0, 1.7, R.z); S.rushMesh.scale.setScalar(5.2 + Math.sin(t * 30) * 0.3);
         if (Math.abs(R.z - p.z) < 1.8 && !S.hidden) { caught('It rushed through the hotel.'); S.rushMesh.visible = false; R.state = 'wait'; R.next = 20; return; }
@@ -330,15 +432,19 @@ function drawHud() {
     x.fillStyle = '#ff4a4a'; x.fillText('♥'.repeat(S.hp) + '♡'.repeat(MAX_HP - S.hp), 330, 80);
     x.font = 'bold 24px "Courier New", monospace';
     let msg = 'Open the doors. Listen.', c = '#e8d4c4';
-    if (S.rush.state === 'warn' || S.rush.state === 'run') { msg = S.hidden ? 'Stay hidden...' : 'HIDE IN A WARDROBE!'; c = S.hidden ? '#7fe8a0' : '#ff3a2a'; }
+    if (S.rush.state === 'warn' || S.rush.state === 'run') { msg = S.hidden ? 'Stay hidden...' : (S.inWardrobe ? 'PRESS THE LATCH: CLOSE THE DOORS!' : 'OPEN A WARDROBE AND HIDE!'); c = S.hidden ? '#7fe8a0' : '#ff3a2a'; }
     else if (S.screech.state === 'show') { msg = 'LOOK AT IT!'; c = '#ff3a2a'; }
+    else if (S.hint) { msg = S.hint; c = '#ffd890'; }
     else if (S.cur === S.n - 1 && !S.hasKey) { msg = 'Find the key for the last door.'; c = '#ffd27a'; }
     x.fillStyle = c; x.fillText(msg, 330, 122);
     S.hud.update();
 }
 export function dispose() {
+    restoreFlashlight();
     if (S) { for (const i of [...S.rooms.keys()]) dropRoom(i); S.ev.dispose(); S.ghost.dispose(); S.hud.dispose(); S.intro.dispose(); S.scare.dispose(); }
     S = null;
 }
-export const debug = () => S ? { phase: S.phase, cur: S.cur, rooms: [...S.rooms.keys()], hp: S.hp, hasKey: S.hasKey, hidden: S.hidden, caught: S.caughtT >= 0, rush: S.rush.state, screech: S.screech.state, n: S.n, obstacles: L.obstacles.length, cp: S.cp, wardrobes: [...S.rooms.values()].map(r => r.wardrobe ? [r.i, r.wardrobe.x, r.wardrobe.z] : null), keys: [...S.rooms.values()].map(r => r.keyPos ? [r.i, r.keyPos[0], r.keyPos[1]] : null), doorsOpen: [...S.rooms.values()].map(r => [r.i, r.door.open]) } : null;   // dla testów
+export const debug = () => S ? { phase: S.phase, cur: S.cur, rooms: [...S.rooms.keys()], hp: S.hp, hasKey: S.hasKey, hidden: S.hidden, caught: S.caughtT >= 0, rush: S.rush.state, screech: S.screech.state, n: S.n, zs: S.zs.slice(), obstacles: L.obstacles.length, cp: S.cp, wardrobes: [...S.rooms.values()].flatMap(r => r.wardrobes.map(w => [r.i, w.x, w.z, w.open, w.t, w.knob.x, w.knob.y, w.knob.z, w.latch.x, w.latch.y, w.latch.z])), keys: [...S.rooms.values()].map(r => r.keyPos ? [r.i, r.keyPos[0], r.keyPos[1]] : null), doorsOpen: [...S.rooms.values()].map(r => [r.i, r.door.open]) } : null;   // dla testów
+export const _toggleFlash = () => toggleFlash();   // dla testów
+export const _flash = () => S ? { on: S.flash.on, held: S.flash.held, lampOnCamera: lighting.headLamp.parent === camera, lampVisible: lighting.headLamp.visible } : null;   // dla testów
 export const _forceRush = () => { if (S) { S.rush.state = 'warn'; S.rush.t = 0.3; } };   // dla testów

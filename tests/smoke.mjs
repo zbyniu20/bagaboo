@@ -184,12 +184,13 @@ if (data.length) data.forEach((m) => fail('data: ' + m)); else ok('data: achieve
 // ---- level registry (core/registry.js): the single list of levels must agree with files, index.html, economy and lighting ----
 phase = 'registry';
 const reg = await run(`
-    const R = await import('./core/registry.js'), E = await import('./core/economy.js'), C = await import('./core/config.js'), MU = await import('./core/music.js');
+    const R = await import('./core/registry.js'), E = await import('./core/economy.js'), C = await import('./core/config.js'), MU = await import('./core/music.js'), LC = await import('./core/levelcards.js');
     const bad = [], ids = new Set(), ach = new Set(E.ACHIEVEMENTS.map(a => a.id)), recIds = new Set(E.RECORDS.map(r => r.id));
     for (const d of R.LEVEL_DEFS) {
         if (ids.has(d.id)) bad.push('duplicate id ' + d.id); ids.add(d.id);
         if (d.kind === 'virtual') continue;
         if (d.light !== '@mode' && !C.LIGHT_PRESETS[d.light]) bad.push(d.id + ': unknown light preset ' + d.light);
+        if ((d.kind === 'level' || d.kind === 'game') && !LC.CARDS[d.id]) bad.push(d.id + ': no level card in core/levelcards.js');
         if (d.theme && !MU.THEMES[d.theme]) bad.push(d.id + ': unknown music theme ' + d.theme);
         if (d.kind !== 'virtual' && !d.theme) bad.push(d.id + ': no music theme');
         if (d.diff && !ach.has('nm_' + d.id)) bad.push(d.id + ': difficulty level without nm_' + d.id + ' achievement');
@@ -277,31 +278,52 @@ const modeSim = await run(`
     const st0 = n0.stationPos[0]; PL.playerBody.position.set(st0[0], 1.0, st0[1]); step(m, 2); if (!(m.debug().music > n0.m0 * 0.95)) bad.push('nursery: winding did not refill the music box (' + m.debug().music.toFixed(1) + ')');
     const kp = n0.keyPos[0]; PL.playerBody.position.set(kp[0], 1.0, kp[1]); step(m, 2); const nk = m.debug(); if (nk.keys !== 1 || !(nk.music < n0.m0 * 0.85)) bad.push('nursery: teddy not taken or did not eat the music (keys=' + nk.keys + ', music=' + nk.music.toFixed(1) + ')');
     if (!until(m, d => d.caught, 1500, () => { PL.playerBody.position.set(-19.5, 1.0, -1.6); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('nursery: the awake doll never caught an idle player (modes=' + m.debug().modes + ')');
-    // Hotel: rooms stream in and out, doors open, the locked door needs the key, RUSH kills outside a wardrobe and spares inside one
+    // Hotel: big rooms stream in and out, doors open, the locked door needs the key, wardrobes have doors you open by hand (grip near the handle)
+    // and close from inside with the latch; RUSH spares a player in a CLOSED wardrobe and kills one in the open or behind open doors
     m = await load('hotel');
     if (!until(m, d => d.phase === 'play', 200)) bad.push('hotel: never left the intro');
+    let fl = m._flash(); if (!fl.held || fl.lampOnCamera || !fl.on || !fl.lampVisible) bad.push('hotel: flashlight should be in the right hand and on at the start ' + JSON.stringify(fl));
+    m._toggleFlash(); step(m, 1); fl = m._flash(); if (fl.on || fl.lampVisible) bad.push('hotel: flashlight switch did not turn it off ' + JSON.stringify(fl));
+    m._toggleFlash(); step(m, 1); fl = m._flash(); if (!fl.on || !fl.lampVisible) bad.push('hotel: flashlight switch did not turn it on again ' + JSON.stringify(fl));
     let hd = m.debug(); if (hd.rooms.join() !== '0,1,2') bad.push('hotel: expected rooms 0,1,2 at the start, got ' + hd.rooms);
-    PL.playerBody.position.set(0, 1.0, -11.2); step(m, 3); if (!m.debug().doorsOpen.find(x => x[0] === 0 && x[1])) bad.push('hotel: door 1 did not open when approached');
-    const obs1 = (PL.playerBody.position.set(0, 1.0, -18), step(m, 3), m.debug().obstacles);
-    for (const i of [2, 3]) { PL.playerBody.position.set(0, 1.0, -12 * i - 6); step(m, 3); if (m.debug().cur !== i) bad.push('hotel: expected to be in room ' + i + ', got ' + m.debug().cur); }
+    const zs = hd.zs, mid = (i) => (zs[i] + zs[i + 1]) / 2, len = (i) => zs[i] - zs[i + 1];
+    if (!(len(0) >= 16 && len(3) >= 24)) bad.push('hotel: rooms should be big (16 m, key rooms 24 m): ' + len(0) + ', ' + len(3));
+    PL.playerBody.position.set(0, 1.0, zs[1] + 0.8); step(m, 3); if (!m.debug().doorsOpen.find(x => x[0] === 0 && x[1])) bad.push('hotel: door 1 did not open when approached');
+    const obs1 = (PL.playerBody.position.set(0, 1.0, mid(1)), step(m, 3), m.debug().obstacles);
+    for (const i of [2, 3]) { PL.playerBody.position.set(0, 1.0, mid(i)); step(m, 3); if (m.debug().cur !== i) bad.push('hotel: expected to be in room ' + i + ', got ' + m.debug().cur); }
     hd = m.debug(); if (hd.rooms.includes(0) || hd.rooms.includes(1) || !hd.rooms.includes(5)) bad.push('hotel: rooms did not stream (' + hd.rooms + ')');
-    if (Math.abs(hd.obstacles - obs1) > 120) bad.push('hotel: collider count grows (' + obs1 + ' -> ' + hd.obstacles + ')');
-    PL.playerBody.position.set(0, 1.0, -12 * 4 + 1.0); step(m, 3); if (m.debug().doorsOpen.find(x => x[0] === 3 && x[1])) bad.push('hotel: locked door opened without the key');
+    if (Math.abs(hd.obstacles - obs1) > 160) bad.push('hotel: collider count grows (' + obs1 + ' -> ' + hd.obstacles + ')');
+    PL.playerBody.position.set(0, 1.0, zs[4] + 0.8); step(m, 3); if (m.debug().doorsOpen.find(x => x[0] === 3 && x[1])) bad.push('hotel: locked door opened without the key');
     const key = m.debug().keys.find(x => x && x[0] === 3); if (!key) bad.push('hotel: no key in room 3'); else { PL.playerBody.position.set(key[1], 1.0, key[2]); step(m, 3); if (!m.debug().hasKey) bad.push('hotel: key not picked up'); }
-    PL.playerBody.position.set(0, 1.0, -12 * 4 + 1.0); step(m, 3); hd = m.debug(); if (!hd.doorsOpen.find(x => x[0] === 3 && x[1]) || hd.cp !== 4 || hd.hasKey) bad.push('hotel: key did not unlock the door / checkpoint (' + JSON.stringify([hd.cp, hd.hasKey]) + ')');
-    let wd = null; for (const i of [4, 5, 6]) { PL.playerBody.position.set(0, 1.0, -12 * i - 6); step(m, 3); wd = m.debug().wardrobes.find(x => x && x[0] === i); if (wd) break; }
+    PL.playerBody.position.set(0, 1.0, zs[4] + 0.8); step(m, 3); hd = m.debug(); if (!hd.doorsOpen.find(x => x[0] === 3 && x[1]) || hd.cp !== 4 || hd.hasKey) bad.push('hotel: key did not unlock the door / checkpoint (' + JSON.stringify([hd.cp, hd.hasKey]) + ')');
+    if (m.debug().wardrobes.filter(w => w[0] === 3).length !== 2) bad.push('hotel: key room 3 should have 2 wardrobes');
+    let wd = null; for (const i of [4, 5, 6]) { PL.playerBody.position.set(0, 1.0, mid(i)); step(m, 3); wd = m.debug().wardrobes.find(x => x && x[0] === i); if (wd) break; }
     if (!wd) bad.push('hotel: no wardrobe in rooms 4-6'); else {
-        PL.playerBody.position.set(wd[1], 1.0, wd[2]); step(m, 2); if (!m.debug().hidden) bad.push('hotel: standing in the wardrobe does not hide');
-        m._forceRush(); step(m, 90, () => { PL.playerBody.position.set(wd[1], 1.0, wd[2]); PL.playerBody.velocity.set(0, 0, 0); }); if (m.debug().caught || m.debug().rush !== 'wait') bad.push('hotel: RUSH should pass a hidden player (' + m.debug().rush + ', caught=' + m.debug().caught + ')');
-        PL.playerBody.position.set(0, 1.0, -12 * wd[0] - 6); step(m, 2); m._forceRush();
-        if (!until(m, d => d.caught, 90, () => { PL.playerBody.position.set(0, 1.0, -12 * wd[0] - 6); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('hotel: RUSH did not kill a player in the open');
-        if (!until(m, d => !d.caught && d.cur === 4, 60)) bad.push('hotel: no respawn at the checkpoint after dying');
+        const W = () => m.debug().wardrobes.find(x => x[0] === wd[0] && x[1] === wd[1] && x[2] === wd[2]);
+        const H = PL.hands.R; if (!H || !H.userData || !H.userData.rig) bad.push('hotel: hands not available for the wardrobe test'); else {
+            const squeeze = (on) => { H.userData.rig.target = on ? 1.0 : 0; };
+            const press = (x, y, z) => { H.position.set(x, y, z); squeeze(false); step(m, 1); squeeze(true); step(m, 1); squeeze(false); step(m, 1); };
+            const stay = () => { PL.playerBody.position.set(wd[1], 1.0, wd[2]); PL.playerBody.velocity.set(0, 0, 0); };
+            PL.playerBody.position.set(0, 1.0, wd[2]); step(m, 2); if (W()[3]) bad.push('hotel: wardrobe should start closed');
+            press(wd[5], wd[6], wd[7]); if (!W()[3]) bad.push('hotel: grip near the handle did not open the wardrobe');
+            step(m, 20); if (!(W()[4] > 0.99)) bad.push('hotel: wardrobe doors did not finish opening (t=' + W()[4] + ')');
+            stay(); step(m, 2, stay); if (m.debug().hidden) bad.push('hotel: standing in a wardrobe with OPEN doors must not hide you');
+            press(wd[8], wd[9], wd[10]); step(m, 20, stay); if (W()[3] || !(W()[4] < 0.01)) bad.push('hotel: latch did not close the doors (open=' + W()[3] + ', t=' + W()[4] + ')');
+            if (!m.debug().hidden) bad.push('hotel: closed wardrobe does not hide');
+            m._forceRush(); step(m, 90, stay); if (m.debug().caught || m.debug().rush !== 'wait') bad.push('hotel: RUSH should pass a player hidden behind closed doors (' + m.debug().rush + ', caught=' + m.debug().caught + ')');
+            press(wd[8], wd[9], wd[10]); step(m, 20, stay); if (!W()[3] || m.debug().hidden) bad.push('hotel: latch did not open the doors again');
+            m._forceRush(); if (!until(m, d => d.caught, 90, stay)) bad.push('hotel: RUSH should kill a player standing in a wardrobe with open doors');
+            if (!until(m, d => !d.caught && d.cur === 4, 80)) bad.push('hotel: no respawn at the checkpoint after dying');
+        }
+        PL.playerBody.position.set(0, 1.0, mid(wd[0])); step(m, 2); m._forceRush();
+        if (!until(m, d => d.caught, 90, () => { PL.playerBody.position.set(0, 1.0, mid(wd[0])); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('hotel: RUSH did not kill a player in the open');
+        if (!until(m, d => !d.caught && d.cur === 4, 80)) bad.push('hotel: no respawn at the checkpoint after dying (2)');
     }
-    PL.playerBody.position.set(0, 1.0, -12 * 7 - 6); step(m, 5); step(m, 30, () => PL.playerBody.velocity.set(4, 0, 0));   // room 7 has the butler: must run without errors
+    PL.playerBody.position.set(0, 1.0, mid(7)); step(m, 5); step(m, 30, () => PL.playerBody.velocity.set(4, 0, 0));   // room 7 has the butler: must run without errors
     // Levels terminal: picking a row and difficulty works, OPEN THE DOOR sends you to that level, the secret door scares on the 2nd knock
     {
         const TM = await import('./core/terminal.js'); let went = null; const gctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
-        m = await load('levels'); const tick = (n) => { for (let i = 0; i < n; i++) m.update(0.1, T += 0.1, gctx); TM.redrawTerminals(); };
+        m = await load('levels'); if (ENG.lighting.headLamp.parent !== ENG.camera) bad.push('levels: the flashlight lamp was not returned to the camera after leaving the hotel'); const tick = (n) => { for (let i = 0; i < n; i++) m.update(0.1, T += 0.1, gctx); TM.redrawTerminals(); };
         tick(3); let ld = m.debug(); if (ld.screens !== 5) bad.push('levels: expected 5 terminal screens, got ' + ld.screens); if (!(ld.visitors >= 1)) bad.push('levels: visitor count wrong'); if (!ld || !ld.buttons.includes('enter') || ld.buttons.filter(x => x.startsWith('row')).length !== 11) bad.push('levels: terminal buttons missing (' + (ld && ld.buttons.length) + ')');
         if (!m._press('row2')) bad.push('levels: row2 not clickable'); tick(1); if (m.debug().sel !== 2) bad.push('levels: row click did not select');
         const E2 = await import('./core/economy.js'); E2.setDiff('well', 'normal');

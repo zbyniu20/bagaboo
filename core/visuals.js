@@ -235,9 +235,14 @@ function buildFlashBeam(P) {
     const m = new THREE.Mesh(geo, mat); m.frustumCulled = false; m.renderOrder = 4; m.position.set(0, -0.12, -0.1); camera.add(m);
     return m;
 }
+// Przenosi widoczną wiązkę latarki (np. do dłoni, gdy latarka jest w ręku); null = z powrotem do kamery (jak domyślnie)
+export function setFlashHolder(obj) {
+    if (!fx || !fx.beam) return;
+    (obj || camera).add(fx.beam); fx.beam.position.set(0, obj ? 0 : -0.12, obj ? -0.12 : -0.1);
+}
 function disposeFx() {
     if (!fx) return;
-    if (fx.beam) { camera.remove(fx.beam); fx.beam.geometry.dispose(); fx.beam.material.dispose(); }
+    if (fx.beam) { if (fx.beam.parent) fx.beam.parent.remove(fx.beam); fx.beam.geometry.dispose(); fx.beam.material.dispose(); }
     if (fx.motes) { scene.remove(fx.motes.pts); fx.motes.pts.geometry.dispose(); fx.motes.pts.material.dispose(); }
     if (fx.mist) for (const l of fx.mist) { scene.remove(l.m); l.m.geometry.dispose(); l.m.material.dispose(); l.t.dispose(); }
     fx = null;
