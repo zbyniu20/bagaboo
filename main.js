@@ -8,6 +8,7 @@ import { THREE, scene, camera, renderer, L, clearLevel, applyLighting, lighting 
 import { LIGHT_PRESETS, LIGHT_MODE } from './core/config.js';
 import * as ECO from './core/economy.js';
 import * as NETM from './core/network.js';
+import { createJumpscare } from './core/levelkit.js';
 import { updatePlayer, setPlayerPosition, faceWorldYaw, buildHands, hands, playerBody, releaseAll } from './core/player.js';
 import { redrawTerminals, updatePointers, updateToast, markAllDirty, toast, terminals } from './core/terminal.js';
 import { initAudio, updateListener, hooks as audioHooks } from './core/audio.js';
@@ -298,12 +299,15 @@ const clock = new THREE.Clock();
 const _stepP = new THREE.Vector3(), _stepLast = new THREE.Vector3();
 audioHooks.onScare = () => ECO.bumpStat('scares');
 let uiTimer = 0;
+const goobyScare = createJumpscare({});   // Nothing Hammer (młotek Gooby): jumpscare dla trafionego gracza, działa na każdym poziomie
+NETM.onGooby(() => goobyScare.trigger());
 renderer.setAnimationLoop(() => {
     const rawDt = clock.getDelta(), dt = Math.min(rawDt, 0.1), t = clock.elapsedTime;
     if (renderer.xr.isPresenting) updateXrPerf(rawDt);
     for (let i = frameWaiters.length - 1; i >= 0; i--) if (--frameWaiters[i].n <= 0) { frameWaiters[i].r(); frameWaiters.splice(i, 1); }
     pollPauseButtons(); pollEmoteButtons();
-    updateModMenu(dt);   // BagaBooModMenu: B przez 5 s (tylko konta z MODMENU_NAMES), opcje admina
+    updateModMenu(dt);   // BagaBooModMenu: B przez 2 s (tylko konta z MODMENU_NAMES), opcje admina
+    goobyScare.update(dt);
     // Pauza zatrzymuje świat tylko w grze solo
     const frozen = PAUSE.on && NETM.NET.mode === 'solo';
     if (!frozen) { updatePlayer(dt, t); updateDesktop(dt); updateHammer(dt); }

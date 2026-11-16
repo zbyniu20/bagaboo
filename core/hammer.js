@@ -36,6 +36,12 @@ export function updateHammer(dt) {
         const near = head.distanceTo(hp) < 0.45 || head.distanceTo(hp.clone().setY(hp.y - 0.45)) < 0.5;
         if (!near) continue;
         cool = 2;
+        if (tool === 'gooby') {   // Nothing Hammer: trafiony gracz (nawet z ekipy) dostaje jumpscare Gooby, bez kary i bez sprawdzania rangi
+            N.requestMod('gooby', id);
+            SFX.bang(head); buzz(1, 1, 150);
+            toast('GOOBY ' + st.profile.name, '#ff7ad9');
+            return;
+        }
         if (!canPunish(SAVE.profile.name, st.profile.name)) { toast('You cannot hit ' + st.profile.name, '#ffb030'); return; }
         N.requestMod(tool === 'ban' ? 'ban' : 'kick', id);
         SFX.bang(head); buzz(1, 1, 150);

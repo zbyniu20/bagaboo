@@ -46,7 +46,8 @@ export function sendRouted(to, msg) {
 }
 const cleanRouted = (m) => (m && typeof m === 'object' && typeof m.k === 'string' && m.k.length < 16) ? { k: m.k, item: String(m.item || '').slice(0, 40), ok: !!m.ok } : null;
 // Drużyna idzie za hostem: host wysyła poziom (i ziarno układu), goście wchodzą tam za nim
-let followHandler = null, lastFollow = null, inviteHandler = null;
+let followHandler = null, lastFollow = null, inviteHandler = null, goobyHandler = null;
+export function onGooby(fn) { goobyHandler = fn; }   // main.js: pokazuje jumpscare Gooby, gdy ktoś trafi nas Nothing Hammerem
 
 // ---------- MODERACJA: wyrzucenie (można wrócić), ban na dobę, role ----------
 const BAN_KEY = 'bagaboo_banlist', MY_BAN_KEY = 'bagaboo_banned', DAY = 24 * 3600 * 1000;
@@ -121,6 +122,12 @@ function isHiddenFrom(id, st, viewerId) {
 function performMod(action, targetId, byNick, extra) {
     const by = rankOf(byNick || ''), targetNick = verifiedNickOf(targetId), targetName = targetNick || nameOf(targetId), target = rankOf(targetNick);
     if (by === 0) return;
+    if (action === 'gooby') {   // Nothing Hammer: to tylko jumpscare, więc bez sprawdzania rangi celu; cel to gość (wiadomość) albo sam host (od razu)
+        const gc = connById(targetId);
+        if (gc) { try { gc.send({ type: 'gooby' }); } catch (e) {} }
+        else if ((targetId === null || targetId === undefined || targetId === myPeerId) && goobyHandler) goobyHandler();   // gość, który trafił hosta, wysyła cel jako null (patrz modreq)
+        return;
+    }
     if (action !== 'invite' && action !== 'mod' && !canPunish(byNick, targetNick)) return;   // ekipa nie banuje ekipy; wszystkich może tylko ultimate admin
     if (action === 'mod' && target >= by) return;
     if (action === 'mod' && by < 2) return;            // role nadaje tylko admin
@@ -504,6 +511,7 @@ export function startJoin(code, cb) {
             if (data.type === 'unbanned') { try { localStorage.removeItem(MY_BAN_KEY); } catch (e) {} unbannedNow = true; toast('You were unbanned. Welcome back!', '#9aff60'); return; }
             if (data.type === 'cheater') { if (cheaterHandler) cheaterHandler(data.until); return; }
             if (data.type === 'invite' && data.level === 'staff') myInvited = true;
+            if (data.type === 'gooby') { if (goobyHandler) goobyHandler(); return; }
             if (data.type === 'role') { setLocalMod(data.name, data.mod); toast(data.mod ? 'You are now a moderator!' : 'You are no longer a moderator', '#ffd27a'); markAllDirty(); return; }
             if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, 'host'); return; }
             if (data.type === 'routed') { const m = cleanRouted(data.msg); if (m && routedHandler) routedHandler(m, data.from); return; }
