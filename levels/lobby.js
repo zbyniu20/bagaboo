@@ -369,14 +369,14 @@ function buildGorillaMachine(body, dark) {
     const pivot = new THREE.Group(); pivot.position.set(BX, 0.26, 0); pivot.scale.setScalar(0.95); g.add(pivot);
     attachGorillaMachine(pivot);
     // Pulpit: szafka i pochylony ekran z kategoriami
-    add(new RoundedBoxGeometry(0.98, 0.92, 0.6, 3, 0.05), body, PX, 0.46, 0);
-    add(new THREE.BoxGeometry(1.04, 0.06, 0.66), dark, PX, 0.95, 0.02);
-    const scr = machine.createMesh(0.96, 0.6); scr.position.set(PX, 1.3, 0.12); scr.rotation.x = -0.5; g.add(scr);
-    add(new THREE.BoxGeometry(1.06, 0.7, 0.05), dark, PX, 1.3, 0.09).rotation.x = -0.5;
-    const plight = new THREE.PointLight(0xffa860, 3, 3, 2); plight.position.set(PX, 1.9, 0.7); g.add(plight);
+    add(new RoundedBoxGeometry(0.98, 0.5, 0.6, 3, 0.05), body, PX, 0.25, 0);
+    add(new THREE.BoxGeometry(1.04, 0.06, 0.66), dark, PX, 0.53, 0.02);
+    const scr = machine.createMesh(0.96, 0.6); scr.position.set(PX, 0.88, 0.12); scr.rotation.x = -0.5; g.add(scr);
+    add(new THREE.BoxGeometry(1.06, 0.7, 0.05), dark, PX, 0.88, 0.09).rotation.x = -0.5;
+    const plight = new THREE.PointLight(0xffa860, 3, 3, 2); plight.position.set(PX, 1.48, 0.7); g.add(plight);
     // Kolizje w układzie świata (lokalne x = świat -z): gablota z = z0 - BX, pulpit z = z0 - PX
     addStaticBody(x0, 1.25, z0 - BX, new CANNON.Box(new CANNON.Vec3(0.5, 1.25, 0.6)), g, false);
-    addStaticBody(x0, 0.5, z0 - PX, new CANNON.Box(new CANNON.Vec3(0.3, 0.5, 0.5)), g, false);
+    addStaticBody(x0, 0.4, z0 - PX, new CANNON.Box(new CANNON.Vec3(0.3, 0.4, 0.5)), g, false);
     addBlobAO(x0 + 0.3, z0 - BX, 1.6); addBlobAO(x0 + 0.3, z0 - PX, 1.4);
     L.reserved.push([-13.4, 0.8, 3.3]);
 }
