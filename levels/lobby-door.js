@@ -12,6 +12,7 @@ import { emoteState, emotePose } from '../core/emotes.js';
 import { myVoice } from '../core/network.js';
 import { getLook, onLookChange, unlockItem, recordTime, unlockAchievement } from '../core/economy.js';
 import { hands } from '../core/player.js';
+import { MOD } from '../core/modstate.js';
 import * as SFX from '../core/audio.js';
 import { buildDoor as buildDoor3 } from '../core/levelkit.js';
 
@@ -97,7 +98,7 @@ function buildMe(look) {
     // Dłonie w lustrze to osobne kopie (warstwa lustra): pokazują te same ruchy co twoje, a podczas emotki wykonują ją, więc widzisz ją w lustrze
     const handL = createRealHand(true, look), handR = createRealHand(false, look); handL.scale.setScalar(sc); handR.scale.setScalar(sc);
     for (const o of [head, torso, armL, armR, handL, handR]) { o.traverse(c => c.layers.set(MIRROR_LAYER)); L.root.add(o); }
-    me = { head: head, torso: torso, armL: armL, armR: armR, handL: handL, handR: handR, drop: 0.35 * sc };
+    me = { head: head, torso: torso, armL: armL, armR: armR, handL: handL, handR: handR, drop: 0.35 * sc, sc: sc, sz: 1 };
 }
 
 // ---------- CZERWONA TRASA "PARKOUR KING" ----------
@@ -229,7 +230,10 @@ export function update(dt, t, ctx) {
         if (em) emotePose(me, em.id, em.t);
         poseHand(me.handL.userData.rig, 1 / 60); poseHand(me.handR.userData.rig, 1 / 60);
         _e.setFromQuaternion(me.head.quaternion, 'YXZ');
-        me.torso.position.set(me.head.position.x, me.head.position.y - me.drop, me.head.position.z); me.torso.rotation.set(0, _e.y, 0);
+        const sz = MOD.size;   // BagaBooModMenu SIZE: lustro pokazuje większego / mniejszego goryla (głowa, tułów, dłonie i grubość ramion), nie tylko inną długość rąk
+        if (me.sz !== sz) { me.sz = sz; for (const o of [me.head, me.torso]) o.scale.setScalar(me.sc * sz); me.armL.userData.thick = me.armR.userData.thick = sz; }
+        for (const m of [me.handL, me.handR]) m.scale.setScalar(me.sc * sz);
+        me.torso.position.set(me.head.position.x, me.head.position.y - me.drop * sz, me.head.position.z); me.torso.rotation.set(0, _e.y, 0);
         const v = myVoice(); animateFace(me.head, v.level, v.pitch, 1 / 60);   // w lustrze usta ruszają się, gdy mówisz
         me.torso.updateMatrixWorld(true);
         placeArm(me.armL, me.torso, -1, me.handL); placeArm(me.armR, me.torso, 1, me.handR);

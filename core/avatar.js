@@ -7,7 +7,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP } from './config.js';
 import { makeCanvas, toTex, mkRng, normalFor } from './textures.js';
-import { roleTagFor } from './config.js';
+import { roleTagsFor } from './config.js';
 import { rimify } from './visuals.js';
 import { extraHat, extraGlasses, extraMask, extraSleeveMat, extraGloveMat, EXTRA_SKINS, EXTRA_BADGES } from './cosmetics.js';
 
@@ -497,7 +497,8 @@ export function placeArm(arm, torso, side, hand) {
     hand.getWorldPosition(_hp);
     if (arm.parent) arm.parent.worldToLocal(_sh), arm.parent.worldToLocal(_hp);
     _dir.subVectors(_hp, _sh); const len = Math.max(0.05, _dir.length());
-    arm.position.copy(_sh); arm.quaternion.setFromUnitVectors(_Y, _dir.normalize()); arm.scale.set(1, len, 1);
+    const th = arm.userData.thick || 1;   // grubość ramienia rośnie razem z rozmiarem goryla (BagaBooModMenu SIZE), długość wynika z odległości do dłoni
+    arm.position.copy(_sh); arm.quaternion.setFromUnitVectors(_Y, _dir.normalize()); arm.scale.set(th, len, th);
     arm.updateMatrixWorld(true);
 }
 // Młotki ekipy: Ban (obsydian z czerwoną energią) i Kick (złoto z elektrycznie żółtą energią).
@@ -598,11 +599,15 @@ export function roleLabel(text, color, glow) {
 // Poziomy z ukrywaniem (Hide and Seek) ustawiają hidden = true: nazwy graczy nie świecą wtedy przez ściany
 export const TAGS = { hidden: false };
 export function addRoleTag(head, look) {
-    const r = look.cheater ? { text: 'CHEATER', color: '#ff2a2a', glow: '#ff0000' } : roleTagFor(look.name);   // napisu CHEATER nie da się ukryć
-    if (!r || (look.hideTag && !look.cheater)) return null;
-    const lab = roleLabel(r.text, r.color, r.glow); lab.position.set(0, 0.67, 0); head.add(lab);
-    (head.userData.tags = head.userData.tags || []).push(lab);
-    return lab;
+    const list = look.cheater ? [{ text: 'CHEATER', color: '#ff2a2a', glow: '#ff0000' }] : roleTagsFor(look.name);   // napisu CHEATER nie da się ukryć
+    if (!list.length || (look.hideTag && !look.cheater)) return null;
+    let first = null;
+    list.forEach((r, i) => {   // najwyższa rola na samej górze, kolejne pod nią (OWNER, ADMIN, MODERATOR)
+        const lab = roleLabel(r.text, r.color, r.glow); lab.position.set(0, 0.67 + (list.length - 1 - i) * 0.17, 0); head.add(lab);
+        (head.userData.tags = head.userData.tags || []).push(lab);
+        if (!first) first = lab;
+    });
+    return first;
 }
 export const ULTIMATE_SCALE = 2;
 export function createAvatar(look) {
@@ -623,7 +628,7 @@ export function createAvatar(look) {
         const b = Math.sin(performance.now() * 0.0016 + breathPh) * 0.5 + 0.5;
         chest.scale.set(1 + b * 0.012, 1 + b * 0.022, 1 + b * 0.03);
     };
-    return { group, torso, head, handL, handR, key: lookKey(look), torsoDrop: 0.35 * sc };
+    return { group, torso, head, handL, handR, armL, armR, base: sc, key: lookKey(look), torsoDrop: 0.35 * sc };
 }
 
 // Mimika przy rozmowie: level 0..1 (głośność), pitch 0..1 (wysokość głosu).

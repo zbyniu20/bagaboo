@@ -130,7 +130,7 @@ export const ULTIMATE_NAMES = ['zbyniu'];
 export const ADMIN_NAMES = ['BoyIsGamer'];
 export const COADMIN_NAMES = ['spikyvr'];   // co-admin: uprawnienia admina, własny napis CO-ADMIN i odznaka
 export const OWNER_NAMES = ['BoyIsGamer'];   // właściciel gry: napis OWNER nad głową i odznaka Owner
-export const MOD_NAMES = ['lincolnvr', 'victoryboy'];
+export const MOD_NAMES = ['lincolnvr', 'victoryboy', 'BoyIsGamer'];   // BoyIsGamer: właściciel + admin + moderator (wszystkie trzy napisy nad głową i odznaki)
 const low = (n) => String(n || '').trim().toLowerCase();
 // BagaBooModMenu (core/modmenu.js): sekretne menu admina, otwierane przytrzymaniem B przez 5 s. Mają je tylko te konta (po nicku zweryfikowanym przez serwer kont).
 export const MODMENU_NAMES = ['zbyniu', 'BoyIsGamer', 'spikyvr'];
@@ -168,6 +168,17 @@ export function roleTagFor(name) {
     if (isAdminName(name)) return { text: 'ADMIN', color: '#ff8a5a', glow: '#ff4a10' };
     if (isModName(name)) return { text: 'MODERATOR', color: '#8ab8ff', glow: '#3a6aff' };
     return null;
+}
+// Wszystkie napisy roli nad głową, od najwyższej: właściciel z adminem i moderatorem (BoyIsGamer) ma OWNER, ADMIN i MODERATOR naraz.
+// Ultimate admin i co-admin zostają przy jednym napisie jak dotąd.
+export function roleTagsFor(name) {
+    if (isUltimateName(name)) return [roleTagFor(name)];
+    const out = [], base = roleTagFor(name);
+    if (isOwnerName(name)) out.push(roleTagFor(name));   // OWNER
+    else if (base) out.push(base);
+    if (isOwnerName(name) && ADMIN_NAMES.some(n => low(n) === low(name))) out.push({ text: 'ADMIN', color: '#ff8a5a', glow: '#ff4a10' });
+    if (isOwnerName(name) && isModName(name)) out.push({ text: 'MODERATOR', color: '#8ab8ff', glow: '#3a6aff' });
+    return out;
 }
 // Ranga: 4 ultimate admin (zbyniu), 3 właściciel (BoyIsGamer), 2 admin / co-admin, 1 moderator, 0 gracz.
 // Wyrzucić / zbanować można tylko kogoś z niższą rangą, więc właściciel może wszystko poza ultimate adminem.

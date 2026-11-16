@@ -288,7 +288,10 @@ function updateRemote(id, st) {
     if (!remoteAvatars[id]) { const a = createAvatar(st.profile); scene.add(a.group); remoteAvatars[id] = a; }
     const p = remoteAvatars[id];
     const sz = Math.max(0.25, Math.min(8, +st.sz || 1));   // rozmiar goryla z BagaBooModMenu (host zeruje go u graczy spoza listy menu)
-    if ((p.sz || 1) !== sz) { p.sz = sz; for (const o of [p.head, p.torso, p.handL, p.handR]) o.scale.setScalar(sz); }
+    if ((p.sz || 1) !== sz) {   // skala bazowa (ultimate admin = 2) razy rozmiar; ramiona grubieją razem z gorylem, a nie tylko wydłużają się do dłoni
+        p.sz = sz; for (const o of [p.head, p.torso, p.handL, p.handR]) o.scale.setScalar((p.base || 1) * sz);
+        for (const a of [p.armL, p.armR]) if (a) a.userData.thick = sz;
+    }
     p.head.position.fromArray(st.head.p); p.head.quaternion.fromArray(st.head.q);
     p.handL.position.fromArray(st.h1.p); p.handL.quaternion.fromArray(st.h1.q);
     p.handR.position.fromArray(st.h2.p); p.handR.quaternion.fromArray(st.h2.q);
