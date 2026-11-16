@@ -340,13 +340,21 @@ export function updatePlayer(dt, t) {
     if (SETTINGS.snapTurn) headYaw = readHeadStick() * HEAD_TURN_MAX;   // bez płynnego dojazdu: nagły skok o 30° nie powoduje choroby lokomocyjnej
     else headYaw += (readHeadStick() * HEAD_TURN_MAX - headYaw) * Math.min(1, lastDt * HEAD_TURN_SMOOTH);
     if (Math.abs(headYaw) < 1e-4) headYaw = 0;
-    playerRig.quaternion.setFromAxisAngle(_yAxis, -headYaw);   // obrót wokół głowy gracza, więc głowa nie przesuwa się w bok
+    playerRig.quaternion.setFromAxisAngle(_yAxis, baseYaw - headYaw);   // obrót wokół głowy gracza, więc głowa nie przesuwa się w bok
     const cl = _headLocal.copy(camera.position).applyQuaternion(playerRig.quaternion);
     playerRig.position.set(bp.x - cl.x, bp.y - radius - gorillaStanceOffset, bp.z - cl.z);
     playerRig.updateMatrixWorld(true);
 }
 const HEAD_TURN_MAX = Math.PI / 2, HEAD_TURN_SMOOTH = 14, HEAD_STICK_DEADZONE = 0.12;
-let headYaw = 0;
+let headYaw = 0, baseYaw = 0;
+// Ustawia, w którą stronę świata patrzy gracz w VR (0 = wprost na -z): obraca platformę o różnicę między tym, gdzie patrzy teraz, a celem.
+// Bez argumentu (null) kasuje obrót i wraca do zwykłego zachowania (kierunek wyznacza ustawienie fizyczne gracza).
+export function faceWorldYaw(target) {
+    if (target === null || target === undefined) { baseYaw = 0; return; }
+    playerRig.updateMatrixWorld(true); camera.updateWorldMatrix(true, false);
+    const d = camera.getWorldDirection(_headLocal.set(0, 0, 0)), cur = Math.atan2(-d.x, -d.z);
+    baseYaw = Math.atan2(Math.sin(baseYaw + target - cur), Math.cos(baseYaw + target - cur));
+}
 const _yAxis = new THREE.Vector3(0, 1, 0), _headLocal = new THREE.Vector3();
 // Wychylenie prawej gałki w poziomie, od -1 (lewo) do 1 (prawo), z martwą strefą
 function readHeadStick() {

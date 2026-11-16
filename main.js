@@ -8,7 +8,7 @@ import { THREE, scene, camera, renderer, L, clearLevel, applyLighting, lighting 
 import { LIGHT_PRESETS, LIGHT_MODE } from './core/config.js';
 import * as ECO from './core/economy.js';
 import * as NETM from './core/network.js';
-import { updatePlayer, setPlayerPosition, buildHands, hands, playerBody, releaseAll } from './core/player.js';
+import { updatePlayer, setPlayerPosition, faceWorldYaw, buildHands, hands, playerBody, releaseAll } from './core/player.js';
 import { redrawTerminals, updatePointers, updateToast, markAllDirty, toast, terminals } from './core/terminal.js';
 import { initAudio, updateListener, hooks as audioHooks } from './core/audio.js';
 import { setLevelMusic } from './core/music.js';
@@ -19,7 +19,7 @@ import { startXrPerf, stopXrPerf, updateXrPerf } from './core/xrperf.js';
 import { drawScoreboard } from './core/ui.js';
 import { PAUSE, pauseMenu, pollPauseButtons, closePause } from './core/pause.js';
 import { SETTINGS, saveSettings } from './core/settings.js';
-import { enableDesktop, updateDesktop } from './core/desktop.js';
+import { enableDesktop, updateDesktop, setDesktopFacing } from './core/desktop.js';
 import { startPresence } from './core/presence.js';
 import { updateHammer } from './core/hammer.js';
 import { updateVrMenu, vrMenuTerminal } from './core/vrmenu.js';
@@ -68,6 +68,8 @@ export async function loadLevel(id, spawn) {
         if (ox > B.minX && ox < B.maxX && oz > B.minZ && oz < B.maxZ && !L.obstacles.some(o => o.box3.distanceToPoint(probe) < 0.4)) { sx = ox; sz = oz; }
     }
     setPlayerPosition(sx, sp[1], sz);
+    // Sale Levels i Games: gracz patrzy wprost na terminale (-z), a nie w stronę drzwi do lobby; inne poziomy zostają bez zmian
+    if (id === 'levels' || id === 'games') { setDesktopFacing(0); faceWorldYaw(renderer.xr.isPresenting ? 0 : null); } else faceWorldYaw(null);
     markAllDirty();
 }
 // Ekran ładowania przed oczami: zamiast zamrożonego obrazu gracz widzi czerń z napisem

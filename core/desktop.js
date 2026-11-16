@@ -23,6 +23,8 @@ help.innerHTML = '<b>Desktop test mode</b><br>Click the view to capture the mous
 document.body.appendChild(cross); document.body.appendChild(help);
 
 export function enableDesktop() { DESKTOP.enabled = true; }
+// Kierunek patrzenia na pulpicie: yaw 0 = wprost na -z (po wejściu do sali Levels/Games: na terminale)
+export function setDesktopFacing(y) { yaw = y; pitch = 0; }
 const locked = () => document.pointerLockElement === canvas;
 
 window.addEventListener('keydown', (e) => {
