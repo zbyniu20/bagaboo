@@ -4,7 +4,7 @@
 // Stan animacji ("podchodzenie" postaci) trzyma obiekt z makeDread(): { t, dread, blackT, flick, scared }.
 // ==========================================
 import { THREE, L, tex } from './engine.js';
-import { buildComputerDesk } from './computerdesk.js';
+import { buildMachineTerminal } from './computerdesk.js';
 import * as T from './textures.js';
 import { fmtDuration } from './economy.js';
 import { IS_QUEST } from './device.js';
@@ -127,14 +127,14 @@ export function drawGlass(c, W2, H2, t, S) {
     }
 }
 
-// Stanowiska: stojące komputery jak w lobby (core/computerdesk.js), wszystkie z tą samą grafiką terminala (jedno płótno, jedno rysowanie).
-// list: [{ x, z, rotY }], rotY: lokalne +z komputera = strona, z której stoi gracz. opt: { scale (domyślnie 1.25), label }
+// Stanowiska: stojące terminale jak pulpit Maszyny goryla w lobby (core/computerdesk.js buildMachineTerminal), wszystkie z tą samą grafiką terminala (jedno płótno, jedno rysowanie).
+// list: [{ x, z, rotY }], rotY: lokalne +z terminala = strona, z której stoi gracz. opt: { scale (domyślnie 1.25), label }
 export function addComputers(term, list, opt) {
     opt = opt || {}; const scale = opt.scale || 1.25;
     let first = !term.mesh;   // po zmianie poziomu główny ekran jest zerowany: pierwszy ekran tworzy grafikę od nowa, reszta dokłada widoki
     list.forEach((c, k) => {
-        const d = buildComputerDesk(c.x, c.z, c.rotY, scale, (w, h) => { const m = first ? term.createMesh(w, h) : term.addMesh(w, h); first = false; return m; });
+        const d = buildMachineTerminal(c.x, c.z, c.rotY, scale, (w, h) => { const m = first ? term.createMesh(w, h) : term.addMesh(w, h); first = false; return m; });
         const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.09), new THREE.MeshBasicMaterial({ map: plateTexture((opt.label || 'TERMINAL') + ' ' + (k + 1)), transparent: true, toneMapped: false }));
-        plate.position.set(0, 1.42, -0.14); d.group.add(plate);   // tabliczka z numerem nad monitorem
+        plate.position.set(0, 0.62, 0.305); d.group.add(plate);   // tabliczka z numerem na froncie szafki
     });
 }

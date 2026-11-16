@@ -181,7 +181,7 @@ export function build() {
     ensureAssets(1152, 720);
     if (!term) term = new Terminal(drawScreen, 1152, 720);
     term.state = {}; term.dirty = true;
-    addComputers(term, STATIONS, { label: 'COMPUTER' });
+    addComputers(term, STATIONS, { label: 'TERMINAL' });
     const glow = new THREE.PointLight(0xff3020, 18, 11, 1.8); glow.position.set(0, 2.4, -D + 2.2); L.root.add(glow); S.glow = glow;
     for (const f of ['24px VT323', '24px "IM Fell English SC"', 'italic 24px "IM Fell English"']) { try { document.fonts.load(f).then(() => { if (term) term.dirty = true; }); } catch (e) { /* bez czcionek: Courier */ } }
     buildWarnings();
