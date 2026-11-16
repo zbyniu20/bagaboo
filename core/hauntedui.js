@@ -8,6 +8,7 @@ import * as T from './textures.js';
 import { fmtDuration } from './economy.js';
 import { IS_QUEST } from './device.js';
 import * as N from './network.js';
+import { wrapText } from './terminal.js';
 
 export const PROX = ['9.0 m', '7.2 m', '5.1 m', '3.4 m', '1.9 m', '0.6 m'];
 export const WHISPERS = ['LISTEN.', 'STILL THERE?', 'NOT THAT ONE.', 'BEHIND YOU.', 'I CAN HEAR YOU BREATHE.', 'CHOOSE.', 'HE IS WATCHING THE DOOR.'];
@@ -64,12 +65,24 @@ export function tx(c, s, x, y, size, col, align, font, glow) {
     c.fillText(s, x, y); c.shadowBlur = 0;
 }
 
+// Karta poziomu/trybu: cztery sekcje (miejsce, cel, jak grać, na co uważać), zawijane do ok. 58 znaków. Zwraca y po ostatniej linii.
+// accent: kolor etykiet. Rysowanie kończy się, gdy zabraknie miejsca (yMax), więc teksty w core/levelcards.js trzymaj krótkie.
+export function drawCard(c, card, x, y, yMax, accent) {
+    const sections = [['THE PLACE', [card.place]], ['YOUR GOAL', [card.goal]], ['HOW TO PLAY', card.how.map(b => '- ' + b)], ['WATCH OUT', [card.watch]]];
+    for (const [label, items] of sections) {
+        if (y + 20 > yMax) break;
+        tx(c, label, x, y, 17, accent || BLOOD, 'left', MONO, 6); y += 21;
+        for (const it of items) for (const ln of wrapText(it, 58)) { if (y > yMax) return y; tx(c, ln, x, y, 20, '#e0d2b8'); y += 22; }
+        y += 7;
+    }
+    return y;
+}
 // Monitor tętna (EKG): przewija się z prędkością zależną od BPM
 export function drawEcg(c, ex, ey, ew, eh, now, bpm, col) {
     c.fillStyle = 'rgba(255,180,84,0.05)'; c.fillRect(ex, ey, ew, eh); c.strokeStyle = '#4a2418'; c.lineWidth = 1; c.strokeRect(ex + 0.5, ey + 0.5, ew - 1, eh - 1);
     c.save(); c.beginPath(); c.rect(ex, ey, ew, eh); c.clip(); c.strokeStyle = col; c.lineWidth = 2.2; c.lineJoin = 'round'; c.beginPath();
     const off = (now * 200 * bpm / 60) % 200;
-    for (let x = 0; x <= ew; x += 3) { const xp = (x + off) % 200; let y = 32; for (let k = 1; k < BEAT.length; k++) if (xp <= BEAT[k][0]) { const a = BEAT[k - 1], b = BEAT[k]; y = a[1] + (b[1] - a[1]) * (xp - a[0]) / (b[0] - a[0] || 1); break; } x ? c.lineTo(ex + x, ey + y * 0.85 + 4) : c.moveTo(ex + x, ey + y * 0.85 + 4); }
+    for (let x = 0; x <= ew; x += 3) { const xp = (x + off) % 200; let y = 32; for (let k = 1; k < BEAT.length; k++) if (xp <= BEAT[k][0]) { const a = BEAT[k - 1], b = BEAT[k]; y = a[1] + (b[1] - a[1]) * (xp - a[0]) / (b[0] - a[0] || 1); break; } const yy = ey + (y * 0.85 + 4) * (eh / 52); x ? c.lineTo(ex + x, yy) : c.moveTo(ex + x, yy); }
     c.stroke(); c.restore();
 }
 // Oko patrzy za celownikiem gracza

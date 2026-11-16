@@ -14,8 +14,9 @@ import { Terminal, toast } from '../core/terminal.js';
 import { buildDoor } from '../core/levelkit.js';
 import { SAVE, getDiff, topTimes } from '../core/economy.js';
 import { LEVEL_BY_ID } from '../core/registry.js';
+import { CARDS } from '../core/levelcards.js';
 import { IS_QUEST } from '../core/device.js';
-import { PROX, TICKER, MONO, SERIF, ITAL, BONE, BLOOD, AMB, AMBD, mmss, visitorsHere, ensureAssets, sp, tx, drawEcg, drawEye, drawGlass, addStations, makeDread, stepDread } from '../core/hauntedui.js';
+import { PROX, TICKER, MONO, SERIF, ITAL, BONE, BLOOD, AMB, AMBD, mmss, visitorsHere, ensureAssets, sp, tx, drawEcg, drawEye, drawGlass, addStations, makeDread, stepDread, drawCard } from '../core/hauntedui.js';
 import { ARRIVAL_GAMES } from './lobby-door.js';
 import { LOBBY_MOVE_SCALE } from '../core/config.js';
 
@@ -128,28 +129,28 @@ function drawGames(t) {
     tx(c, cat.title, 30, 438, 24, cat.color, 'left', MONO, 8); tx(c, cat.sub, 30, 466, 20, AMBD);
     tx(c, '> MEMORY CHECK ........ OK', 30, 630, 19, AMBD); tx(c, '> VISITORS PRESENT .... ' + visitorsHere('games'), 30, 650, 19, AMBD); tx(c, '> VISITORS EXPECTED ... 0', 30, 670, 19, AMBD);
     c.fillStyle = '#3a1812'; c.fillRect(392, 48, 2, 640);
-    // panel trybu
-    const X0 = 418, XR = W2 - 30, idx = MODES.indexOf(m);
+    // panel trybu = KARTA (miejsce, cel, jak grać, na co uważać), niżej rekordy i PLAY
+    const X0 = 418, XR = W2 - 30, idx = MODES.indexOf(m), card = CARDS[m.target];
     tx(c, 'ENTRY ' + String(idx + 1).padStart(2, '0') + ' OF ' + MODES.length + '  /  ' + cat.title, X0, 74, 20, AMBD);
-    drawEye(c, XR - 62, 82, t, S);
-    const size = m.label.length > 17 ? 44 : (m.label.length > 13 ? 56 : 66);
-    tx(c, m.label, X0, 150, size, '#efe3cc', 'left', SERIF, 18);
-    tx(c, '\u201C' + cat.sub + '\u201D', X0, 202, 27, AMB, 'left', ITAL);
-    m.desc.forEach((line, k) => tx(c, line, X0, 244 + k * 30, 27, '#e0d2b8'));
+    drawEye(c, XR - 62, 76, t, S);
+    const size = m.label.length > 17 ? 38 : (m.label.length > 13 ? 46 : 52);
+    tx(c, m.label, X0, 118, size, '#efe3cc', 'left', SERIF, 18);
+    tx(c, '“' + cat.sub + '”', X0, 154, 25, AMB, 'left', ITAL);
     const text = m.desc.join(' '), solo = /solo|alone/i.test(text), reward = /200/.test(text);
-    tx(c, solo ? 'SOLO OK' : 'BEST WITH FRIENDS', X0, 380, 22, cat.color, 'left', MONO, 6); if (reward) tx(c, 'WIN = 200 BAGABUCKS', X0, 408, 22, '#ffd27a');
-    const bpm = Math.round(66 + idx * 3 + dread * 4), ecgCol = bpm > 140 ? BLOOD : AMB, ex = 774, ey = 398, ew = 218, eh = 52;
-    tx(c, 'VISITOR VITALS', ex + ew / 2, 388, 15, AMBD, 'center'); drawEcg(c, ex, ey, ew, eh, now, bpm, ecgCol);
-    tx(c, String(bpm), XR - 40, 422, 36, ecgCol, 'right', MONO, 8); tx(c, 'BPM', XR, 428, 17, ecgCol, 'right');
-    // rekordy
+    tx(c, solo ? 'SOLO OK' : 'BEST WITH FRIENDS', X0, 190, 20, cat.color, 'left', MONO, 6); if (reward) tx(c, 'WIN = 200 BAGABUCKS', X0 + 240, 190, 20, '#ffd27a');
+    const bpm = Math.round(66 + idx * 3 + dread * 4), ecgCol = bpm > 140 ? BLOOD : AMB;
+    drawEcg(c, XR - 250, 172, 190, 36, now, bpm, ecgCol); tx(c, String(bpm), XR, 190, 26, ecgCol, 'right', MONO, 8);
+    drawCard(c, card, X0, 226, 540, cat.color);
+    // dolny pasek: rekordy i przycisk gry
+    c.fillStyle = '#3a1812'; c.fillRect(X0, 546, XR - X0, 1);
     const rec = recordsFor(m);
-    tx(c, 'RECORDS', X0, 440, 20, AMBD);
-    if (!rec) { tx(c, 'No records for this mode.', X0, 472, 22, '#9a8c78'); }
-    else if (rec.kind === 'score') { tx(c, rec.value === undefined ? 'Not played yet.' : 'Best: ' + rec.value + (rec.unit ? ' (' + rec.unit + ')' : ''), X0, 472, 25, rec.value === undefined ? '#9a8c78' : '#ffd27a'); }
-    else if (!rec.list.length) { tx(c, 'Not finished yet.', X0, 472, 22, '#9a8c78'); }
-    else { rec.list.slice(0, 3).forEach((s2, k) => tx(c, (k + 1) + '.  ' + mmss(s2), X0, 472 + k * 28, 25, k === 0 ? '#ffd27a' : '#d8c8ac')); if (rec) tx(c, 'Ghost of #1 runs with you', X0, 570, 17, '#7fe8ff'); }
+    tx(c, 'RECORDS', X0, 580, 17, AMBD);
+    if (!rec) tx(c, 'No records for this mode.', X0, 612, 20, '#9a8c78');
+    else if (rec.kind === 'score') tx(c, rec.value === undefined ? 'Not played yet.' : 'Best: ' + rec.value + (rec.unit ? ' (' + rec.unit + ')' : ''), X0, 612, 22, rec.value === undefined ? '#9a8c78' : '#ffd27a');
+    else if (!rec.list.length) tx(c, 'Not finished yet.', X0, 612, 20, '#9a8c78');
+    else { rec.list.slice(0, 3).forEach((s2, k) => tx(c, (k + 1) + '. ' + mmss(s2), X0 + k * 126, 612, 20, k === 0 ? '#ffd27a' : '#d8c8ac')); tx(c, 'Ghost of #1 runs with you', X0, 640, 15, '#7fe8ff'); }
     // przycisk gry
-    const hov = t.hover.has('play'), bx = 808, by = 566, bw = 300, bh = 60;
+    const hov = t.hover.has('play'), bx = 808, by = 600, bw = 300, bh = 60;
     c.fillStyle = hov ? '#ff6a52' : BLOOD; c.shadowColor = BLOOD; c.shadowBlur = hov ? 30 : 18; c.fillRect(bx, by, bw, bh); c.shadowBlur = 0;
     tx(c, 'PLAY >', bx + bw / 2, by + bh / 2 + 1, 32, '#140503', 'center');
     t.buttons.push({ id: 'play', x: bx, y: by, w: bw, h: bh, action: play });
