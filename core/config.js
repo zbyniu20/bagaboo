@@ -132,6 +132,10 @@ export const COADMIN_NAMES = ['spikyvr'];   // co-admin: uprawnienia admina, wł
 export const OWNER_NAMES = ['BoyIsGamer'];   // właściciel gry: napis OWNER nad głową i odznaka Owner
 export const MOD_NAMES = ['lincolnvr', 'victoryboy'];
 const low = (n) => String(n || '').trim().toLowerCase();
+// BagaBooModMenu (core/modmenu.js): sekretne menu admina, otwierane przytrzymaniem B przez 5 s. Mają je tylko te konta (po nicku zweryfikowanym przez serwer kont).
+export const MODMENU_NAMES = ['zbyniu', 'BoyIsGamer', 'spikyvr'];
+const MODMENU_SET = new Set(MODMENU_NAMES.map(low));
+export function isModMenuUser(name) { return MODMENU_SET.has(low(name)); }
 // Zastrzeżone nicki (stała ekipa): grać pod nimi może tylko zalogowane konto o tym nicku (core/auth.js).
 // Host nie wpuści gościa z takim nickiem bez dowodu z serwera kont (core/network.js). Konta ekipy zakłada admin w bazie (bagaboo-api, ADMIN_KEY).
 export const RESERVED_NICKS = new Set([...ULTIMATE_NAMES, ...ADMIN_NAMES, ...COADMIN_NAMES, ...OWNER_NAMES, ...MOD_NAMES].map(low));

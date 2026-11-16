@@ -8,6 +8,7 @@ import { track } from './economy.js';
 import { initPointers, clickPointer } from './terminal.js';
 import { sendObjectMove } from './network.js';
 import { buzz } from './haptics.js';
+import { MOD, BOOST_MULT, FLY_SPEED, capMul } from './modstate.js';   // BagaBooModMenu: boost, fly, noclip i size (domyślnie wyłączone)
 
 const radius = 0.35, gorillaStanceOffset = 0.35;   // widok wyżej, bo długie ręce goryla i tak sięgają podłogi
 const POWER = 1.0;            // siła trampolin i limit prędkości (1.0 = normalnie)
@@ -176,14 +177,14 @@ function pushOut(p, v) {
 world.addEventListener('postStep', () => {
     stepped = true;
     const p = playerBody.position, v = playerBody.velocity;
-    for (let pass = 0; pass < 3; pass++) {
+    for (let pass = 0; pass < 3 && !MOD.noclip; pass++) {   // noclip: przechodzisz przez przeszkody
         let any = false;
         for (const o of L.obstacles) if (sphereVsBox(p.x, p.y, p.z, radius, o.box3)) { pushOut(p, v); any = true; }
         if (!any) break;
     }
-    if (renderer.xr.isPresenting) {
-        const headY = camera.position.y - radius - gorillaStanceOffset;
-        if (headY > 0.1) for (const o of L.obstacles) if (sphereVsBox(p.x, p.y + headY, p.z, HEAD_RADIUS, o.box3)) pushOut(p, v);
+    if (renderer.xr.isPresenting && !MOD.noclip) {
+        const headY = camera.position.y * MOD.size - radius - gorillaStanceOffset * MOD.size;
+        if (headY > 0.1) for (const o of L.obstacles) if (sphereVsBox(p.x, p.y + headY, p.z, HEAD_RADIUS * MOD.size, o.box3)) pushOut(p, v);
     }
     grounded = false;
     for (const o of L.obstacles) if (sphereVsBox(p.x, p.y, p.z, radius + 0.03, o.box3) && hit.ny > 0.5) { grounded = true; break; }
@@ -194,9 +195,10 @@ world.addEventListener('postStep', () => {
         v.x *= k; v.z *= k;
         if (k === FRICTION_IDLE) { if (Math.abs(v.x) < 0.08) v.x = 0; if (Math.abs(v.z) < 0.08) v.z = 0; }
     }
-    const maxUp = L.maxUp || 99; if (v.y > maxUp && simTime - lastTrampTime > 0.5) v.y = maxUp;   // limit prędkości w górę (trampoliny nadal wybijają wysoko)
-    if (L.maxSpeedXZ) { const h2 = v.x * v.x + v.z * v.z, m = L.maxSpeedXZ; if (h2 > m * m) { const k = m / Math.sqrt(h2); v.x *= k; v.z *= k; } }   // limit prędkości poziomej
-    const maxV = 11 * POWER, s2 = v.lengthSquared();
+    const cm = capMul();   // boost i duży goryl (BagaBooModMenu) podnoszą limity prędkości, normalnie 1
+    const maxUp = (L.maxUp || 99) * cm; if (v.y > maxUp && simTime - lastTrampTime > 0.5) v.y = maxUp;   // limit prędkości w górę (trampoliny nadal wybijają wysoko)
+    if (L.maxSpeedXZ) { const h2 = v.x * v.x + v.z * v.z, m = L.maxSpeedXZ * cm; if (h2 > m * m) { const k = m / Math.sqrt(h2); v.x *= k; v.z *= k; } }   // limit prędkości poziomej
+    const maxV = 11 * POWER * cm, s2 = v.lengthSquared();
     if (s2 > maxV * maxV) v.scale(maxV / Math.sqrt(s2), v);
     for (const ball of L.throwables) if (ball.userData.body.type === CANNON.Body.DYNAMIC) containBall(ball.userData.body);
 });
@@ -207,7 +209,7 @@ function clampHand(controller, hand) {
     camera.getWorldPosition(_shoulder); _shoulder.y -= SHOULDER_DROP;   // przybliżony środek barków
     hand.position.copy(_ctrl).sub(_shoulder).multiplyScalar(ARM_SCALE).add(_shoulder);
     const r = 0.08, hp = hand.position;
-    for (const o of L.obstacles) {
+    for (const o of (MOD.noclip ? [] : L.obstacles)) {
         const b = o.box3;
         if (hp.x > b.min.x - r && hp.x < b.max.x + r && hp.y > b.min.y - r && hp.y < b.max.y + r && hp.z > b.min.z - r && hp.z < b.max.z + r) {
             const d = [hp.x - (b.min.x - r), (b.max.x + r) - hp.x, hp.y - (b.min.y - r), (b.max.y + r) - hp.y, hp.z - (b.min.z - r), (b.max.z + r) - hp.z];
@@ -246,11 +248,11 @@ function handleMovement(i, dt) {
         const dl = delta.length();
         if (touching && dl > HAND_DEADZONE) {
             const handSpeed = dl / Math.max(dt, 1 / 120);
-            delta.multiplyScalar((dl - HAND_DEADZONE) / dl * ARM_SCALE);   // dłuższe ręce = dłuższy ruch dłoni w grze
+            delta.multiplyScalar((dl - HAND_DEADZONE) / dl * ARM_SCALE * MOD.size);   // dłuższe ręce = dłuższy ruch dłoni w grze (duży goryl robi większe kroki)
             const dw = delta.applyQuaternion(playerRig.quaternion);
-            if (dw.length() > 0.32) dw.normalize().multiplyScalar(0.32);   // ochrona przed skokiem śledzenia
+            const cap = 0.32 * MOD.size; if (dw.length() > cap) dw.normalize().multiplyScalar(cap);   // ochrona przed skokiem śledzenia
             // Dłoń "przyklejona" do powierzchni: ciało porusza się przeciwnie do ruchu dłoni (śliska powierzchnia oddaje mniej)
-            const k = grip * (L.moveScale || 1);
+            const k = grip * (L.moveScale || 1) * (MOD.boost ? BOOST_MULT : 1);
             anchorVel[i] = new THREE.Vector3(-dw.x, -dw.y, -dw.z).multiplyScalar(k / Math.max(dt, 1 / 120));
             if (ground && grounded && anchorVel[i].y < 0) anchorVel[i].y = 0;   // dłoń na podłodze nie wciska ciała w podłogę
             if (wall && grip < 1) anchorVel[i].y -= (1 - grip) * SLIDE_SPEED;   // zjeżdżanie po śliskiej ścianie
@@ -303,7 +305,7 @@ function applyAnchors() {
     } else if (wasAnchored) {
         // Wyrzut: średnia z ostatnich klatek razy mnożnik, z limitem prędkości
         const out = new THREE.Vector3(); velHist.forEach(x => out.add(x)); if (velHist.length) out.multiplyScalar(JUMP_MULT / velHist.length);
-        const sp = out.length(), maxJ = MAX_JUMP_SPEED * (L.moveScale || 1);
+        const sp = out.length(), maxJ = MAX_JUMP_SPEED * (L.moveScale || 1) * capMul();
         if (sp > MIN_JUMP_SPEED) { if (sp > maxJ) out.multiplyScalar(maxJ / sp); v.set(out.x, out.y, out.z); }
         velHist.length = 0; wasAnchored = false;
     }
@@ -312,6 +314,11 @@ function applyAnchors() {
 export function updatePlayer(dt, t) {
     simTime = t; lastDt = Math.min(dt, 0.05);
     world.step(1 / 90, dt, 10);
+    if (MOD.fly && !ropeConstraint) {   // BagaBooModMenu: prawy chwyt = lecisz tam, gdzie patrzysz, lewy = do tyłu, bez chwytu zawisasz (grawitacja nie działa)
+        const dir = ctrlInput[1].squeeze ? 1 : (ctrlInput[0].squeeze ? -1 : 0), fv = playerBody.velocity;
+        if (dir) { camera.getWorldDirection(_flyDir); fv.set(_flyDir.x * dir * FLY_SPEED * capMul(), _flyDir.y * dir * FLY_SPEED * capMul(), _flyDir.z * dir * FLY_SPEED * capMul()); }
+        else fv.set(0, 0, 0);
+    }
     if (stepped) { handPushing = false; stepped = false; }
     const bp = playerBody.position, bv = playerBody.velocity, B = L.bounds;   // granice ustawia poziom
     if (bp.x < B.minX) { bp.x = B.minX; bv.x = 0; } if (bp.x > B.maxX) { bp.x = B.maxX; bv.x = 0; }
@@ -327,7 +334,7 @@ export function updatePlayer(dt, t) {
         handTarget(hands.R.userData.rig, 1, handleMovement(1, dt));
         applyAnchors();
     }
-    if (hands.L) { poseHand(hands.L.userData.rig, dt); poseHand(hands.R.userData.rig, dt); }
+    if (hands.L) { poseHand(hands.L.userData.rig, dt); poseHand(hands.R.userData.rig, dt); hands.L.scale.setScalar(MOD.size); hands.R.scale.setScalar(MOD.size); }
     if (ropeConstraint && ropeHand >= 0) { ropeConstraint.pivotA.copy(ropePivot(ropeHand)); hands[ropeHand === 0 ? 'L' : 'R'].userData.rig.target = 1.0; }
     if (grabbed) {
         const hm = grabbingIndex === 0 ? hands.L : hands.R, b = grabbed.userData.body;
@@ -341,8 +348,9 @@ export function updatePlayer(dt, t) {
     else headYaw += (readHeadStick() * HEAD_TURN_MAX - headYaw) * Math.min(1, lastDt * HEAD_TURN_SMOOTH);
     if (Math.abs(headYaw) < 1e-4) headYaw = 0;
     playerRig.quaternion.setFromAxisAngle(_yAxis, baseYaw - headYaw);   // obrót wokół głowy gracza, więc głowa nie przesuwa się w bok
-    const cl = _headLocal.copy(camera.position).applyQuaternion(playerRig.quaternion);
-    playerRig.position.set(bp.x - cl.x, bp.y - radius - gorillaStanceOffset, bp.z - cl.z);
+    playerRig.scale.setScalar(MOD.size);   // BagaBooModMenu: size (1 = normalnie); przy skali 1 wzory są takie same jak wcześniej
+    const cl = _headLocal.copy(camera.position).multiplyScalar(MOD.size).applyQuaternion(playerRig.quaternion);
+    playerRig.position.set(bp.x - cl.x, bp.y - radius - gorillaStanceOffset * MOD.size, bp.z - cl.z);
     playerRig.updateMatrixWorld(true);
 }
 const HEAD_TURN_MAX = Math.PI / 2, HEAD_TURN_SMOOTH = 14, HEAD_STICK_DEADZONE = 0.12;
@@ -355,7 +363,9 @@ export function faceWorldYaw(target) {
     const d = camera.getWorldDirection(_headLocal.set(0, 0, 0)), cur = Math.atan2(-d.x, -d.z);
     baseYaw = Math.atan2(Math.sin(baseYaw + target - cur), Math.cos(baseYaw + target - cur));
 }
-const _yAxis = new THREE.Vector3(0, 1, 0), _headLocal = new THREE.Vector3();
+const _yAxis = new THREE.Vector3(0, 1, 0), _headLocal = new THREE.Vector3(), _flyDir = new THREE.Vector3();
+// Czy spust kontrolera (0 = lewy, 1 = prawy) jest wciśnięty: BagaBooModMenu zmienia nim rozmiar goryla
+export const triggerDown = (i) => !!ctrlInput[i].select;
 // Wychylenie prawej gałki w poziomie, od -1 (lewo) do 1 (prawo), z martwą strefą
 function readHeadStick() {
     if (!renderer.xr.isPresenting) return 0;

@@ -75,11 +75,22 @@ export function closePause() { PAUSE.on = false; scene.remove(mesh); }
 export function togglePause() { if (PAUSE.on) closePause(); else openPause(); }
 
 // Odczyt przycisków kontrolerów (co klatkę): wykrywa wciśnięcie Y/B albo gałki
+import { MOD } from './modstate.js';
+const bDownAt = new Map(), prevB = new Map(), prevStick = new Map();
 export function pollPauseButtons() {
     const session = renderer.xr.getSession && renderer.xr.getSession();
     if (!session) return;
     for (const src of session.inputSources) {
         const gp = src.gamepad; if (!gp) continue;
+        if (MOD.allowed && src.handedness === 'right') {
+            // BagaBooModMenu: B przytrzymane 5 s otwiera menu admina, więc pauza z B tylko przy krótkim naciśnięciu (po puszczeniu); gałka działa jak dawniej
+            const b = !!(gp.buttons[5] && gp.buttons[5].pressed), st = !!(gp.buttons[3] && gp.buttons[3].pressed);
+            if (b && !prevB.get(src)) bDownAt.set(src, performance.now());
+            if (!b && prevB.get(src) && performance.now() - (bDownAt.get(src) || 0) < 800) togglePause();
+            if (st && !prevStick.get(src)) togglePause();
+            prevB.set(src, b); prevStick.set(src, st);
+            continue;
+        }
         const pressed = !!((gp.buttons[5] && gp.buttons[5].pressed) || (gp.buttons[3] && gp.buttons[3].pressed));
         const was = prev.get(src) || false;
         if (pressed && !was) togglePause();
