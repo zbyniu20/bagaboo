@@ -66,6 +66,17 @@ button { font: inherit; cursor: pointer; border: 0; color: #fff; transition: tra
 .btn-group { display: flex; gap: 10px; margin-top: 12px; }
 #btnHost, #btnJoin { flex: 1; padding: 12px 10px; font-size: 13px; font-weight: 500; letter-spacing: 0.1em; border-radius: 10px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14); }
 #btnHost:hover:not(:disabled), #btnJoin:hover:not(:disabled) { background: rgba(255,90,40,0.22); border-color: rgba(255,110,60,0.6); }
+/* konto: logowanie, rejestracja, odzyskiwanie hasła */
+#btnLogin, #btnRegister, #btnReset, #btnLogout, #btnRecoverySaved { flex: 1; padding: 11px 10px; font-size: 13px; font-weight: 500; letter-spacing: 0.08em; border-radius: 10px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14); }
+#btnLogin:hover:not(:disabled), #btnRegister:hover:not(:disabled), #btnReset:hover:not(:disabled), #btnLogout:hover:not(:disabled), #btnRecoverySaved:hover:not(:disabled) { background: rgba(255,90,40,0.22); border-color: rgba(255,110,60,0.6); }
+#btnReset, #btnLogout { display: block; width: 100%; margin-top: 12px; }
+#btnForgot { display: block; margin: 8px auto 0; }
+#acctReset, #recoveryBox { margin-top: 10px; }
+#acctReset label, #acctIn .eyebrow { margin-top: 10px; }
+#acctWho { font-size: 17px; color: var(--gold); letter-spacing: 0.04em; }
+#recoveryBox { padding: 12px; border-radius: 10px; background: rgba(120,20,10,0.25); border: 1px solid rgba(255,110,60,0.5); font-size: 12.5px; line-height: 1.5; color: #f0ddd2; }
+#recoveryCode { display: block; margin: 8px 0; padding: 10px; text-align: center; font-family: 'Courier New', monospace; font-size: 18px; letter-spacing: 0.12em; color: #fff; background: rgba(0,0,0,0.45); border-radius: 8px; user-select: all; }
+#acctMsg { margin-top: 10px; font-size: 12px; line-height: 1.4; text-align: center; min-height: 1.2em; }
 #btnNew { display: block; margin: 8px auto 0; background: none; padding: 6px 10px; font-size: 11px; letter-spacing: 0.08em; color: #7d6760; }
 #btnNew:hover:not(:disabled) { color: #ff8a70; }
 button:hover:not(:disabled) { transform: translateY(-1px); }
@@ -95,7 +106,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
 // (nowy numer co 5 minut, więc po wgraniu zmian na GitHub nie trzeba już dopisywać ?v= do adresu).
 // Dodając nowy plik .js do gry, dopisz go do listy FILES.
 (function () {
-  var FILES = ["main.js", "core/audio.js", "core/avatar.js", "core/config.js", "core/debug.js", "core/desktop.js", "core/economy.js", "core/engine.js", "core/hammer.js", "core/haptics.js", "core/levelkit.js", "core/mannequin.js", "core/monsterskins.js", "core/murals.js", "core/network.js", "core/pause.js", "core/player.js", "core/presence.js", "core/settings.js", "core/terminal.js", "core/textures.js", "core/ui.js", "core/visuals.js", "core/vrmenu.js", "levels/games.js", "levels/laundry.js", "levels/lava.js", "levels/levels.js", "levels/lobby-door.js", "levels/lobby.js", "levels/maze.js", "levels/memory.js", "levels/monster.js", "levels/range.js", "levels/silence.js", "levels/staff.js", "levels/well.js", "core/runkit.js", "levels/hideseek.js", "levels/banana.js", "levels/race.js", "levels/koth.js", "levels/wardrobe.js", "levels/hospital.js", "levels/redlight.js", "levels/potato.js", "levels/lasttile.js", "levels/treasure.js", "levels/cemetery.js", "levels/infection.js", "levels/dodgeball.js", "core/roundkit.js", "core/music.js", "core/emotes.js", "core/emotepanel.js", "core/ambience.js", "core/lightpool.js", "core/liquids.js", "core/envcapture.js", "core/botkit.js", "core/cosmetics.js", "core/events.js", "core/highfive.js", "core/device.js", "core/xrperf.js", "core/voicehub.js", "core/gorillamachine.js", "core/racemode.js", "levels/statues.js", "levels/blindtag.js", "levels/swingrun.js", "levels/towerclimb.js", "levels/catacombs.js", "core/registry.js", "levels/nursery.js", "core/gridmaze.js", "levels/hotel.js", "core/hauntedui.js", "core/levelcards.js", "core/computerdesk.js"];
+  var FILES = ["main.js", "core/audio.js", "core/avatar.js", "core/config.js", "core/debug.js", "core/desktop.js", "core/economy.js", "core/engine.js", "core/hammer.js", "core/haptics.js", "core/levelkit.js", "core/mannequin.js", "core/monsterskins.js", "core/murals.js", "core/network.js", "core/pause.js", "core/player.js", "core/presence.js", "core/settings.js", "core/terminal.js", "core/textures.js", "core/ui.js", "core/visuals.js", "core/vrmenu.js", "levels/games.js", "levels/laundry.js", "levels/lava.js", "levels/levels.js", "levels/lobby-door.js", "levels/lobby.js", "levels/maze.js", "levels/memory.js", "levels/monster.js", "levels/range.js", "levels/silence.js", "levels/staff.js", "levels/well.js", "core/runkit.js", "levels/hideseek.js", "levels/banana.js", "levels/race.js", "levels/koth.js", "levels/wardrobe.js", "levels/hospital.js", "levels/redlight.js", "levels/potato.js", "levels/lasttile.js", "levels/treasure.js", "levels/cemetery.js", "levels/infection.js", "levels/dodgeball.js", "core/roundkit.js", "core/music.js", "core/emotes.js", "core/emotepanel.js", "core/ambience.js", "core/lightpool.js", "core/liquids.js", "core/envcapture.js", "core/botkit.js", "core/cosmetics.js", "core/events.js", "core/highfive.js", "core/device.js", "core/xrperf.js", "core/voicehub.js", "core/gorillamachine.js", "core/racemode.js", "levels/statues.js", "levels/blindtag.js", "levels/swingrun.js", "levels/towerclimb.js", "levels/catacombs.js", "core/registry.js", "levels/nursery.js", "core/gridmaze.js", "levels/hotel.js", "core/hauntedui.js", "core/levelcards.js", "core/computerdesk.js", "core/auth.js"];
   var VERSION = String(Math.floor(Date.now() / 300000));
   var imports = {
     "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
@@ -132,12 +143,39 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
         <input type="text" id="playerName" value="Acrobat" maxlength="16" autocomplete="nickname" spellcheck="false">
         <input type="color" id="playerColor" value="#3d2314" title="Fur color" aria-label="Fur color">
       </div>
-      <div class="form-group" id="passRow" style="display:none;margin-top:12px"><label class="eyebrow" for="playerPass">Password</label><input type="password" id="playerPass" maxlength="40" autocomplete="current-password"></div>
-      <div class="form-group" id="rememberRow" style="display:none;align-items:center;gap:10px;margin-top:10px"><input type="checkbox" id="rememberPass"><label for="rememberPass" style="font-size:12px;color:#a8948c">Remember password on this device</label></div>
       <button id="btnSolo">Play solo</button>
       <div class="links">
         <button class="link" type="button" id="tabFriends" aria-expanded="false" aria-controls="friends">Play with friends</button><i></i>
+        <button class="link" type="button" id="tabAccount" aria-expanded="false" aria-controls="account">Log in</button><i></i>
         <button class="link" type="button" id="tabOptions" aria-expanded="false" aria-controls="options">Options</button>
+      </div>
+      <div class="panel" id="account">
+        <div id="recoveryBox" style="display:none">
+          <b>Save your recovery code now.</b> It is shown only once. You need it to set a new password if you forget this one.
+          <code id="recoveryCode"></code>
+          <button id="btnRecoverySaved" type="button">I saved it</button>
+        </div>
+        <div id="acctIn" style="display:none">
+          <span class="eyebrow">Signed in as</span>
+          <div id="acctWho"></div>
+          <button id="btnLogout" type="button">Log out</button>
+        </div>
+        <div id="acctOut">
+          <label class="eyebrow" for="acctNick">Account nickname</label>
+          <input type="text" id="acctNick" maxlength="16" autocomplete="username" spellcheck="false">
+          <label class="eyebrow" for="acctPass" style="margin-top:10px">Password (at least 8 characters)</label>
+          <input type="password" id="acctPass" maxlength="100" autocomplete="current-password">
+          <div class="btn-group"><button id="btnLogin" type="button">Log in</button><button id="btnRegister" type="button">Create account</button></div>
+          <button class="link" type="button" id="btnForgot">Forgot password?</button>
+          <div id="acctReset" style="display:none">
+            <label class="eyebrow" for="acctCode">Recovery code</label>
+            <input type="text" id="acctCode" maxlength="30" autocomplete="off" spellcheck="false">
+            <label class="eyebrow" for="acctNewPass" style="margin-top:10px">New password</label>
+            <input type="password" id="acctNewPass" maxlength="100" autocomplete="new-password">
+            <button id="btnReset" type="button">Set new password</button>
+          </div>
+        </div>
+        <div id="acctMsg" role="status"></div>
       </div>
       <div class="panel" id="friends">
         <label class="eyebrow" for="roomCode">Room code</label>
@@ -154,7 +192,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
     </main>
     <footer id="foot">
       <span id="vrhint">Best in VR &nbsp;·&nbsp; Desktop supported</span>
-      <div id="rules">One host per room, up to 9 guests. Staff nicknames are protected with a password.</div>
+      <div id="rules">One host per room, up to 9 guests. Staff nicknames can only be used by their logged-in accounts.</div>
     </footer>
   </div>
 </div>
@@ -309,7 +347,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
   build(); requestAnimationFrame(frame);
 
   // panele "Play with friends" i "Options" (tylko jeden otwarty naraz)
-  var panels = { tabFriends: document.getElementById('friends'), tabOptions: document.getElementById('options') };
+  var panels = { tabFriends: document.getElementById('friends'), tabAccount: document.getElementById('account'), tabOptions: document.getElementById('options') };
   Object.keys(panels).forEach(function (id) {
     var b = document.getElementById(id);
     b.addEventListener('click', function () {
