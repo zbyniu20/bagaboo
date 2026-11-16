@@ -135,6 +135,6 @@ export function addComputers(term, list, opt) {
     list.forEach((c, k) => {
         const d = buildMachineTerminal(c.x, c.z, c.rotY, scale, (w, h) => { const m = first ? term.createMesh(w, h) : term.addMesh(w, h); first = false; return m; });
         const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.09), new THREE.MeshBasicMaterial({ map: plateTexture((opt.label || 'TERMINAL') + ' ' + (k + 1)), transparent: true, toneMapped: false }));
-        plate.position.set(0, 0.62, 0.305); d.group.add(plate);   // tabliczka z numerem na froncie szafki
+        plate.position.set(0, 0.25, 0.305); d.group.add(plate);   // tabliczka z numerem na froncie szafki
     });
 }
