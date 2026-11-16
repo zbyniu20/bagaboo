@@ -584,7 +584,7 @@ export function buildHammer(tool) {
     g.userData.headOffset = new THREE.Vector3(0, 0, -0.44);
     return g;
 }
-export function lookKey(look) { return [look.name, look.hideTag ? 1 : 0, look.color, look.skin, look.badge, look.tool, look.hat, look.glasses, look.mask, look.sleeve, look.gloves].join('|'); }
+export function lookKey(look) { return [look.name, look.hideTag ? 1 : 0, look.color, look.skin, look.badge, look.tool, look.hat, look.glasses, look.mask, look.sleeve, look.gloves, Array.isArray(look.roleTags) ? look.roleTags.join(',') : ''].join('|'); }
 // Stały napis nad głową (ULTIMATE ADMIN, OWNER)
 export function roleLabel(text, color, glow) {
     const c = makeCanvas(512, 96), x = c.getContext('2d');
@@ -599,7 +599,8 @@ export function roleLabel(text, color, glow) {
 // Poziomy z ukrywaniem (Hide and Seek) ustawiają hidden = true: nazwy graczy nie świecą wtedy przez ściany
 export const TAGS = { hidden: false };
 export function addRoleTag(head, look) {
-    const list = look.cheater ? [{ text: 'CHEATER', color: '#ff2a2a', glow: '#ff0000' }] : roleTagsFor(look.name);   // napisu CHEATER nie da się ukryć
+    let list = look.cheater ? [{ text: 'CHEATER', color: '#ff2a2a', glow: '#ff0000' }] : roleTagsFor(look.name);   // napisu CHEATER nie da się ukryć
+    if (!look.cheater && Array.isArray(look.roleTags) && list.length > 1) { const pick = list.filter(r => look.roleTags.includes(r.id)); if (pick.length) list = pick; }   // gracz z kilkoma rolami (BoyIsGamer) wybiera, które napisy (1 do 3) pokazać
     if (!list.length || (look.hideTag && !look.cheater)) return null;
     let first = null;
     list.forEach((r, i) => {   // najwyższa rola na samej górze, kolejne pod nią (OWNER, ADMIN, MODERATOR)

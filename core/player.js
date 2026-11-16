@@ -64,7 +64,7 @@ let sliding = false, slideAir = 0, slideBuzz = 0, standRef = 0;
 export function isSliding() { return sliding; }
 // Ślizg: start, gdy gracz jest na podłodze, szybki i nisko przykucnięty; koniec, gdy wstanie, zwolni albo spadnie
 function updateSlide(p, v) {
-    if (!renderer.xr.isPresenting || ropeConstraint || MOD.fly) { sliding = false; playerRig.userData.sliding = false; return; }   // podczas FLY nie ma ślizgu (hamowałby lot)
+    if (!renderer.xr.isPresenting || ropeConstraint || MOD.fly || L.noSlide) { sliding = false; playerRig.userData.sliding = false; return; }   // brak ślizgu: podczas FLY (hamowałby lot) i na poziomach z L.noSlide (Hotel)
     // Zwykła wysokość głowy gracza (najwyższa ostatnio, powoli maleje, więc dopasowuje się też do gry na siedząco)
     const head = camera.position.y;
     standRef = Math.max(standRef - 0.03 / 90, head);

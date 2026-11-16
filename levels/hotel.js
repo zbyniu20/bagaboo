@@ -103,6 +103,7 @@ function restoreFlashlight() {   // lampa wraca do kamery (inne poziomy mają la
 
 export function build() {
     L.spawn = info.spawn.slice();
+    L.noSlide = true;   // w Hotelu nie ma ślizgu po podłodze (przykucnięcie z rozpędem nie kładzie gracza na brzuchu)
     const df = diffOf('hotel'), n = ROOMS[df.id] || ROOMS.normal;
     const zs = [0]; for (let i = 0; i < n; i++) zs.push(zs[i] - (i % 4 === 3 ? LEN_KEY : LEN_NORMAL));   // kolejne krawędzie pokoi (co 4. pokój z kluczem jest dłuższy)
     L.bounds = { minX: -HALF + 0.35, maxX: HALF - 0.35, minZ: zs[n] - 3 + 0.4, maxZ: -0.45, maxY: H - 0.3 };
@@ -440,6 +441,7 @@ function drawHud() {
     S.hud.update();
 }
 export function dispose() {
+    L.noSlide = false;
     restoreFlashlight();
     if (S) { for (const i of [...S.rooms.keys()]) dropRoom(i); S.ev.dispose(); S.ghost.dispose(); S.hud.dispose(); S.intro.dispose(); S.scare.dispose(); }
     S = null;

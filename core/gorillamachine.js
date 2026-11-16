@@ -12,7 +12,7 @@ import { EMOTES, emotePose } from './emotes.js';
 
 // Kategorie w kolejności na pulpicie (id = slot w katalogu)
 export const CATS = [
-    { id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badges' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' },
+    { id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badges' }, { id: 'nametag', name: 'Name tag' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' },
     { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }, { id: 'emote', name: 'Emotes' }, { id: 'mskin', name: 'Monster skins' }
 ];
 const STAFF_HINTS = ['Owner', 'Ultimate', 'Ultimate Admin', 'Co-admin', 'Admin', 'Moderator', 'Staff', 'For hackers'];   // przedmioty tylko dla ekipy: pokazane wyłącznie tym, którzy je mają (np. odznaki Owner i Admin dla BoyIsGamer)
@@ -51,15 +51,25 @@ export const machine = new Terminal((t) => {
     const c = t.ctx;
     t.background();
     t.header('GORILLA MACHINE', E.CURRENCY + ': ' + E.SAVE.wallet, GOLD);
-    CATS.forEach((cat, i) => {
-        const n = itemsFor(cat.id).filter(it => E.isOwned(it)).length;
-        t.btn('cat' + cat.id, 18, 84 + i * 60, 236, 52, cat.name, () => { M.slot = cat.id; M.pg = 0; M.info = null; markAllDirty(); }, { size: cat.name.length > 10 ? 18 : 22, active: M.slot === cat.id, tone: cat.id === 'mskin' ? 'bad' : undefined });
-        void n;
+    // Kategoria "Name tag" tylko dla kont z kilkoma rolami (np. BoyIsGamer: owner, admin, moderator); przy 10 kategoriach przyciski są ciaśniejsze
+    const tagOpts = E.roleTagOptions(), cats = CATS.filter(c => c.id !== 'nametag' || tagOpts.length > 1), step = cats.length > 9 ? 54 : 60, bh = step === 54 ? 48 : 52;
+    if (M.slot === 'nametag' && tagOpts.length < 2) M.slot = 'skin';
+    cats.forEach((cat, i) => {
+        t.btn('cat' + cat.id, 18, 84 + i * step, 236, bh, cat.name, () => { M.slot = cat.id; M.pg = 0; M.info = null; markAllDirty(); }, { size: cat.name.length > 10 ? 18 : 22, active: M.slot === cat.id, tone: cat.id === 'mskin' ? 'bad' : undefined });
     });
-    const items = itemsFor(M.slot), pages = Math.max(1, Math.ceil(items.length / PER));
+    const items = M.slot === 'nametag' ? [] : itemsFor(M.slot), pages = Math.max(1, Math.ceil(items.length / PER));
     M.pg = Math.min(M.pg, pages - 1);
     const cat = CATS.find(x => x.id === M.slot);
-    t.text(cat.name + ' (' + items.filter(it => E.isOwned(it)).length + ' / ' + items.length + ' owned)', 276, 100, 24, GOLD, 'left', true);
+    t.text(M.slot === 'nametag' ? 'Name tag: pick 1, 2 or 3 roles to show' : cat.name + ' (' + items.filter(it => E.isOwned(it)).length + ' / ' + items.length + ' owned)', 276, 100, 24, GOLD, 'left', true);
+    if (M.slot === 'nametag') {   // po jednym przełączniku na rolę; zawsze zostaje przynajmniej jedna, model w gablocie pokazuje wybór od razu
+        const on = E.activeRoleTags() || [];
+        tagOpts.forEach((o, i) => {
+            const y = 134 + i * 76, active = on.includes(o.id);
+            c.fillStyle = i % 2 ? 'rgba(255,176,0,0.04)' : 'rgba(255,176,0,0.08)'; c.fillRect(268, y, 740, 66);
+            t.btn('tag' + o.id, 272, y + 4, 732, 58, o.text + ': ' + (active ? 'SHOWN' : 'hidden'), () => E.toggleRoleTag(o.id), { size: 26, active: active, tone: 'ok', disabled: active && on.length === 1 });
+        });
+        t.text('At least one role always stays on. The gorilla in the case updates right away.', 276, 134 + tagOpts.length * 76 + 14, 17, AMBER_DIM, 'left');
+    }
     items.slice(M.pg * PER, M.pg * PER + PER).forEach((it, i) => {
         const y = 124 + i * 56, worn = E.isEquipped(it), owned = E.isOwned(it);
         const trying = it.slot === 'emote' ? M.emote === it.id : M.sel[it.slot] === it.id;
@@ -72,7 +82,7 @@ export const machine = new Terminal((t) => {
         else if (owned) t.btn('wear' + it.slot + it.id, 840, y + 5, 160, 40, it.slot === 'emote' ? 'Set favorite' : 'Wear', () => E.equipItem(it), { size: it.slot === 'emote' ? 16 : 20, tone: 'ok' });
         else t.btn('lk' + it.slot + it.id, 840, y + 5, 160, 40, 'Shop', null, { size: 18, disabled: true });
     });
-    if (!items.length) t.text('Nothing here yet.', 276, 200, 22, AMBER_DIM, 'left');
+    if (!items.length && M.slot !== 'nametag') t.text('Nothing here yet.', 276, 200, 22, AMBER_DIM, 'left');
     if (pages > 1) {
         t.btn('pgPrev', 268, 520, 170, 38, 'Previous', () => { M.pg--; markAllDirty(); }, { size: 18, disabled: M.pg === 0 });
         t.text('Page ' + (M.pg + 1) + ' of ' + pages, 638, 540, 19, AMBER, 'center');

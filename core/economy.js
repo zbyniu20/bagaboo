@@ -8,7 +8,7 @@
 // ==========================================
 import { toast, markAllDirty } from './terminal.js';
 import { RECORD_DEFS, DIFF_LEVEL_IDS } from './registry.js';
-import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isReservedNick, staffBadgesFor } from './config.js';
+import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isReservedNick, staffBadgesFor, roleTagsFor } from './config.js';
 
 const SAVE_KEY = 'bagaboo_save_v1';
 export const LOGIN_INTERVAL = 6 * 3600 * 1000;      // nagroda za logowanie co 6 godzin
@@ -430,7 +430,22 @@ export function getLook() {
     // Ultimate admin jest zawsze cały złoty
     // Ultimate admin jest zawsze cały złoty, a przyłapany na włamaniu ma na zawsze skórkę CHEATER
     return { name: SAVE.profile.name, hideTag: !!SAVE.profile.hideTag && !SAVE.cheater, cheater: !!SAVE.cheater, mskin: SAVE.equipped.mskin || 'none',
-        skin: SAVE.cheater ? 'cheater' : (isUltimateName(SAVE.profile.name) ? 'ultimate' : SAVE.equipped.skin), badge: SAVE.equipped.badge, tool: SAVE.equipped.tool, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves };
+        skin: SAVE.cheater ? 'cheater' : (isUltimateName(SAVE.profile.name) ? 'ultimate' : SAVE.equipped.skin), badge: SAVE.equipped.badge, tool: SAVE.equipped.tool, color: SAVE.profile.color, hat: SAVE.equipped.hat, glasses: SAVE.equipped.glasses, mask: SAVE.equipped.mask, sleeve: SAVE.equipped.sleeve, gloves: SAVE.equipped.gloves, roleTags: activeRoleTags() };
+}
+// Napisy ról nad głową do wyboru w Gorilla Machine (np. BoyIsGamer: owner, admin, mod). Konto z jedną rolą nie ma wyboru (null = bez filtra).
+export function roleTagOptions() { return roleTagsFor(SAVE.profile.name).map(r => ({ id: r.id, text: r.text })); }
+export function activeRoleTags() {
+    const all = roleTagOptions().map(o => o.id), sel = SAVE.profile.roleTags;
+    if (all.length < 2) return null;
+    const pick = Array.isArray(sel) ? all.filter(id => sel.includes(id)) : all;
+    return pick.length ? pick : all;
+}
+// Włącza / wyłącza jeden napis; zawsze zostaje przynajmniej jeden (pokazać można 1, 2 albo 3)
+export function toggleRoleTag(id) {
+    const cur = activeRoleTags(); if (!cur) return;
+    const next = cur.includes(id) ? cur.filter(x => x !== id) : cur.concat(id);
+    if (!next.length) return;
+    SAVE.profile.roleTags = next; saveGame(); notifyLook();
 }
 // Ukrywanie własnego napisu z rolą nad głową (przełącznik w pokoju szefa)
 export function setHideTag(on) { SAVE.profile.hideTag = !!on; saveGame(); notifyLook(); }
