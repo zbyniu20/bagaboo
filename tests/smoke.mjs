@@ -196,7 +196,7 @@ const reg = await run(`
         if (d.rec && !recIds.has(d.id)) bad.push(d.id + ': missing record entry');
     }
     if (E.DIFF_LEVELS.length !== R.DIFF_LEVEL_IDS.length) bad.push('DIFF_LEVELS out of sync');
-    return { bad: bad, paths: R.LEVEL_DEFS.filter(d => d.kind !== 'virtual').map(d => R.levelPath(d)), levelFiles: R.LEVEL_DEFS.filter(d => d.kind === 'level').map(d => [d.id, R.levelPath(d)]) };
+    return { bad: bad, paths: R.LEVEL_DEFS.filter(d => d.kind !== 'virtual').map(d => R.levelPath(d)), levelFiles: R.LEVEL_DEFS.filter(d => d.kind === 'level').map(d => [d.id, R.levelPath(d)]), gameFiles: R.LEVEL_DEFS.filter(d => d.kind === 'game').map(d => [d.id, R.levelPath(d)]) };
 `);
 reg.bad.forEach((m) => fail('registry: ' + m));
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'), listed = new Set((html.match(/var FILES = \[(.*?)\]/s) || ['', ''])[1].match(/"[^"]+"/g)?.map(x => x.slice(1, -1)) || []);
@@ -204,6 +204,8 @@ const missing = [];
 for (const dir of ['core', 'levels']) for (const f of fs.readdirSync(path.join(ROOT, dir))) if (f.endsWith('.js') && !listed.has(dir + '/' + f)) missing.push(dir + '/' + f);
 for (const f of listed) if (!fs.existsSync(path.join(ROOT, f))) missing.push('FILES lists missing file ' + f);
 for (const pth of reg.paths) if (!fs.existsSync(path.join(ROOT, pth))) missing.push('registry path missing ' + pth);
+// every game mode must have a door back to the BagaBoo Games room (portal to 'games', or the race-mode factory's arrival:)
+for (const [id, pth] of reg.gameFiles) if (fs.existsSync(path.join(ROOT, pth)) && !/target:\s*'games'|arrival:\s*ARRIVAL_FROM_/.test(fs.readFileSync(path.join(ROOT, pth), 'utf8'))) missing.push('game ' + id + ' has no door back to the Games room');
 // every level from the Levels terminal must have an EXIT at its end
 for (const [id, pth] of reg.levelFiles) if (fs.existsSync(path.join(ROOT, pth)) && !/['"]EXIT['"]/.test(fs.readFileSync(path.join(ROOT, pth), 'utf8'))) missing.push('level ' + id + ' has no EXIT door/sign at its end');
 missing.forEach((m) => fail('registry/index.html: ' + m));
@@ -307,6 +309,16 @@ const modeSim = await run(`
         tick(1); m._press('enter'); if (went !== 'well') bad.push('levels: OPEN THE DOOR did not go to the well (went=' + went + ')');
         went = null; tick(1); m._press('row10'); tick(1); m._press('enter'); m._press('enter'); if (m.debug().knocks < 2 || went) bad.push('levels: secret door knocking wrong (knocks=' + m.debug().knocks + ', went=' + went + ')');
     }
+    // Games terminals: 6 screens on 3 pylons, category tabs, pick a mode, PLAY goes to it
+    {
+        const TM = await import('./core/terminal.js'); let went = null; const gctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
+        m = await load('games'); const tick = (n) => { for (let i = 0; i < n; i++) m.update(0.1, T += 0.1, gctx); TM.redrawTerminals(); };
+        tick(3); let gd = m.debug(); if (!gd || gd.screens !== 6) bad.push('games: expected 6 terminal screens, got ' + (gd && gd.screens));
+        if (!gd.buttons.includes('play') || !gd.buttons.includes('tab-party') || !gd.buttons.includes('tab-team')) bad.push('games: terminal buttons missing');
+        if (!m._press('tab-party')) bad.push('games: party tab not clickable'); tick(1); if (m.debug().cat !== 'party') bad.push('games: tab did not switch category');
+        m._press('row2'); tick(1); m._press('play'); if (went !== 'blindtag') bad.push('games: PLAY went to ' + went + ', expected blindtag');
+        went = null; m = await load('games'); tick(3); m._press('tab-team'); tick(1); m._press('row0'); tick(1); m._press('play'); if (went !== 'banana') bad.push('games: team tab PLAY went to ' + went + ', expected banana');
+    }
     // Statues: standing still survives a silence, moving in a silence puts you out on the balcony
     m = await load('statues');
     PL.playerBody.velocity.set(0, 0, 0);
@@ -321,7 +333,7 @@ const modeSim = await run(`
     if (!until(m, d => d.caught >= 1 || d.phase === 'results', 200, () => { PL.playerBody.position.set(1.2, 1.0, 0.2); PL.playerBody.velocity.set(4, 0, 0); })) bad.push('blindtag: the bot did not catch a noisy player next to it');
     return bad;
 `);
-if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels terminal, Statues and Blind Tag simulate correctly');
+if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels and Games terminals, Statues and Blind Tag simulate correctly');
 
 // ---- stats / achievements / audio ----
 phase = 'stats';
