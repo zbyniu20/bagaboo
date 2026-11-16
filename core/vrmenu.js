@@ -7,6 +7,7 @@
 import { THREE, scene, camera, renderer } from './engine.js';
 import { Terminal } from './terminal.js';
 import { isReservedNick } from './config.js';
+import { account as currentAccount } from './auth.js';
 
 const $ = (id) => document.getElementById(id);
 const W = 1024, H = 1200;
@@ -62,18 +63,18 @@ const menu = new Terminal((t) => {
     c.font = '130px Creepster, cursive'; c.shadowColor = 'rgba(255,80,0,0.55)'; c.shadowBlur = 30; c.fillStyle = '#b00000'; c.fillText('BagaBoo VR', W / 2, 105); c.shadowBlur = 0;
     c.font = 'bold 30px sans-serif'; c.fillStyle = '#f2c8a8'; c.fillText("Dusk Nightmare Parkour | Don't Look Away", W / 2, 190);
 
-    const name = $('playerName').value, reserved = isReservedNick(name);
+    const name = $('playerName').value, reserved = isReservedNick(name), acc = currentAccount();
     let y = 240;
     label(c, 'Nickname:', 120, y + 32);
-    field(t, 'fName', 420, y, 480, name, ui.edit === 'playerName', () => { ui.edit = ui.edit === 'playerName' ? null : 'playerName'; });
+    // Zalogowany gracz gra pod nickiem konta, wi\u0119c pole nicku jest zablokowane
+    field(t, 'fName', 420, y, 480, acc ? acc.nick : name, !acc && ui.edit === 'playerName', () => { if (!acc) ui.edit = ui.edit === 'playerName' ? null : 'playerName'; });
     y += 84;
-    if (reserved) {
-        label(c, 'Password:', 120, y + 32);
-        field(t, 'fPass', 420, y, 480, '\u2022'.repeat($('playerPass').value.length), ui.edit === 'playerPass', () => { ui.edit = ui.edit === 'playerPass' ? null : 'playerPass'; });
-        y += 78;
-        const on = $('rememberPass').checked;
-        pageBtn(t, 'remember', 420, y, 480, 52, (on ? '\u2611 ' : '\u2610 ') + 'Remember password', () => { $('rememberPass').checked = !on; }, { bg: 'rgba(25,20,30,0.6)', border: '#8a5a4a', color: '#f0e0d6', size: 28 });
-        y += 72;
+    // Konto zak\u0142ada si\u0119 i loguje na stronie startowej (przed za\u0142o\u017ceniem gogli); sesja zostaje zapami\u0119tana
+    if (acc || reserved) {
+        c.font = '24px sans-serif'; c.textAlign = 'center';
+        c.fillStyle = acc ? '#9aff60' : '#ff8a70';
+        wrap(c, acc ? 'Signed in as ' + acc.nick + '. Log out on the start page to change it.' : 'This nickname is reserved for the staff. Log in on the start page (outside VR) or pick another nickname.', W / 2, y + 6, 860, 30);
+        y += 66;
     }
     if (ui.edit) { drawKeyboard(t, y + 10); return; }
     // Kolor ciała: próbki zamiast okienka wyboru koloru

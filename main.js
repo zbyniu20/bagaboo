@@ -27,7 +27,8 @@ import { onLevelBuilt, updateVisuals } from './core/visuals.js';
 import { registerLevelLights, updateLightPool } from './core/lightpool.js';
 import { captureEnvironment } from './core/envcapture.js';
 import { LEVEL_DEFS, levelPath } from './core/registry.js';
-import { isReservedNick, checkNickPassword, isStaffName } from './core/config.js';
+import { isReservedNick, isStaffName } from './core/config.js';
+import * as AUTH from './core/auth.js';
 
 // Lista poziomów jest w core/registry.js (nowy poziom = plik w levels/ + wpis w rejestrze).
 // light: preset oświetlenia z config.js ('@mode' = tryb lobby), extras: dodatkowe pliki doładowywane razem z poziomem
@@ -191,41 +192,71 @@ function startGame(restorePosition) {
     if (pendingFollow) { const f = pendingFollow; pendingFollow = null; goToLevel(f.level, null, { seed: f.data.seed, noFollow: true }); }
 }
 
-// Przed startem: ban na dobę i hasło do zastrzeżonego nicku
+// Przed startem: ban na dobę i konto dla zastrzeżonego nicku
 async function canStart(allowBanned) {
     await NETM.ensureMic();   // jeśli przeglądarka nie dała mikrofonu przy wczytaniu strony, pytamy jeszcze raz przy kliknięciu
     const ban = NETM.myBanUntil();
     if (ban && !allowBanned) { $('status').innerText = 'You are banned until ' + new Date(ban).toLocaleString() + '.'; return false; }
-    const name = ($('playerName').value || '').trim();
-    if (isReservedNick(name)) {
-        if (!(await checkNickPassword(name, $('playerPass').value))) {
-            forgetPassword(name);   // zapisane hasło przestało pasować (np. zostało zmienione)
-            $('status').innerText = 'The nickname "' + name + '" is reserved. Enter the correct password.'; passVis(); return false;
+    const acc = AUTH.account();
+    if (acc) $('playerName').value = acc.nick;   // zalogowany gracz gra pod nickiem swojego konta
+    else {
+        const name = ($('playerName').value || '').trim();
+        if (isReservedNick(name)) {
+            $('status').innerText = 'The nickname "' + name + '" is reserved for the staff. Log in to your account or choose another nickname.';
+            if (!$('account').classList.contains('open')) $('tabAccount').click();
+            return false;
         }
-        if ($('rememberPass').checked) rememberPassword(name, $('playerPass').value); else forgetPassword(name);
-        ECO.markNickVerified(name);   // hasło poprawne: tylko wtedy ekipa dostaje jednorazową premię (economy.js)
     }
     return true;
 }
 $('btnSolo').onclick = async () => { if (!(await canStart())) return; initAudio(); readProfile(); startGame(true); };
 $('btnHost').onclick = async () => { if (!(await canStart())) return; initAudio(); readProfile(); lobbyButtons(false); NETM.startHost(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
 $('btnJoin').onclick = async () => { if (!(await canStart(true))) return; initAudio(); readProfile(); lobbyButtons(false); NETM.startJoin(NETM.NET.code, { ok: () => startGame(false), fail: () => lobbyButtons(true) }); };
-// Pole hasła pokazuje się tylko przy zastrzeżonym nicku
-// Zapamiętane hasła do zastrzeżonych nicków (tylko na tym urządzeniu)
-const PW_KEY = 'bagaboo_saved_pw';
-function savedPasswords() { try { return JSON.parse(localStorage.getItem(PW_KEY)) || {}; } catch (e) { return {}; } }
-function rememberPassword(name, pw) { const m = savedPasswords(); m[name.trim().toLowerCase()] = pw; try { localStorage.setItem(PW_KEY, JSON.stringify(m)); } catch (e) {} }
-function forgetPassword(name) { const m = savedPasswords(); delete m[String(name).trim().toLowerCase()]; try { localStorage.setItem(PW_KEY, JSON.stringify(m)); } catch (e) {} }
-// Pole hasła pokazuje się tylko przy zastrzeżonym nicku; zapamiętane hasło wpisuje się samo
-const passVis = () => {
-    const name = $('playerName').value, reserved = isReservedNick(name);
-    $('passRow').style.display = $('rememberRow').style.display = reserved ? 'flex' : 'none';
-    if (!reserved) return;
-    const saved = savedPasswords()[name.trim().toLowerCase()];
-    if (saved !== undefined) { $('playerPass').value = saved; $('rememberPass').checked = true; }
-    else if (!$('playerPass').value) $('rememberPass').checked = false;
+// --- Konto (core/auth.js): logowanie, rejestracja, odzyskiwanie hasła ---
+// Hasła nie są nigdzie zapisywane. Poprzednia wersja zapamiętywała je jawnie w localStorage, więc przy starcie je kasujemy.
+try { localStorage.removeItem('bagaboo_saved_pw'); } catch (e) {}
+let confirmedNick = '';   // nick potwierdzony przez serwer kont w tej sesji (po logowaniu albo po udanym sprawdzeniu sesji)
+const acctMsg = (text, good) => { const m = $('acctMsg'); m.innerText = text || ''; m.style.color = good ? '#9aff60' : '#ff8a70'; };
+function acctBusy(on) { ['btnLogin', 'btnRegister', 'btnReset', 'btnLogout'].forEach(id => { $(id).disabled = on; }); }
+function syncAccountUi() {
+    const a = AUTH.account(), nm = $('playerName');
+    $('acctIn').style.display = a ? 'block' : 'none'; $('acctOut').style.display = a ? 'none' : 'block';
+    $('acctWho').innerText = a ? a.nick : '';
+    $('tabAccount').innerText = a ? a.nick : 'Log in';
+    nm.readOnly = !!a; nm.title = a ? 'Your account nickname. Log out to use another.' : '';
+    if (a) nm.value = a.nick;
+    else if (isReservedNick(nm.value)) nm.value = 'Acrobat';   // po wylogowaniu nick ekipy nie zostaje w polu
+    ECO.markNickVerified(a && confirmedNick === a.nick ? a.nick : '');   // premia ekipy (economy.js) tylko po potwierdzeniu przez serwer
+}
+AUTH.onAuthChange(syncAccountUi);
+function showRecovery(code) { $('recoveryCode').innerText = code; $('recoveryBox').style.display = 'block'; }
+async function runAuth(kind) {
+    const nick = $('acctNick').value.trim(), pass = $('acctPass').value;
+    acctBusy(true); acctMsg('Contacting the account server...', true);
+    const res = kind === 'register' ? await AUTH.register(nick, pass) : await AUTH.login(nick, pass);
+    acctBusy(false);
+    if (!res.ok) { acctMsg(AUTH.errorText(res), false); return; }
+    $('acctPass').value = ''; confirmedNick = res.account.nick;
+    if (res.recoveryCode) showRecovery(res.recoveryCode);
+    syncAccountUi(); acctMsg(kind === 'register' ? 'Account created. You are signed in.' : 'Signed in.', true);
+}
+$('btnLogin').onclick = () => runAuth('login');
+$('btnRegister').onclick = () => runAuth('register');
+$('acctPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') runAuth('login'); });
+$('btnForgot').onclick = () => { const r = $('acctReset'); r.style.display = r.style.display === 'none' ? 'block' : 'none'; };
+$('btnReset').onclick = async () => {
+    acctBusy(true); acctMsg('Contacting the account server...', true);
+    const res = await AUTH.resetPassword($('acctNick').value.trim(), $('acctCode').value, $('acctNewPass').value);
+    acctBusy(false);
+    if (!res.ok) { acctMsg(AUTH.errorText(res), false); return; }
+    $('acctCode').value = $('acctNewPass').value = ''; $('acctReset').style.display = 'none'; confirmedNick = res.account.nick;
+    if (res.recoveryCode) showRecovery(res.recoveryCode);   // stary kod przestaje działać, więc pokazujemy nowy
+    syncAccountUi(); acctMsg('New password set. You are signed in.', true);
 };
-$('playerName').addEventListener('input', passVis);
+$('btnLogout').onclick = () => { confirmedNick = ''; AUTH.logout(); acctMsg('Signed out.', true); };
+$('btnRecoverySaved').onclick = () => { $('recoveryBox').style.display = 'none'; $('recoveryCode').innerText = ''; };
+syncAccountUi();
+AUTH.refresh().then((a) => { if (a) confirmedNick = a.nick; syncAccountUi(); });   // zapisana sesja: serwer potwierdza ją albo wylogowuje
 // Jakość grafiki: zapis ustawienia i ponowne uruchomienie (tekstury i cienie tworzą się przy starcie)
 $('quality').onchange = () => { SETTINGS.quality = $('quality').value; saveSettings(); location.reload(); };
 $('btnNew').onclick = () => {
@@ -309,7 +340,7 @@ fillMenu();
 $('status').innerText = 'Loading the lobby...';
 lobbyButtons(false);
 loadLevel('lobby').then(() => {
-    lobbyButtons(true); passVis(); drawScoreboard();
+    lobbyButtons(true); syncAccountUi(); drawScoreboard();
     const ban = NETM.myBanUntil();
     $('status').innerText = ban ? 'You are banned until ' + new Date(ban).toLocaleString() + '. If the owner unbanned you, press Join Room.' : 'Ready. Put on your headset and press Enter VR after starting.';
     if (ban) { lobbyButtons(false); $('btnJoin').disabled = false; }   // zbanowany może tylko dołączyć do pokoju (host może go odbanować)

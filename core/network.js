@@ -9,19 +9,21 @@ import { createAvatar, poseHand, lookKey, animateFace, TAGS } from './avatar.js'
 import { createVoiceHub } from './voicehub.js';
 import { getLook, SESSION, SAVE } from './economy.js';
 import { markAllDirty, toast } from './terminal.js';
-import { rankOf, setLocalMod, isStaffName, isOwnerName, isUltimateName, canPunish, BANS_CLEARED } from './config.js';
+import { rankOf, setLocalMod, isStaffName, isOwnerName, isUltimateName, isReservedNick, canPunish, BANS_CLEARED } from './config.js';
 import { getAudioContext } from './audio.js';
+import { account as myAccount, vouch, verifyProof, randomNonce } from './auth.js';
 
 /* global Peer */
 export const GAME_PREFIX = 'bagaboo-vr-v3-';
 export const MAX_GUESTS = 9;
 export const NET = { mode: 'solo', code: 'MAIN', status: 'Playing solo. Use the computer to host or join a room.', busy: false };
 export const voice = { stream: null, on: true };
-export let playersState = {};
+// Obiekty bez prototypu: klucze pochodzą z sieci (id peera, id przedmiotu), więc '__proto__' czy 'constructor' nie mogą niczego nadpisać
+export let playersState = Object.create(null);
 export const remoteAvatars = {};
 export const audioEls = {}, mutedPeers = new Set(), bannedNames = new Set(), reports = [];
 let peer = null, hostConnection = null, clientConnections = [], myPeerId = 'solo-player', leaving = false;
-const sharedObjectsState = {};
+const sharedObjectsState = Object.create(null);
 // Wiadomości poziomu (np. stan potwora w trybie Cisza). Poziom rejestruje jeden odbiornik.
 let levelHandler = null;
 export function onLevelMsg(fn) { levelHandler = fn; }
@@ -64,7 +66,7 @@ export function bannedNamesList() {
     return Object.keys(out).map(n => ({ name: n, until: out[n] }));
 }
 // Odbanować może tylko właściciel (BoyIsGamer) albo ultimate admin. Odbanowany gracz wchodzi od razu, także jeśli ban został zapisany na jego urządzeniu.
-export function canUnban() { const me = SAVE.profile.name; return isOwnerName(me) || isUltimateName(me); }
+export function canUnban() { const a = myAccount(); return !!a && (isOwnerName(a.nick) || isUltimateName(a.nick)); }   // tylko zalogowane konto właściciela / ultimate admina
 export function unbanName(name) {
     if (!canUnban()) return false;
     const k = String(name).toLowerCase(), b = banList(), a = readMap(ATT_KEY), u = readMap(UNBAN_KEY);
@@ -85,8 +87,9 @@ export function isInvitedToStaff() { return myInvited; }
 export function selfBan(ms) { try { localStorage.setItem(MY_BAN_KEY, String(Date.now() + ms)); } catch (e) {} }
 function checkIntruder(id, st) {
     if (NET.mode !== 'host' || !st || st.lvl !== 'staff' || !st.profile) return;
-    if (isStaffName(st.profile.name) || invitedToStaff.has(id)) return;
-    const conn = connById(id); if (!conn || conn.cheaterSent) return;
+    const conn = connById(id);
+    if (isStaffName(conn && conn.vNick || '') || invitedToStaff.has(id)) return;   // ekipą jest tylko ten, kto ma dowód z serwera kont (nick zgłoszony przez klienta nic nie znaczy)
+    if (!conn || conn.cheaterSent) return;
     conn.cheaterSent = true;
     const b = banList(); b[st.profile.name.toLowerCase()] = Date.now() + WEEK; saveBanList(b);
     try { conn.send({ type: 'cheater', until: Date.now() + WEEK }); } catch (e) {}
@@ -96,14 +99,23 @@ function checkIntruder(id, st) {
 export function myBanUntil() { try { const u = +localStorage.getItem(MY_BAN_KEY) || 0; return u > Date.now() ? u : 0; } catch (e) { return 0; } }
 export function nameOfPlayer(id) { return nameOf(id) || 'Someone'; }
 function nameOf(id) { const st = playersState[id]; return st && st.profile ? st.profile.name : ''; }
+// Nick potwierdzony przez serwer kont (dowód wejścia), a nie nick zgłoszony przez klienta. Pusty = gracz bez konta albo bez dowodu.
+// Host sam jest zweryfikowany tylko wtedy, gdy jest zalogowany.
+function verifiedNickOf(id) {
+    if (id === myPeerId) { const a = myAccount(); return a ? a.nick : ''; }
+    const c = connById(id); return c && c.vNick ? c.vNick : '';
+}
 
 // Host wykonuje polecenie moderatora: kick, ban, invite, mod (nadanie / odebranie roli)
-function performMod(action, targetId, byName, extra) {
-    const by = rankOf(byName), targetName = nameOf(targetId), target = rankOf(targetName);
+// byNick to ZWERYFIKOWANY nick wywołującego (pusty = brak uprawnień). Ranga celu też liczy się tylko ze zweryfikowanego nicku.
+function performMod(action, targetId, byNick, extra) {
+    const by = rankOf(byNick || ''), targetNick = verifiedNickOf(targetId), targetName = targetNick || nameOf(targetId), target = rankOf(targetNick);
     if (by === 0) return;
-    if (action !== 'invite' && action !== 'mod' && !canPunish(byName, targetName)) return;   // ekipa nie banuje ekipy; wszystkich może tylko ultimate admin
+    if (action !== 'invite' && action !== 'mod' && !canPunish(byNick, targetNick)) return;   // ekipa nie banuje ekipy; wszystkich może tylko ultimate admin
     if (action === 'mod' && target >= by) return;
     if (action === 'mod' && by < 2) return;            // role nadaje tylko admin
+    if (action === 'mod' && extra && !targetNick) { setStatus('Only a player who is logged in to an account can become a moderator.'); return; }
+    const byName = byNick;
     const conn = connById(targetId);
     if (action === 'kick' && conn) {
         try { conn.send({ type: 'kicked', temp: true, by: byName }); } catch (e) {}
@@ -123,7 +135,7 @@ function performMod(action, targetId, byName, extra) {
 }
 // Wywołanie z gry (komputer, telewizor, młotek): host robi to od razu, gość prosi hosta
 export function requestMod(action, targetId, extra) {
-    const me = getLook().name;
+    const a = myAccount(), me = a ? a.nick : '';   // bez zalogowanego konta host nie ma rangi
     if (NET.mode === 'host') performMod(action, targetId, me, extra);
     else if (NET.mode === 'guest' && hostConnection && hostConnection.open) hostConnection.send({ type: 'modreq', action: action, target: targetId, extra: extra });
 }
@@ -306,7 +318,7 @@ function resetPeer() {
     for (const id in remoteAvatars) removeRemote(id);
     for (const id in audioEls) removeAudio(id);
     hub = null; hubHostMic = false;
-    playersState = {};
+    playersState = Object.create(null);
     leaving = false;
 }
 export function leaveNetwork(msg) { resetPeer(); NET.mode = 'solo'; NET.busy = false; myPeerId = 'solo-player'; setStatus(msg || 'Playing solo.'); }
@@ -336,25 +348,44 @@ function handleGuest(conn) {
     conn.on('open', () => {
         if (clientConnections.length >= MAX_GUESTS) { conn.send({ type: 'serverFull' }); setTimeout(() => { try { conn.close(); } catch (e) {} }, 500); return; }
         clientConnections.push(conn); hostStatus();
+        // Wyzwanie: gość z kontem odeśle dowód z serwera kont, przypisany do tego pokoju i tej jednorazowej liczby (nonce)
+        conn.authNonce = randomNonce();
+        try { conn.send({ type: 'authChallenge', nonce: conn.authNonce }); } catch (e) {}
         if (lastFollow && lastFollow.level !== 'lobby') conn.send({ type: 'follow', level: lastFollow.level, data: lastFollow.data });   // nowy gość dołącza tam, gdzie jest host
     });
     conn.on('data', (data) => {
-        if (!data || !clientConnections.includes(conn)) return;
-        if (data.type === 'playerUpdate') {
-            const nm = data.payload && data.payload.profile && data.payload.profile.name;
+        if (!data || typeof data !== 'object' || !clientConnections.includes(conn)) return;
+        if (data.type === 'auth') {
+            const nonce = conn.authNonce; conn.authNonce = null;   // nonce jest jednorazowy
+            if (!nonce || typeof data.proof !== 'string' || data.proof.length > 2000) return;
+            verifyProof(data.proof, GAME_PREFIX + NET.code, nonce).then((nick) => {
+                if (!nick || !clientConnections.includes(conn)) return;
+                conn.vNick = nick; clearTimeout(conn.gateTimer);
+                try { conn.send({ type: 'authOk', nick: nick }); } catch (e) {}
+                const st = playersState[conn.peer]; if (st && st.profile) st.profile.name = nick;
+                markAllDirty();
+            });
+        } else if (data.type === 'playerUpdate') {
+            const pl = data.payload;
+            if (!pl || typeof pl !== 'object' || !pl.profile || typeof pl.profile !== 'object') return;
+            let nm = typeof pl.profile.name === 'string' ? pl.profile.name.slice(0, 16) : '';
+            // Tożsamość: zalogowany gracz gra pod nickiem swojego konta; nick zastrzeżony dla ekipy bez dowodu nie wchodzi do gry
+            if (conn.vNick) { pl.profile.name = nm = conn.vNick; }
+            else if (isReservedNick(nm)) { requireLogin(conn); return; }
             if (nm) {
-                const low = nm.toLowerCase(), sb = +data.payload.sb || 0, un = readMap(UNBAN_KEY);
+                const low = nm.toLowerCase(), sb = Math.min(+pl.sb || 0, Date.now() + WEEK_MS), un = readMap(UNBAN_KEY);
                 if (un[low] && un[low] > Date.now()) {
                     // Odbanowany przez właściciela: gracz dostaje zielone światło i czyści ban na swoim urządzeniu
                     if (sb) { try { conn.send({ type: 'unbanned' }); } catch (e) {} }   // wpis zostaje (gracz może jeszcze chwilę wysyłać stary stan)
                 } else if (bannedNames.has(nm) || isBannedName(nm) || sb > Date.now()) {
                     const until = banList()[low] || (sb > Date.now() ? sb : Date.now() + DAY);
-                    if (sb > Date.now()) { const a = readMap(ATT_KEY); a[low] = sb; writeMap(ATT_KEY, a); markAllDirty(); }   // trafia na listę banów u hosta
+                    // Na listę banów hosta trafia tylko ban zgłoszony przez zweryfikowane konto: nick zgłoszony przez klienta mógłby być cudzy
+                    if (sb > Date.now() && conn.vNick) { const a = readMap(ATT_KEY); a[low] = sb; writeMap(ATT_KEY, a); markAllDirty(); }
                     try { conn.send({ type: 'banned', until: until }); } catch (e) {} kickConn(conn, null); return;
                 }
             }
-            playersState[conn.peer] = data.payload; updateRemote(conn.peer, data.payload); checkIntruder(conn.peer, data.payload);
-        } else if (data.type === 'objectMove') { sharedObjectsState[data.id] = data.payload; syncObject(data.id, data.payload); }
+            playersState[conn.peer] = pl; updateRemote(conn.peer, pl); checkIntruder(conn.peer, pl);
+        } else if (data.type === 'objectMove') { if (typeof data.id !== 'string' || data.id.length > 64) return; sharedObjectsState[data.id] = data.payload; syncObject(data.id, data.payload); }
         else if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, conn.peer); }
         else if (data.type === 'route') {   // prezent od gościa do kogoś: host przekazuje albo odbiera sam
             const m = cleanRouted(data.msg); if (!m) return;
@@ -362,7 +393,11 @@ function handleGuest(conn) {
             else { const c = clientConnections.find(x => x.peer === data.to); if (c && c.open) c.send({ type: 'routed', from: conn.peer, msg: m }); }
         }
         else if (data.type === 'mute') { const h = getHub(); if (h && typeof data.id === 'string') h.setMuted(conn.peer, data.id.slice(0, 80), !!data.on); }
-        else if (data.type === 'modreq') performMod(data.action, data.target === myPeerId ? null : data.target, nameOf(conn.peer), data.extra);
+        else if (data.type === 'modreq') {
+            if (typeof data.action !== 'string' || (data.target !== null && data.target !== undefined && typeof data.target !== 'string')) return;
+            const extra = typeof data.extra === 'string' ? data.extra.slice(0, 16) : !!data.extra;
+            performMod(data.action, data.target === myPeerId ? null : data.target, verifiedNickOf(conn.peer), extra);   // ranga wywołującego tylko z dowodu konta
+        }
         else if (data.type === 'report' && data.payload) {
             const from = (playersState[conn.peer] && playersState[conn.peer].profile) ? playersState[conn.peer].profile.name : 'Guest';
             reports.push({ from: from, targetId: data.payload.targetId, targetName: String(data.payload.targetName || '?').slice(0, 16), reason: String(data.payload.reason || '').slice(0, 24), time: new Date().toLocaleTimeString() });
@@ -375,6 +410,15 @@ function handleGuest(conn) {
         delete playersState[conn.peer]; removeRemote(conn.peer); removeAudio(conn.peer); if (hub) hub.removeListener(conn.peer);
         if (!leaving && NET.mode === 'host') hostStatus();
     });
+}
+// Gość używa nicku zastrzeżonego dla ekipy, ale nie ma (jeszcze) dowodu z serwera kont: dajemy chwilę na jego odesłanie, potem odrzucamy
+function requireLogin(conn) {
+    if (conn.gateTimer) return;
+    conn.gateTimer = setTimeout(() => {
+        if (conn.vNick || !clientConnections.includes(conn)) return;
+        try { conn.send({ type: 'authRequired' }); } catch (e) {}
+        setTimeout(() => { try { conn.close(); } catch (e) {} }, 300);
+    }, 6000);
 }
 function kickConn(conn, name) {
     try { conn.send({ type: 'kicked' }); } catch (e) {}
@@ -409,6 +453,12 @@ export function startJoin(code, cb) {
         conn.on('data', (data) => {
             if (!data) return;
             if (data.type === 'serverFull') { leaveNetwork('Room ' + code + ' is full: 1 host and 9 guests.'); if (cb.fail) cb.fail(); return; }
+            if (data.type === 'authChallenge') {   // host prosi o dowód tożsamości: serwer kont wystawia go na ten pokój i ten nonce
+                if (typeof data.nonce === 'string' && data.nonce.length <= 80) vouch(GAME_PREFIX + code, data.nonce).then((proof) => { if (proof && conn.open) { try { conn.send({ type: 'auth', proof: proof }); } catch (e) {} } });
+                return;
+            }
+            if (data.type === 'authRequired') { leaveNetwork('This nickname is reserved for the staff. Log in to your account first.'); toast('Log in to use this nickname', '#e0533f'); return; }
+            if (data.type === 'authOk') return;
             if (data.type === 'kicked') { leaveNetwork(data.temp ? 'You were kicked from room ' + code + ' by ' + (data.by || 'the host') + '. You can join again.' : 'The host removed you from room ' + code + '.'); toast('You were kicked from the room', '#e0533f'); return; }
             if (data.type === 'banned') {
                 try { localStorage.setItem(MY_BAN_KEY, String(data.until || Date.now() + DAY)); } catch (e) {}

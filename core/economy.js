@@ -438,7 +438,7 @@ export function setHideTag(on) { SAVE.profile.hideTag = !!on; saveGame(); notify
 export function markCheater() { if (isStaffName(SAVE.profile.name)) return; if (!SAVE.cheater) { SAVE.cheater = true; if (!SAVE.owned.includes('skin:cheater')) SAVE.owned.push('skin:cheater'); SAVE.equipped.skin = 'cheater'; saveGame(); notifyLook(); } }
 export function setProfile(p) { Object.assign(SAVE.profile, p); refreshStaffItems(); saveGame(); notifyLook(); }
 // Odznaki Admin / Moderator i młotek Kick należą się tylko ekipie (wg nicku); reszcie są zabierane
-// Nick potwierdzony hasłem w tej sesji (ustawia main.js po checkNickPassword); nie jest zapisywany
+// Nick potwierdzony przez serwer kont w tej sesji (ustawia main.js po zalogowaniu); nie jest zapisywany
 let verifiedNick = '';
 export function markNickVerified(name) { verifiedNick = String(name || '').trim().toLowerCase(); }
 const BONUS_KEY = 'bagaboo_staff_bonus_';

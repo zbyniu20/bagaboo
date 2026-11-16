@@ -131,17 +131,10 @@ export const ADMIN_NAMES = ['BoyIsGamer'];
 export const COADMIN_NAMES = ['spikyvr'];   // co-admin: uprawnienia admina, własny napis CO-ADMIN i odznaka
 export const OWNER_NAMES = ['BoyIsGamer'];   // właściciel gry: napis OWNER nad głową i odznaka Owner
 export const MOD_NAMES = ['lincolnvr', 'victoryboy'];
-// Zastrzeżone nicki: żeby grać pod tym nickiem, trzeba podać hasło na stronie startowej.
-// Wartość to skrót SHA-256 z tekstu "bagaboo:" + nick małymi literami + ":" + hasło.
-// Nowy skrót wygenerujesz narzędziem na stronie z plikami do wgrania (sekcja "Hasła do nicków").
-export const RESERVED_NICKS = {
-    'boyisgamer': 'c511d81e82b67718a164546ec9e98845084e8793ba2af30298093f32a3baba15',
-    'spikyvr': '01d78f02137245bfe78f82dc4989497d94b5b8ec4ec41cde4e65a8905a32071c',
-    'zbyniu': 'feed385a1982fea19f574cc0e867a3d9f7a7e8e5dcd35c68f2676bc64c49868e',
-    'lincolnvr': '5cdeaae62ff9bb4a7884d64ad076deceae01d21c8492d1dbd54f0f0bfe070f88',
-    'victoryboy': '5042db4f93898d899923d8a8b5be0cff903a03dca20dcb1ce1e51a183722fe4b'
-};
 const low = (n) => String(n || '').trim().toLowerCase();
+// Zastrzeżone nicki (stała ekipa): grać pod nimi może tylko zalogowane konto o tym nicku (core/auth.js).
+// Host nie wpuści gościa z takim nickiem bez dowodu z serwera kont (core/network.js). Konta ekipy zakłada admin w bazie (bagaboo-api, ADMIN_KEY).
+export const RESERVED_NICKS = new Set([...ULTIMATE_NAMES, ...ADMIN_NAMES, ...COADMIN_NAMES, ...OWNER_NAMES, ...MOD_NAMES].map(low));
 // Moderatorzy wybrani przez admina w grze (zapisani na tym urządzeniu)
 export function localMods() { try { return JSON.parse(localStorage.getItem('bagaboo_mods')) || []; } catch (e) { return []; } }
 export function setLocalMod(name, on) {
@@ -177,13 +170,7 @@ export function roleTagFor(name) {
 export function rankOf(name) { return isUltimateName(name) ? 4 : (isOwnerName(name) ? 3 : (isAdminName(name) ? 2 : (isModName(name) ? 1 : 0))); }
 export function isModName(name) { return MOD_NAMES.some(n => low(n) === low(name)) || localMods().includes(low(name)); }
 export function isStaffName(name) { return isAdminName(name) || isModName(name); }
-export function isReservedNick(name) { return Object.prototype.hasOwnProperty.call(RESERVED_NICKS, low(name)); }
-export async function checkNickPassword(name, password) {
-    const hash = RESERVED_NICKS[low(name)]; if (!hash) return true;
-    const data = new TextEncoder().encode('bagaboo:' + low(name) + ':' + String(password || ''));
-    const buf = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('') === hash;
-}
+export function isReservedNick(name) { return RESERVED_NICKS.has(low(name)); }
 // Kto może wyrzucić / zbanować kogo: ekipa (admin, moderator) nawzajem nie, tylko ultimate admin (zbyniu) może każdego (poza sobą)
 export function canPunish(byName, targetName) {
     const by = rankOf(byName), target = rankOf(targetName);
