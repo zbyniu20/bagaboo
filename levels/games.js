@@ -3,10 +3,10 @@
 //  - ZACHÓD  RACE & SKILL  (pomarańczowy): Floor is Lava, Parkour Race, Last Tile, Red Light Green Light, Shooting Range
 //  - PÓŁNOC  PARTY GAMES   (różowy):       Hide and Seek, Infection, Hot Potato, Treasure Hunt, Become the Monster
 //  - WSCHÓD  TEAM GAMES    (błękitny):     Capture the Banana, King of the Hill, Dodgeball
-// Przy każdych drzwiach tabliczka z opisem. Drzwi LOBBY (południe) wracają do lobby.
+// Tryby wybiera się na terminalach (bez drzwi). Drzwi LOBBY (południe) wracają do lobby, a każdy tryb ma własne drzwi powrotne do tego salonu.
 // Na środku stoją 3 pylony z terminalami (6 ekranów, po obu stronach): zakładki RACE / PARTY / TEAM, lista trybów, opis, rekordy, PLAY.
 // Każdy gracz wybiera u siebie niezależnie; terminal działa tak samo jak w sali Levels (core/hauntedui.js).
-// Nowy tryb: dopisz wpis do MODES (kategoria, nazwa, opis) i export ARRIVAL_FROM_* niżej.
+// Nowy tryb: dopisz wpis do MODES (kategoria, nazwa, opis), export ARRIVAL_FROM_* niżej, a w trybie zrób drzwi powrotne (portal do 'games' ze spawn: ARRIVAL_FROM_*).
 // ==========================================
 import { THREE, L, tex, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
@@ -20,7 +20,6 @@ import { ARRIVAL_GAMES } from './lobby-door.js';
 import { LOBBY_MOVE_SCALE } from '../core/config.js';
 
 const W = 15, D = 15, H = 6;          // sala 30 x 30 m
-const SPACING = 5;
 export const info = { id: 'games', name: 'BagaBoo Games', spawn: [0, 1.0, 11] };
 
 const CATS = {
@@ -28,7 +27,7 @@ const CATS = {
     party: { title: 'PARTY GAMES', sub: 'Chaos for everyone', color: '#ff7aff', hex: 0xff3aff },
     team: { title: 'TEAM GAMES', sub: 'Win together', color: '#6ad0ff', hex: 0x30a0ff }
 };
-// Kolejność w kategorii = kolejność drzwi na ścianie (od lewej do prawej patrząc na ścianę)
+// Kolejność w kategorii = kolejność na liście terminala
 const MODES = [
     { cat: 'race', label: 'FLOOR IS LAVA', color: '#ff8a3a', glow: 0xff5a10, target: 'lava', desc: ['Do not touch the floor.', 'Heavy jumps, sinking platforms,', 'ropes and rising lava.', 'Solo or with friends.'] },
     { cat: 'race', label: 'PARKOUR RACE', color: '#ff7ac0', glow: 0xff3aa0, target: 'race', desc: ['Race over the void.', 'First to the finish wins', '200 Bagabucks.', 'Solo: beat the par time.'] },
@@ -48,20 +47,17 @@ const MODES = [
     { cat: 'team', label: 'KING OF THE HILL', color: '#60ff80', glow: 0x30ff60, target: 'koth', desc: ['Hold the glowing ring alone', 'to collect seconds. Knock', 'rivals off with your hand.', 'First to 40 s. Solo: a rival.'] },
     { cat: 'team', label: 'DODGEBALL', color: '#ff9a4a', glow: 0xff7a20, target: 'dodgeball', desc: ['Two teams, one center line.', 'Hit enemies with fast balls.', 'Last team standing wins.', 'Solo: hit 4 mannequins.'] }
 ];
-// Ściany: zachód (race), północ (party), wschód (team). Drzwi co 5 m, wyśrodkowane na ścianie.
+// Ściany kategorii (baner, strefa na podłodze i światło skrzydła): zachód (race), północ (party), wschód (team)
 // f: kierunek do wnętrza sali, który buildDoor zapisuje jako rotY
 const WALLS = {
     race: { rotY: Math.PI / 2, pos: (c) => [-W + 0.03, c], inner: (c) => [-W + 2.6, c], tan: [0, 1] },
     party: { rotY: 0, pos: (c) => [c, -D + 0.03], inner: (c) => [c, -D + 2.6], tan: [1, 0] },
     team: { rotY: -Math.PI / 2, pos: (c) => [W - 0.03, c], inner: (c) => [W - 2.6, c], tan: [0, 1] }
 };
-// Wyznacza pozycje drzwi i miejsce, w którym gracz staje po powrocie z trybu
+// Po powrocie z trybu stajesz przed terminalem swojej kategorii (pylon zachodni = race, środkowy = party, wschodni = team)
+const CAT_ARRIVAL = { race: [-8, 1.2, 8.8], party: [0, 1.2, 8.8], team: [8, 1.2, 8.8] };
 const AR = {};
-for (const cat of Object.keys(CATS)) {
-    const list = MODES.filter(m => m.cat === cat);
-    const gap = list.length > 5 ? 4 : SPACING;   // 7 drzwi na ścianie 30 m: gęściej, żeby nie wyszły poza ścianę
-    list.forEach((m, i) => { m.c = (i - (list.length - 1) / 2) * gap; m.wall = WALLS[cat]; const [ax, az] = m.wall.inner(m.c); m.arrival = [ax, 1.2, az]; AR[m.target] = m.arrival; });
-}
+for (const m of MODES) AR[m.target] = CAT_ARRIVAL[m.cat];
 export const ARRIVAL_FROM_LAVA = AR.lava;
 export const ARRIVAL_FROM_RACE = AR.race;
 export const ARRIVAL_FROM_LASTTILE = AR.lasttile;
@@ -181,7 +177,6 @@ export function build() {
     for (const [x, z, w, d] of [[0, -D - 0.5, W * 2 + 2, 1], [0, D + 0.5, W * 2 + 2, 1], [-W - 0.5, 0, 1, D * 2], [W + 0.5, 0, 1, D * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x5a4a72, 0x302040);
     buildDecor();
     buildCategories();
-    buildDoors();
     ensureAssets(1152, 720);
     if (!term) term = new Terminal(drawGames, 1152, 720);
     term.dirty = true;
@@ -236,22 +231,6 @@ function buildCategories() {
         const l = new THREE.PointLight(c.hex, 46, 24, 1.5), [lx, lz] = w.inner(0); l.position.set(lx, 4.2, lz); L.root.add(l); S.lights.push({ l: l, base: 46, ph: Math.random() * 6 });
     }
 }
-function buildDoors() {
-    for (const m of MODES) {
-        const w = m.wall, [x, z] = w.pos(m.c);
-        buildDoor({ x: x, z: z, rotY: w.rotY, label: m.label, font: 'bold 44px sans-serif', color: m.color, glow: m.glow, wood: 0x3a3048,
-            portal: { target: m.target, onEnter: () => toast(m.label.charAt(0) + m.label.slice(1).toLowerCase(), m.color) } });
-        // Tabliczka z opisem obok drzwi (przesunięta wzdłuż ściany)
-        const dc = T.makeCanvas(512, 256), dx = dc.getContext('2d');
-        dx.fillStyle = 'rgba(10,6,16,0.9)'; dx.fillRect(0, 0, 512, 256); dx.strokeStyle = m.color; dx.lineWidth = 6; dx.strokeRect(4, 4, 504, 248);
-        dx.font = '29px sans-serif'; dx.fillStyle = '#f0e8ff'; dx.textBaseline = 'middle';
-        m.desc.forEach((line, i) => dx.fillText(line, 22, 48 + i * 52));
-        const plaque = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.7), new THREE.MeshBasicMaterial({ map: T.toTex(dc, false), toneMapped: false }));
-        const off = 1.9, px = x + w.tan[0] * off, pz = z + w.tan[1] * off, f = [Math.sin(w.rotY), Math.cos(w.rotY)];
-        plaque.position.set(px + f[0] * 0.02, 1.5, pz + f[1] * 0.02); plaque.rotation.y = w.rotY; L.root.add(plaque);
-    }
-}
-
 export function update(dt, t, ctx) {
     if (!S) return;
     S.ctx = ctx; stepDread(S, dt, null);
