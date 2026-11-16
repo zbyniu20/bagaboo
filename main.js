@@ -29,6 +29,7 @@ import { captureEnvironment } from './core/envcapture.js';
 import { LEVEL_DEFS, levelPath } from './core/registry.js';
 import { isReservedNick, isStaffName } from './core/config.js';
 import * as AUTH from './core/auth.js';
+import { updateModMenu } from './core/modmenu.js';
 
 // Lista poziomów jest w core/registry.js (nowy poziom = plik w levels/ + wpis w rejestrze).
 // light: preset oświetlenia z config.js ('@mode' = tryb lobby), extras: dodatkowe pliki doładowywane razem z poziomem
@@ -302,6 +303,7 @@ renderer.setAnimationLoop(() => {
     if (renderer.xr.isPresenting) updateXrPerf(rawDt);
     for (let i = frameWaiters.length - 1; i >= 0; i--) if (--frameWaiters[i].n <= 0) { frameWaiters[i].r(); frameWaiters.splice(i, 1); }
     pollPauseButtons(); pollEmoteButtons();
+    updateModMenu(dt);   // BagaBooModMenu: B przez 5 s (tylko konta z MODMENU_NAMES), opcje admina
     // Pauza zatrzymuje świat tylko w grze solo
     const frozen = PAUSE.on && NETM.NET.mode === 'solo';
     if (!frozen) { updatePlayer(dt, t); updateDesktop(dt); updateHammer(dt); }

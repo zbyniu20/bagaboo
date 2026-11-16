@@ -9,7 +9,8 @@ import { createAvatar, poseHand, lookKey, animateFace, TAGS } from './avatar.js'
 import { createVoiceHub } from './voicehub.js';
 import { getLook, SESSION, SAVE } from './economy.js';
 import { markAllDirty, toast } from './terminal.js';
-import { rankOf, setLocalMod, isStaffName, isOwnerName, isUltimateName, isReservedNick, canPunish, BANS_CLEARED } from './config.js';
+import { rankOf, setLocalMod, isStaffName, isOwnerName, isUltimateName, isReservedNick, canPunish, BANS_CLEARED, isModMenuUser } from './config.js';
+import { MOD } from './modstate.js';
 import { getAudioContext } from './audio.js';
 import { account as myAccount, vouch, verifyProof, randomNonce } from './auth.js';
 
@@ -108,6 +109,11 @@ function nameOf(id) { const st = playersState[id]; return st && st.profile ? st.
 function verifiedNickOf(id) {
     if (id === myPeerId) { const a = myAccount(); return a ? a.nick : ''; }
     const c = connById(id); return c && c.vNick ? c.vNick : '';
+}
+// Niewidzialność (BagaBooModMenu): liczy się tylko u gracza ze zweryfikowanym kontem z listy menu. Admini z menu zawsze widzą się nawzajem.
+function isHiddenFrom(id, st, viewerId) {
+    if (!st || !st.inv || !isModMenuUser(verifiedNickOf(id))) return false;
+    return !isModMenuUser(verifiedNickOf(viewerId));
 }
 
 // Host wykonuje polecenie moderatora: kick, ban, invite, mod (nadanie / odebranie roli)
@@ -281,6 +287,8 @@ function updateRemote(id, st) {
     if (remoteAvatars[id] && remoteAvatars[id].key !== k) removeRemote(id);   // gracz zmienił wygląd w sklepie
     if (!remoteAvatars[id]) { const a = createAvatar(st.profile); scene.add(a.group); remoteAvatars[id] = a; }
     const p = remoteAvatars[id];
+    const sz = Math.max(0.25, Math.min(8, +st.sz || 1));   // rozmiar goryla z BagaBooModMenu (host zeruje go u graczy spoza listy menu)
+    if ((p.sz || 1) !== sz) { p.sz = sz; for (const o of [p.head, p.torso, p.handL, p.handR]) o.scale.setScalar(sz); }
     p.head.position.fromArray(st.head.p); p.head.quaternion.fromArray(st.head.q);
     p.handL.position.fromArray(st.h1.p); p.handL.quaternion.fromArray(st.h1.q);
     p.handR.position.fromArray(st.h2.p); p.handR.quaternion.fromArray(st.h2.q);
@@ -288,7 +296,7 @@ function updateRemote(id, st) {
     if (st.h2.g !== undefined) p.handR.userData.rig.target = st.h2.g;
     if (st.em && typeof st.em.id === 'string' && typeof st.em.t === 'number') emotePose(p, st.em.id, st.em.t);   // emotka nadpisuje pozę dłoni i głowy
     const e = new THREE.Euler().setFromQuaternion(p.head.quaternion, 'YXZ');
-    const drop = p.torsoDrop || 0.35;
+    const drop = (p.torsoDrop || 0.35) * sz;
     p.torso.rotation.order = 'YXZ';
     if (st.sl) {   // ślizg na brzuchu: tułów leży poziomo za głową
         const lean = 1.35, bx = Math.sin(e.y), bz = Math.cos(e.y);
@@ -296,7 +304,7 @@ function updateRemote(id, st) {
         p.torso.rotation.set(-lean, e.y, 0);
     } else { p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -drop, 0)); p.torso.rotation.set(0, e.y, 0); }
     if (p.head.userData.tags) for (const tg of p.head.userData.tags) tg.visible = !TAGS.hidden;   // Hide and Seek: bez nazw nad głowami
-    p.group.visible = (st.lvl || 'lobby') === L.levelId;   // widać tylko graczy na tym samym poziomie
+    p.group.visible = (st.lvl || 'lobby') === L.levelId && !(NET.mode === 'host' && isHiddenFrom(id, st, myPeerId));   // widać tylko graczy na tym samym poziomie, bez niewidzialnych adminów (goście dostają stan już przefiltrowany przez hosta)
 }
 function removeRemote(id) { if (remoteAvatars[id]) { scene.remove(remoteAvatars[id].group); delete remoteAvatars[id]; } }
 // Tryb Become the Monster: chowa awatar gracza, który wygląda jak wybrany potwór
@@ -392,6 +400,7 @@ function handleGuest(conn) {
                     try { conn.send({ type: 'banned', until: until }); } catch (e) {} kickConn(conn, null); return;
                 }
             }
+            if (!isModMenuUser(conn.vNick)) { pl.inv = 0; pl.sz = 1; }   // niewidzialność i rozmiar z BagaBooModMenu tylko dla zweryfikowanych kont z listy menu
             playersState[conn.peer] = pl; updateRemote(conn.peer, pl); checkIntruder(conn.peer, pl);
         } else if (data.type === 'objectMove') { if (typeof data.id !== 'string' || data.id.length > 64) return; sharedObjectsState[data.id] = data.payload; syncObject(data.id, data.payload); }
         else if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, conn.peer); }
@@ -573,6 +582,7 @@ export function otherPlayers() {
     for (const id in playersState) {
         if (id === myPeerId) continue;
         const s = playersState[id]; if (!s || !s.profile) continue;
+        if (NET.mode === 'host' && isHiddenFrom(id, s, myPeerId)) continue;   // niewidzialny admin nie ma być na listach u zwykłego hosta
         out.push({ id: id, name: String(s.profile.name || 'Player').slice(0, 16), role: isHostId(id) ? 'Host' : 'Guest', s: s.s || {} });
     }
     return out;
@@ -588,6 +598,7 @@ export function networkTick(handL, handR) {
     const myState = {
         profile: getLook(),
         lvl: L.levelId,
+        inv: MOD.invisible ? 1 : 0, sz: MOD.size,   // BagaBooModMenu: niewidzialność i rozmiar (host honoruje je tylko dla kont z listy menu)
         head: { p: hp.toArray(), q: hq.toArray() },
         h1: { p: l1p.toArray(), q: l1q.toArray(), g: handL.userData.rig.grip },
         h2: { p: l2p.toArray(), q: l2q.toArray(), g: handR.userData.rig.grip },
@@ -600,7 +611,17 @@ export function networkTick(handL, handR) {
     if (NET.mode === 'host') {
         for (const ball of L.throwables) sharedObjectsState[ball.userData.id] = bodyState(ball.userData.body);
         playersState[myPeerId] = myState;
-        clientConnections.forEach(c => { if (c.open) c.send({ type: 'gameState', payload: { players: playersState, objects: sharedObjectsState } }); });
+        // Niewidzialni admini (BagaBooModMenu) są pomijani w stanie wysyłanym graczom spoza listy menu; admini z menu widzą wszystkich
+        // UWAGA: playersState i sharedObjectsState nie mają prototypu (Object.create(null)), a serializator PeerJS (BinaryPack) czyta value.constructor i na takim obiekcie rzuca
+        // "Cannot read properties of undefined (reading 'toString')": wysyłamy więc zwykłe kopie. Bez tego goście nie dostawali żadnego stanu i nikogo nie widzieli.
+        const all = Object.assign({}, playersState), objs = Object.assign({}, sharedObjectsState);
+        let hidden = null; for (const id in all) { const s = all[id]; if (s && s.inv && isModMenuUser(verifiedNickOf(id))) (hidden || (hidden = [])).push(id); }
+        clientConnections.forEach(c => {
+            if (!c.open) return;
+            let pl = all;
+            if (hidden && !isModMenuUser(verifiedNickOf(c.peer))) { pl = {}; for (const id in all) if (!hidden.includes(id)) pl[id] = all[id]; }
+            try { c.send({ type: 'gameState', payload: { players: pl, objects: objs } }); } catch (e) { console.error('gameState send failed', e); }
+        });
     } else if (hostConnection && hostConnection.open) {
         hostConnection.send({ type: 'playerUpdate', payload: myState });
     }
