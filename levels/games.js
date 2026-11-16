@@ -3,7 +3,7 @@
 //  - ZACHÓD  RACE & SKILL  (pomarańczowy): Floor is Lava, Parkour Race, Last Tile, Red Light Green Light, Shooting Range
 //  - PÓŁNOC  PARTY GAMES   (różowy):       Hide and Seek, Infection, Hot Potato, Treasure Hunt, Become the Monster
 //  - WSCHÓD  TEAM GAMES    (błękitny):     Capture the Banana, King of the Hill, Dodgeball
-// Tryby wybiera się na terminalach (bez drzwi). Drzwi LOBBY (południe) wracają do lobby, a każdy tryb ma własne drzwi powrotne do tego salonu.
+// Tryby wybiera się na terminalach albo wchodzi się do nich drzwiami na ścianach kategorii (nazwa trybu nad drzwiami). Drzwi LOBBY (południe) wracają do lobby, a każdy tryb ma własne drzwi powrotne do tego salonu.
 // Wokół kuli stoi 6 komputerów jak w lobby (tak samo jak w sali Levels): zakładki RACE / PARTY / TEAM, lista trybów, karta, rekordy, PLAY.
 // Każdy gracz wybiera u siebie niezależnie; terminal działa tak samo jak w sali Levels (core/hauntedui.js).
 // Nowy tryb: dopisz wpis do MODES (kategoria, nazwa, opis), export ARRIVAL_FROM_* niżej, a w trybie zrób drzwi powrotne (portal do 'games' ze spawn: ARRIVAL_FROM_*).
@@ -63,6 +63,11 @@ const CAT_ARRIVAL = { race: [...ringPos(240, 6.6)], party: [...ringPos(180, 6.6)
 for (const k of Object.keys(CAT_ARRIVAL)) CAT_ARRIVAL[k] = [CAT_ARRIVAL[k][0], 1.2, CAT_ARRIVAL[k][1]];
 const AR = {};
 for (const m of MODES) AR[m.target] = CAT_ARRIVAL[m.cat];
+// Drzwi do trybów na ścianach kategorii: co 5 m, wyśrodkowane (przy więcej niż 5 trybach na ścianie co 4 m, żeby nie wyszły poza ścianę 30 m)
+for (const cat of Object.keys(CATS)) {
+    const list = MODES.filter(m => m.cat === cat), gap = list.length > 5 ? 4 : 5;
+    list.forEach((m, i) => { m.c = (i - (list.length - 1) / 2) * gap; m.wall = WALLS[cat]; });
+}
 export const ARRIVAL_FROM_LAVA = AR.lava;
 export const ARRIVAL_FROM_RACE = AR.race;
 export const ARRIVAL_FROM_LASTTILE = AR.lasttile;
@@ -182,6 +187,7 @@ export function build() {
     for (const [x, z, w, d] of [[0, -D - 0.5, W * 2 + 2, 1], [0, D + 0.5, W * 2 + 2, 1], [-W - 0.5, 0, 1, D * 2], [W + 0.5, 0, 1, D * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x5a4a72, 0x302040);
     buildDecor();
     buildCategories();
+    buildDoors();
     ensureAssets(1152, 720);
     if (!term) term = new Terminal(drawGames, 1152, 720);
     term.dirty = true;
@@ -234,6 +240,14 @@ function buildCategories() {
         zone.rotation.x = -Math.PI / 2;
         zone.position.set(cat === 'race' ? -W + 2.5 : (cat === 'team' ? W - 2.5 : 0), 0.012, cat === 'party' ? -D + 2.5 : 0); L.root.add(zone);
         const l = new THREE.PointLight(c.hex, 46, 24, 1.5), [lx, lz] = w.inner(0); l.position.set(lx, 4.2, lz); L.root.add(l); S.lights.push({ l: l, base: 46, ph: Math.random() * 6 });
+    }
+}
+// Drzwi do trybów (obok terminali): każde na ścianie swojej kategorii, z nazwą trybu
+function buildDoors() {
+    for (const m of MODES) {
+        const w = m.wall, [x, z] = w.pos(m.c);
+        buildDoor({ x: x, z: z, rotY: w.rotY, label: m.label, font: 'bold 44px sans-serif', color: m.color, glow: m.glow, wood: 0x3a3048,
+            portal: { target: m.target, onEnter: () => toast(m.label.charAt(0) + m.label.slice(1).toLowerCase(), m.color) } });
     }
 }
 export function update(dt, t, ctx) {

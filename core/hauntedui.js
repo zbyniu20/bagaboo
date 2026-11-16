@@ -68,13 +68,15 @@ export function tx(c, s, x, y, size, col, align, font, glow) {
 
 // Karta poziomu/trybu: cztery sekcje (miejsce, cel, jak grać, na co uważać), zawijane do ok. 58 znaków. Zwraca y po ostatniej linii.
 // accent: kolor etykiet. Rysowanie kończy się, gdy zabraknie miejsca (yMax), więc teksty w core/levelcards.js trzymaj krótkie.
-export function drawCard(c, card, x, y, yMax, accent) {
+// k: skala tekstu (domyślnie 1; ekrany na ścianie rysują kartę większą, żeby dało się ją przeczytać z kilku metrów)
+export function drawCard(c, card, x, y, yMax, accent, k) {
+    k = k || 1;
     const sections = [['THE PLACE', [card.place]], ['YOUR GOAL', [card.goal]], ['HOW TO PLAY', card.how.map(b => '- ' + b)], ['WATCH OUT', [card.watch]]];
     for (const [label, items] of sections) {
-        if (y + 20 > yMax) break;
-        tx(c, label, x, y, 17, accent || BLOOD, 'left', MONO, 6); y += 21;
-        for (const it of items) for (const ln of wrapText(it, 58)) { if (y > yMax) return y; tx(c, ln, x, y, 20, '#e0d2b8'); y += 22; }
-        y += 7;
+        if (y + 20 * k > yMax) break;
+        tx(c, label, x, y, 17 * k, accent || BLOOD, 'left', MONO, 6); y += 21 * k;
+        for (const it of items) for (const ln of wrapText(it, 58)) { if (y > yMax) return y; tx(c, ln, x, y, 20 * k, '#e0d2b8'); y += 22 * k; }
+        y += 7 * k;
     }
     return y;
 }

@@ -49,7 +49,7 @@ let S = null;
 
 
 // Wybrany poziom, wejście i pukanie do ukrytych drzwi
-function pick(i) { TS.sel = i; S.entered = false; term.dirty = true; }
+function pick(i) { TS.sel = i; S.entered = false; term.dirty = true; S.wallDirty = true; }
 function enter() {
     const d = LV[TS.sel];
     if (d.secret) return knock();
@@ -158,6 +158,37 @@ function drawScreen(t) {
     sp(c, 0);
     drawGlass(c, W2, H2, t, S);
 }
+// ---------- EKRANY NA ŚCIANIE: opis wybranego poziomu nad każdym terminalem (ten na terminalu jest za mały, żeby go przeczytać) ----------
+const WALL_W = 1280, WALL_H = 720;
+function drawWall() {
+    const w = S && S.wall; if (!w) return;
+    const c = w.ctx, d = LV[TS.sel], secret = !!d.secret, card = CARDS[secret ? 'room000' : d.target];
+    const bg = c.createRadialGradient(WALL_W / 2, WALL_H * 0.35, 40, WALL_W / 2, WALL_H * 0.45, WALL_W * 0.75); bg.addColorStop(0, '#1d0d09'); bg.addColorStop(0.62, '#0b0604'); bg.addColorStop(1, '#040302');
+    c.fillStyle = bg; c.fillRect(0, 0, WALL_W, WALL_H);
+    c.strokeStyle = '#6a1a12'; c.lineWidth = 6; c.strokeRect(10, 10, WALL_W - 20, WALL_H - 20);
+    sp(c, 3);
+    tx(c, d.label, 50, 66, 74, '#efe3cc', 'left', SERIF, 18);
+    tx(c, d.type, WALL_W - 50, 40, 28, AMBD, 'right');
+    for (let k = 0; k < 5; k++) { c.fillStyle = k < d.threat ? (secret ? BONE : BLOOD) : '#3a1a16'; c.fillRect(WALL_W - 50 - 5 * 34 + k * 34, 62, 28, 18); }
+    tx(c, secret ? 'UNKNOWN' : WORDS[d.threat], WALL_W - 50, 102, 24, BLOOD, 'right', MONO, 8);
+    tx(c, '“' + d.msg + '”', 50, 130, 34, AMB, 'left', ITAL);
+    c.fillStyle = '#3a1812'; c.fillRect(50, 158, WALL_W - 100, 2);
+    drawCard(c, card, 50, 190, WALL_H - 14, AMB, 1.5);
+    sp(c, 0);
+    w.tex.needsUpdate = true;
+}
+function buildWallScreens() {
+    const cv = T.makeCanvas(WALL_W, WALL_H);
+    S.wall = { ctx: cv.getContext('2d'), tex: T.toTex(cv, false) };
+    const sw = 3.6, sh = sw * WALL_H / WALL_W, y = 3.0;   // 3,6 x 2,0 m: pięć ekranów co 4 m, nad niskimi terminalami (do ok. 1,3 m), pod napisem LEVELS
+    for (const st of STATIONS) {
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(sw + 0.18, sh + 0.18, 0.06), new THREE.MeshStandardMaterial({ color: 0x120808, metalness: 0.6, roughness: 0.5 }));
+        frame.position.set(st.x, y, -D + 0.03); L.root.add(frame);
+        const scr = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), new THREE.MeshBasicMaterial({ map: S.wall.tex, toneMapped: false }));
+        scr.position.set(st.x, y, -D + 0.07); L.root.add(scr);
+    }
+    drawWall();
+}
 export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -W + 0.3, maxX: W - 0.3, minZ: -D + 1.5, maxZ: D - 0.3, maxY: H - 0.3 };
@@ -183,7 +214,8 @@ export function build() {
     term.state = {}; term.dirty = true;
     addComputers(term, STATIONS, { label: 'TERMINAL' });
     const glow = new THREE.PointLight(0xff3020, 18, 11, 1.8); glow.position.set(0, 2.4, -D + 2.2); L.root.add(glow); S.glow = glow;
-    for (const f of ['24px VT323', '24px "IM Fell English SC"', 'italic 24px "IM Fell English"']) { try { document.fonts.load(f).then(() => { if (term) term.dirty = true; }); } catch (e) { /* bez czcionek: Courier */ } }
+    buildWallScreens();
+    for (const f of ['24px VT323', '24px "IM Fell English SC"', 'italic 24px "IM Fell English"']) { try { document.fonts.load(f).then(() => { if (term) term.dirty = true; if (S) S.wallDirty = true; }); } catch (e) { /* bez czcionek: Courier */ } }
     buildWarnings();
     buildDoor({ x: 0, z: D - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x4a3a30, portal: { target: 'lobby', spawn: ARRIVAL_LEVELS, onEnter: () => toast('Back to the lobby') } });
     // Migoczące świece i lampy
@@ -234,6 +266,7 @@ export function update(dt, t, ctx) {
     stepDread(S, dt, () => SFX.stinger({ x: 0, y: 1.6, z: -D + 0.5 }));
     S.redraw -= dt;
     if (S.redraw <= 0) { S.redraw = IS_QUEST ? 0.4 : 0.2; if (term) term.dirty = true; }
+    if (S.wallDirty) { S.wallDirty = false; drawWall(); }   // ekrany na ścianie rysujemy tylko po zmianie wyboru
 }
 export function dispose() { if (S) S.scare.dispose(); S = null; }
 export const debug = () => S ? { screens: term && term.meshes ? term.meshes.length : 0, visitors: visitorsHere('levels'), sel: TS.sel, dread: S.dread, knocks: TS.knock, leaving: S.leaving, buttons: term ? term.buttons.map(b => b.id) : [], levels: LV.map(l => l.target || null) } : null;   // dla testów
