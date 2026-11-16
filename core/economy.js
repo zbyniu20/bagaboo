@@ -81,6 +81,7 @@ export const CATALOG = [
     { slot: 'badge', id: 'coadmin', name: 'Co-admin', price: 0, locked: true, hint: 'Co-admin' },
     { slot: 'badge', id: 'admin', name: 'Admin', price: 0, locked: true, hint: 'Admin' },
     { slot: 'badge', id: 'mod', name: 'Moderator', price: 0, locked: true, hint: 'Moderator' },
+    { slot: 'badge', id: 'goldfish', name: 'Golden fish pin', price: 0, locked: true, hint: 'Fur Den on Nightmare' },
     { slot: 'badge', id: 'furas', name: 'Furas (kitty)', price: 0, locked: true, hint: 'Furas' },
     // Młotki (kupowane i zakładane na komputerze w pokoju szefa, nie w sklepie)
     { slot: 'tool', id: 'none', name: 'No hammer', price: 0 },
@@ -295,6 +296,7 @@ export const ACHIEVEMENTS = [
     { id: 'nm_hotel', name: 'Checked out', desc: 'Escape The Hotel on Nightmare', reward: ['hat', 'bellhop'], rewardName: 'Bellhop cap' },
     { id: 'nm_nursery', name: 'Lullaby', desc: 'Escape The Nursery on Nightmare', reward: ['hat', 'teddyears'], rewardName: 'Teddy ears' },
     { id: 'nm_catacombs', name: 'Bone collector', desc: 'Escape The Catacombs on Nightmare', reward: ['hat', 'skullcrown'], rewardName: 'Skull crown' },
+    { id: 'nm_furas', name: 'Fluffy nightmare', desc: 'Escape The Fur Den on Nightmare', reward: ['badge', 'goldfish'], rewardName: 'Golden fish pin' },
     { id: 'nm_all', name: 'Nightmare master', desc: 'Clear all ' + DIFF_LEVEL_IDS.length + ' levels on Nightmare', reward: ['skin', 'nightmare'], rewardName: 'Nightmare ape', goal: DIFF_LEVEL_IDS.length, val: () => Object.keys(SAVE.nmWins || {}).length },
     // --- Tryby gry ---
     { id: 'hs_10', name: 'Ghost of the warehouse', desc: 'Win 10 rounds of Hide and Seek', reward: ['badge', 'ghost'], rewardName: 'Ghost badge', goal: 10, val: () => SAVE.hideseekWins || 0 },

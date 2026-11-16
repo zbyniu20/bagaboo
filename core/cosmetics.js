@@ -390,6 +390,10 @@ export const EXTRA_BADGES = {
     heart: { bg: '#3a0a1a', draw: (x) => { x.fillStyle = '#ff3a6a'; x.beginPath(); x.moveTo(64, 98); x.bezierCurveTo(14, 62, 30, 24, 64, 48); x.bezierCurveTo(98, 24, 114, 62, 64, 98); x.fill(); } },
     bolt: { bg: '#10142a', draw: (x) => { x.fillStyle = '#ffe23a'; x.beginPath(); x.moveTo(72, 18); x.lineTo(38, 70); x.lineTo(60, 70); x.lineTo(52, 110); x.lineTo(92, 56); x.lineTo(68, 56); x.closePath(); x.fill(); } },
     clover: { bg: '#0a2a14', draw: (x) => { x.fillStyle = '#3ad86a'; for (const [cx, cy] of [[48, 48], [80, 48], [48, 80], [80, 80]]) { x.beginPath(); x.arc(cx, cy, 20, 0, 7); x.fill(); } x.fillStyle = '#0a2a14'; x.fillRect(62, 62, 4, 40); } },
+    goldfish: { bg: '#2a1a04', draw: (x) => {   // nagroda za The Fur Den na Nightmare: złota rybka
+        x.fillStyle = '#ffd23a'; x.beginPath(); x.ellipse(60, 64, 34, 20, 0, 0, 7); x.fill(); x.beginPath(); x.moveTo(88, 64); x.lineTo(112, 44); x.lineTo(112, 84); x.closePath(); x.fill();
+        x.fillStyle = '#ffb020'; x.beginPath(); x.moveTo(52, 46); x.lineTo(68, 36); x.lineTo(70, 48); x.closePath(); x.fill();
+        x.fillStyle = '#1a0a02'; x.beginPath(); x.arc(42, 58, 4, 0, 7); x.fill(); } },
     furas: { bg: '#3a0a2a', draw: (x) => {   // ranga FURAS: biały kotek z różowymi uszami, zielonymi oczami i wąsami
         x.fillStyle = '#fff2e4'; x.beginPath(); x.moveTo(28, 70); x.lineTo(32, 26); x.lineTo(58, 44); x.lineTo(70, 44); x.lineTo(96, 26); x.lineTo(100, 70); x.quadraticCurveTo(100, 108, 64, 108); x.quadraticCurveTo(28, 108, 28, 70); x.closePath(); x.fill();
         x.fillStyle = '#ff8ab8'; x.beginPath(); x.moveTo(37, 40); x.lineTo(50, 50); x.lineTo(40, 62); x.closePath(); x.moveTo(91, 40); x.lineTo(78, 50); x.lineTo(88, 62); x.closePath(); x.fill();
