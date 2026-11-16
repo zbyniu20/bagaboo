@@ -128,9 +128,9 @@ export function drawGlass(c, W2, H2, t, S) {
 }
 
 // Stanowiska: stojące terminale jak pulpit Maszyny goryla w lobby (core/computerdesk.js buildMachineTerminal), wszystkie z tą samą grafiką terminala (jedno płótno, jedno rysowanie).
-// list: [{ x, z, rotY }], rotY: lokalne +z terminala = strona, z której stoi gracz. opt: { scale (domyślnie 1.25), label }
+// list: [{ x, z, rotY }], rotY: lokalne +z terminala = strona, z której stoi gracz. opt: { scale (domyślnie 1 = wysokość jak pulpit Maszyny goryla), label }
 export function addComputers(term, list, opt) {
-    opt = opt || {}; const scale = opt.scale || 1.25;
+    opt = opt || {}; const scale = opt.scale || 1;
     let first = !term.mesh;   // po zmianie poziomu główny ekran jest zerowany: pierwszy ekran tworzy grafikę od nowa, reszta dokłada widoki
     list.forEach((c, k) => {
         const d = buildMachineTerminal(c.x, c.z, c.rotY, scale, (w, h) => { const m = first ? term.createMesh(w, h) : term.addMesh(w, h); first = false; return m; });
