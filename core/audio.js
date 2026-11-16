@@ -388,6 +388,31 @@ export function hiss(pos, vol) {
     const g = ctx.createGain(); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(0.6 * (vol || 1), t0 + 0.05); g.gain.exponentialRampToValueAtTime(0.001, t0 + 2.0);
     n.connect(bp); bp.connect(g); g.connect(pos ? outAt(pos) : master); n.start(t0);
 }
+// Pomruk wielkiego kota (Furas): szum przepuszczony przez niski filtr, modulowany ok. 24 razy na sekundę + niski sinus. vol 0..1
+export function purr(pos, vol) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, dur = 1.3, dst = pos ? outAt(pos) : master, v = vol === undefined ? 1 : vol;
+    const n = ctx.createBufferSource(); n.buffer = noiseBuffer(dur + 0.1);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 280;
+    const am = ctx.createGain(); am.gain.value = 0.5;
+    const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 23 + Math.random() * 3; lg.gain.value = 0.5; lfo.connect(lg); lg.connect(am.gain);
+    const e = ctx.createGain(); e.gain.setValueAtTime(0.0001, t0); e.gain.linearRampToValueAtTime(1.6 * v, t0 + 0.25); e.gain.linearRampToValueAtTime(1.2 * v, t0 + dur - 0.3); e.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    n.connect(lp); lp.connect(am); am.connect(e);
+    const sub = ctx.createOscillator(), sg = ctx.createGain(); sub.type = 'sine'; sub.frequency.value = 48; sg.gain.value = 0.35; sub.connect(sg); sg.connect(am);
+    e.connect(dst); n.start(t0); lfo.start(t0); sub.start(t0); lfo.stop(t0 + dur + 0.05); sub.stop(t0 + dur + 0.05); n.stop(t0 + dur + 0.1);
+}
+// Warkot przed skokiem (Furas): niska piła z szybką modulacją i szumem, z kierunku potwora
+export function growl(pos) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, dst = pos ? outAt(pos, scareBus) : scareBus;
+    const o = ctx.createOscillator(), o2 = ctx.createOscillator(), lp = ctx.createBiquadFilter(), am = ctx.createGain(), e = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+    o.type = 'sawtooth'; o2.type = 'square'; o.frequency.setValueAtTime(95, t0); o.frequency.linearRampToValueAtTime(58, t0 + 0.9); o2.frequency.setValueAtTime(47, t0); o2.frequency.linearRampToValueAtTime(30, t0 + 0.9);
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(900, t0); lp.frequency.linearRampToValueAtTime(380, t0 + 0.9);
+    am.gain.value = 0.5; lfo.frequency.value = 38; lg.gain.value = 0.5; lfo.connect(lg); lg.connect(am.gain);
+    env(e, t0, 0.9, 0.12, 0.8); o.connect(lp); o2.connect(lp); lp.connect(am); am.connect(e); e.connect(dst);
+    o.start(t0); o2.start(t0); lfo.start(t0); o.stop(t0 + 1.0); o2.stop(t0 + 1.0); lfo.stop(t0 + 1.0);
+    duckDrone(t0); lastLoud = t0; bumpThreat(1, 3);
+}
 // Pisk mokrych dłoni na mydlinach
 export function squeak(pos) {
     if (!ctx) return;
