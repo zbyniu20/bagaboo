@@ -4,12 +4,18 @@
 //  - PÓŁNOC  PARTY GAMES   (różowy):       Hide and Seek, Infection, Hot Potato, Treasure Hunt, Become the Monster
 //  - WSCHÓD  TEAM GAMES    (błękitny):     Capture the Banana, King of the Hill, Dodgeball
 // Przy każdych drzwiach tabliczka z opisem. Drzwi LOBBY (południe) wracają do lobby.
+// Na środku stoją 3 pylony z terminalami (6 ekranów, po obu stronach): zakładki RACE / PARTY / TEAM, lista trybów, opis, rekordy, PLAY.
+// Każdy gracz wybiera u siebie niezależnie; terminal działa tak samo jak w sali Levels (core/hauntedui.js).
 // Nowy tryb: dopisz wpis do MODES (kategoria, nazwa, opis) i export ARRIVAL_FROM_* niżej.
 // ==========================================
 import { THREE, L, tex, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
-import { toast } from '../core/terminal.js';
+import { Terminal, toast } from '../core/terminal.js';
 import { buildDoor } from '../core/levelkit.js';
+import { SAVE, getDiff, topTimes } from '../core/economy.js';
+import { LEVEL_BY_ID } from '../core/registry.js';
+import { IS_QUEST } from '../core/device.js';
+import { PROX, TICKER, MONO, SERIF, ITAL, BONE, BLOOD, AMB, AMBD, mmss, visitorsHere, ensureAssets, sp, tx, drawEcg, drawEye, drawGlass, addStations, makeDread, stepDread } from '../core/hauntedui.js';
 import { ARRIVAL_GAMES } from './lobby-door.js';
 import { LOBBY_MOVE_SCALE } from '../core/config.js';
 
@@ -75,10 +81,95 @@ export const ARRIVAL_FROM_KOTH = AR.koth;
 export const ARRIVAL_FROM_DODGEBALL = AR.dodgeball;
 let S = null;
 
+// ---------- TERMINALE (pylony na środku) ----------
+const STATIONS = [{ x: -8, z: 6, rotY: 0, both: true }, { x: 0, z: 6, rotY: 0, both: true }, { x: 8, z: 6, rotY: 0, both: true }];   // każdy pylon ma ekran na południe i na północ
+const CAT_ORDER = ['race', 'party', 'team'];
+const GT = { cat: 'race', idx: { race: 0, party: 0, team: 0 } };   // wybór przeżywa przejścia między trybami
+let term = null;
+const modesOf = (cat) => MODES.filter(m => m.cat === cat);
+const curMode = () => modesOf(GT.cat)[GT.idx[GT.cat]];
+function pickCat(cat) { GT.cat = cat; S.entered = false; term.dirty = true; }
+function pickMode(i) { GT.idx[GT.cat] = i; S.entered = false; term.dirty = true; }
+function play() {
+    const m = curMode();
+    if (!S || S.leaving || !S.ctx) return;
+    S.leaving = true; GT.last = m.target;
+    toast(m.label.charAt(0) + m.label.slice(1).toLowerCase(), m.color);
+    S.ctx.goto(m.target);
+}
+// Rekordy trybu z rejestru: czasy (top) albo wynik punktowy (im więcej, tym lepiej)
+function recordsFor(m) {
+    const def = LEVEL_BY_ID[m.target];
+    if (!def || !def.rec) return null;
+    if (def.score) return { kind: 'score', value: SAVE.records[m.target], unit: (def.rec.match(/\(([^)]+)\)/) || [])[1] || '' };
+    return { kind: 'time', list: topTimes(m.target, getDiff(m.target), false) };
+}
+function drawGames(t) {
+    if (!S) return;
+    const c = t.ctx, W2 = t.W, H2 = t.H, now = S.t, cat = CATS[GT.cat], m = curMode(), list = modesOf(GT.cat), dread = S.dread;
+    const bg = c.createRadialGradient(W2 / 2, H2 * 0.3, 40, W2 / 2, H2 * 0.4, W2 * 0.75); bg.addColorStop(0, '#1d0d09'); bg.addColorStop(0.62, '#0b0604'); bg.addColorStop(1, '#040302');
+    c.fillStyle = bg; c.fillRect(0, 0, W2, H2);
+    sp(c, 3);
+    c.fillStyle = '#3a1812'; c.fillRect(0, 46, W2, 2);
+    tx(c, 'BAGABOO', 30, 24, 28, BLOOD, 'left', MONO, 8); tx(c, 'VISITOR TERMINAL // GAMES ACCESS // 03:07', 168, 24, 22, AMBD);
+    tx(c, 'PRESENCE BEHIND TERMINAL', W2 - 150, 24, 20, AMBD, 'right'); tx(c, PROX[dread], W2 - 30, 24, 24, BLOOD, 'right', MONO, 8);
+    // zakładki kategorii
+    CAT_ORDER.forEach((k, i) => {
+        const x = 8 + i * 124, on = GT.cat === k, hov = t.hover.has('tab-' + k), col = CATS[k].color;
+        c.fillStyle = on ? col : (hov ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'); c.fillRect(x, 58, 118, 38);
+        c.strokeStyle = on ? col : '#3a1812'; c.lineWidth = 2; c.strokeRect(x + 1, 59, 116, 36);
+        tx(c, k.toUpperCase() + ' ' + modesOf(k).length, x + 59, 78, 22, on ? '#120403' : '#b8a78a', 'center');
+        t.buttons.push({ id: 'tab-' + k, x: x, y: 58, w: 118, h: 38, action: () => pickCat(k) });
+    });
+    // lista trybów wybranej kategorii
+    list.forEach((l, i) => {
+        const y = 108 + i * 41, on = GT.idx[GT.cat] === i, hov = t.hover.has('row' + i);
+        if (on || hov) { c.fillStyle = on ? 'rgba(255,59,42,0.17)' : 'rgba(255,59,42,0.08)'; c.fillRect(8, y, 372, 38); if (on) { c.strokeStyle = cat.color; c.globalAlpha = 0.6; c.lineWidth = 1; c.strokeRect(8.5, y + 0.5, 371, 37); c.globalAlpha = 1; } }
+        const col = on || hov ? '#f4e8d2' : '#b8a78a';
+        tx(c, on ? '>' : ' ', 22, y + 20, 24, cat.color); tx(c, String(i + 1).padStart(2, '0'), 54, y + 20, 22, col); tx(c, l.label, 98, y + 20, 24, col, 'left', MONO, on ? 6 : 0);
+        t.buttons.push({ id: 'row' + i, x: 8, y: y, w: 372, h: 38, action: () => pickMode(i) });
+    });
+    tx(c, cat.title, 30, 438, 24, cat.color, 'left', MONO, 8); tx(c, cat.sub, 30, 466, 20, AMBD);
+    tx(c, '> MEMORY CHECK ........ OK', 30, 630, 19, AMBD); tx(c, '> VISITORS PRESENT .... ' + visitorsHere('games'), 30, 650, 19, AMBD); tx(c, '> VISITORS EXPECTED ... 0', 30, 670, 19, AMBD);
+    c.fillStyle = '#3a1812'; c.fillRect(392, 48, 2, 640);
+    // panel trybu
+    const X0 = 418, XR = W2 - 30, idx = MODES.indexOf(m);
+    tx(c, 'ENTRY ' + String(idx + 1).padStart(2, '0') + ' OF ' + MODES.length + '  /  ' + cat.title, X0, 74, 20, AMBD);
+    drawEye(c, XR - 62, 82, t, S);
+    const size = m.label.length > 17 ? 44 : (m.label.length > 13 ? 56 : 66);
+    tx(c, m.label, X0, 150, size, '#efe3cc', 'left', SERIF, 18);
+    tx(c, '\u201C' + cat.sub + '\u201D', X0, 202, 27, AMB, 'left', ITAL);
+    m.desc.forEach((line, k) => tx(c, line, X0, 244 + k * 30, 27, '#e0d2b8'));
+    const text = m.desc.join(' '), solo = /solo|alone/i.test(text), reward = /200/.test(text);
+    tx(c, solo ? 'SOLO OK' : 'BEST WITH FRIENDS', X0, 380, 22, cat.color, 'left', MONO, 6); if (reward) tx(c, 'WIN = 200 BAGABUCKS', X0, 408, 22, '#ffd27a');
+    const bpm = Math.round(66 + idx * 3 + dread * 4), ecgCol = bpm > 140 ? BLOOD : AMB, ex = 774, ey = 398, ew = 218, eh = 52;
+    tx(c, 'VISITOR VITALS', ex + ew / 2, 388, 15, AMBD, 'center'); drawEcg(c, ex, ey, ew, eh, now, bpm, ecgCol);
+    tx(c, String(bpm), XR - 40, 422, 36, ecgCol, 'right', MONO, 8); tx(c, 'BPM', XR, 428, 17, ecgCol, 'right');
+    // rekordy
+    const rec = recordsFor(m);
+    tx(c, 'RECORDS', X0, 440, 20, AMBD);
+    if (!rec) { tx(c, 'No records for this mode.', X0, 472, 22, '#9a8c78'); }
+    else if (rec.kind === 'score') { tx(c, rec.value === undefined ? 'Not played yet.' : 'Best: ' + rec.value + (rec.unit ? ' (' + rec.unit + ')' : ''), X0, 472, 25, rec.value === undefined ? '#9a8c78' : '#ffd27a'); }
+    else if (!rec.list.length) { tx(c, 'Not finished yet.', X0, 472, 22, '#9a8c78'); }
+    else { rec.list.slice(0, 3).forEach((s2, k) => tx(c, (k + 1) + '.  ' + mmss(s2), X0, 472 + k * 28, 25, k === 0 ? '#ffd27a' : '#d8c8ac')); if (rec) tx(c, 'Ghost of #1 runs with you', X0, 570, 17, '#7fe8ff'); }
+    // przycisk gry
+    const hov = t.hover.has('play'), bx = 808, by = 566, bw = 300, bh = 60;
+    c.fillStyle = hov ? '#ff6a52' : BLOOD; c.shadowColor = BLOOD; c.shadowBlur = hov ? 30 : 18; c.fillRect(bx, by, bw, bh); c.shadowBlur = 0;
+    tx(c, 'PLAY >', bx + bw / 2, by + bh / 2 + 1, 32, '#140503', 'center');
+    t.buttons.push({ id: 'play', x: bx, y: by, w: bw, h: bh, action: play });
+    // pasek na dole
+    c.fillStyle = '#3a1812'; c.fillRect(0, 686, W2, 2);
+    c.font = '21px ' + MONO; const tw = Math.max(1, c.measureText(TICKER).width), tox = -((now * 55) % tw);
+    for (let k = 0; k < 3; k++) tx(c, TICKER, tox + k * tw, 703, 21, '#b0261a', 'left');
+    sp(c, 0);
+    drawGlass(c, W2, H2, t, S);
+}
+
 export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -W + 0.3, maxX: W - 0.3, minZ: -D + 0.3, maxZ: D - 0.3, maxY: H - 0.3 };
-    S = { lights: [], screens: [] };
+    S = Object.assign(makeDread(), { lights: [], screens: [], ctx: null, leaving: false, entered: false, redraw: 0 });
+    if (GT.last) { const lm = MODES.find(x => x.target === GT.last); if (lm) { GT.cat = lm.cat; GT.idx[lm.cat] = modesOf(lm.cat).indexOf(lm); } GT.last = undefined; }
     L.moveScale = LOBBY_MOVE_SCALE;   // ruch dłońmi taki sam jak w lobby
     // Podłoga w szachownicę, ciemne ściany, sufit
     const fc = T.makeCanvas(256, 256), fx = fc.getContext('2d');
@@ -91,6 +182,11 @@ export function build() {
     buildDecor();
     buildCategories();
     buildDoors();
+    ensureAssets(1152, 720);
+    if (!term) term = new Terminal(drawGames, 1152, 720);
+    term.dirty = true;
+    addStations(term, STATIONS, { label: 'TERMINAL' });
+    for (const f of ['24px VT323', '24px "IM Fell English SC"', 'italic 24px "IM Fell English"']) { try { document.fonts.load(f).then(() => { if (term) term.dirty = true; }); } catch (e) { /* bez czcionek: Courier */ } }
     buildDoor({ x: 0, z: D - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x3a3048, portal: { target: 'lobby', spawn: ARRIVAL_GAMES, onEnter: () => toast('Back to the lobby') } });
 }
 // Neonowe paski, tytuł, kolumna pośrodku i automaty w rogach
@@ -156,8 +252,10 @@ function buildDoors() {
     }
 }
 
-export function update(dt, t) {
+export function update(dt, t, ctx) {
     if (!S) return;
+    S.ctx = ctx; stepDread(S, dt, null);
+    S.redraw -= dt; if (S.redraw <= 0) { S.redraw = IS_QUEST ? 0.4 : 0.2; if (term) term.dirty = true; }
     for (const l of S.lights) l.l.intensity = l.base * (0.85 + 0.15 * Math.sin(t * 2 + l.ph));
     if (S.orb) { S.orb.position.y = 1.9 + Math.sin(t * 1.5) * 0.12; S.orb.rotation.y = t; }
     // Ekrany automatów: proste kolorowe animacje
@@ -171,3 +269,5 @@ export function update(dt, t) {
     }
 }
 export function dispose() { S = null; L.moveScale = 1; }
+export const debug = () => S ? { screens: term && term.meshes ? term.meshes.length : 0, cat: GT.cat, sel: GT.idx[GT.cat], buttons: term ? term.buttons.map(b => b.id) : [], modes: MODES.length } : null;   // dla testów
+export const _press = (id) => { const b = term && term.buttons.find(x => x.id === id); if (b) b.action(); return !!b; };   // dla testów

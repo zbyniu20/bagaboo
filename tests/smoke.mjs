@@ -307,6 +307,16 @@ const modeSim = await run(`
         tick(1); m._press('enter'); if (went !== 'well') bad.push('levels: OPEN THE DOOR did not go to the well (went=' + went + ')');
         went = null; tick(1); m._press('row10'); tick(1); m._press('enter'); m._press('enter'); if (m.debug().knocks < 2 || went) bad.push('levels: secret door knocking wrong (knocks=' + m.debug().knocks + ', went=' + went + ')');
     }
+    // Games terminals: 6 screens on 3 pylons, category tabs, pick a mode, PLAY goes to it
+    {
+        const TM = await import('./core/terminal.js'); let went = null; const gctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
+        m = await load('games'); const tick = (n) => { for (let i = 0; i < n; i++) m.update(0.1, T += 0.1, gctx); TM.redrawTerminals(); };
+        tick(3); let gd = m.debug(); if (!gd || gd.screens !== 6) bad.push('games: expected 6 terminal screens, got ' + (gd && gd.screens));
+        if (!gd.buttons.includes('play') || !gd.buttons.includes('tab-party') || !gd.buttons.includes('tab-team')) bad.push('games: terminal buttons missing');
+        if (!m._press('tab-party')) bad.push('games: party tab not clickable'); tick(1); if (m.debug().cat !== 'party') bad.push('games: tab did not switch category');
+        m._press('row2'); tick(1); m._press('play'); if (went !== 'blindtag') bad.push('games: PLAY went to ' + went + ', expected blindtag');
+        went = null; m = await load('games'); tick(3); m._press('tab-team'); tick(1); m._press('row0'); tick(1); m._press('play'); if (went !== 'banana') bad.push('games: team tab PLAY went to ' + went + ', expected banana');
+    }
     // Statues: standing still survives a silence, moving in a silence puts you out on the balcony
     m = await load('statues');
     PL.playerBody.velocity.set(0, 0, 0);
@@ -321,7 +331,7 @@ const modeSim = await run(`
     if (!until(m, d => d.caught >= 1 || d.phase === 'results', 200, () => { PL.playerBody.position.set(1.2, 1.0, 0.2); PL.playerBody.velocity.set(4, 0, 0); })) bad.push('blindtag: the bot did not catch a noisy player next to it');
     return bad;
 `);
-if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels terminal, Statues and Blind Tag simulate correctly');
+if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels and Games terminals, Statues and Blind Tag simulate correctly');
 
 // ---- stats / achievements / audio ----
 phase = 'stats';
