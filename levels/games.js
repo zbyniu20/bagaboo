@@ -4,7 +4,7 @@
 //  - PÓŁNOC  PARTY GAMES   (różowy):       Hide and Seek, Infection, Hot Potato, Treasure Hunt, Become the Monster
 //  - WSCHÓD  TEAM GAMES    (błękitny):     Capture the Banana, King of the Hill, Dodgeball
 // Tryby wybiera się na terminalach (bez drzwi). Drzwi LOBBY (południe) wracają do lobby, a każdy tryb ma własne drzwi powrotne do tego salonu.
-// Na środku stoją 3 pylony z terminalami (6 ekranów, po obu stronach): zakładki RACE / PARTY / TEAM, lista trybów, opis, rekordy, PLAY.
+// Wokół kuli stoi 6 komputerów jak w lobby (tak samo jak w sali Levels): zakładki RACE / PARTY / TEAM, lista trybów, karta, rekordy, PLAY.
 // Każdy gracz wybiera u siebie niezależnie; terminal działa tak samo jak w sali Levels (core/hauntedui.js).
 // Nowy tryb: dopisz wpis do MODES (kategoria, nazwa, opis), export ARRIVAL_FROM_* niżej, a w trybie zrób drzwi powrotne (portal do 'games' ze spawn: ARRIVAL_FROM_*).
 // ==========================================
@@ -16,7 +16,7 @@ import { SAVE, getDiff, topTimes } from '../core/economy.js';
 import { LEVEL_BY_ID } from '../core/registry.js';
 import { CARDS } from '../core/levelcards.js';
 import { IS_QUEST } from '../core/device.js';
-import { PROX, TICKER, MONO, SERIF, ITAL, BONE, BLOOD, AMB, AMBD, mmss, visitorsHere, ensureAssets, sp, tx, drawEcg, drawEye, drawGlass, addStations, makeDread, stepDread, drawCard } from '../core/hauntedui.js';
+import { PROX, TICKER, MONO, SERIF, ITAL, BONE, BLOOD, AMB, AMBD, mmss, visitorsHere, ensureAssets, sp, tx, drawEcg, drawEye, drawGlass, addComputers, makeDread, stepDread, drawCard } from '../core/hauntedui.js';
 import { ARRIVAL_GAMES } from './lobby-door.js';
 import { LOBBY_MOVE_SCALE } from '../core/config.js';
 
@@ -55,8 +55,12 @@ const WALLS = {
     party: { rotY: 0, pos: (c) => [c, -D + 0.03], inner: (c) => [c, -D + 2.6], tan: [1, 0] },
     team: { rotY: -Math.PI / 2, pos: (c) => [W - 0.03, c], inner: (c) => [W - 2.6, c], tan: [0, 1] }
 };
-// Po powrocie z trybu stajesz przed terminalem swojej kategorii (pylon zachodni = race, środkowy = party, wschodni = team)
-const CAT_ARRIVAL = { race: [-8, 1.2, 8.8], party: [0, 1.2, 8.8], team: [8, 1.2, 8.8] };
+// Sześć komputerów w kręgu wokół kuli (promień 5 m), każdy zwrócony na zewnątrz: gracz staje za kręgiem i patrzy do środka
+const RING_R = 5, RING_ANGLES = [0, 60, 120, 180, 240, 300];
+const ringPos = (deg, r) => [r * Math.sin(deg * Math.PI / 180), r * Math.cos(deg * Math.PI / 180)];
+// Po powrocie z trybu stajesz przed komputerem swojej kategorii (race = zachodni, party = północny, team = wschodni)
+const CAT_ARRIVAL = { race: [...ringPos(240, 6.6)], party: [...ringPos(180, 6.6)], team: [...ringPos(120, 6.6)] };
+for (const k of Object.keys(CAT_ARRIVAL)) CAT_ARRIVAL[k] = [CAT_ARRIVAL[k][0], 1.2, CAT_ARRIVAL[k][1]];
 const AR = {};
 for (const m of MODES) AR[m.target] = CAT_ARRIVAL[m.cat];
 export const ARRIVAL_FROM_LAVA = AR.lava;
@@ -78,8 +82,8 @@ export const ARRIVAL_FROM_KOTH = AR.koth;
 export const ARRIVAL_FROM_DODGEBALL = AR.dodgeball;
 let S = null;
 
-// ---------- TERMINALE (pylony na środku) ----------
-const STATIONS = [{ x: -8, z: 6, rotY: 0, both: true }, { x: 0, z: 6, rotY: 0, both: true }, { x: 8, z: 6, rotY: 0, both: true }];   // każdy pylon ma ekran na południe i na północ
+// ---------- TERMINALE (komputery w kręgu) ----------
+const STATIONS = RING_ANGLES.map(a => { const [x, z] = ringPos(a, RING_R); return { x: x, z: z, rotY: a * Math.PI / 180 }; });
 const CAT_ORDER = ['race', 'party', 'team'];
 const GT = { cat: 'race', idx: { race: 0, party: 0, team: 0 } };   // wybór przeżywa przejścia między trybami
 let term = null;
@@ -181,7 +185,7 @@ export function build() {
     ensureAssets(1152, 720);
     if (!term) term = new Terminal(drawGames, 1152, 720);
     term.dirty = true;
-    addStations(term, STATIONS, { label: 'TERMINAL' });
+    addComputers(term, STATIONS, { label: 'COMPUTER' });
     for (const f of ['24px VT323', '24px "IM Fell English SC"', 'italic 24px "IM Fell English"']) { try { document.fonts.load(f).then(() => { if (term) term.dirty = true; }); } catch (e) { /* bez czcionek: Courier */ } }
     buildDoor({ x: 0, z: D - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x3a3048, portal: { target: 'lobby', spawn: ARRIVAL_GAMES, onEnter: () => toast('Back to the lobby') } });
 }

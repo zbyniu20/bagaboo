@@ -12,7 +12,7 @@ import { DIFFS, DIFF_ORDER, getDiff, setDiff, topTimes, dailyOn, setDailyMode, d
 import { Terminal, toast, wrapText } from '../core/terminal.js';
 import { buildDoor, createJumpscare } from '../core/levelkit.js';
 import * as SFX from '../core/audio.js';
-import { PROX, TICKER, MONO, SERIF, ITAL, BONE, BLOOD, AMB, AMBD, mmss, visitorsHere, ensureAssets, sp, tx, drawEcg, drawEye, drawGlass, addStations, stepDread, drawCard } from '../core/hauntedui.js';
+import { PROX, TICKER, MONO, SERIF, ITAL, BONE, BLOOD, AMB, AMBD, mmss, visitorsHere, ensureAssets, sp, tx, drawEcg, drawEye, drawGlass, addComputers, stepDread, drawCard } from '../core/hauntedui.js';
 import { IS_QUEST } from '../core/device.js';
 import { CARDS } from '../core/levelcards.js';
 import { ARRIVAL_LEVELS } from './lobby-door.js';
@@ -20,7 +20,7 @@ import { ARRIVAL_LEVELS } from './lobby-door.js';
 const W = 10, D = 7, H = 6;   // sala 20 x 14 m, terminal na północnej ścianie
 export const info = { id: 'levels', name: 'Levels', spawn: [0, 1.0, 5.2] };
 // Po powrocie z poziomu stajesz przed terminalem (wszystkie poziomy wracają w to samo miejsce)
-const AR = [0, 1.2, -3.4];
+const AR = [0, 1.2, -3.3];
 export const ARRIVAL_FROM_MAZE = AR, ARRIVAL_FROM_SILENCE = AR, ARRIVAL_FROM_WELL = AR, ARRIVAL_FROM_LAUNDRY = AR, ARRIVAL_FROM_MEMORY = AR, ARRIVAL_FROM_HOSPITAL = AR,
     ARRIVAL_FROM_CEMETERY = AR, ARRIVAL_FROM_CATACOMBS = AR, ARRIVAL_FROM_NURSERY = AR, ARRIVAL_FROM_HOTEL = AR;
 
@@ -39,7 +39,7 @@ const LV = [
     { secret: true, label: 'ROOM 000', type: 'UNKNOWN', threat: 5, msg: 'It was never on the list.', desc: ['No one has opened this door.', 'It opens from the other side.', 'Do not knock twice.'] }
 ];
 // Stanowiska terminala: x, z, obrót ekranu (rotY=0: patrzy na +z, czyli z północnej ściany do wnętrza; pi/2: z zachodniej ściany; -pi/2: ze wschodniej)
-const STATIONS = [{ x: 0, z: -D, rotY: 0 }, { x: -6.6, z: -D, rotY: 0 }, { x: 6.6, z: -D, rotY: 0 }, { x: -W, z: -1.4, rotY: Math.PI / 2 }, { x: W, z: -1.4, rotY: -Math.PI / 2 }];
+const STATIONS = [-8, -4, 0, 4, 8].map(x => ({ x: x, z: -5.0, rotY: 0 }));   // pięć komputerów w rzędzie (jak w lobby), gracze stoją od strony południowej
 const WORDS = ['', 'FAINT', 'LOW', 'HIGH', 'SEVERE', 'LETHAL'];
 
 // Stan wyboru przeżywa przejścia między poziomami (zapamiętujemy ostatnio wybrany poziom)
@@ -181,7 +181,7 @@ export function build() {
     ensureAssets(1152, 720);
     if (!term) term = new Terminal(drawScreen, 1152, 720);
     term.state = {}; term.dirty = true;
-    addStations(term, STATIONS, { label: 'TERMINAL' });
+    addComputers(term, STATIONS, { label: 'COMPUTER' });
     const glow = new THREE.PointLight(0xff3020, 18, 11, 1.8); glow.position.set(0, 2.4, -D + 2.2); L.root.add(glow); S.glow = glow;
     for (const f of ['24px VT323', '24px "IM Fell English SC"', 'italic 24px "IM Fell English"']) { try { document.fonts.load(f).then(() => { if (term) term.dirty = true; }); } catch (e) { /* bez czcionek: Courier */ } }
     buildWarnings();
