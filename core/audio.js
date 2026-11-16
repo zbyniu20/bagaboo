@@ -199,8 +199,8 @@ function goobyVoice(t0, f0, vol) {
     const ng = ctx.createGain(); env(ng, t0 + 0.5, 0.6, 0.004, 0.05);
     n.connect(nf); nf.connect(ng); ng.connect(out); n.start(t0 + 0.5);
 }
-// Pełny jumpscare: cisza, potem uderzenie basu, przesterowany wrzask i zgrzyt dysonansu
-export function scare() {
+// Pełny jumpscare: cisza, potem uderzenie basu, przesterowany wrzask i zgrzyt dysonansu; gooby = true dokłada głos "gooby"
+export function scare(gooby) {
     if (!ctx) return;
     if (hooks.onScare) hooks.onScare();
     const t0 = ctx.currentTime;
@@ -215,7 +215,7 @@ export function scare() {
     const ng = ctx.createGain(); env(ng, t0, 1.0, 0.006, 1.45);
     n.connect(bp); bp.connect(ng); ng.connect(shaper); n.start(t0);
     for (const f of [740, 784, 1046, 1480, 1568]) saw(t0, f, f * 0.42, 1.35, 0.22, shaper);
-    goobyVoice(t0 + 0.08, 150, 2.4); goobyVoice(t0 + 0.08, 75, 1.8);   // "gooby": wysoki głos i demoniczna warstwa o oktawę niżej
+    if (gooby) { goobyVoice(t0 + 0.08, 150, 2.4); goobyVoice(t0 + 0.08, 75, 1.8); }   // "gooby" (tylko jumpscare od Nothing Hammer): wysoki głos i demoniczna warstwa o oktawę niżej
 }
 // Krótki, ostry zgrzyt, gdy znika zjawa
 export function stinger(pos) {

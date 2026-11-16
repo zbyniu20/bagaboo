@@ -1,9 +1,9 @@
 // ==========================================
-// GOOBY: obraz jumpscare'a w całej grze (puchaty biały królik-stworek z zeza patrzącymi oczami) i młotek "Nothing Hammer".
+// GOOBY: obraz jumpscare'a od młotka "Nothing Hammer" (puchaty biały królik-stworek z zeza patrzącymi oczami). Reszta gry ma stare jumpscare'y.
 // Obraz leży w core/gooby.webp (GOOBY_IMAGE). Zanim się wczyta, pokazuje się rysunek z kodu (płótno 512x512, przezroczyste tło).
 // Po wczytaniu obraz jest kadrowany do kwadratu i lekko "podkręcany" na straszniejszy (scareUp): ciemniej, mniej koloru, czerwony nalot,
 // cienie pod oczami, czerwona poświata w oczach, winieta i szum. Przesuń GOOBY_EYES, jeśli zmienisz obraz.
-// Używają go: core/levelkit.js (createJumpscare: każdy straszak w grze) i core/avatar.js (płytka na młotku).
+// Używają go: core/levelkit.js (createJumpscare z opcją gooby: true, tylko main.js) i core/avatar.js (płytka na młotku).
 // Dźwięk "gooby" jest w core/audio.js (goobyVoice), odtwarza go SFX.scare().
 // ==========================================
 import * as T from './textures.js';
