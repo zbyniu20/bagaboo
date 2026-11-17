@@ -317,11 +317,11 @@ export function stat(k) { return (SAVE.stats && SAVE.stats[k]) || 0; }
 export const RECORDS = RECORD_DEFS;   // z core/registry.js (poziom z polem rec dostaje rekord, poziom z trudnością także rekord Nightmare)
 
 // ---------- POZIOMY TRUDNOŚCI (poziomy z drzwi w sali Levels) ----------
-// speed: mnożnik prędkości potworów, grace: mnożnik czasu na reakcję/przewagi, checkpoints: czy działają punkty kontrolne,
+// speed: mnożnik prędkości potworów, grace: mnożnik czasu na reakcję/przewagi, checkpoints: czy działają punkty kontrolne, respawns: ile razy na bieg wolno wrócić do checkpointu (brak = bez limitu),
 // reward: mnożnik nagrody za przejście. Easy nie liczy się do rekordów, Nightmare ma własne rekordy i bonus za pierwsze przejście.
 export const DIFFS = {
     easy: { id: 'easy', name: 'Easy', color: '#7fc47f', speed: 0.8, grace: 1.5, checkpoints: true, reward: 0.5, info: 'Slower monsters, more time. Reward x0.5, no records.' },
-    normal: { id: 'normal', name: 'Normal', color: '#ffd27a', speed: 1, grace: 1, checkpoints: true, reward: 1, info: 'The original experience.' },
+    normal: { id: 'normal', name: 'Normal', color: '#ffd27a', speed: 1, grace: 1, checkpoints: true, respawns: 3, reward: 1, info: 'The original experience. 3 checkpoint respawns per run.' },
     nightmare: { id: 'nightmare', name: 'Nightmare', color: '#ff4a3a', speed: 1.25, grace: 0.6, checkpoints: false, reward: 1.5, info: 'Faster monsters, no checkpoints. Reward x1.5, own records, first-clear bonus.' }
 };
 export const DIFF_ORDER = ['easy', 'normal', 'nightmare'];

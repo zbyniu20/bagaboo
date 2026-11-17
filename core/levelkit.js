@@ -9,6 +9,7 @@ import { buildMannequin } from './mannequin.js';
 import { goobyTexture } from './gooby.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as SFX from './audio.js';
+import { toast } from './terminal.js';
 
 // Świecący napis na ciemnym tle
 export function signTexture(label, color, bg, font) {
@@ -157,6 +158,17 @@ export function createJumpscare(o) {
         },
         dispose() { camera.remove(g); }
     };
+}
+
+// Odrodzenia z checkpointu: Easy bez limitu, Normal ograniczone (DIFFS.respawns), Nightmare bez checkpointów. Po wyczerpaniu poziom zaczyna się od nowa.
+// S to stan poziomu (S.df: trudność; licznik S.respawnsUsed żyje, dopóki trwa ten bieg). Zwraca true, gdy wolno odrodzić się z checkpointu.
+export function takeRespawn(S) {
+    if (!S.df.checkpoints) return false;
+    const max = S.df.respawns === undefined ? Infinity : S.df.respawns, used = S.respawnsUsed || 0;
+    if (used >= max) { toast('No respawns left. Starting over.', '#e0533f'); return false; }
+    S.respawnsUsed = used + 1;
+    if (max !== Infinity) toast('Respawn ' + S.respawnsUsed + ' of ' + max + (S.respawnsUsed === max ? ' (the last one!)' : ''), '#ffd27a');
+    return true;
 }
 
 // Samouczek tylko za pierwszym razem: po przegranej (restart) albo ponownym wejściu instrukcji już nie ma

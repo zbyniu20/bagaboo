@@ -18,11 +18,12 @@ import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_CATACOMBS } from './levels.js';
 import { createGridMaze } from '../core/gridmaze.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
 
 const N = 8, P = 5.5, WT = 0.8, H = 3.4, X = N * P / 2;              // siatka 8 x 8 komórek po 5,5 m (44 x 44 m), ściany 0,8 m
-const SEE_DIST = 13, HEAR_RUN = 9, HEAR_BONE = 22, LOSE_TIME = 7, CATCH_DIST = 1.0, KEYS = 4;
-const WALK = 2.0, INVESTIGATE = 3.0, CHASE = 4.2;
+const SEE_DIST = 14, HEAR_RUN = 10, HEAR_BONE = 22, LOSE_TIME = 8, SMELL_TIME = 4, CATCH_DIST = 1.0, KEYS = 4;   // SMELL_TIME: kilka sekund po utracie wzroku wciąż czuje, mniej więcej gdzie jesteś
+const WALK = 2.2, INVESTIGATE = 3.3, CHASE = 4.8, KEY_BOOST = 0.08;   // każdy klucz przyspiesza Strażników o 8%
+const WAKE_KEYS = 3;   // po tylu kluczach budzi się kolejny Strażnik (Normal: drugi, Nightmare: trzeci; nie na Easy)
 const REWARD_FIRST = 3000, REWARD_REPEAT = 300, INTRO_TIME = 10;
 export const info = { id: 'catacombs', name: 'The Catacombs', spawn: [-X + P / 2, 1.0, -1.6] };
 let S = null;
@@ -61,7 +62,7 @@ export function build() {
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     S.scare = createJumpscare({ seed: 8181 });
-    if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints, 2 wardens)'), df.color);
+    if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints, 2 wardens, a 3rd after 3 keys)'), df.color);
 }
 
 // ---------- BUDOWA ----------
@@ -115,17 +116,24 @@ function buildGate() {
     S.gateLamp = new THREE.PointLight(0xff3030, 10, 9, 1.6); S.gateLamp.position.set(gx, 2.4, GATE_Z + 1.4); L.root.add(S.gateLamp);
     buildDoor({ x: gx, z: EXIT_Z, rotY: 0, label: 'EXIT', color: '#ff9a60', glow: 0xff7030, wood: 0x2a1e18, light: true, portal: { target: 'levels', spawn: ARRIVAL_FROM_CATACOMBS, onEnter: finish } });
 }
+const WARDEN_STARTS = [[N - 3, N - 3], [N - 2, 1], [2, N - 3]];
 function buildWardens() {
     const count = S.df.id === 'nightmare' ? 2 : 1;
-    for (let i = 0; i < count; i++) {
-        const m = buildMannequin(T.mkRng(1700 + i)); m.group.scale.set(1.25, 1.55, 1.25); L.root.add(m.group);
-        m.group.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: 0x14100e, roughness: 1 }); });
-        for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1808, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.13, 0.13, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
-        const start = i ? [N - 2, 1] : [N - 3, N - 3];
-        const st = createBot(cx(start[0]), cz(start[1])); st.mode = 'patrol'; st.path = []; st.goalCell = null;
-        m.group.position.set(st.x, 0, st.z);
-        S.bots.push({ m: m, st: st, lostT: 0, last: null, stepT: 0, repath: 0, startCell: start });
-    }
+    for (let i = 0; i < count; i++) addWarden(WARDEN_STARTS[i], i);
+}
+function addWarden(start, i) {
+    const m = buildMannequin(T.mkRng(1700 + i)); m.group.scale.set(1.25, 1.55, 1.25); L.root.add(m.group);
+    m.group.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: 0x14100e, roughness: 1 }); });
+    for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1808, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.13, 0.13, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
+    const st = createBot(cx(start[0]), cz(start[1])); st.mode = 'patrol'; st.path = []; st.goalCell = null;
+    m.group.position.set(st.x, 0, st.z);
+    S.bots.push({ m: m, st: st, lostT: 0, smellT: 0, last: null, stepT: 0, repath: 0, startCell: start });
+}
+// Kolejny Strażnik budzi się w komórce najdalszej od gracza
+function wakeWarden(p) {
+    const total = S.df.id === 'nightmare' ? 3 : 2; if (S.bots.length >= total) return;
+    let best = null, bd = -1; for (const c of [[N - 2, N - 2], [N - 2, 1], [2, N - 3], [N - 3, N - 3], [3, 3]]) { const d = Math.hypot(cx(c[0]) - p.x, cz(c[1]) - p.z); if (d > bd) { bd = d; best = c; } }
+    addWarden(best, S.bots.length); toast('Another Warden wakes up...', '#ff4a2a'); SFX.stinger({ x: cx(best[0]), y: 1.5, z: cz(best[1]) });
 }
 
 // ---------- ZDARZENIA ----------
@@ -147,11 +155,12 @@ function makeNoise(x, z, range) {
         if (Math.hypot(x - b.st.x, z - b.st.z) < range * (S.df.id === 'nightmare' ? 1.25 : 1)) { b.st.mode = 'investigate'; b.st.goalCell = cellOf(x, z); b.st.path = []; b.repath = 0; }
     }
 }
-function takeKey(i) {
+function takeKey(i, p) {
     S.got[i] = true; S.keys++; S.keyMesh[i].visible = false; SFX.scream && SFX.scream(S.keyMesh[i].position); buzz('both', 0.8, 250);
     toast('Skull key ' + S.keys + '/' + KEYS + '. It screamed!', '#ff9a60');
     makeNoise(KEY_POS[i][0], KEY_POS[i][1], 40);   // krzyk niesie się po całych katakumbach
     if (S.df.checkpoints) { S.cp = i; toast('Checkpoint saved', '#7fc47f'); }
+    if (S.keys === WAKE_KEYS && S.df.id !== 'easy' && p) wakeWarden(p);
     if (S.keys === KEYS) {
         const k = L.obstacles.indexOf(S.gateOb); if (k >= 0) L.obstacles.splice(k, 1);
         if (S.gateOb.body) S.gateOb.body.position.y = -50;
@@ -161,10 +170,10 @@ function takeKey(i) {
 }
 const INTRO = [
     'The Warden carries no light. Watch for two red eyes in the dark.',
-    'He hears running (9 m), cracking bones on the floor (22 m) and every skull you take.',
+    'He hears running (10 m), cracking bones on the floor (22 m) and every skull you take, and he smells you for a few seconds after losing sight.',
     'Walk around the bone piles and stay quiet. Sneak past, never sprint.',
     'Take 4 screaming skull keys from the dead ends. The gate by the EXIT opens.',
-    'Red eyes in the walls are only illusions. Each key saves a checkpoint.'
+    'Red eyes in the walls are only illusions. Each key saves a checkpoint, but also makes the Warden faster, and after the third key another one wakes up.'
 ];
 
 // ---------- CO KLATKĘ ----------
@@ -183,7 +192,7 @@ export function update(dt, t, ctx) {
     }
     if (S.phase === 'play' && S.caughtT < 0) S.runT += dt;
     S.ghost.tick(dt, p, S.phase === 'play' && S.caughtT < 0);
-    S.keyMesh.forEach((g, i) => { if (!S.got[i]) { g.rotation.y = t * 1.2; g.position.y = 1.0 + Math.sin(t * 2 + i) * 0.1; if (Math.hypot(p.x - KEY_POS[i][0], p.z - KEY_POS[i][1]) < 1.0 && Math.abs(p.y - 1.0) < 1.5) takeKey(i); } });
+    S.keyMesh.forEach((g, i) => { if (!S.got[i]) { g.rotation.y = t * 1.2; g.position.y = 1.0 + Math.sin(t * 2 + i) * 0.1; if (Math.hypot(p.x - KEY_POS[i][0], p.z - KEY_POS[i][1]) < 1.0 && Math.abs(p.y - 1.0) < 1.5) takeKey(i, p); } });
     for (const tr of S.torches) tr.l.intensity = 10 * (0.7 + 0.3 * Math.sin(t * 9 + tr.ph) * Math.sin(t * 4.1 + tr.ph));
     // Ułudy znikają, gdy podejdziesz, i mrugają
     for (const d of S.decoys) {
@@ -195,7 +204,7 @@ export function update(dt, t, ctx) {
     if (S.caughtT >= 0) {
         S.caughtT += dt;
         if (S.caughtT > 1.6) {
-            if (S.df.checkpoints && S.cp >= 0) { const r = KEY_POS[S.cp]; setPlayerPosition(r[0], 1.0, r[1] + 1.2); S.bots.forEach((b) => resetBot(b)); S.caughtT = -1; S.carried = true; toast('Back at the last key. The Warden lost you.', '#7fc47f'); }
+            if (S.cp >= 0 && takeRespawn(S)) { const r = KEY_POS[S.cp]; setPlayerPosition(r[0], 1.0, r[1] + 1.2); S.bots.forEach((b) => resetBot(b)); S.caughtT = -1; S.carried = true; toast('Back at the last key. The Warden lost you.', '#7fc47f'); }
             else { S.leaving = true; ctx.goto('catacombs'); return; }
         }
         animate(t); return;
@@ -237,12 +246,16 @@ function waypoint(b, goalCell, gx, gz, dt) {
     return st.path.length ? [cx(st.path[0][0]), cz(st.path[0][1])] : [gx, gz];
 }
 function think(dt, ctx) {
-    const p = ctx.body.position, speedXZ = Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), mul = S.df.speed, pc = cellOf(p.x, p.z);
+    const p = ctx.body.position, speedXZ = Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), mul = S.df.speed * (1 + KEY_BOOST * S.keys), pc = cellOf(p.x, p.z);
     let seenBy = 0;
     for (const b of S.bots) {
         const st = b.st, seesMe = sees(b, p), d = Math.hypot(p.x - st.x, p.z - st.z), prev = st.mode;
-        if (seesMe) { if (prev !== 'chase') SFX.stinger({ x: st.x, y: 1.5, z: st.z }); st.mode = 'chase'; b.lostT = 0; b.last = [p.x, p.z]; seenBy++; }
-        else if (st.mode === 'chase') { b.lostT += dt; if (b.lostT > LOSE_TIME) { st.mode = 'patrol'; st.goalCell = null; st.path = []; } }
+        if (seesMe) { if (prev !== 'chase') SFX.stinger({ x: st.x, y: 1.5, z: st.z }); st.mode = 'chase'; b.lostT = 0; b.smellT = 0; b.last = [p.x, p.z]; seenBy++; }
+        else if (st.mode === 'chase') {
+            b.lostT += dt; b.smellT += dt;
+            if (b.smellT < SMELL_TIME) { b.smellR = (b.smellR || 0) - dt; if (b.smellR <= 0) { b.smellR = 1.2; b.last = [p.x + (Math.random() - 0.5) * 8, p.z + (Math.random() - 0.5) * 8]; } }   // węch: kilka sekund wie mniej więcej, gdzie jesteś
+            if (b.lostT > LOSE_TIME) { st.mode = 'patrol'; st.goalCell = null; st.path = []; }
+        }
         else if (speedXZ > 3.4 && d < HEAR_RUN * (S.df.id === 'nightmare' ? 1.3 : 1)) { st.mode = 'investigate'; st.goalCell = pc; st.path = []; b.repath = 0; }
         let goal, gx, gz, speed = WALK * mul;
         if (st.mode === 'chase') {
@@ -252,7 +265,10 @@ function think(dt, ctx) {
             goal = st.goalCell; gx = cx(goal[0]); gz = cz(goal[1]); speed = INVESTIGATE * mul;
             if (Math.hypot(gx - st.x, gz - st.z) < 1.4) { st.mode = 'patrol'; st.goalCell = null; st.path = []; }
         } else {
-            if (!st.goalCell || (Math.hypot(cx(st.goalCell[0]) - st.x, cz(st.goalCell[1]) - st.z) < 1.4)) st.goalCell = [(Math.random() * N) | 0, (Math.random() * N) | 0];
+            if (!st.goalCell || (Math.hypot(cx(st.goalCell[0]) - st.x, cz(st.goalCell[1]) - st.z) < 1.4)) {
+                const hunt = S.df.id === 'nightmare' ? 0.5 : (S.df.id === 'easy' ? 0.1 : 0.35);   // patrol częściej zagląda w okolicę gracza
+                st.goalCell = Math.random() < hunt ? [Math.max(0, Math.min(N - 1, pc[0] + (((Math.random() * 5) | 0) - 2))), Math.max(0, Math.min(N - 1, pc[1] + (((Math.random() * 5) | 0) - 2)))] : [(Math.random() * N) | 0, (Math.random() * N) | 0];
+            }
             goal = st.goalCell; gx = cx(goal[0]); gz = cz(goal[1]);
         }
         const wp = waypoint(b, goal, gx, gz, dt);
@@ -281,6 +297,7 @@ function drawHud() {
     x.fillStyle = col; x.fillText(msg, 330, 108);
     S.hud.update();
 }
+export const testState = () => S;   // dla testów: dostęp do stanu poziomu
 export function dispose() {
     if (S) { S.ev.dispose(); S.ghost.dispose(); S.hud.dispose(); S.intro.dispose(); S.scare.dispose(); }
     S = null;

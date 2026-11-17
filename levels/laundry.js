@@ -16,7 +16,7 @@ import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { DESKTOP } from '../core/desktop.js';
 import { ARRIVAL_FROM_LAUNDRY as ARRIVAL_LAUNDRY } from './levels.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare , introSeen } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare , introSeen, takeRespawn } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA ----------
 const X0 = -16, X1 = 16, Z0 = 6, Z1 = -54, H = 9;   // hala 32 x 60 m, 9 m wysokości
@@ -85,7 +85,7 @@ export function build() {
     if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name + (S.df.checkpoints ? '' : ' (no checkpoints)'), S.df.color);
     // Punkt kontrolny po złapaniu: zakręcone zawory zostają zakręcone, czas biegu płynie dalej (Easy i Normal)
     if (carry && S.df.checkpoints) {
-        S.carried = true; S.runT = carry.runT; S.introT = 0; S.introSkip = true; S.phase = 'play'; S.intro.mesh.visible = false;
+        S.carried = true; S.respawnsUsed = carry.used || 0; S.runT = carry.runT; S.introT = 0; S.introSkip = true; S.phase = 'play'; S.intro.mesh.visible = false;
         carry.done.forEach((d, i) => { if (!d) return; const v = S.valves[i]; v.done = true; v.acc = v.need; S.done++; v.lamp.material.color.setHex(0x30ff60); v.glow.material.color.setHex(0x30ff60); });
         if (S.done) toast('Checkpoint: ' + S.done + '/4 valves stay closed', '#7fc47f');
         if (S.done === 4) openGate();
@@ -438,7 +438,7 @@ export function update(dt, t, ctx) {
     S.ev.update(dt, S.phase === 'play' && S.caughtT < 0);
     // Złapany: chwila na jumpscare, potem od nowa
     S.scare.update(dt);
-    if (S.caughtT >= 0) { S.caughtT += dt; if (S.caughtT > 1.6) { carry = S.df.checkpoints ? { done: S.valves.map(v => v.done), runT: S.runT } : null; S.leaving = true; ctx.goto('laundry'); } return; }
+    if (S.caughtT >= 0) { S.caughtT += dt; if (S.caughtT > 1.6) { carry = (S.done > 0 && takeRespawn(S)) ? { done: S.valves.map(v => v.done), runT: S.runT, used: S.respawnsUsed } : null; S.leaving = true; ctx.goto('laundry'); } return; }
     // Bębny pralek i suszarka się obracają, maszyny hałasują
     for (const d of S.drums) d.rotation.z += dt * 2;
     S.dryer.drum.rotation.x += dt * 0.4;

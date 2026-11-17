@@ -17,7 +17,7 @@ import { createGhost } from '../core/runkit.js';
 import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_CEMETERY } from './levels.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
 
 const X = 24, Z0 = 4, Z1 = -62;                                       // cmentarz 48 x 66 m
 const AISLES_Z = [-4, -12, -20, -28, -36, -44, -52], AISLES_X = [-21, 0, 21];   // alejki (poziome i pionowe), tędy patrolują grabarze
@@ -25,8 +25,10 @@ const ROWS_Z = [-8, -16, -24, -32, -40, -48, -56];                    // rzędy 
 const CRYPTS = [[-10, -16, 1], [10, -16, 1], [-10, -32, -1], [10, -32, 1], [-10, -48, 1], [10, -48, -1]];   // [x, z, strona otwarta: +1 = w stronę +z]
 const RELICS = [[-13, -12], [14, -20], [-12, -36], [13, -44], [-14, -52]];
 const GATE_Z = -57.2, EXIT_Z = Z1 + 0.03;
-const SEE_DIST = 14, HEAR_DIST = 7, LOSE_TIME = 6, CATCH_DIST = 1.0;
-const WALK = 2.3, INVESTIGATE = 3.0, CHASE = 4.4;
+const SEE_DIST = 16, HEAR_DIST = 9, LOSE_TIME = 8, SMELL_TIME = 4, CATCH_DIST = 1.0;   // SMELL_TIME: tyle sekund po utracie wzroku wciąż czuje, mniej więcej gdzie jesteś
+const WALK = 2.6, INVESTIGATE = 3.4, CHASE = 5.0, RELIC_BOOST = 0.07;   // każda relikwia przyspiesza Grabarzy o 7%
+const DIGGER_STARTS = [[-14, -26], [14, -50], [-21, -52]], WAKE_SPOTS = [[-21, -4], [21, -4], [-21, -52], [21, -52], [0, -28]], WAKE_RELICS = 3;   // dodatkowy Grabarz budzi się po 3 relikwiach (poza Easy)
+const DORMANT = [0, 0, 400];   // uśpiony Grabarz czeka daleko poza mapą (jego lampa jest od początku w scenie, więc przebudzenie nie przeładowuje świateł)
 const REWARD_FIRST = 2400, REWARD_REPEAT = 240, INTRO_TIME = 10;
 export const info = { id: 'cemetery', name: 'The Cemetery', spawn: [0, 1.0, 2.0] };
 let S = null;
@@ -135,18 +137,25 @@ function buildGate() {
     buildDoor({ x: 0, z: EXIT_Z, rotY: 0, label: 'EXIT', color: '#70ff90', glow: 0x60ff90, wood: 0x2a3a2a, light: true, portal: { target: 'levels', spawn: ARRIVAL_FROM_CEMETERY, onEnter: finish } });
 }
 function buildDiggers() {
-    const count = S.df.id === 'nightmare' ? 2 : 1;
-    for (let i = 0; i < count; i++) {
+    const id = S.df.id, active = id === 'nightmare' ? 2 : 1, total = id === 'nightmare' ? 3 : (id === 'easy' ? 1 : 2);   // reszta śpi do WAKE_RELICS relikwii
+    for (let i = 0; i < total; i++) {
         const m = buildMannequin(T.mkRng(1200 + i)); m.group.scale.setScalar(1.25); L.root.add(m.group);
         m.group.traverse(o => { if (o.isMesh && o.material && o.material.map) o.material = new THREE.MeshStandardMaterial({ color: 0x2a2420, roughness: 0.9 }); });
         for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffb030, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.09, 0.09, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
         const lamp = new THREE.PointLight(0xffb050, 26, 14, 1.6); lamp.position.set(0.4, 1.3, 0.3); m.group.add(lamp);
         const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffc070, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.9 })); glow.scale.set(0.8, 0.8, 1); glow.position.set(0.4, 1.3, 0.3); m.group.add(glow);
-        const start = i ? [14, -50] : [-14, -26];
-        const st = createBot(start[0], start[1]); st.mode = 'patrol'; st.wi = 0; st.wj = 0; st.goal = null;
+        const on = i < active, start = on ? DIGGER_STARTS[i] : DORMANT;
+        const st = createBot(start[0], start[1]); st.mode = 'patrol';
         m.group.position.set(start[0], 0, start[1]);
-        S.bots.push({ m: m, st: st, lostT: 0, last: null });
+        S.bots.push({ m: m, st: st, active: on, home: on ? start : DIGGER_STARTS[i], goal: null, lostT: 0, smellT: 0, last: null, wT: 0, wx: start[0], wz: start[1], stuckN: 0, invT: 0 });
     }
+}
+// Po WAKE_RELICS relikwiach budzi się kolejny Grabarz w miejscu najdalszym od gracza
+function wakeDigger(p) {
+    const b = S.bots.find(x => !x.active); if (!b) return;
+    let best = WAKE_SPOTS[0], bd = -1; for (const w of WAKE_SPOTS) { const d = Math.hypot(w[0] - p.x, w[1] - p.z); if (d > bd) { bd = d; best = w; } }
+    b.active = true; b.home = best.slice(); b.st.x = best[0]; b.st.z = best[1]; b.st.y = 0; b.st.mode = 'patrol'; b.goal = null; b.wx = best[0]; b.wz = best[1]; b.wT = 0;
+    toast('Another gravedigger wakes up...', '#ff4a2a'); SFX.stinger({ x: best[0], y: 1.5, z: best[1] });
 }
 
 // ---------- ZDARZENIA ----------
@@ -161,10 +170,11 @@ function caught() {
     S.caughtT = 0; S.scare.trigger(); releaseAll(); buzz('both', 1, 400);
     toast('The gravedigger caught you...', '#e0533f');
 }
-function takeRelic(i) {
+function takeRelic(i, p) {
     S.got[i] = true; S.relics++; S.relicMesh[i].visible = false; SFX.fuse(); buzz('both', 0.7, 200);
     toast('Relic ' + S.relics + '/5', '#7fff90');
     if (S.df.checkpoints) { S.cp = i; toast('Checkpoint saved', '#7fc47f'); }
+    if (S.relics === WAKE_RELICS && S.df.id !== 'easy' && p) wakeDigger(p);
     if (S.relics === 5) {
         const k = L.obstacles.indexOf(S.gateOb); if (k >= 0) L.obstacles.splice(k, 1);
         if (S.gateOb.body) S.gateOb.body.position.y = -50;
@@ -174,9 +184,9 @@ function takeRelic(i) {
 }
 const INTRO = [
     'A gravedigger walks the aisles with a lantern. Watch the glow: it shows where he is.',
-    'He sees only in front of him, up to 14 m, and not through walls, hedges or crypts.',
-    'Running is loud: he hears you from 7 m. Walk to stay quiet, hide in crypts when he comes.',
-    'Collect 5 green relics. The gate at the back opens when you have all of them.',
+    'He sees only in front of him, up to 16 m, and not through walls, hedges or crypts. After losing sight he can still smell you for a few seconds.',
+    'Running is loud: he hears you from 9 m. Walk to stay quiet, hide in crypts when he comes.',
+    'Collect 5 green relics. The gate at the back opens when you have all of them. But each relic makes the gravediggers faster, and after the third another one wakes up.',
     'Each relic saves a checkpoint (not on Nightmare).'
 ];
 
@@ -196,11 +206,11 @@ export function update(dt, t, ctx) {
     }
     if (S.phase === 'play' && S.caughtT < 0) S.runT += dt;
     S.ghost.tick(dt, p, S.phase === 'play' && S.caughtT < 0);
-    S.relicMesh.forEach((g, i) => { if (!S.got[i]) { g.rotation.y = t * 1.4; g.position.y = 1.0 + Math.sin(t * 2 + i) * 0.1; if (Math.hypot(p.x - RELICS[i][0], p.z - RELICS[i][1]) < 1.0 && Math.abs(p.y - 1.0) < 1.5) takeRelic(i); } });
+    S.relicMesh.forEach((g, i) => { if (!S.got[i]) { g.rotation.y = t * 1.4; g.position.y = 1.0 + Math.sin(t * 2 + i) * 0.1; if (Math.hypot(p.x - RELICS[i][0], p.z - RELICS[i][1]) < 1.0 && Math.abs(p.y - 1.0) < 1.5) takeRelic(i, p); } });
     if (S.caughtT >= 0) {
         S.caughtT += dt;
         if (S.caughtT > 1.6) {
-            if (S.df.checkpoints && S.cp >= 0) { const r = RELICS[S.cp]; setPlayerPosition(r[0], 1.0, r[1] + 1.2); S.bots.forEach((b, i) => { b.st.x = i ? 14 : -14; b.st.z = i ? -50 : -26; b.st.mode = 'patrol'; b.st.goal = null; b.lostT = 0; }); S.caughtT = -1; S.carried = true; toast('Back to the last relic. The gravedigger lost you.', '#7fc47f'); }
+            if (S.cp >= 0 && takeRespawn(S)) { const r = RELICS[S.cp]; setPlayerPosition(r[0], 1.0, r[1] + 1.2); S.bots.forEach((b) => { if (!b.active) return; b.st.x = b.home[0]; b.st.z = b.home[1]; b.st.y = 0; b.st.mode = 'patrol'; b.goal = null; b.lostT = 0; b.smellT = 0; b.wx = b.st.x; b.wz = b.st.z; b.wT = 0; b.stuckN = 0; }); S.caughtT = -1; S.carried = true; toast('Back to the last relic. The gravedigger lost you.', '#7fc47f'); }
             else { S.leaving = true; ctx.goto('cemetery'); return; }
         }
         animate(t); return;
@@ -221,26 +231,42 @@ function sees(b, p) {
     return true;
 }
 const nearestAisle = (v, list) => list.reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a);
+// Patrol po alejkach: sąsiednie skrzyżowanie; z pewnym prawdopodobieństwem to, które jest najbliżej gracza (poluje)
+function pickPatrol(b, p) {
+    const st = b.st, ax = nearestAisle(st.x, AISLES_X), az = nearestAisle(st.z, AISLES_Z);
+    const opts = [[ax + 21, az], [ax - 21, az], [ax, az + 8], [ax, az - 8]].filter(q => AISLES_X.includes(q[0]) && AISLES_Z.includes(q[1]));
+    const hunt = S.df.id === 'nightmare' ? 0.5 : (S.df.id === 'easy' ? 0.1 : 0.35);
+    let pick = opts[(Math.random() * opts.length) | 0];
+    if (Math.random() < hunt) { let bd = 1e9; for (const q of opts) { const d = Math.hypot(q[0] - p.x, q[1] - p.z); if (d < bd) { bd = d; pick = q; } } }
+    b.goal = pick;
+}
 function think(dt, ctx) {
-    const p = ctx.body.position, speedXZ = Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), mul = S.df.speed;
+    const p = ctx.body.position, speedXZ = Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), mul = S.df.speed * (1 + RELIC_BOOST * S.relics);
     let seenBy = 0;
     for (const b of S.bots) {
+        if (!b.active) continue;
         const st = b.st, seesMe = sees(b, p), d = Math.hypot(p.x - st.x, p.z - st.z);
         const prev = st.mode;
-        if (seesMe) { if (prev !== 'chase') { SFX.stinger({ x: st.x, y: 1.5, z: st.z }); } st.mode = 'chase'; b.lostT = 0; b.last = [p.x, p.z]; seenBy++; }
-        else if (st.mode === 'chase') { b.lostT += dt; if (b.lostT > LOSE_TIME) { st.mode = 'patrol'; st.goal = null; } }
-        else if (speedXZ > 3.4 && d < HEAR_DIST * (S.df.id === 'nightmare' ? 1.3 : 1)) { st.mode = 'investigate'; st.goal = [p.x, p.z]; }   // słyszy bieg
+        // Strażnik: co 2,5 s sprawdza, czy Grabarz w ogóle się przesunął (stepBot zerował cel, a tryb "investigate" czytał go: wyjątek zatrzymywał cały poziom)
+        b.wT += dt;
+        if (b.wT >= 2.5) { const moved = Math.hypot(st.x - b.wx, st.z - b.wz); b.wT = 0; b.wx = st.x; b.wz = st.z; if (moved < 0.5 && st.mode !== 'chase') { st.mode = 'patrol'; b.goal = null; st.side = 0; b.stuckN++; if (b.stuckN >= 2) { const ax = nearestAisle(st.x, AISLES_X), az = nearestAisle(st.z, AISLES_Z); st.x = ax; st.z = az; st.y = 0; st.vy = 0; b.stuckN = 0; } } else if (moved >= 0.5) b.stuckN = 0; }
+        if (seesMe) { if (prev !== 'chase') SFX.stinger({ x: st.x, y: 1.5, z: st.z }); st.mode = 'chase'; b.lostT = 0; b.smellT = 0; b.last = [p.x, p.z]; seenBy++; }
+        else if (st.mode === 'chase') {
+            b.lostT += dt; b.smellT += dt;
+            if (b.smellT < SMELL_TIME) { b.smellR = (b.smellR || 0) - dt; if (b.smellR <= 0) { b.smellR = 1.2; b.last = [p.x + (Math.random() - 0.5) * 6, p.z + (Math.random() - 0.5) * 6]; } }   // węch: kilka sekund wie mniej więcej, gdzie jesteś
+            if (b.lostT > LOSE_TIME) { st.mode = 'patrol'; b.goal = null; }
+        }
+        else if (speedXZ > 3.4 && d < HEAR_DIST * (S.df.id === 'nightmare' ? 1.3 : 1)) { st.mode = 'investigate'; b.goal = [p.x, p.z]; b.invT = 0; }
         let tx, tz, speed = WALK * mul;
         if (st.mode === 'chase') { const tgt = seesMe || !b.last ? [p.x, p.z] : b.last; tx = tgt[0]; tz = tgt[1]; speed = CHASE * mul; }
-        else if (st.mode === 'investigate') { tx = st.goal[0]; tz = st.goal[1]; speed = INVESTIGATE * mul; if (Math.hypot(tx - st.x, tz - st.z) < 1.5) { st.mode = 'patrol'; st.goal = null; } }
-        else {
-            // Patrol po alejkach: następny punkt na skrzyżowaniu sąsiedniej alejki
-            if (!st.goal || Math.hypot(st.goal[0] - st.x, st.goal[1] - st.z) < 1.3) {
-                const ax = nearestAisle(st.x, AISLES_X), az = nearestAisle(st.z, AISLES_Z);
-                const opts = [[ax + 21, az], [ax - 21, az], [ax, az + 8], [ax, az - 8]].filter(q => AISLES_X.includes(q[0]) && AISLES_Z.includes(q[1]));
-                st.goal = opts[(Math.random() * opts.length) | 0];
-            }
-            tx = st.goal[0]; tz = st.goal[1];
+        else if (st.mode === 'investigate') {
+            speed = INVESTIGATE * mul; b.invT += dt;
+            if (!b.goal) b.goal = [p.x, p.z];
+            tx = b.goal[0]; tz = b.goal[1];
+            if (Math.hypot(tx - st.x, tz - st.z) < 1.5 || b.invT > 10) { st.mode = 'patrol'; b.goal = null; }
+        } else {
+            if (!b.goal || Math.hypot(b.goal[0] - st.x, b.goal[1] - st.z) < 1.3) pickPatrol(b, p);
+            tx = b.goal[0]; tz = b.goal[1];
         }
         stepBot(st, dt, tx, tz, p.y - 0.35, speed, st.mode === 'chase');
         if (d < CATCH_DIST && Math.abs(p.y - (st.y + 1.0)) < 1.5) { caught(); return; }
@@ -249,7 +275,7 @@ function think(dt, ctx) {
     S.seen = seenBy;
 }
 function animate(t) {
-    S.bots.forEach((b) => { const st = b.st; b.m.group.position.set(st.x, st.y + (st.ground ? Math.abs(Math.sin(t * 7)) * 0.04 : 0), st.z); b.m.group.rotation.y = st.dir; });
+    S.bots.forEach((b) => { if (!b.active) return; const st = b.st; b.m.group.position.set(st.x, st.y + (st.ground ? Math.abs(Math.sin(t * 7)) * 0.04 : 0), st.z); b.m.group.rotation.y = st.dir; });
     S.gateLamp.intensity = S.relics === 5 ? 14 : 12 + Math.sin(t * 6) * 4;
 }
 function fmt(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
@@ -266,6 +292,7 @@ function drawHud() {
     x.fillStyle = col; x.fillText(msg, 330, 108);
     S.hud.update();
 }
+export const testState = () => S;   // dla testów: dostęp do stanu poziomu
 export function dispose() {
     if (S) { S.ev.dispose(); S.ghost.dispose(); S.hud.dispose(); S.intro.dispose(); S.scare.dispose(); }
     S = null;

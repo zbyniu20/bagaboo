@@ -24,17 +24,18 @@ const NP = LIGHT_PRESETS.night;
 const CEIL = 14;                             // pokój 30 x 30 m, 14 m wysokości
 const GAME_TIME = 180;                       // 3 minuty ucieczki
 const INTRO_TIME = 10, RESTART_INTRO = 6;    // instrukcja na start / krótka przerwa po restarcie
-const FUSE_COUNT = 4, FUSE_CUT = 25;          // każdy bezpiecznik: -25 s na zegarze (+40 Bagabucks, dzienny limit w economy.js)
+const FUSE_COUNT = 4, FUSE_CUT = 15;          // każdy bezpiecznik: -15 s na zegarze (+40 Bagabucks, dzienny limit w economy.js)
 const REWARD_FIRST = 1800, REWARD_REPEAT = 180;
 const CATCH_Y = 4.3, CATCH_R = 1.5;          // poniżej tej wysokości potwór cię dosięgnie
-const SPEED = { patrol: 1.2, investigate: 2.4, decoy: 3.6, chase: 5.0, camp: 1.5 };
+const SPEED = { patrol: 1.8, investigate: 2.4, decoy: 3.6, chase: 5.0, camp: 1.5 };
 const CAMP_TIME = 12;                        // tyle czeka pod liną, zanim odejdzie
 const GRIP_TIME = 14;                        // tyle możesz wisieć na linie
 const HAND_QUIET = 0.7, HAND_LOUD = 3.0;     // prędkość dłoni (m/s): poniżej cicho, powyżej maksymalny hałas
 const MIC_QUIET = 0.04, MIC_LOUD = 0.24;     // głośność mikrofonu: szept / krzyk
 const MONSTER_SCALE = 1.15;
 const NEST = [-11, -11];
-const WAYPOINTS = [[-8, -6], [0, -10], [9, -8], [11, 0], [6, 9], [-2, 8], [-11, 2], [-4, 0], [3, 1]];
+const WAYPOINTS = [[-8, -6], [0, -10], [9, -8], [11, 0], [6, 9], [-2, 8], [-11, 2], [-4, 0], [3, 1], [12, 12], [-11, 12], [0, 12.5], [13, -4], [-13, -2], [12, -12]];   // dochodzą rogi pokoju: dawniej można było stać w kącie i nigdy nie zostać znalezionym
+const STILL_R = 1.6, STILL_TIME = 20;          // kto 20 s stoi w promieniu 1,6 m, ten "pachnie": potwór idzie sprawdzić to miejsce (nie dotyczy tych, którzy są wysoko, poza zasięgiem)
 const OBSTACLES = [   // skrzynie i regały: [x, z, szer, wys, głęb]
     [-9, 4, 1.4, 1.4, 1.4], [-9, 4, 1.2, 1.2, 1.2, 1.4], [9, -3, 1.4, 1.4, 1.4], [4, 8, 3, 2.2, 0.8], [-4, -4, 1.2, 1.2, 1.2],
     [11, 9, 1.4, 1.4, 1.4], [11, 9, 1.2, 1.2, 1.2, 1.4], [-12.6, 8, 0.8, 2.2, 3], [12, -10, 1.4, 1.4, 1.4]
@@ -344,7 +345,8 @@ const INTRO_LINES = [
     'Move slowly. Stroke the floor and the walls instead of hitting them. Watch the noise bar.',
     'If it roars, it is charging at you. Climb a hanging rope: pull your hand down to climb, grab higher with the other hand. It cannot reach above 4 m. Your grip lasts 14 seconds.',
     'Throw a black ball far away. The noise draws it off your trail.',
-    'Find the 4 glowing fuses. Each one cuts 25 seconds off the clock.',
+    'Find the 4 glowing fuses. Each one cuts 15 seconds off the clock.',
+    'Do not hide in one spot: after 20 seconds without moving, it smells you and comes to check.',
     'Survive until the clock hits zero to escape.',
     'Multiplayer: stay silent and use hand gestures. If it catches someone, it drags them into its nest. Squeeze the cage lock for 2 seconds to free them.',
     'The LOBBY door behind you takes you back at any time.'
@@ -399,6 +401,15 @@ function participants(p) {
 // ---------- MÓZG POTWORA (tylko u hosta albo w grze solo) ----------
 function think(dt, parts) {
     const m = S.mon; m.timer += dt;
+    // Anty-kamping: stanie w jednym miejscu przez STILL_TIME s wysyła potwora do tego miejsca (zwykły "investigate", więc można się wymknąć cicho)
+    S.still = S.still || {};
+    for (const pt of parts) {
+        if (S.nest.has(pt.id) || pt.y >= CATCH_Y) { S.still[pt.id] = null; continue; }
+        const a = S.still[pt.id];
+        if (!a || Math.hypot(pt.x - a.x, pt.z - a.z) > STILL_R) { S.still[pt.id] = { x: pt.x, z: pt.z, t: 0 }; continue; }
+        a.t += dt;
+        if (a.t > STILL_TIME && (m.mode === 'patrol' || m.mode === 'listen')) { a.t = 0; setMode('investigate'); m.goal = [pt.x, pt.z]; m.fast = false; if (pt.id === 'me') toast('It smells you... Move!', '#ff6a4a'); }
+    }
     let tx = null, tz = null, speed = 0;
     const dist = (x, z) => Math.hypot(x - m.x, z - m.z);
     if (m.mode === 'patrol') {
@@ -672,6 +683,7 @@ function animateMonster(dt, t, p) {
 }
 
 // Sprzątanie przy wyjściu z poziomu
+export const testState = () => S;   // dla testów: dostęp do stanu poziomu
 export function dispose() {
     if (S) {
         if (S.ev) S.ev.dispose();

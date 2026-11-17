@@ -18,7 +18,7 @@ import { createGhost } from '../core/runkit.js';
 import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_FURAS } from './levels.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
 
 const X = 20, Z0 = 4, Z1 = -64, WALL_H = 4.6;                         // legowisko 40 x 68 m
 const DIV_H = 4.0, DIV_T = 0.7;                                       // ścianki z kartonów: za wysokie, by Furas je przeskoczył (skacze do 3,6 m)
@@ -35,6 +35,7 @@ const TELEGRAPH = 0.7, POUNCE_T = 0.55, RECOVER_T = 1.0, POUNCE_CD = 3.5;
 const FISH_BOOST = 0.07, RAGE_BOOST = 0.3;   // każda ryba przyspiesza Furasa o 7%, po wszystkich rybach dostaje szału (+30%)
 const REWARD_FIRST = 3000, REWARD_REPEAT = 300, INTRO_TIME = 10;
 const STARTS = [6, 11, 3];   // węzły startowe kolejnych Furasów (trzeci wchodzi dopiero po rybach)
+const DORMANT = [0, 400];     // uśpiony Furas czeka daleko poza mapą; jego światło jest od początku w scenie, więc przebudzenie nie zmienia liczby świateł (bez przeładowania shaderów)
 export const info = { id: 'furas', name: 'The Fur Den', spawn: [0, 1.0, 2.0] };
 let S = null;
 const _q = new THREE.Vector3(), _Yv = new THREE.Vector3(0, 1, 0), _tq = new THREE.Quaternion(), _tn = new THREE.Vector3();
@@ -243,25 +244,30 @@ function buildGate() {
     buildDoor({ x: 0, z: EXIT_Z, rotY: 0, label: 'EXIT', color: '#ffd0e8', glow: 0xff80c0, wood: 0x5a3a46, light: true, portal: { target: 'levels', spawn: ARRIVAL_FROM_FURAS, onEnter: finish } });
 }
 function buildFurasBots() {
-    const nm = S.df.id === 'nightmare';
-    addBot(0); if (nm) addBot(1);
+    const id = S.df.id, active = id === 'nightmare' ? 2 : 1, total = id === 'nightmare' ? 3 : (id === 'easy' ? 1 : 2);   // reszta śpi do kolejnych ryb (patrz reinforce)
+    for (let i = 0; i < total; i++) addBot(i, i < active);
 }
-// Nowy Furas na węźle: gracz nie dostaje go pod nos (przy dobudowywaniu wybieramy węzeł najdalszy od niego)
-function addBot(idx, node) {
-    const n = node === undefined ? STARTS[idx] : node, f = buildFuras(true); if (idx) f.root.scale.setScalar(1.1);
+// Furas na węźle. Uśpiony stoi poza mapą z ukrytą siatką; jego światło zostaje w scenie
+function addBot(idx, on) {
+    const n = STARTS[idx], f = buildFuras(true); if (idx) f.root.scale.setScalar(1.1);
     L.root.add(f.root);
-    const st = createBot(NODES[n][0], NODES[n][1]); st.mode = 'patrol';
+    const x = on ? NODES[n][0] : DORMANT[0], z = on ? NODES[n][1] : DORMANT[1];
+    const st = createBot(x, z); st.mode = 'patrol';
     f.root.position.set(st.x, 0, st.z);
-    const b = { f: f, st: st, home: n, node: n, prevNode: -1, goal: null, lostT: 0, last: null, t: 0, cd: 2.5, dirx: 0, dirz: 1, ph: 0, px: st.x, pz: st.z, crouch: 0, purr: Math.random(), wT: 0, wx: st.x, wz: st.z, smellT: 0 };
-    S.bots.push(b); return b;
+    const b = { f: f, st: st, active: on, home: n, node: n, prevNode: -1, goal: null, lostT: 0, last: null, t: 0, cd: 2.5, dirx: 0, dirz: 1, ph: 0, px: st.x, pz: st.z, crouch: 0, purr: Math.random(), wT: 0, wx: st.x, wz: st.z, smellT: 0 };
+    shown(b, on); S.bots.push(b); return b;
 }
-// Furas dobudowuje się, gdy w legowisku jest coraz niebezpieczniej (Normal: po 2 rybach, Nightmare: trzeci po 3)
+function shown(b, on) { b.f.root.traverse(o => { if (o.isMesh || o.isSprite) o.visible = on; }); }   // światła zostają widoczne (liczba świateł się nie zmienia)
+// Kolejny Furas budzi się w legowisku coraz niebezpieczniej (Normal: po 2 rybach, Nightmare: trzeci po 3) na węźle najdalszym od gracza
 function reinforce() {
     const need = S.df.id === 'nightmare' ? (S.fish >= 3 ? 3 : 2) : (S.df.id === 'easy' ? 1 : (S.fish >= 2 ? 2 : 1));
-    while (S.bots.length < need) {
+    while (S.bots.filter(x => x.active).length < need) {
+        const b = S.bots.find(x => !x.active); if (!b) return;
         let best = 0, bd = -1; const me = S.lastP || { x: 0, z: 0 };
         NODES.forEach((n, i) => { const d = Math.hypot(n[0] - me.x, n[1] - me.z); if (d > bd) { bd = d; best = i; } });
-        const b = addBot(S.bots.length, best); b.cd = 4;
+        b.active = true; b.home = best; b.node = best; b.prevNode = -1; b.goal = null; b.cd = 4; b.t = 0; b.crouch = 0; b.lostT = 0; b.stuckN = 0;
+        b.st.x = NODES[best][0]; b.st.z = NODES[best][1]; b.st.y = 0; b.st.vy = 0; b.st.mode = 'patrol'; b.px = b.st.x; b.pz = b.st.z; b.wx = b.st.x; b.wz = b.st.z; b.wT = 0;
+        shown(b, true);
         toast('Another FURAS wakes up...', '#ff4a2a'); SFX.screech({ x: NODES[best][0], y: 1.5, z: NODES[best][1] });
     }
 }
@@ -281,7 +287,7 @@ function caught() {
 function takeFish(i) {
     S.got[i] = true; S.fish++; S.fishMesh[i].visible = false; SFX.fuse(); buzz('both', 0.7, 200);
     toast('Golden fish ' + S.fish + '/4', '#ffd870');
-    for (const b of S.bots) { if (b.st.mode === 'patrol' || b.st.mode === 'investigate') { b.st.mode = 'investigate'; b.goal = [FISH[i][0], FISH[i][1]]; b.invT = 0; } }   // zabranie ryby przyciąga Furasa
+    for (const b of S.bots) { if (!b.active) continue; if (b.st.mode === 'patrol' || b.st.mode === 'investigate') { b.st.mode = 'investigate'; b.goal = [FISH[i][0], FISH[i][1]]; b.invT = 0; } }   // zabranie ryby przyciąga Furasa
     reinforce();
     SFX.stinger({ x: FISH[i][0], y: 1.5, z: FISH[i][1] });
     if (S.df.checkpoints) { S.cp = i; toast('Checkpoint saved', '#ffb0d8'); }
@@ -290,7 +296,7 @@ function takeFish(i) {
         if (S.gateOb.body) S.gateOb.body.position.y = -50;
         S.gate.visible = false; S.gateLamp.color.setHex(0x30ff60); SFX.bell && SFX.bell();
         toast('The gate is open! Run to the EXIT! FURAS is ENRAGED!', '#ffd27a');
-        for (const b of S.bots) { if (b.st.mode !== 'telegraph' && b.st.mode !== 'pounce') { b.st.mode = 'chase'; b.lostT = 0; b.last = [S.lastP.x, S.lastP.z]; } }   // szał: wszystkie Furasy ruszają na gracza
+        for (const b of S.bots) { if (!b.active) continue; if (b.st.mode !== 'telegraph' && b.st.mode !== 'pounce') { b.st.mode = 'chase'; b.lostT = 0; b.last = [S.lastP.x, S.lastP.z]; } }   // szał: wszystkie Furasy ruszają na gracza
     }
 }
 const INTRO = [
@@ -359,6 +365,7 @@ function think(dt, ctx) {
     const mul = df.speed * (S.fish >= 4 ? 1 + RAGE_BOOST : 1 + FISH_BOOST * S.fish);   // trudność razy przyspieszenie z rybami
     let seenBy = 0;
     for (const b of S.bots) {
+        if (!b.active) continue;
         const st = b.st, seesMe = sees(b, p), dx = p.x - st.x, dz = p.z - st.z, d = Math.hypot(dx, dz), pos = { x: st.x, y: 1.4, z: st.z };
         b.cd = Math.max(0, b.cd - dt); b.purr -= dt;
         if (b.purr <= 0 && d < 24) { b.purr = 1.15; SFX.purr(pos, Math.max(0.12, 1 - d / 24)); }   // pomruk zdradza, jak blisko jest
@@ -462,17 +469,17 @@ export function update(dt, t, ctx) {
     if (S.caughtT >= 0) {
         S.caughtT += dt;
         if (S.caughtT > 1.6) {
-            if (S.df.checkpoints && S.cp >= 0) {
+            if (S.cp >= 0 && takeRespawn(S)) {
                 const r = FISH[S.cp]; setPlayerPosition(r[0], 1.0, r[1] + 1.2);
-                S.bots.forEach((b) => { b.st.x = NODES[b.home][0]; b.st.z = NODES[b.home][1]; b.st.y = 0; b.st.mode = 'patrol'; b.goal = null; b.lostT = 0; b.cd = 3; b.node = b.home; b.prevNode = -1; b.px = b.st.x; b.pz = b.st.z; b.wx = b.st.x; b.wz = b.st.z; b.wT = 0; b.stuckN = 0; });
+                S.bots.forEach((b) => { if (!b.active) return; b.st.x = NODES[b.home][0]; b.st.z = NODES[b.home][1]; b.st.y = 0; b.st.mode = 'patrol'; b.goal = null; b.lostT = 0; b.cd = 3; b.node = b.home; b.prevNode = -1; b.px = b.st.x; b.pz = b.st.z; b.wx = b.st.x; b.wz = b.st.z; b.wT = 0; b.stuckN = 0; });
                 S.caughtT = -1;
             } else { S.leaving = true; ctx.goto('furas'); return; }
         }
-        S.bots.forEach((b) => animateFuras(b, t, dt));
+        S.bots.forEach((b) => { if (b.active) animateFuras(b, t, dt); });
         return;
     }
     if (S.phase === 'play') think(dt, ctx);
-    S.bots.forEach((b) => animateFuras(b, t, dt));
+    S.bots.forEach((b) => { if (b.active) animateFuras(b, t, dt); });
     S.gateLamp.intensity = S.fish === 4 ? 14 : 12 + Math.sin(t * 6) * 4;
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.15; drawHud(); }
 }
@@ -491,8 +498,8 @@ function drawHud() {
     x.fillStyle = col; x.fillText(msg, 330, 108);
     S.hud.update();
 }
-export const debug = () => S ? { phase: S.phase, fish: S.fish, caught: S.caughtT >= 0, modes: S.bots.map(b => b.st.mode), botPos: S.bots.map(b => [b.st.x, b.st.z]), fishPos: FISH, gateOpen: !S.gate.visible, bots: S.bots.length } : null;   // dla testów
-export const testBots = () => S ? S.bots : [];   // dla testów: sterowanie Furasem
+export const debug = () => S ? { phase: S.phase, fish: S.fish, caught: S.caughtT >= 0, modes: S.bots.filter(b => b.active).map(b => b.st.mode), botPos: S.bots.filter(b => b.active).map(b => [b.st.x, b.st.z]), fishPos: FISH, gateOpen: !S.gate.visible, bots: S.bots.filter(b => b.active).length } : null;   // dla testów
+export const testBots = () => S ? S.bots.filter(b => b.active) : [];   // dla testów: sterowanie Furasem
 export function dispose() {
     if (S) { S.ev.dispose(); S.ghost.dispose(); S.hud.dispose(); S.intro.dispose(); S.scare.dispose(); }
     S = null;
