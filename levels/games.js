@@ -46,6 +46,7 @@ const MODES = [
     { cat: 'party', label: 'BECOME THE MONSTER', color: '#ff4a4a', glow: 0xff2020, target: 'monster', desc: ['One player becomes the monster.', 'Everyone else runs for 2 minutes.', 'Not caught = 200 Bagabucks.', 'Best with 2 or more players.'] },
     { cat: 'team', label: 'CAPTURE THE BANANA', color: '#ffe040', glow: 0xffc020, target: 'banana', desc: ['Two teams, two bananas.', 'Steal theirs, bring it home.', 'First to 3 captures wins', '200 Bagabucks. Solo: vs a guard.'] },
     { cat: 'team', label: 'KING OF THE HILL', color: '#60ff80', glow: 0x30ff60, target: 'koth', desc: ['Hold the glowing ring alone', 'to collect seconds. Knock', 'rivals off with your hand.', 'First to 40 s. Solo: a rival.'] },
+    { cat: 'team', label: 'GENERATOR', color: '#80ffd8', glow: 0x30ffb0, target: 'generator', desc: ['Repair 4 generators in the dark', 'while a monster hunts by sound.', 'Escape through the gate for', '200 Bagabucks. Talking is loud!'] },
     { cat: 'team', label: 'DODGEBALL', color: '#ff9a4a', glow: 0xff7a20, target: 'dodgeball', desc: ['Two teams, one center line.', 'Hit enemies with fast balls.', 'Last team standing wins.', 'Solo: hit 4 mannequins.'] }
 ];
 // Ściany kategorii (baner, strefa na podłodze i światło skrzydła): zachód (race), północ (party), wschód (team)
@@ -85,6 +86,7 @@ export const ARRIVAL_FROM_MONSTER = AR.monster;
 export const ARRIVAL_FROM_BANANA = AR.banana;
 export const ARRIVAL_FROM_KOTH = AR.koth;
 export const ARRIVAL_FROM_DODGEBALL = AR.dodgeball;
+export const ARRIVAL_FROM_GENERATOR = AR.generator;
 let S = null;
 
 // ---------- TERMINALE (komputery w kręgu) ----------
