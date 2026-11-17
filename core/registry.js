@@ -46,6 +46,8 @@ export const LEVEL_DEFS = [
     { id: 'koth', name: 'King of the Hill', kind: 'game', light: 'station', theme: 'arcade' },
     { id: 'infection', name: 'Infection', kind: 'game', light: 'station', theme: 'chase' },
     { id: 'dodgeball', name: 'Dodgeball', kind: 'game', light: 'station', theme: 'arcade' },
+    { id: 'custom', name: 'Custom Race', kind: 'game', light: 'arcade', theme: 'arcade' },
+    { id: 'workshop', name: 'Workshop', kind: 'game', light: 'arcade', theme: 'arcade' },
     { id: 'generator', name: 'Generator', kind: 'game', light: 'hideseek', theme: 'dread', room: { sec: 2.4, wet: 0.2 }, ambience: { loops: [['hum', [[-12, 1.2, 7], [12, 1.2, 3], [-11, 1.2, -8], [12, 1.2, -11]]]], rand: [{ t: 'creak', e: [8, 16], d: [8, 20], v: 0.16 }, { t: 'thud', e: [14, 30], d: [12, 28], v: 0.25 }] } }
 ];
 

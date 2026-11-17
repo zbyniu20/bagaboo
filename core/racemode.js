@@ -25,7 +25,8 @@ const fmt = (t) => { t = Math.max(0, t); return Math.floor(t / 60) + ':' + Strin
 
 export function createRaceMode(cfg) {
     let S = null;
-    const START = cfg.spawn, REWARD = cfg.reward || 200, PAR = cfg.par, MAX = cfg.roundMax;
+    let PAR = cfg.par;   // tryby z mapą z danych (Własna mapa) podają czas wzorcowy z build()
+    const START = cfg.spawn, REWARD = cfg.reward === undefined ? 200 : cfg.reward, MAX = cfg.roundMax;
     const info = { id: cfg.id, name: cfg.name, spawn: START.slice() };
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -64,7 +65,7 @@ export function createRaceMode(cfg) {
     }
     function startedRace() { S.t0 = S.clock; toast('GO!', '#7fff90'); SFX.roar(0.5); buzz('both', 0.6, 250); }
     // Meta gościa: host nie ufa zgłoszonemu czasowi ani samemu zgłoszeniu. Sprawdza kryterium mety trybu na pozycji głowy gracza (z zapasem na opóźnienie sieci), a czas bierze z własnego zegara
-    function guestFinish(id) { const h = validHead(headOf(id)); if (S.phase === 'race' && h && S.finish({ x: h.x, y: h.y + 1, z: h.z - TOL.FINISH })) handleFinish(id, elapsedSince(S.clock, S.t0)); }
+    function guestFinish(id) { const h = validHead(headOf(id)); if (S.phase === 'race' && h && (S.hostFinish ? S.hostFinish(h) : S.finish({ x: h.x, y: h.y + 1, z: h.z - TOL.FINISH }))) handleFinish(id, elapsedSince(S.clock, S.t0)); }
     function handleFinish(id, t) { if (S.phase === 'race') registerFinish(S, id, t, GRACE); }
     function roundOver() {
         if (S.rewarded) return; S.rewarded = true;
@@ -73,10 +74,10 @@ export function createRaceMode(cfg) {
         else if (o.kind === 'place') toast('You finished #' + o.place, '#ffd27a');
         else if (o.kind === 'dnf') toast('You did not finish', '#e0533f');
         else if (o.kind === 'par' || o.kind === 'slow') {
-            const rec = recordTime(cfg.id, o.time); S.ghost.finish(rec, o.time);
+            if (!cfg.noRecord) { const rec = recordTime(cfg.id, o.time); S.ghost.finish(rec, o.time); }   // mapy graczy nie zapisują rekordów
             toast(o.kind === 'par' ? 'Under par (' + PAR + ' s)! ' + o.time.toFixed(1) + ' s' : 'Finished in ' + o.time.toFixed(1) + ' s. Par is ' + PAR + ' s', o.kind === 'par' ? '#7fc47f' : '#ffd27a');
         } else toast('Time ran out. Try again!', '#e0533f');
-        const reward = outcomeReward(o, REWARD, 150); if (reward) levelReward(cfg.id, reward, reward, o.kind === 'won' ? 'won ' + cfg.name : 'beat the par time');
+        const reward = outcomeReward(o, REWARD, REWARD === 0 ? 0 : 150); if (reward) levelReward(cfg.id, reward, reward, o.kind === 'won' ? 'won ' + cfg.name : 'beat the par time');
     }
     function think(dt) {
         const r = stepPhase(S.phase, S.t, dt, { play: 'race', countdown: COUNTDOWN, roundMax: MAX, results: RESULTS, wait: N.NET.mode === 'solo' ? SOLO_WAIT : WAIT, allFinished: S.phase === 'race' && participants().every(id => S.order.includes(id)) });
@@ -87,6 +88,7 @@ export function createRaceMode(cfg) {
         else if (r.event === 'wait') { S.order = []; S.times = {}; }
     }
 
+    // reward: 0 wyłącza też nagrodę za czas wzorcowy (mapy graczy), patrz roundOver
     // ---------- BUDOWA ----------
     function build() {
         L.spawn = START.slice();
@@ -95,7 +97,7 @@ export function createRaceMode(cfg) {
         if (cfg.floorY !== undefined) L.floorY = cfg.floorY;
         S = { ghost: createGhost(cfg.id), clock: 0, phase: 'wait', t: 0, order: [], times: {}, falls: 0, myT: 0, finished: false, lastHostMsg: -10, netT: 0, hudT: 0, introT: 10, rewarded: false, lastBeep: -1, lastPlat: null, extra: '', total: 1 };
         S.t = N.NET.mode === 'solo' ? SOLO_WAIT : WAIT;
-        const built = cfg.build(S); S.finish = built.finish;
+        const built = cfg.build(S); S.finish = built.finish; S.hostFinish = built.hostFinish; if (built.par) PAR = built.par;
         buildDoor(Object.assign({ label: 'GAMES', color: '#d080ff', wood: 0x3a3048, portal: { target: 'games', spawn: cfg.arrival, onEnter: () => toast('Back to BagaBoo Games') } }, cfg.door));
         // Wyjście na końcu toru (po mecie): drzwi z napisem EXIT wracają do salonu Games, tak jak drzwi GAMES na starcie
         if (built.exit) buildDoor(Object.assign({ label: 'EXIT', color: '#70ff90', glow: 0x60ff90, wood: 0x3a4a3a, light: true, portal: { target: 'games', spawn: cfg.arrival, onEnter: () => toast('Back to BagaBoo Games') } }, built.exit));

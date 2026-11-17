@@ -9,7 +9,6 @@
   "13": "Graphics & Lighting",
   "15": "Auth Client",
   "16": "Hotel Level",
-  "18": "Maze Level",
   "19": "Catacombs Level",
   "20": "Hospital Level",
   "21": "Nursery Level",
@@ -17,7 +16,6 @@
   "23": "Lobby & Physics Bodies",
   "28": "Role Tags & Lobby Door",
   "31": "Banana Mode",
-  "34": "Round Kit",
   "35": "Dodgeball",
   "40": "Statues Level",
   "41": "Mod Menu",
@@ -26,7 +24,6 @@
   "51": "Docs: Accounts & Rules",
   "52": "Last Tile",
   "61": "Murals",
-  "66": "VR Menu",
   "67": "Dependencies",
   "68": "Presence",
   "70": "Gooby"
