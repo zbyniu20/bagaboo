@@ -22,6 +22,7 @@ help.style.cssText = 'position:fixed;left:12px;bottom:12px;padding:10px 14px;bac
 help.innerHTML = '<b>Desktop test mode</b><br>Click the view to capture the mouse.<br>WASD move, Shift run, Space jump, mouse look.<br>Left click: reach with your hand, press screens.<br>E: grab (ropes, balls, chains), Q: pull down.<br>G: flashlight on/off (Hotel).<br>F: fly mode (Space up, C down). Esc: pause.';
 document.body.appendChild(cross); document.body.appendChild(help);
 
+export const isMouseDown = () => mouseL;   // przytrzymany lewy przycisk (np. malowanie na Ścianie Graffiti)
 export function enableDesktop() { DESKTOP.enabled = true; }
 // Kierunek patrzenia na pulpicie: yaw 0 = wprost na -z (po wejściu do sali Levels/Games: na terminale)
 export function setDesktopFacing(y) { yaw = y; pitch = 0; }

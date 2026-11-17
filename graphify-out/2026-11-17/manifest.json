@@ -10007,6 +10007,12 @@
     "ast_hash": "b9f008cd5734ef6ef7d8b35f8d372937",
     "semantic_hash": ""
   },
+  "docs/POMYSLY.md": {
+    "mtime": 1794956311.2998228,
+    "seen": 1794956319.9265833,
+    "ast_hash": "86ec1360061ec4afe3cc84c04ef49c91",
+    "semantic_hash": ""
+  },
   "tests/package-lock.json": {
     "mtime": 1794940696.9525688,
     "seen": 1794956045.3167753,

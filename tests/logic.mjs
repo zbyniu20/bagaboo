@@ -164,4 +164,36 @@ for (const f of modeFiles) {
 }
 check('guest results: the guarded modes were found (race, redlight, racemode, range, treasure)', guarded >= 5, guarded);
 
+// ---------- Ściana Graffiti (core/graffitilogic.js i zasady zaufania w core/graffiti.js) ----------
+const G = await import(url('core/graffitilogic.js'));
+const NC = G.WALL.COLORS.length;
+check('graffiti: clean cells keep valid triples', JSON.stringify(G.cleanCells([0, 0, 1, 47, 23, NC - 1])) === '[0,0,1,47,23,' + (NC - 1) + ']');
+check('graffiti: clean cells drop out-of-range, fractional, negative and non-numeric values', G.cleanCells([48, 0, 1, 0, 24, 1, -1, 0, 1, 0, 0, NC, 0.5, 0, 1, '1', 0, 1, null, 0, 1]).length === 0);
+check('graffiti: clean cells reject non-arrays', G.cleanCells(null).length === 0 && G.cleanCells('abc').length === 0 && G.cleanCells({ length: 99 }).length === 0);
+check('graffiti: one message holds at most MAX_CELLS cells', G.cleanCells(Array.from({ length: 300 }, (_, i) => i % 3 === 2 ? 1 : 0)).length / 3 === G.WALL.MAX_CELLS);
+check('graffiti: every brush fits in one message', G.WALL.BRUSHES.every(b => G.brushCells(5, 5, b, 1).length / 3 <= G.WALL.MAX_CELLS));
+check('graffiti: 3x3 brush has 9 cells in the middle and is clipped at the corner', G.brushCells(5, 5, 3, 2).length === 27 && G.brushCells(0, 0, 3, 2).length === 12 && G.brushCells(47, 23, 1, 2).length === 3);
+{
+    const w = G.emptyWall(), n1 = G.paintCells(w, [1, 2, 3, 4, 5, 6]), n2 = G.paintCells(w, [1, 2, 3]);
+    check('graffiti: painting counts only changed cells', n1 === 2 && n2 === 0 && w[2 * G.WALL.W + 1] === 3 && w[5 * G.WALL.W + 4] === 6);
+    const enc = G.encodeWall(w), dec = G.decodeWall(enc);
+    check('graffiti: snapshot round trip', !!dec && dec.length === w.length && dec.every((v, i) => v === w[i]));
+    check('graffiti: an empty wall encodes to a single run', G.encodeWall(G.emptyWall()) === '0' + G.WALL.W * G.WALL.H);
+    check('graffiti: decode rejects bad snapshots', [null, 5, '', 'zz', '0100', '0' + (G.WALL.W * G.WALL.H + 1), 'c1152', '01152,01', '0' + G.WALL.W * G.WALL.H + ',', 'x'.repeat(30000)].every(x => G.decodeWall(x) === null));
+}
+{
+    const b = G.makeBucket(0);
+    check('graffiti: rate limit allows a burst, then refuses', G.takeTokens(b, G.WALL.BURST, 0) && !G.takeTokens(b, 1, 0));
+    check('graffiti: rate limit refills over time but never above the burst', G.takeTokens(b, G.WALL.PER_SEC, 1) && !G.takeTokens(makeB(), G.WALL.BURST + 1, 1000));
+    function makeB() { return G.makeBucket(0); }
+}
+check('graffiti: near wall uses the horizontal distance and refuses missing heads', G.near({ x: 12, y: 1.6, z: 3 }, { x: 14.9, z: 3.5 }) && !G.near({ x: -10, y: 1.6, z: 0 }, { x: 14.9, z: 3.5 }) && !G.near(null, { x: 0, z: 0 }) && !G.near({ x: NaN, z: 0 }, { x: 0, z: 0 }));
+check('graffiti: cellAt maps the aim point and rejects points outside the picture', JSON.stringify(G.cellAt(0, 0, 960, 480)) === '[0,0]' && JSON.stringify(G.cellAt(959, 479, 960, 480)) === '[47,23]' && G.cellAt(-1, 5, 960, 480) === null && G.cellAt(960, 5, 960, 480) === null && G.cellAt(NaN, 5, 960, 480) === null);
+check('graffiti: the wall day turns over at 3:00 UTC', G.dayKey(Date.UTC(2026, 0, 2, 2, 59)) === G.dayKey(Date.UTC(2026, 0, 1, 12, 0)) && G.dayKey(Date.UTC(2026, 0, 2, 3, 0)) === G.dayKey(Date.UTC(2026, 0, 1, 12, 0)) + 1);
+const gfx = fs.readFileSync(path.join(ROOT, 'core/graffiti.js'), 'utf8');
+check('graffiti.js: the host cleans, rate-limits and position-checks a guest stroke before painting', /cleanCells\(msg\.c\)/.test(gfx) && /takeTokens\(/.test(gfx) && /near\(headOf\(from\), POS\)/.test(gfx) && /st\.lvl !== 'lobby'/.test(gfx));
+check('graffiti.js: a guest accepts snapshots only through the validators', /decodeWall\(msg\.w\)/.test(gfx) && /Number\.isInteger\(msg\.d\)/.test(gfx) && /apply\(cleanCells\(msg\.c\)\)/.test(gfx));
+check('graffiti.js: only the host or solo can clear the wall', /const canClear = \(\) => N\.NET\.mode !== 'guest'/.test(gfx) && /if \(canClear\(\)\) t\.btn\('clear'/.test(gfx));
+check('lobbyplay.js: the lobby routes wall messages and builds, updates and disposes the wall', /onGraffitiMsg\(msg, from\)/.test(fs.readFileSync(path.join(ROOT, 'core/lobbyplay.js'), 'utf8')) && ['buildGraffiti();', 'updateGraffiti(dt, auth)', 'disposeGraffiti()'].every(x => fs.readFileSync(path.join(ROOT, 'core/lobbyplay.js'), 'utf8').includes(x)));
+
 done('logic');
