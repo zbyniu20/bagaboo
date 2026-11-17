@@ -5,18 +5,21 @@
 //   - every emote pose runs without throwing.
 // Usage:  cd tests && npm install && npx playwright install chromium   (once)
 //         (or point CHROMIUM_PATH at an installed Chromium; CI: .github/workflows/smoke.yml)
-//         npm run smoke            # all levels
+//         npm run smoke            # all levels and modes from core/registry.js
+//         node registry.mjs        # registry/files/cards check only: pure Node, under a second, no browser
 //         node smoke.mjs maze,well # selected levels
 // This does NOT measure real VR frame rate: draw calls/point lights are only a proxy for GPU cost.
 import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
 import http from 'http';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.resolve(HERE, '..'), DEPS = path.join(HERE, 'node_modules');
 const PORT = +process.env.PORT || 8766;
-const LEVELS = (process.argv[2] || 'lobby,levels,maze,silence,well,laundry,memory,lava,hospital,cemetery,catacombs,nursery,hotel,games,wardrobe,hideseek,statues,blindtag,swingrun,towerclimb').split(',');
+// Domyślnie wszystkie poziomy, sale i tryby z rejestru (nowy tryb jest testowany od razu); lista po przecinku w argumencie zawęża
+const { LEVEL_DEFS } = await import(pathToFileURL(path.join(ROOT, 'core/registry.js')).href);
+const LEVELS = (process.argv[2] || LEVEL_DEFS.filter(d => d.kind !== 'virtual').map(d => d.id).join(',')).split(',');
 // Draw-call budget per level (medium quality, renderer.info.render.calls on the first frames). Raise only on purpose.
 const BUDGET = { default: 260, laundry: 230, memory: 310 };
 const MAX_POINT_LIGHTS = 12;
@@ -181,36 +184,7 @@ const data = await run(`
 `);
 if (data.length) data.forEach((m) => fail('data: ' + m)); else ok('data: achievements, catalog and emote poses consistent');
 
-// ---- level registry (core/registry.js): the single list of levels must agree with files, index.html, economy and lighting ----
-phase = 'registry';
-const reg = await run(`
-    const R = await import('./core/registry.js'), E = await import('./core/economy.js'), C = await import('./core/config.js'), MU = await import('./core/music.js'), LC = await import('./core/levelcards.js');
-    const bad = [], ids = new Set(), ach = new Set(E.ACHIEVEMENTS.map(a => a.id)), recIds = new Set(E.RECORDS.map(r => r.id));
-    for (const d of R.LEVEL_DEFS) {
-        if (ids.has(d.id)) bad.push('duplicate id ' + d.id); ids.add(d.id);
-        if (d.kind === 'virtual') continue;
-        if (d.light !== '@mode' && !C.LIGHT_PRESETS[d.light]) bad.push(d.id + ': unknown light preset ' + d.light);
-        if ((d.kind === 'level' || d.kind === 'game') && !LC.CARDS[d.id]) bad.push(d.id + ': no level card in core/levelcards.js');
-        if (d.theme && !MU.THEMES[d.theme]) bad.push(d.id + ': unknown music theme ' + d.theme);
-        if (d.kind !== 'virtual' && !d.theme) bad.push(d.id + ': no music theme');
-        if (d.diff && !ach.has('nm_' + d.id)) bad.push(d.id + ': difficulty level without nm_' + d.id + ' achievement');
-        if (d.rec && !recIds.has(d.id)) bad.push(d.id + ': missing record entry');
-    }
-    if (E.DIFF_LEVELS.length !== R.DIFF_LEVEL_IDS.length) bad.push('DIFF_LEVELS out of sync');
-    return { bad: bad, paths: R.LEVEL_DEFS.filter(d => d.kind !== 'virtual').map(d => R.levelPath(d)), levelFiles: R.LEVEL_DEFS.filter(d => d.kind === 'level').map(d => [d.id, R.levelPath(d)]), gameFiles: R.LEVEL_DEFS.filter(d => d.kind === 'game').map(d => [d.id, R.levelPath(d)]) };
-`);
-reg.bad.forEach((m) => fail('registry: ' + m));
-const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'), listed = new Set((html.match(/var FILES = \[(.*?)\]/s) || ['', ''])[1].match(/"[^"]+"/g)?.map(x => x.slice(1, -1)) || []);
-const missing = [];
-for (const dir of ['core', 'levels']) for (const f of fs.readdirSync(path.join(ROOT, dir))) if (f.endsWith('.js') && !listed.has(dir + '/' + f)) missing.push(dir + '/' + f);
-for (const f of listed) if (!fs.existsSync(path.join(ROOT, f))) missing.push('FILES lists missing file ' + f);
-for (const pth of reg.paths) if (!fs.existsSync(path.join(ROOT, pth))) missing.push('registry path missing ' + pth);
-// every game mode must have a door back to the BagaBoo Games room (portal to 'games', or the race-mode factory's arrival:)
-for (const [id, pth] of reg.gameFiles) if (fs.existsSync(path.join(ROOT, pth)) && !/target:\s*'games'|arrival:\s*ARRIVAL_FROM_/.test(fs.readFileSync(path.join(ROOT, pth), 'utf8'))) missing.push('game ' + id + ' has no door back to the Games room');
-// every level from the Levels terminal must have an EXIT at its end
-for (const [id, pth] of reg.levelFiles) if (fs.existsSync(path.join(ROOT, pth)) && !/['"]EXIT['"]/.test(fs.readFileSync(path.join(ROOT, pth), 'utf8'))) missing.push('level ' + id + ' has no EXIT door/sign at its end');
-missing.forEach((m) => fail('registry/index.html: ' + m));
-if (!reg.bad.length && !missing.length) ok('registry: levels, files, index.html FILES, records and Nightmare achievements agree');
+// (kontrola rejestru poziomów, FILES, kart i drzwi jest w registry.mjs: działa w czystym Node, bez przeglądarki)
 
 // ---- levels ----
 for (const lv of LEVELS) {

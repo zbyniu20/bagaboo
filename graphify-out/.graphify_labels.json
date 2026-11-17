@@ -27,15 +27,11 @@
   "40": "Statues Level",
   "41": "Mod Menu",
   "42": "Liquids & Visuals",
-  "43": "Blind Tag",
-  "44": "Race Mode",
-  "47": "Physics & Swing Run",
   "48": "Training Dummy",
   "49": "Mannequin",
   "51": "Docs: Accounts & Rules",
   "52": "Last Tile",
   "53": "Red Light",
-  "54": "Lava Level",
   "55": "Terminal Pointers",
   "61": "Murals",
   "64": "Cosmetics",
@@ -43,6 +39,5 @@
   "67": "Dependencies",
   "68": "Presence",
   "69": "Terminal Widget",
-  "70": "Gooby",
-  "76": "Memory Tests"
+  "70": "Gooby"
 }
