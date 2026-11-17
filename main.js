@@ -19,6 +19,9 @@ import { updateHighFive } from './core/highfive.js';
 import { startXrPerf, stopXrPerf, updateXrPerf } from './core/xrperf.js';
 import { drawScoreboard } from './core/ui.js';
 import { PAUSE, pauseMenu, pollPauseButtons, closePause } from './core/pause.js';
+import { LEVEL_DATA, payload as levelPayload, accept as levelAccept } from './core/leveldata.js';
+import './core/workshopstore.js';   // rejestruje dane mapy dla gości (Własna mapa)
+import './core/homestore.js';       // rejestruje układ pokoju dla gości (odwiedziny)
 import { SETTINGS, saveSettings } from './core/settings.js';
 import { enableDesktop, updateDesktop, setDesktopFacing } from './core/desktop.js';
 import { startPresence } from './core/presence.js';
@@ -107,7 +110,9 @@ async function goToLevel(id, spawn, opts) {
     // Daily Run (przełącznik przy pulpicie): układ z daty, taki sam dla wszystkich; w drużynie liczy się ziarno hosta
     L.levelSeed = SEEDED[id] ? (opts.seed !== undefined ? opts.seed : (ECO.dailyOn(id) ? ECO.dailySeed(id) : (Math.random() * 1e9) | 0)) : undefined;
     if (SEEDED[id]) ECO.setRunSeed(id, L.levelSeed);
-    if (NETM.NET.mode === 'host' && !opts.noFollow && id !== 'staff') NETM.sendFollow(id, { seed: L.levelSeed });   // goście idą za hostem (oprócz pokoju szefa)
+    // Dane poziomu od hosta (np. mapa Warsztatu): gość przyjmuje je tylko przez walidator poziomu, własne wejście używa danych lokalnych
+    LEVEL_DATA.current = opts.data !== undefined ? levelAccept(id, opts.data) : null;
+    if (NETM.NET.mode === 'host' && !opts.noFollow && id !== 'staff') NETM.sendFollow(id, { seed: L.levelSeed, data: levelPayload(id) });   // goście idą za hostem (oprócz pokoju szefa)
     showLoading(LEVEL_NAMES[id] || id);
     await nextFrames(3);   // najpierw pokaż czarny ekran, dopiero potem ciężka praca
     try { await loadLevel(id, spawn); saveNow(); }
@@ -123,7 +128,7 @@ NETM.onFollow((level, data) => {
     if (level === levelId && !SEEDED[level]) return;   // już tu jesteśmy
     if (!started) { pendingFollow = { level: level, data: data }; return; }
     toast('Following the host...', '#9fc8ff');
-    goToLevel(level, null, { seed: data.seed, noFollow: true });
+    goToLevel(level, null, { seed: data.seed, noFollow: true, data: data.data });
 });
 // Gość: zaproszenie od hosta (pokój szefa) albo odesłanie do lobby
 // Haker przyłapany w pokoju szefa: skórka CHEATER na zawsze i ban na tydzień

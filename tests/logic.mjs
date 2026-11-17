@@ -118,6 +118,11 @@ check('staff bonus: not for a staff name without server proof', E.SAVE.wallet ==
 E.markNickVerified('lincolnvr'); E.setProfile({ name: 'lincolnvr' });
 check('staff bonus: paid to a verified staff account', E.SAVE.wallet >= E.STAFF_BONUS, E.SAVE.wallet);
 const paid = E.SAVE.wallet; E.setProfile({ name: 'lincolnvr' }); check('staff bonus: paid only once', E.SAVE.wallet === paid);
+// wydatki spoza sklepu (meble w Moim Pokoju): tylko dodatnia, skończona kwota i tylko gdy stać gracza
+E.SAVE.wallet = 100; const sp0 = E.SAVE.wallet;
+check('spend: not enough money keeps the wallet and fails', E.spendBones(101, 'x') === false && E.SAVE.wallet === sp0);
+check('spend: broken amounts never spend', [0, -5, NaN, Infinity, -Infinity, '50', null, undefined, {}, [5], true].every(v => E.spendBones(v, 'x') === false) && E.SAVE.wallet === sp0);
+check('spend: a valid amount is taken exactly and never goes below zero', E.spendBones(40, 'x') === true && E.SAVE.wallet === 60 && E.spendBones(60, 'x') === true && E.SAVE.wallet === 0 && E.spendBones(1, 'x') === false && E.SAVE.wallet === 0);
 // zapis jest podpisany: ręczna zmiana portfela w localStorage nie może dać pieniędzy
 E.SAVE.wallet = 123; E.saveGame();
 const raw = JSON.parse(localStorage.getItem('bagaboo_save_v1'));

@@ -419,6 +419,12 @@ export function saveGame() {
 }
 export function resetSave() { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(SAVE_KEY + '_bak'); } catch (e) {} }
 
+// Wydatek spoza sklepu z katalogiem (np. meble w Moim Pokoju): tylko dodatnia, skończona kwota i tylko gdy stać gracza; zapisuje grę
+export function spendBones(n, why) {
+    if (typeof n !== 'number' || !Number.isFinite(n) || !(n > 0) || SAVE.wallet < n) return false;
+    SAVE.wallet -= n; toast('-' + n + ' ' + CURRENCY + ': ' + why, '#e0a030'); saveGame(); markAllDirty();
+    return true;
+}
 export function addBones(n, why) {
     if (!(n > 0)) return;
     SAVE.wallet += n; SAVE.earned += n;

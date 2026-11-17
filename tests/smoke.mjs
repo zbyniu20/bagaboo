@@ -357,9 +357,95 @@ const modeSim = await run(`
         const SET = await import('./core/settings.js'); SET.SETTINGS.lobbyEvents = false; m = await load('lobby'); m.debug('night'); lstep(30, () => putHead(0, 0));
         if (m.debug().night === 'warn' || m.debug().night === 'night') bad.push('lobby: the night started although events are switched off'); SET.SETTINGS.lobbyEvents = true;
     }
+    // Warsztat: budowa toru w edytorze (siatka), CHECK, SAVE, TEST zabiera do Custom Race; wyścig na tej mapie nie daje rekordu ani nagrody
+    {
+        let went = null; const wctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
+        const wstep = (n) => { for (let i = 0; i < n; i++) m.update(0.1, T += 0.1, wctx); };
+        localStorage.removeItem('bagaboo_workshop_v1');
+        m = await load('workshop'); wstep(2); let d = m.debug();
+        if (!d || d.blocks !== 2 || d.valid) bad.push('workshop: expected the default 2-block map without a route ' + JSON.stringify(d));
+        else {
+            m._press('check'); if (m.debug().ok) bad.push('workshop: CHECK passed a map with no way from START to FINISH');
+            for (const c of ['c8_12', 'c8_9', 'c8_6']) m._press(c);   // trzy kamienie 2x2 co 1 m przerwy
+            wstep(2); d = m.debug();
+            if (d.blocks !== 5 || !d.valid || d.model !== 7) bad.push('workshop: three stepping blocks did not make a valid route with a model on the table ' + JSON.stringify(d));
+            m._press('check'); if (!m.debug().ok || !/OK/.test(m.debug().msg)) bad.push('workshop: CHECK did not confirm a valid route: ' + m.debug().msg);
+            m._press('tool-erase'); m._press('c3_3'); if (m.debug().msg !== 'nothing here') bad.push('workshop: erasing an empty cell should say so: ' + m.debug().msg);
+            m._press('tool-block'); m._press('w+'); m._press('d+'); m._press('c0_0'); m._press('c19_19');   // zmiana rozmiaru i bloki przy krawędziach siatki
+            if (m.debug().blocks !== 7) bad.push('workshop: blocks near the grid edge were not placed (blocks=' + m.debug().blocks + ')');
+            m._press('c0_0'); m._press('tool-erase'); m._press('c0_0'); m._press('c19_19'); if (m.debug().blocks !== 5) bad.push('workshop: erase did not remove the two extra blocks (blocks=' + m.debug().blocks + ')');
+            m._press('save'); if (!m.debug().saved[0]) bad.push('workshop: SAVE did not fill slot 1');
+            m._press('slot1'); if (m.debug().blocks !== 2) bad.push('workshop: an empty slot should open a fresh map');
+            m._press('slot0'); if (m.debug().blocks !== 5) bad.push('workshop: slot 1 did not load the saved map (blocks=' + m.debug().blocks + ')');
+            m._press('test'); wstep(1); if (went !== 'custom') bad.push('workshop: TEST did not go to the custom race (went=' + went + ')');
+        }
+        // Custom Race na zapisanej mapie
+        const w0 = E.SAVE.customWins || 0;
+        m = await load('custom');
+        if (ENG.L.obstacles.length < 5) bad.push('custom: the map was not built (' + ENG.L.obstacles.length + ' obstacles)');
+        if (!until(m, dd => dd.phase === 'race', 200)) bad.push('custom: race never started');
+        else {
+            PL.playerBody.position.set(0, -10, 3); step(m, 1); if (m.debug().falls !== 1 || !(PL.playerBody.position.y > 0)) bad.push('custom: no respawn after a fall (y=' + PL.playerBody.position.y.toFixed(1) + ')');
+            PL.playerBody.position.set(0, 1.9, 3); step(m, 1); if (m.debug().finished) bad.push('custom: the race finished at the start');
+            PL.playerBody.position.set(0, 1.9, -12); step(m, 1); if (!m.debug().finished) bad.push('custom: the finish was not detected');
+            if (!until(m, dd => dd.phase === 'results', 100)) bad.push('custom: the round did not end after the finish');
+            if (E.SAVE.records.custom !== undefined) bad.push('custom: a player map must not write records'); if ((E.SAVE.customWins || 0) !== w0) bad.push('custom: a player map must not pay a reward');
+        }
+        // Mapa zepsuta w pamięci urządzenia: wyścig i tak się ładuje (mapa zapasowa)
+        localStorage.setItem('bagaboo_workshop_v1', JSON.stringify({ slots: ['AAAA', 'zzzz', null], sel: 0 }));
+        const SW = await import('./core/workshopstore.js'); SW.WS.slots = [SW.WS.slots[0], null, null]; SW.WS.sel = 0; SW.WS.slots[0] = 'AAAA';
+        m = await load('custom'); if (ENG.L.obstacles.length < 5) bad.push('custom: a broken saved map should fall back to the demo course'); SW.WS.slots[0] = null;
+    }
+    // Hot Potato: boty uzupełniają pokój do 4 uczestników (sam: 3 boty, dwóch graczy: 2, czterech: 0)
+    {
+        const NW = await import('./core/network.js');
+        const fake = (n) => { for (let i = 0; i < n; i++) NW.playersState['peer' + i] = { lvl: 'potato', head: { p: [2 + i, 1.6, 6], q: [0, 0, 0, 1] }, profile: { name: 'Friend' + i } }; };
+        const clear = () => { for (const k of Object.keys(NW.playersState)) delete NW.playersState[k]; NW.NET.mode = 'solo'; };
+        try {
+            for (const [humans, want] of [[1, 3], [2, 2], [3, 1], [4, 0]]) {
+                clear(); if (humans > 1) { NW.NET.mode = 'host'; fake(humans - 1); }
+                m = await load('potato');
+                if (!until(m, d => d.phase === 'play', 500)) { bad.push('potato: the round never started with ' + humans + ' player(s)'); continue; }
+                const d = m.debug();
+                if (d.nbots !== want || d.alive.length !== humans + want) bad.push('potato: ' + humans + ' player(s) should get ' + want + ' bot(s) and ' + (humans + want) + ' alive, got ' + JSON.stringify(d));
+                step(m, 20); const d2 = m.debug();
+                if (want > 0 && d2.bots.length !== want) bad.push('potato: expected ' + want + ' moving bots, got ' + d2.bots.length);
+            }
+            // sami żywi ludzie odpadli: runda z botami się kończy (tu: wszyscy ludzie poza grą)
+            clear(); m = await load('potato'); until(m, d => d.phase === 'play', 500);
+            if (!until(m, d => d.phase === 'results' || d.alive.length <= 1, 2500, () => { PL.playerBody.position.set(0, 1.0, 12); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('potato: a solo round with bots never ended');
+        } finally { clear(); }
+    }
+    // Mój Pokój: zakup mebla (portfel maleje o cenę), ustawianie, przenoszenie i usuwanie; odwiedziny u hosta są tylko do odczytu
+    {
+        const LD = await import('./core/leveldata.js'), wallet0 = E.SAVE.wallet, home0 = E.SAVE.home;
+        try {
+            E.SAVE.wallet = 5000; E.SAVE.home = undefined; LD.LEVEL_DATA.current = null;
+            m = await load('home'); let d = m.debug(); const w0 = E.SAVE.wallet;
+            if (!d || d.visiting || d.owned.length || d.furniture !== 0) bad.push('home: expected an empty own room ' + JSON.stringify(d));
+            else {
+                if (m._press('pick-plant')) bad.push('home: a piece that is not owned should not be pickable');
+                m._press('buy-plant'); d = m.debug(); if (!d.owned.includes('plant') || E.SAVE.wallet !== w0 - 200) bad.push('home: buying a plant did not take exactly its price ' + JSON.stringify(d));
+                m._press('buy-plant'); if (E.SAVE.wallet !== w0 - 200) bad.push('home: buying the same piece twice took money again');
+                m._press('slot0'); if (m.debug().slots[0] !== null) bad.push('home: a spot was filled without picking a piece first');
+                m._press('pick-plant'); m._press('slot0'); d = m.debug(); if (d.slots[0] !== 'plant' || d.furniture !== 1) bad.push('home: placing the plant failed ' + JSON.stringify(d));
+                m._press('slot3'); d = m.debug(); if (d.slots[3] !== 'plant' || d.slots[0] !== null || d.furniture !== 1) bad.push('home: placing the same piece elsewhere should move it ' + JSON.stringify(d));
+                m._press('clear3'); d = m.debug(); if (d.slots[3] !== null || d.furniture !== 0) bad.push('home: removing the piece failed ' + JSON.stringify(d));
+                E.SAVE.wallet = 100; m.update(0.1, T += 0.1, ctx); if (m._press('buy-couch') || E.SAVE.wallet !== 100 || m.debug().owned.includes('couch')) bad.push('home: a piece the player cannot afford was bought');
+                E.SAVE.wallet = 5000; E.SAVE.home = { owned: ['jukebox', 'zzz', 'statue'], slots: ['statue', 'couch', null] }; m = await load('home'); d = m.debug();
+                if (d.owned.join() !== 'jukebox,statue' || d.slots[0] !== 'statue' || d.slots[1] !== null) bad.push('home: a hand-edited save was not cleaned ' + JSON.stringify(d));
+            }
+            // Odwiedziny: układ hosta (po walidacji) tylko do odczytu
+            LD.LEVEL_DATA.current = LD.accept('home', { o: 'Zed', s: ['couch', null, 'lamp', null, null, null, null, null], a: 9 });
+            m = await load('home'); d = m.debug();
+            if (!d.visiting || d.owner !== 'Zed' || d.furniture !== 2) bad.push('home: visiting did not show the host layout ' + JSON.stringify(d));
+            if (m._press('buy-plant') || m._press('slot0') || m._press('pick-couch')) bad.push('home: a visitor must not be able to buy, pick or place furniture');
+            if (LD.accept('home', { s: 'evil' }) !== null || LD.accept('home', { o: 'x' }) !== null) bad.push('home: the layout validator accepted a broken payload');
+        } finally { LD.LEVEL_DATA.current = null; E.SAVE.wallet = wallet0; E.SAVE.home = home0; }
+    }
     return bad;
 `);
-if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels and Games terminals, Statues, Blind Tag and the lobby (group gate, night shift) simulate correctly');
+if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels and Games terminals, Statues, Blind Tag, the lobby (group gate, night shift) and the Workshop with Custom Race, Hot Potato bots and My Room simulate correctly');
 
 // ---- stats / achievements / audio ----
 setPhase('stats');

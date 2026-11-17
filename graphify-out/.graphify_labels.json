@@ -1,9 +1,7 @@
 {
-  "0": "Network & Host Identity",
   "1": "Economy & Achievements",
   "4": "Config & Staff Names",
   "5": "Furas Bot",
-  "6": "Avatar & Badges",
   "8": "Desktop Mode",
   "10": "Tests & Module Imports",
   "13": "Graphics & Lighting",
@@ -19,12 +17,10 @@
   "35": "Dodgeball",
   "40": "Statues Level",
   "41": "Mod Menu",
-  "48": "Training Dummy",
   "49": "Mannequin",
   "51": "Docs: Accounts & Rules",
   "52": "Last Tile",
   "61": "Murals",
   "67": "Dependencies",
-  "68": "Presence",
-  "70": "Gooby"
+  "68": "Presence"
 }
