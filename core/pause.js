@@ -44,9 +44,10 @@ export const pauseMenu = new Terminal((t) => {
     t.text('Comfort vignette', 60, 456, 28, AMBER, 'left', true);
     t.btn('vig', 380, 430, 260, 52, SETTINGS.vignette ? 'On' : 'Off', () => { SETTINGS.vignette = !SETTINGS.vignette; saveSettings(); }, { tone: SETTINGS.vignette ? 'ok' : undefined });
     t.btn('hap', 680, 430, 280, 52, SETTINGS.haptics ? 'Vibration on' : 'Vibration off', () => { SETTINGS.haptics = !SETTINGS.haptics; saveSettings(); }, { tone: SETTINGS.haptics ? 'ok' : undefined, size: 24 });
-    t.text('Turning', 60, 516, 28, AMBER, 'left', true);
-    t.btn('snap', 380, 490, 260, 52, SETTINGS.snapTurn ? 'Snap 30°' : 'Smooth', () => { SETTINGS.snapTurn = !SETTINGS.snapTurn; saveSettings(); }, { tone: SETTINGS.snapTurn ? 'ok' : undefined });
-    t.btn('brReset', 680, 490, 280, 52, 'Reset brightness', () => { SETTINGS.brightness = 1; changed(); }, { size: 22 });
+    t.text('Turning, events', 60, 516, 26, AMBER, 'left', true);
+    t.btn('snap', 380, 490, 170, 52, SETTINGS.snapTurn ? 'Snap 30°' : 'Smooth', () => { SETTINGS.snapTurn = !SETTINGS.snapTurn; saveSettings(); }, { tone: SETTINGS.snapTurn ? 'ok' : undefined, size: 24 });
+    t.btn('brReset', 565, 490, 200, 52, 'Reset bright.', () => { SETTINGS.brightness = 1; changed(); }, { size: 20 });
+    t.btn('lev', 780, 490, 180, 52, SETTINGS.lobbyEvents ? 'Night on' : 'Night off', () => { SETTINGS.lobbyEvents = !SETTINGS.lobbyEvents; saveSettings(); }, { tone: SETTINGS.lobbyEvents ? 'ok' : undefined, size: 22 });
     // Młotek do ręki w każdej chwili (tylko ekipa: moderatorzy i admini)
     if (isStaffName(SAVE.profile.name)) {
         const tool = SAVE.equipped.tool, item = (id) => CATALOG.find(it => it.slot === 'tool' && it.id === id);

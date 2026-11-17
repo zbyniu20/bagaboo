@@ -19,8 +19,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.resolve(H
 const PORT = +process.env.PORT || 8766;
 // Domyślnie wszystkie poziomy, sale i tryby z rejestru (nowy tryb jest testowany od razu); lista po przecinku w argumencie zawęża
 const { LEVEL_DEFS } = await import(pathToFileURL(path.join(ROOT, 'core/registry.js')).href);
+const ONLY = process.env.SMOKE_ONLY || '';   // SMOKE_ONLY=modes: tylko symulacje trybów (bez danych, pętli poziomów i pamięci)
 const TARGETED = !!process.argv[2] && !process.env.SMOKE_ALL;   // lista poziomów w argumencie = tylko pętla poziomów
-const LEVELS = (process.argv[2] || LEVEL_DEFS.filter(d => d.kind !== 'virtual').map(d => d.id).join(',')).split(',');
+const LEVELS = ONLY ? [] : (process.argv[2] || LEVEL_DEFS.filter(d => d.kind !== 'virtual').map(d => d.id).join(',')).split(',');
 // Draw-call budget per level (medium quality, renderer.info.render.calls on the first frames). Raise only on purpose.
 const BUDGET = { default: 260, laundry: 230, memory: 310 };
 const MAX_POINT_LIGHTS = 12;
@@ -71,7 +72,7 @@ const waitFrames = async (n) => {
 const run = (code, arg) => page.evaluate(async ([code, arg]) => { const F = Object.getPrototypeOf(async function () {}).constructor; return await new F('arg', code)(arg); }, [code, arg]);
 
 // ---- data consistency ----
-if (!TARGETED) {
+if (!TARGETED && !ONLY) {
 setPhase('data');
 const data = await run(`
     const E = await import('./core/economy.js'), EM = await import('./core/emotes.js');
@@ -194,12 +195,14 @@ for (const lv of LEVELS) {
 if (TARGETED) { console.log('     targeted run: only the level loop (SMOKE_ALL=1 runs every phase)'); await finish(); }
 
 // ---- memory: repeated level changes must not keep growing GPU resources (Quest tabs have little memory) ----
+if (!ONLY) {
 setPhase('memory');
 const CYCLE = ['maze', 'well', 'hospital', 'cemetery', 'lobby'];
 const memAfterCycle = async () => { for (const lv of CYCLE) { await run(`const M = await import('./main.js'); await M.loadLevel('${lv}'); return 1;`); await waitFrames(1); } return run(`const I = (await import('./core/engine.js')).renderer.info.memory; return { geo: I.geometries, tex: I.textures };`); };
 const m1 = await memAfterCycle(), m2 = await memAfterCycle(), m3 = await memAfterCycle();
 console.log('     memory after cycles:', JSON.stringify([m1, m2, m3]));
 if (m3.tex > m2.tex + 30 || m3.geo > m2.geo + 100) fail(`memory: resources keep growing across level changes (${JSON.stringify(m2)} -> ${JSON.stringify(m3)})`); else ok('memory: textures/geometries stable across level cycles');
+}
 
 // ---- new game modes: simulate rounds by stepping each level's update() ----
 setPhase('modes');
@@ -320,9 +323,43 @@ const modeSim = await run(`
     m = await load('blindtag');
     if (!until(m, d => d.phase === 'hunt', 300)) bad.push('blindtag: hunt never started');
     if (!until(m, d => d.caught >= 1 || d.phase === 'results', 200, () => { PL.playerBody.position.set(1.2, 1.0, 0.2); PL.playerBody.velocity.set(4, 0, 0); })) bad.push('blindtag: the bot did not catch a noisy player next to it');
+    // Lobby (solo): Brama Wspólna - stanie na polu głosuje i po odliczaniu zabiera do trybu; Nocna Zmiana - zapowiedź, ciemność, naprawa bezpiecznika, zwycięstwo i nagroda
+    {
+        let went = null; const lctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
+        const putHead = (x, z) => { PL.playerBody.position.set(x, 1.0, z); PL.playerBody.velocity.set(0, 0, 0); ENG.playerRig.position.set(x, 0, z); ENG.camera.position.set(0, 1.6, 0); ENG.playerRig.updateMatrixWorld(true); };
+        const lstep = (n, fn) => { for (let i = 0; i < n; i++) { if (fn) fn(i); m.update(0.1, T += 0.1, lctx); } };
+        m = await load('lobby'); let d = m.debug();
+        if (!d || d.opts.length !== 3 || new Set(d.opts).size !== 3) bad.push('lobby: expected 3 different vote options, got ' + JSON.stringify(d));
+        else {
+            const pick = d.opts[1];
+            lstep(5, () => putHead(0, 0)); if (m.debug().gate !== 'open') bad.push('lobby: the gate started a vote without anyone on a pad');
+            lstep(5, () => putHead(-9, 7)); d = m.debug();
+            if (d.gate !== 'counting' || d.counts.join() !== '0,1,0') bad.push('lobby: standing on pad 2 did not register a vote ' + JSON.stringify(d));
+            lstep(10, () => putHead(0, 0)); if (m.debug().gate !== 'open') bad.push('lobby: leaving the pad did not cancel the vote');
+            lstep(90, () => putHead(-9, 7));
+            if (went !== pick) bad.push('lobby: the group gate did not take us to the voted mode (went=' + went + ', expected ' + pick + ')');
+        }
+        // Nocna Zmiana
+        went = null; m = await load('lobby'); putHead(0, 0); m.debug('stun');
+        const w0 = E.SAVE.nightshiftWins || 0, base = ENG.lighting.hemi.intensity;
+        m.debug('night'); lstep(3, () => putHead(0, 0)); d = m.debug();
+        if (d.night !== 'warn') bad.push('lobby: the night did not start with a warning (' + d.night + ')');
+        lstep(240, () => putHead(0, 0));   // zapowiedź trwa 20 s
+        d = m.debug(); if (d.night !== 'night' || !d.light || !(d.dim < 0.2)) bad.push('lobby: no blackout after the warning ' + JSON.stringify(d));
+        if (!(ENG.lighting.hemi.intensity !== base || d.light)) bad.push('lobby: the lighting did not change for the night');
+        m.debug('stun'); lstep(95, () => putHead(-10, -10)); d = m.debug();   // 9,5 s przy pierwszym bezpieczniku (naprawa ok. 8 s)
+        if (!(d.fuse[0] >= 1) || d.fuse[1] > 0) bad.push('lobby: standing at fuse box 1 did not repair only that one ' + JSON.stringify(d.fuse));
+        m.debug('fuses'); lstep(3, () => putHead(-10, -10)); d = m.debug();
+        if (d.night !== 'result' || d.light) bad.push('lobby: repairing all fuse boxes did not end the night with the light back ' + JSON.stringify(d));
+        if ((E.SAVE.nightshiftWins || 0) !== w0 + 1) bad.push('lobby: the helper did not get the Night Shift reward (wins ' + w0 + ' -> ' + (E.SAVE.nightshiftWins || 0) + ')');
+        lstep(100, () => putHead(0, 0)); d = m.debug(); if (d.night !== 'calm' || d.hud || !(d.dim > 0.99)) bad.push('lobby: the lobby did not return to normal after the night ' + JSON.stringify(d));
+        // wyłączone wydarzenia: nic się nie zaczyna
+        const SET = await import('./core/settings.js'); SET.SETTINGS.lobbyEvents = false; m = await load('lobby'); m.debug('night'); lstep(30, () => putHead(0, 0));
+        if (m.debug().night === 'warn' || m.debug().night === 'night') bad.push('lobby: the night started although events are switched off'); SET.SETTINGS.lobbyEvents = true;
+    }
     return bad;
 `);
-if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels and Games terminals, Statues and Blind Tag simulate correctly');
+if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels and Games terminals, Statues, Blind Tag and the lobby (group gate, night shift) simulate correctly');
 
 // ---- stats / achievements / audio ----
 setPhase('stats');

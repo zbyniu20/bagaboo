@@ -637,6 +637,7 @@ export function networkTick(handL, handR) {
     const myState = {
         profile: getLook(),
         lvl: L.levelId,
+        ses: SESSION.wins || 0,   // wygrane w sesji: tablica Bramy Wspólnej w lobby (tylko do wyświetlania, bez nagród)
         inv: MOD.invisible ? 1 : 0, sz: MOD.size,   // BagaBooModMenu: niewidzialność i rozmiar (host honoruje je tylko dla kont z listy menu)
         head: { p: hp.toArray(), q: hq.toArray() },
         h1: { p: l1p.toArray(), q: l1q.toArray(), g: handL.userData.rig.grip },

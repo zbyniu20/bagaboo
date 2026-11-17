@@ -510,6 +510,7 @@ export function recordKey(level, diff) { diff = diff || getDiff(level); return d
 // Nagroda za przejście poziomu: pełna za pierwszym razem, potem mniejsza, maks. REPEAT_LIMIT razy dziennie.
 // Mnożnik trudności; pierwsze przejście na Nightmare daje jednorazowy bonus (poza dziennym limitem).
 export function levelReward(level, first, repeat, label) {
+    SESSION.wins = (SESSION.wins || 0) + 1;   // wygrane w tej sesji (tablica w lobby, tylko do wyświetlania)
     const key = level + 'Wins', wins = SAVE[key] || 0, df = diffOf(level);
     SAVE[key] = wins + 1;
     let amount = 0;
