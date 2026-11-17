@@ -287,16 +287,23 @@ const modeSim = await run(`
     m._toggleFlash(); step(m, 1); fl = m._flash(); if (!fl.on || !fl.lampVisible) bad.push('hotel: flashlight switch did not turn it on again ' + JSON.stringify(fl));
     let hd = m.debug(); if (hd.rooms.join() !== '0,1,2') bad.push('hotel: expected rooms 0,1,2 at the start, got ' + hd.rooms);
     const zs = hd.zs, mid = (i) => (zs[i] + zs[i + 1]) / 2, len = (i) => zs[i] - zs[i + 1];
-    if (!(len(0) >= 16 && len(3) >= 24)) bad.push('hotel: rooms should be big (16 m, key rooms 24 m): ' + len(0) + ', ' + len(3));
+    if (hd.n !== 100) bad.push('hotel: expected 100 rooms, got ' + hd.n);
+    if (!(len(0) === 12 && len(24) === 20 && len(66) === 20 && len(85) === 20 && len(50) === 40)) bad.push('hotel: room lengths wrong (12 m rooms, 20 m key halls 25/67/86, 40 m room 51): ' + [len(0), len(24), len(50)]);
     PL.playerBody.position.set(0, 1.0, zs[1] + 0.8); step(m, 3); if (!m.debug().doorsOpen.find(x => x[0] === 0 && x[1])) bad.push('hotel: door 1 did not open when approached');
     const obs1 = (PL.playerBody.position.set(0, 1.0, mid(1)), step(m, 3), m.debug().obstacles);
     for (const i of [2, 3]) { PL.playerBody.position.set(0, 1.0, mid(i)); step(m, 3); if (m.debug().cur !== i) bad.push('hotel: expected to be in room ' + i + ', got ' + m.debug().cur); }
     hd = m.debug(); if (hd.rooms.includes(0) || hd.rooms.includes(1) || !hd.rooms.includes(5)) bad.push('hotel: rooms did not stream (' + hd.rooms + ')');
     if (Math.abs(hd.obstacles - obs1) > 160) bad.push('hotel: collider count grows (' + obs1 + ' -> ' + hd.obstacles + ')');
-    PL.playerBody.position.set(0, 1.0, zs[4] + 0.8); step(m, 3); if (m.debug().doorsOpen.find(x => x[0] === 3 && x[1])) bad.push('hotel: locked door opened without the key');
-    const key = m.debug().keys.find(x => x && x[0] === 3); if (!key) bad.push('hotel: no key in room 3'); else { PL.playerBody.position.set(key[1], 1.0, key[2]); step(m, 3); if (!m.debug().hasKey) bad.push('hotel: key not picked up'); }
-    PL.playerBody.position.set(0, 1.0, zs[4] + 0.8); step(m, 3); hd = m.debug(); if (!hd.doorsOpen.find(x => x[0] === 3 && x[1]) || hd.cp !== 4 || hd.hasKey) bad.push('hotel: key did not unlock the door / checkpoint (' + JSON.stringify([hd.cp, hd.hasKey]) + ')');
-    if (m.debug().wardrobes.filter(w => w[0] === 3).length !== 2) bad.push('hotel: key room 3 should have 2 wardrobes');
+    // Key halls: 4 wardrobes (2 in the hall + 1 per side room), the key lies in a side room, the walkable width grows, a blind butler patrols
+    const hubI = 24; PL.playerBody.position.set(0, 1.0, mid(hubI)); step(m, 3); hd = m.debug();
+    if (hd.wardrobes.filter(w => w[0] === hubI).length !== 4) bad.push('hotel: key hall should have 4 wardrobes');
+    if (!(hd.bounds[1] > 14)) bad.push('hotel: the walkable width did not grow in the key hall (' + hd.bounds + ')');
+    if (!hd.blinds.find(x => x[0] === hubI)) bad.push('hotel: no butler in the key hall');
+    const key = hd.keys.find(x => x && x[0] === hubI); if (!key || Math.abs(key[1]) < 6.4) bad.push('hotel: the key must lie in a side room'); else { PL.playerBody.position.set(key[1], 1.0, key[2]); step(m, 3); if (m.debug().keysTaken !== 1) bad.push('hotel: key not picked up'); }
+    // Room 51 (index 50, behind door 50): big and wider, with the blind one
+    PL.playerBody.position.set(0, 1.0, mid(50)); step(m, 3); hd = m.debug(); if (!(hd.bounds[1] > 11)) bad.push('hotel: big room should be wider (' + hd.bounds + ')'); if (!hd.blinds.find(x => x[0] === 50)) bad.push('hotel: no blind monster in room 51');
+    // The wardrobe test below needs a checkpoint to respawn at (checkpoints are saved every 10th door)
+    m.testState().cp = 4;
     let wd = null; for (const i of [4, 5, 6]) { PL.playerBody.position.set(0, 1.0, mid(i)); step(m, 3); wd = m.debug().wardrobes.find(x => x && x[0] === i); if (wd) break; }
     if (!wd) bad.push('hotel: no wardrobe in rooms 4-6'); else {
         const W = () => m.debug().wardrobes.find(x => x[0] === wd[0] && x[1] === wd[1] && x[2] === wd[2]);
@@ -319,7 +326,13 @@ const modeSim = await run(`
         if (!until(m, d => d.caught, 90, () => { PL.playerBody.position.set(0, 1.0, mid(wd[0])); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('hotel: RUSH did not kill a player in the open');
         if (!until(m, d => !d.caught && d.cur === 4, 80)) bad.push('hotel: no respawn at the checkpoint after dying (2)');
     }
-    PL.playerBody.position.set(0, 1.0, mid(7)); step(m, 5); step(m, 30, () => PL.playerBody.velocity.set(4, 0, 0));   // room 7 has the butler: must run without errors
+    PL.playerBody.position.set(0, 1.0, mid(24)); step(m, 5); step(m, 30, () => PL.playerBody.velocity.set(4, 0, 0));   // key hall 25 has the butler: must run without errors
+    // Door 100 needs 3 keys; opening it ends the level (exit to the lobby)
+    {
+        const St = m.testState(); St.keys = 0; PL.playerBody.position.set(0, 1.0, mid(99)); step(m, 3); PL.playerBody.position.set(0, 1.0, zs[100] + 0.8); step(m, 4);
+        if (m.debug().doorsOpen.find(x => x[0] === 99 && x[1])) bad.push('hotel: door 100 opened without the keys');
+        St.keys = 3; step(m, 4); if (!m.debug().doorsOpen.find(x => x[0] === 99 && x[1]) || !(m.debug().exitT >= 0)) bad.push('hotel: door 100 did not open with 3 keys / no exit timer');
+    }
     // Levels terminal: picking a row and difficulty works, OPEN THE DOOR sends you to that level, the secret door scares on the 2nd knock
     {
         const TM = await import('./core/terminal.js'); let went = null; const gctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });

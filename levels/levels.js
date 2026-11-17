@@ -35,7 +35,7 @@ const LV = [
     { target: 'cemetery', rec: 'cemetery', label: 'THE CEMETERY', type: 'STEALTH', threat: 4, msg: 'Stay out of the lantern light...', desc: ['Steal 5 relics.', 'A gravedigger hunts with', 'a lantern. Hide in crypts.'] },
     { target: 'catacombs', rec: 'catacombs', label: 'CATACOMBS', type: 'STEALTH', threat: 5, msg: 'Do not run. It is listening...', desc: ['Find 4 screaming skulls.', 'The Warden has no light,', 'only red eyes. He hears all.'] },
     { target: 'nursery', rec: 'nursery', label: 'THE NURSERY', type: 'SURVIVAL', threat: 5, msg: 'Keep the music playing...', desc: ['Find 4 teddy bears.', 'A doll sleeps while your', 'music box plays. Wind it!'] },
-    { target: 'hotel', rec: 'hotel', label: 'THE HOTEL', type: 'SURVIVAL', threat: 5, msg: 'Do not stop. Hide when it rumbles...', desc: ['Open numbered doors, find', 'keys, hide in wardrobes.', 'Something rushes through.'] },
+    { target: 'hotel', rec: 'hotel', label: 'THE HOTEL', type: 'SURVIVAL', threat: 5, msg: 'Do not stop. Hide when the lights flicker...', desc: ['Open 100 doors. Find 3 keys in', 'the key halls, hide in wardrobes.', 'Door 50: a blind monster hears you.'] },
     { target: 'furas', rec: 'furas', label: 'THE FUR DEN', type: 'CHASE', threat: 5, msg: 'Something soft is purring in the dark...', desc: ['Find 4 golden fish.', 'FURAS hunts you: fluffy tail,', 'a mouth full of teeth. Dodge the pounce!'] },
     { secret: true, label: 'ROOM 000', type: 'UNKNOWN', threat: 5, msg: 'It was never on the list.', desc: ['No one has opened this door.', 'It opens from the other side.', 'Do not knock twice.'] }
 ];

@@ -255,7 +255,8 @@ function removeAudio(id, keepCall) {
 let hub = null, hubHostMic = false;
 function getHub() {
     const ac = getAudioContext(); if (!ac) return null;
-    if (!hub || hub.ac !== ac) { hub = createVoiceHub(ac); hub.ac = ac; hubHostMic = false; }
+    if (!hub || hub.ac !== ac) { hub = createVoiceHub(ac); hub.ac = ac; hubHostMic = false; ac.onstatechange = () => { if (ac.state !== 'running') resumeVoiceAc(); }; }
+    if (ac.state !== 'running') resumeVoiceAc();
     if (!hubHostMic && voice.stream) { hub.addSource(myPeerId, voice.stream); hubHostMic = true; }
     return hub;
 }
@@ -271,11 +272,37 @@ function callPeer(id) {
     if (!peer || voiceCalls[id]) return;
     const s = outStream(); if (!s) return;
     const call = peer.call(id, s); if (!call) return;
+    call.silentOut = !voice.stream;   // zadzwoniliśmy z cichym strumieniem (brak mikrofonu): gdy mikrofon się pojawi, podmieniamy ścieżkę (attachMic)
     voiceCalls[id] = call; callAt[id] = performance.now();
     call.on('stream', (st) => playAudioStream(st, id));
     call.on('close', () => { if (voiceCalls[id] === call) delete voiceCalls[id]; if (audioEls[id] && !playersState[id]) removeAudio(id, true); });
     call.on('error', () => { if (voiceCalls[id] === call) delete voiceCalls[id]; });
 }
+// Pilnowanie głosu. Gdy AudioContext hosta się zawiesi (przeglądarka gogli, wejście w VR, zmiana karty), miks hosta milknie: host dalej słyszy
+// wszystkich (bezpośrednie strumienie), a goście nie słyszą nikogo. Dlatego co 1,5 s wznawiamy kontekst, a przy okazji: dołączamy własny mikrofon hosta
+// do centrali, jeśli dostał go dopiero teraz, podmieniamy cichą ścieżkę w połączeniach gościa, gdy mikrofon się pojawi, i ponawiamy wstrzymane <audio>.
+let voiceWatch = null;
+function resumeVoiceAc() { const ac = getAudioContext(); if (ac && ac.state !== 'running') { try { const pr = ac.resume(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} } }
+function attachMic(id) {
+    const call = voiceCalls[id]; if (!call || !call.silentOut || !voice.stream) return;
+    const track = voice.stream.getAudioTracks()[0], pc = call.peerConnection; if (!track || !pc) return;
+    const sender = pc.getSenders().find((x) => x.track && x.track.kind === 'audio'); if (!sender) return;
+    sender.replaceTrack(track).then(() => { call.silentOut = false; }).catch(() => {});
+}
+function startVoiceWatch() {
+    if (voiceWatch) return;
+    voiceWatch = setInterval(() => {
+        resumeVoiceAc();
+        if (NET.mode === 'host') getHub();   // dołącza mikrofon hosta, jeśli pojawił się po utworzeniu centrali
+        for (const id in audioEls) if (audioEls[id].paused) tryPlay(audioEls[id]);
+        if (voice.stream) for (const id in voiceCalls) attachMic(id);
+    }, 1500);
+}
+function stopVoiceWatch() { if (voiceWatch) { clearInterval(voiceWatch); voiceWatch = null; } }
+document.addEventListener('visibilitychange', resumeVoiceAc);
+window.addEventListener('focus', resumeVoiceAc);
+// Do diagnozy (konsola / testy): stan kontekstu dźwięku, centrali i połączeń głosowych
+export function voiceDebug() { const ac = getAudioContext(); return { mode: NET.mode, acState: ac ? ac.state : null, hub: hub ? hub.info() : null, hostMic: hubHostMic, calls: Object.keys(voiceCalls), audio: Object.keys(audioEls) }; }
 // Gość łączy się głosowo z każdym innym gościem (każdą parę łączy ten z "mniejszym" id), więc wszyscy słyszą wszystkich
 // Połączenie, które nie dało dźwięku w ciągu 10 s (rozmówca jeszcze nie nasłuchiwał albo połączenie zawisło), zamykamy i ponawiamy:
 // wcześniej takie zawieszone połączenie blokowało rozmowę do końca sesji, a działał tylko głos hosta.
@@ -340,7 +367,7 @@ function resetPeer() {
     if (peer) { try { peer.destroy(); } catch (e) {} } peer = null;
     for (const id in remoteAvatars) removeRemote(id);
     for (const id in audioEls) removeAudio(id);
-    hub = null; hubHostMic = false;
+    hub = null; hubHostMic = false; stopVoiceWatch();
     playersState = Object.create(null);
     leaving = false;
 }
@@ -356,7 +383,7 @@ export function startHost(code, cb) {
     resetPeer(); NET.busy = true; NET.code = code; setStatus('Creating room ' + code + '...');
     const p = new Peer(GAME_PREFIX + code); peer = p;
     const to = setTimeout(() => { if (peer === p && NET.busy) { leaveNetwork('The server did not answer. Try again.'); if (cb.fail) cb.fail(); } }, 9000);
-    p.on('open', (id) => { clearTimeout(to); NET.busy = false; NET.mode = 'host'; myPeerId = id; hostStatus(); if (cb.ok) cb.ok(); });
+    p.on('open', (id) => { clearTimeout(to); NET.busy = false; NET.mode = 'host'; myPeerId = id; hostStatus(); startVoiceWatch(); if (cb.ok) cb.ok(); });
     p.on('error', (err) => {
         clearTimeout(to); if (peer !== p) return;
         if (err.type === 'unavailable-id') leaveNetwork('Room ' + code + ' already has a host. Join it as a guest.');
@@ -481,7 +508,7 @@ export function startJoin(code, cb) {
             toast('Impersonator detected: you left the room', '#e0533f');
         };
         conn.on('open', () => {
-            clearTimeout(to); NET.busy = false; NET.mode = 'guest';
+            clearTimeout(to); NET.busy = false; NET.mode = 'guest'; startVoiceWatch();
             setStatus('Joined room ' + code + ' as a guest.');
             if (cb.ok) cb.ok();
             conn.send({ type: 'hostAuth', nonce: hostNonce });   // prosimy hosta o dowód tożsamości z serwera kont
