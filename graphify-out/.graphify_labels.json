@@ -1,16 +1,9 @@
 {
-  "1": "Economy & Achievements",
   "4": "Config & Staff Names",
   "10": "Tests & Module Imports",
   "13": "Graphics & Lighting",
   "15": "Auth Client",
-  "23": "Lobby & Physics Bodies",
-  "28": "Role Tags & Lobby Door",
   "31": "Banana Mode",
   "41": "Mod Menu",
-  "49": "Mannequin",
-  "51": "Docs: Accounts & Rules",
-  "52": "Last Tile",
-  "61": "Murals",
-  "67": "Dependencies"
+  "51": "Docs: Accounts & Rules"
 }

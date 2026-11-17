@@ -1,26 +1,11 @@
 {
   "1": "Economy & Achievements",
   "4": "Config & Staff Names",
-  "5": "Furas Bot",
-  "8": "Desktop Mode",
   "10": "Tests & Module Imports",
   "13": "Graphics & Lighting",
   "15": "Auth Client",
-  "16": "Hotel Level",
-  "19": "Catacombs Level",
-  "20": "Hospital Level",
-  "21": "Nursery Level",
-  "22": "Cemetery Level",
-  "23": "Lobby & Physics Bodies",
   "28": "Role Tags & Lobby Door",
   "31": "Banana Mode",
-  "35": "Dodgeball",
-  "40": "Statues Level",
   "41": "Mod Menu",
-  "49": "Mannequin",
-  "51": "Docs: Accounts & Rules",
-  "52": "Last Tile",
-  "61": "Murals",
-  "67": "Dependencies",
-  "68": "Presence"
+  "51": "Docs: Accounts & Rules"
 }

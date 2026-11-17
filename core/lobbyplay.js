@@ -8,7 +8,9 @@
 //
 // NOCNA ZMIANA: co kilkanaście minut lobby zapowiada awarię, gaśnie, po sali chodzi potwór (słyszy ruch, z bliska widzi),
 //   a gracze razem naprawiają trzy bezpieczniki. Złapany wraca na start. Kto pomagał, dostaje nagrodę (dzienny limit powtórek).
-//   Wyłączane w menu pauzy (Lobby events). Potwór i naprawa liczą się na hoście, goście dostają stan co 0,25 s.
+//   Wyłączane w menu pauzy (Lobby events).
+//
+// ŚCIANA GRAFFITI: wspólny mural, konkurs i Galeria na wschodniej ścianie (core/graffiti.js, reguły w core/graffitilogic.js i core/graffitiround.js); lobbyplay tylko buduje ją, sprząta i przekazuje jej wiadomości sieciowe. Potwór i naprawa liczą się na hoście, goście dostają stan co 0,25 s.
 // ==========================================
 import { THREE, L, tex, applyLighting } from './engine.js';
 import * as T from './textures.js';
@@ -27,6 +29,7 @@ import { participants, isAuthority, headOf, toNet, fromNet } from './roundkit.js
 import { cameraPanel, panelBg } from './levelkit.js';
 import { safeName } from './netguard.js';
 import { MON, REPAIR, pickTarget, canCatch, moveNoise, noiseAt, repairStep, helpersAt, gateOpen } from './generatorlogic.js';
+import { buildGraffiti, disposeGraffiti, updateGraffiti, onGraffitiMsg } from './graffiti.js';
 import { GATE, NIGHT, pickOptions, countVotes, winnerOf, gateStep, topWins, nextNightIn, nightStep, winners, nightDim } from './lobbylogic.js';
 
 const SERIES = { last: null, rounds: 0 };   // przeżywa przejścia między poziomami (moduł jest ładowany raz)
@@ -44,13 +47,13 @@ export function buildLobbyPlay() {
         win: null, bot: createBot(NIGHT.MONSTER_START[0], NIGHT.MONSTER_START[1]), botTarget: null, botSeen: false, myHits: 0, waypoints: null, step: -1, hud: null, light: false
     };
     S.bot.stun = 0; S.bot.mode = 'patrol';
-    buildGate(); buildNight();
+    buildGate(); buildNight(); buildGraffiti();
     N.onLevelMsg(onMsg);
 }
 export function disposeLobbyPlay() {
     if (S && S.hud) S.hud.dispose();
     if (S && S.light) applyLighting(LP);
-    dimNow = 1; N.onLevelMsg(null); S = null;
+    disposeGraffiti(); dimNow = 1; N.onLevelMsg(null); S = null;
 }
 
 // ---------- BRAMA: budowa ----------
@@ -119,8 +122,10 @@ function makeWaypoints() {
 }
 
 // ---------- SIEĆ ----------
-function onMsg(msg) {
-    if (!S || !msg || N.NET.mode === 'host' || msg.k !== 'lb') return;
+function onMsg(msg, from) {
+    if (!S || !msg) return;
+    if (onGraffitiMsg(msg, from)) return;   // Ściana Graffiti ma własne wiadomości (gp, gd, gs)
+    if (N.NET.mode === 'host' || msg.k !== 'lb') return;
     S.lastHostMsg = S.clock;
     const g = msg.g || {}, n = msg.n || {};
     S.gate = { ph: g.ph || 'open', t: +g.t || 0 }; S.opts = g.o || S.opts; S.counts = g.c || S.counts; S.locked = g.l === undefined ? -1 : g.l; SERIES.rounds = Math.max(SERIES.rounds, +g.r || 0);
@@ -237,6 +242,7 @@ export function updateLobbyPlay(dt, t, ctx) {
     }
     // Ściemnienie lobby i stan obiektów
     dimNow = nightDim(S.night.ph, S.night.t);
+    updateGraffiti(dt, auth, { dim: dimNow, night: S.night.ph, enabled: SETTINGS.lobbyEvents !== false });   // Ściana Graffiti: ciemnieje w nocy, konkurs czeka na koniec Nocnej Zmiany
     const active = S.night.ph === 'night';
     S.fuses.forEach((f, i) => { const v = S.fuse[i] || 0, done = v >= 1; f.lamp.material.color.setHex(done ? 0x40ff60 : (Math.sin(S.clock * 6 + i) > 0 ? 0xff3020 : 0x802010)); f.bar.scale.x = Math.max(0.001, v); f.bar.material.color.setHex(done ? 0x40ff60 : 0xffd030); });
     if (active || S.night.ph === 'result') {

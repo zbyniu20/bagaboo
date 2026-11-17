@@ -101,7 +101,7 @@ export function updatePointers(desktopCam) {
             if (r.length && r[0].uv) {
                 const h = r[0], term = h.object.userData.terminal, px = h.uv.x * term.W, py = (1 - h.uv.y) * term.H;
                 const b = term.buttons.find(bt => px >= bt.x && px <= bt.x + bt.w && py >= bt.y && py <= bt.y + bt.h) || null;
-                hits[0] = { term: term, btn: b }; term.pointer = { x: px, y: py };
+                hits[0] = { term: term, btn: b, px: px, py: py }; term.pointer = { x: px, y: py };
                 if (b) hoverIds.set(term, [b.id]);
             }
             continue;
@@ -116,7 +116,7 @@ export function updatePointers(desktopCam) {
         if (!res.length || !res[0].uv) continue;
         const h = res[0], term = h.object.userData.terminal, px = h.uv.x * term.W, py = (1 - h.uv.y) * term.H;
         const b = term.buttons.find(bt => px >= bt.x && px <= bt.x + bt.w && py >= bt.y && py <= bt.y + bt.h) || null;
-        hits[i] = { term: term, btn: b }; term.pointer = { x: px, y: py };
+        hits[i] = { term: term, btn: b, px: px, py: py }; term.pointer = { x: px, y: py };
         if (b) { if (!hoverIds.has(term)) hoverIds.set(term, []); hoverIds.get(term).push(b.id); }
         lasers[i].visible = true; lasers[i].scale.z = h.distance;
         cursors[i].visible = true; cursors[i].position.copy(h.point);
@@ -127,6 +127,7 @@ export function updatePointers(desktopCam) {
     }
 }
 export function isPointingAtScreen(i) { return !!hits[i]; }
+export const pointerHit = (i) => hits[i];   // { term, btn, px, py } albo null: dokąd celuje kontroler i (np. przeciąganie farby na Ścianie Graffiti)
 export function clickPointer(i) {
     const h = hits[i];
     if (h && h.btn) { try { h.btn.action(); } catch (e) { console.error(e); } h.term.dirty = true; return true; }

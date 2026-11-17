@@ -164,4 +164,85 @@ for (const f of modeFiles) {
 }
 check('guest results: the guarded modes were found (race, redlight, racemode, range, treasure)', guarded >= 5, guarded);
 
+// ---------- Ściana Graffiti (core/graffitilogic.js i zasady zaufania w core/graffiti.js) ----------
+const G = await import(url('core/graffitilogic.js'));
+const NC = G.WALL.COLORS.length;
+check('graffiti: clean cells keep valid triples', JSON.stringify(G.cleanCells([0, 0, 1, 47, 23, NC - 1])) === '[0,0,1,47,23,' + (NC - 1) + ']');
+check('graffiti: clean cells drop out-of-range, fractional, negative and non-numeric values', G.cleanCells([48, 0, 1, 0, 24, 1, -1, 0, 1, 0, 0, NC, 0.5, 0, 1, '1', 0, 1, null, 0, 1]).length === 0);
+check('graffiti: clean cells reject non-arrays', G.cleanCells(null).length === 0 && G.cleanCells('abc').length === 0 && G.cleanCells({ length: 99 }).length === 0);
+check('graffiti: one message holds at most MAX_CELLS cells', G.cleanCells(Array.from({ length: 300 }, (_, i) => i % 3 === 2 ? 1 : 0)).length / 3 === G.WALL.MAX_CELLS);
+check('graffiti: every brush fits in one message', G.WALL.BRUSHES.every(b => G.brushCells(5, 5, b, 1).length / 3 <= G.WALL.MAX_CELLS));
+check('graffiti: 3x3 brush has 9 cells in the middle and is clipped at the corner', G.brushCells(5, 5, 3, 2).length === 27 && G.brushCells(0, 0, 3, 2).length === 12 && G.brushCells(47, 23, 1, 2).length === 3);
+{
+    const w = G.emptyWall(), n1 = G.paintCells(w, [1, 2, 3, 4, 5, 6]), n2 = G.paintCells(w, [1, 2, 3]);
+    check('graffiti: painting counts only changed cells', n1 === 2 && n2 === 0 && w[2 * G.WALL.W + 1] === 3 && w[5 * G.WALL.W + 4] === 6);
+    const enc = G.encodeWall(w), dec = G.decodeWall(enc);
+    check('graffiti: snapshot round trip', !!dec && dec.length === w.length && dec.every((v, i) => v === w[i]));
+    check('graffiti: an empty wall encodes to a single run', G.encodeWall(G.emptyWall()) === '0' + G.WALL.W * G.WALL.H);
+    check('graffiti: decode rejects bad snapshots', [null, 5, '', 'zz', '0100', '0' + (G.WALL.W * G.WALL.H + 1), 'c1152', '01152,01', '0' + G.WALL.W * G.WALL.H + ',', 'x'.repeat(30000)].every(x => G.decodeWall(x) === null));
+}
+{
+    const b = G.makeBucket(0);
+    check('graffiti: rate limit allows a burst, then refuses', G.takeTokens(b, G.WALL.BURST, 0) && !G.takeTokens(b, 1, 0));
+    check('graffiti: rate limit refills over time but never above the burst', G.takeTokens(b, G.WALL.PER_SEC, 1) && !G.takeTokens(makeB(), G.WALL.BURST + 1, 1000));
+    function makeB() { return G.makeBucket(0); }
+}
+check('graffiti: near wall uses the horizontal distance and refuses missing heads', G.near({ x: 12, y: 1.6, z: 3 }, { x: 14.9, z: 3.5 }) && !G.near({ x: -10, y: 1.6, z: 0 }, { x: 14.9, z: 3.5 }) && !G.near(null, { x: 0, z: 0 }) && !G.near({ x: NaN, z: 0 }, { x: 0, z: 0 }));
+check('graffiti: cellAt maps the aim point and rejects points outside the picture', JSON.stringify(G.cellAt(0, 0, 960, 480)) === '[0,0]' && JSON.stringify(G.cellAt(959, 479, 960, 480)) === '[47,23]' && G.cellAt(-1, 5, 960, 480) === null && G.cellAt(960, 5, 960, 480) === null && G.cellAt(NaN, 5, 960, 480) === null);
+check('graffiti: the wall day turns over at 3:00 UTC', G.dayKey(Date.UTC(2026, 0, 2, 2, 59)) === G.dayKey(Date.UTC(2026, 0, 1, 12, 0)) && G.dayKey(Date.UTC(2026, 0, 2, 3, 0)) === G.dayKey(Date.UTC(2026, 0, 1, 12, 0)) + 1);
+const gfx = fs.readFileSync(path.join(ROOT, 'core/graffiti.js'), 'utf8');
+check('graffiti.js: the host cleans, rate-limits and position-checks a guest stroke before painting', /cleanCells\(msg\.c\)/.test(gfx) && /takeTokens\(/.test(gfx) && /near\(headOf\(from\), POS\)/.test(gfx) && /st\.lvl !== 'lobby'/.test(gfx));
+check('graffiti.js: a guest accepts snapshots only through the validators', /decodeWall\(msg\.w\)/.test(gfx) && /Number\.isInteger\(msg\.d\)/.test(gfx) && /apply\(cleanCells\(msg\.c\)\)/.test(gfx));
+check('graffiti.js: only the host or solo can clear the wall', /const canClear = \(\) => N\.NET\.mode !== 'guest'/.test(gfx) && /if \(canClear\(\)\) t\.btn\('clear'/.test(gfx));
+check('lobbyplay.js: the lobby routes wall messages and builds, updates and disposes the wall', /onGraffitiMsg\(msg, from\)/.test(fs.readFileSync(path.join(ROOT, 'core/lobbyplay.js'), 'utf8')) && ['buildGraffiti();', 'updateGraffiti(dt, auth, {', 'disposeGraffiti()'].every(x => fs.readFileSync(path.join(ROOT, 'core/lobbyplay.js'), 'utf8').includes(x)));
+
+// ---------- Konkurs i Galeria Ściany Graffiti (core/graffitiround.js) ----------
+const R = await import(url('core/graffitiround.js'));
+{
+    const idle = (t) => ({ ph: 'idle', t }), ok = { enabled: true, present: 2, blocked: false };
+    check('contest: waits while the timer runs', R.contestStep(idle(100), 1, ok).ph === 'idle' && R.contestStep(idle(100), 1, ok).t === 99);
+    check('contest: starts when the timer ends and 2 players are present', R.contestStep(idle(0.5), 1, ok).event === 'start' && R.contestStep(idle(0.5), 1, ok).ph === 'draw');
+    check('contest: does not start with 1 player, while disabled or during the Night Shift', ['present', 'enabled', 'blocked'].every(k => R.contestStep(idle(0), 1, { ...ok, [k]: k === 'present' ? 1 : (k === 'enabled' ? false : true) }).ph === 'idle'));
+    check('contest: the timer is frozen while disabled or blocked', R.contestStep(idle(50), 5, { ...ok, enabled: false }).t === 50 && R.contestStep(idle(50), 5, { ...ok, blocked: true }).t === 50);
+    check('contest: draw becomes vote, vote becomes result, result ends', R.contestStep({ ph: 'draw', t: 0.5 }, 1, ok).event === 'vote' && R.contestStep({ ph: 'vote', t: 0.5 }, 1, ok).event === 'result' && R.contestStep({ ph: 'result', t: 0.5 }, 1, ok).event === 'end' && R.contestStep({ ph: 'result', t: 0.5 }, 1, ok).ph === 'idle');
+    check('contest: drawing is cancelled when players leave or events are switched off', R.contestStep({ ph: 'draw', t: 50 }, 1, { ...ok, present: 1 }).event === 'abort' && R.contestStep({ ph: 'vote', t: 5 }, 1, { ...ok, enabled: false }).event === 'abort');
+    check('contest: next contest comes in 25-40 minutes (first in 10-15)', [0, 0.5, 0.999].every(r => R.nextContestIn(false, () => r) >= 1500 && R.nextContestIn(false, () => r) <= 2400 && R.nextContestIn(true, () => r) >= 600 && R.nextContestIn(true, () => r) <= 900));
+    check('contest: a theme is always picked', R.ROUND.THEMES.includes(R.pickTheme(() => 0.999999)) && R.ROUND.THEMES.includes(R.pickTheme(() => 0)) && R.ROUND.THEMES.every(t => typeof t === 'string' && t.length <= 40 && /^[A-Za-z0-9 ,.'!?-]+$/.test(t)));
+}
+{
+    const slots = R.assignSlots(['me', 'a', 'b', 'c', 'd', 'e']);
+    check('contest slots: the first 4 players get columns, the rest only vote', JSON.stringify(slots) === '{"me":0,"a":1,"b":2,"c":3}' && R.idOfSlot(slots, 2) === 'b' && R.idOfSlot(slots, 4) === null);
+    check('contest paint: strokes are cut to the artist\'s own column', JSON.stringify(R.restrictToSlot([0, 0, 1, 11, 0, 1, 12, 0, 1, 47, 23, 1], 0)) === '[0,0,1,11,0,1]' && JSON.stringify(R.restrictToSlot([12, 5, 2, 24, 5, 2], 1)) === '[12,5,2]');
+    check('contest paint: spectators and bad slots paint nothing', R.restrictToSlot([0, 0, 1], undefined).length === 0 && R.restrictToSlot([0, 0, 1], -1).length === 0 && R.restrictToSlot([0, 0, 1], 4).length === 0 && R.restrictToSlot([0, 0, 1], 1.5).length === 0);
+    const P = R.ROUND.PADS, on = (i) => ({ x: P[i][0], z: P[i][1] });
+    check('contest votes: a head on a pad votes for it', JSON.stringify(R.countVotes({ me: on(1) }, { a: 0, b: 1 })) === '[0,1,0,0]');
+    check('contest votes: the own pad does not count, a pad without an author does not count, heads off the pads do not count', JSON.stringify(R.countVotes({ a: on(0), b: { x: 0, z: 0 }, c: on(3) }, { a: 0, b: 1 })) === '[0,0,0,0]');
+    check('contest votes: many voters add up and a missing head is skipped', JSON.stringify(R.countVotes({ x: on(0), y: on(0), z: on(1), w: null }, { a: 0, b: 1 })) === '[2,1,0,0]');
+    check('contest winner: most votes, none = -1, a tie picks one of the tied', R.winnerOf([0, 3, 1, 0], () => 0) === 1 && R.winnerOf([0, 0, 0, 0], () => 0) === -1 && R.winnerOf([2, 0, 2, 0], () => 0) === 0 && R.winnerOf([2, 0, 2, 0], () => 0.99) === 2);
+}
+{
+    const wall = G.emptyWall(); G.paintCells(wall, [12, 0, 3, 23, 23, 5, 11, 0, 7]);
+    const poster = R.extractSlot(wall, 1);
+    check('gallery: the poster is the winner\'s column only', poster.length === R.POSTER_LEN && poster[0] === 3 && poster[23 * 12 + 11] === 5 && poster.filter(v => v).length === 2);
+    const entry = (t, n) => ({ t: t, n: n, d: G.encodeRle(poster) });
+    const raw = [entry('A cursed banana', 'Anna'), entry('x', 'Bob')];
+    const clean = R.cleanGallery(raw);
+    check('gallery: valid entries pass the validator with the poster decoded', clean.length === 2 && clean[0].t === 'A cursed banana' && clean[0].n === 'Anna' && clean[0].cells.length === R.POSTER_LEN && clean[0].cells[0] === 3);
+    check('gallery: the validator drops bad posters, bad shapes and cuts long lists', R.cleanGallery([{ t: 'a', n: 'b', d: 'zz' }, null, 5, { t: 'a', n: 'b' }, { t: 'a', n: 'b', d: '0100' }]).length === 0 && R.cleanGallery('x').length === 0 && R.cleanGallery([raw[0], raw[0], raw[0], raw[0], raw[0]]).length === R.ROUND.GALLERY_MAX);
+    check('gallery: names and themes from the network are cleaned', (() => { const e = R.cleanGallery([{ t: '<b>Hi</b> there!!' + 'x'.repeat(80), n: '  Evil<script>Name_ok-1234567890XX', d: G.encodeRle(poster) }])[0]; return e.t.length <= 40 && !/[<>]/.test(e.t) && e.n.length <= 16 && /^[A-Za-z0-9_-]+$/.test(e.n); })());
+    check('gallery: adding keeps the newest first and at most 3', R.galleryAdd([1, 2, 3], 0).join() === '0,1,2' && R.galleryAdd([], 'a').length === 1);
+    check('gallery: the week turns over every 7 days of the wall day', R.weekKey(Date.UTC(2026, 0, 1, 12)) === R.weekKey(Date.UTC(2026, 0, 1, 20)) && R.weekKey(Date.UTC(2026, 0, 1, 12) + 7 * 86400000) === R.weekKey(Date.UTC(2026, 0, 1, 12)) + 1);
+    const base = { p: 'draw', t: 90, th: 'A cursed banana', s: [['peer-1', 0, 'Anna'], ['peer-2', 1, 'Bob']], c: [0, 0, 0, 0], w: -1 };
+    const cc = R.cleanContest(base);
+    check('contest state: a valid host message is accepted', !!cc && cc.ph === 'draw' && cc.slots.length === 2 && cc.slots[0].id === 'peer-1' && cc.slots[1].name === 'Bob' && cc.t === 90 && cc.winner === -1);
+    check('contest state: bad phases and shapes are refused', [null, 5, {}, { ...base, p: 'win' }, { ...base, p: 'constructor' }].every(x => R.cleanContest(x) === null));
+    check('contest state: slots, counters, time and winner are clamped and duplicates dropped', (() => { const x = R.cleanContest({ ...base, t: 99999, c: [1e9, -1, 'x', 2], w: 9, s: [['a', 0, 'A'], ['b', 0, 'B'], ['c', 7, 'C'], [5, 1, 'D'], ['d'.repeat(200), 2, 'E'], 'x'] }); return x.t === 600 && x.counts.join() === '0,0,0,2' && x.winner === -1 && x.slots.length === 1 && x.slots[0].id === 'a'; })());
+}
+check('graffiti.js: the host cuts guest strokes to the contest column and ignores them outside the drawing phase', /G\.contest\.ph === 'draw' \? restrictToSlot\(cells, G\.contest\.slots\[from\]\) : \[\]/.test(gfx));
+check('graffiti.js: the host counts votes and picks the winner from its own view of the players', /countVotes\(heads, k\.slots\)/.test(gfx) && /winnerOf\(k\.counts, Math\.random\)/.test(gfx) && /headOf\(id\)/.test(gfx));
+check('graffiti.js: a guest accepts contest state and gallery only through the validators', /cleanContest\(msg\)/.test(gfx) && /cleanGallery\(msg\.g\)/.test(gfx));
+check('graffiti.js: the contest follows the lobby events setting and waits for the Night Shift', /enabled: o\.enabled, present: ids\.length, blocked: o\.night !== 'calm'/.test(gfx) && /SETTINGS\.lobbyEvents !== false/.test(fs.readFileSync(path.join(ROOT, 'core/lobbyplay.js'), 'utf8')));
+check('graffiti.js: only the winner of the host-sent result gets the reward', (gfx.match(/levelReward\('graffiti'/g) || []).length === 2 && /wid === 'me'/.test(gfx) && /idOfSlot\(k\.slots, k\.winner\) === 'me'/.test(gfx));
+check('graffiti.js: the wall dims with the lobby, sprays when painting and supports VR drag', /setScalar\(dim\)/.test(gfx) && /SFX\.hiss\(/.test(gfx) && /triggerDown\(i\)/.test(gfx) && /pointerHit\(i\)/.test(gfx));
+
 done('logic');
