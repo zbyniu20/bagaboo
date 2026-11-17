@@ -258,10 +258,10 @@
     "semantic_hash": ""
   },
   "core/terminal.js": {
-    "mtime": 1794940696.9377995,
-    "seen": 1794956045.3153024,
-    "ast_hash": "f84f9f29649f0e23995282d9a2c5b3c9",
-    "semantic_hash": "f84f9f29649f0e23995282d9a2c5b3c9"
+    "mtime": 1794957185.2105756,
+    "seen": 1794957331.7833164,
+    "ast_hash": "2084c5b2153d6b1a29448857e0ea04e1",
+    "semantic_hash": ""
   },
   "core/textures.js": {
     "mtime": 1794940696.9377995,
@@ -540,9 +540,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1794956853.59737,
-    "seen": 1794956887.7398486,
-    "ast_hash": "1f0c02f64f787bc7fe0c55f99b20414d",
+    "mtime": 1794957284.973523,
+    "seen": 1794957331.7835608,
+    "ast_hash": "c5a392502f24162d6a4b4f864bc0a85c",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -570,9 +570,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1794956871.8876865,
-    "seen": 1794956887.7396739,
-    "ast_hash": "daecddab8b1dfe539127d4e7874f641a",
+    "mtime": 1794957312.1113756,
+    "seen": 1794957331.7833796,
+    "ast_hash": "40ab47d916f5d6675823c8b892254a81",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -642,9 +642,9 @@
     "semantic_hash": ""
   },
   "core/lobbyplay.js": {
-    "mtime": 1794956849.6049297,
-    "seen": 1794956887.7395952,
-    "ast_hash": "bc52a47f6dddcb9b47f5aee99a4d1732",
+    "mtime": 1794957284.9727125,
+    "seen": 1794957331.783292,
+    "ast_hash": "1913031e1c29fe9537e5f0deef05eb3a",
     "semantic_hash": ""
   },
   "tests/modes/lobby.mjs": {
@@ -10014,15 +10014,21 @@
     "semantic_hash": ""
   },
   "core/graffiti.js": {
-    "mtime": 1794956843.4100988,
-    "seen": 1794956887.7395723,
-    "ast_hash": "06f44cf8dfee5293b94013d50affd6fb",
+    "mtime": 1794957317.5538633,
+    "seen": 1794957331.783269,
+    "ast_hash": "8c653c03a342e62fd8189976395b7ca8",
     "semantic_hash": ""
   },
   "core/graffitilogic.js": {
-    "mtime": 1794956794.7998517,
-    "seen": 1794956887.7395735,
-    "ast_hash": "27892100698eaf253dc67c23a811dc8d",
+    "mtime": 1794957284.9738014,
+    "seen": 1794957331.7832708,
+    "ast_hash": "7855ce7f617c3c34881dd18dbc38fedc",
+    "semantic_hash": ""
+  },
+  "core/graffitiround.js": {
+    "mtime": 1794957317.5534708,
+    "seen": 1794957331.7832725,
+    "ast_hash": "fdabee9988a0c98daf7971d8cad28962",
     "semantic_hash": ""
   },
   "tests/package-lock.json": {

@@ -10,7 +10,7 @@
 //   a gracze razem naprawiają trzy bezpieczniki. Złapany wraca na start. Kto pomagał, dostaje nagrodę (dzienny limit powtórek).
 //   Wyłączane w menu pauzy (Lobby events).
 //
-// ŚCIANA GRAFFITI: wspólny mural na wschodniej ścianie (core/graffiti.js, reguły w core/graffitilogic.js); lobbyplay tylko buduje ją, sprząta i przekazuje jej wiadomości sieciowe. Potwór i naprawa liczą się na hoście, goście dostają stan co 0,25 s.
+// ŚCIANA GRAFFITI: wspólny mural, konkurs i Galeria na wschodniej ścianie (core/graffiti.js, reguły w core/graffitilogic.js i core/graffitiround.js); lobbyplay tylko buduje ją, sprząta i przekazuje jej wiadomości sieciowe. Potwór i naprawa liczą się na hoście, goście dostają stan co 0,25 s.
 // ==========================================
 import { THREE, L, tex, applyLighting } from './engine.js';
 import * as T from './textures.js';
@@ -240,9 +240,9 @@ export function updateLobbyPlay(dt, t, ctx) {
         const b = S.bot, m = S.botTarget, k = Math.min(1, dt * 8); b.x += (m[0] - b.x) * k; b.y += (m[1] - b.y) * k; b.z += (m[2] - b.z) * k;
         let dd = m[3] - b.dir; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); b.dir += dd * k;
     }
-    updateGraffiti(dt, auth);
     // Ściemnienie lobby i stan obiektów
     dimNow = nightDim(S.night.ph, S.night.t);
+    updateGraffiti(dt, auth, { dim: dimNow, night: S.night.ph, enabled: SETTINGS.lobbyEvents !== false });   // Ściana Graffiti: ciemnieje w nocy, konkurs czeka na koniec Nocnej Zmiany
     const active = S.night.ph === 'night';
     S.fuses.forEach((f, i) => { const v = S.fuse[i] || 0, done = v >= 1; f.lamp.material.color.setHex(done ? 0x40ff60 : (Math.sin(S.clock * 6 + i) > 0 ? 0xff3020 : 0x802010)); f.bar.scale.x = Math.max(0.001, v); f.bar.material.color.setHex(done ? 0x40ff60 : 0xffd030); });
     if (active || S.night.ph === 'result') {
