@@ -1,0 +1,22 @@
+{
+  "7": "wardrobe.js",
+  "14": "memory.js",
+  "17": "games.js",
+  "24": "setPlayerPosition",
+  "25": "emotepanel.js",
+  "26": "monster.js",
+  "29": "startJoin",
+  "30": "createHead",
+  "33": "gorillamachine.js",
+  "38": "addCrispBlock",
+  "39": "buzz",
+  "46": "monsterskins.js",
+  "56": "handleGuest",
+  "57": "hostState",
+  "58": "engine.js",
+  "59": "ui.js",
+  "60": "emotes.js",
+  "62": "buildDoor",
+  "63": "highfive.js",
+  "72": "camera"
+}
