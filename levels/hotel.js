@@ -24,8 +24,8 @@ import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, int
 const RW = 12, H = 3.4, HALF = RW / 2, DOOR_W = 1.7, DOOR_H = 2.6, WALL_T = 0.4;   // szerokość pokoju 12 m, wysokość 3,4 m
 const LEN_NORMAL = 16, LEN_KEY = 24;                                                // długość zwykłego pokoju i pokoju z kluczem (większy: więcej mebli i kryjówek)
 const ROOMS = { easy: 16, normal: 24, nightmare: 32 };                                      // liczba pokoi (ostatni zawsze z kluczem: indeks % 4 == 3)
-const RUSH = { wait: [24, 45], warn: 5, speed: 26 }, SCREECH = { chance: 0.35, window: 1.8 }, WEEPER = { walk: 1.7, chase: 4.0, hear: 10, minRoom: 7 };
-const REWARD_FIRST = 3600, REWARD_REPEAT = 360, INTRO_TIME = 10, MAX_HP = 3;
+const RUSH = { wait: [18, 35], warn: 3.5, speed: 26 }, SCREECH = { chance: 0.35, window: 1.8 }, WEEPER = { walk: 2.0, chase: 4.8, hear: 10, minRoom: 3 };   // minRoom: indeks pokoju z kluczem (0 = pierwszy), czyli od 4. pokoju
+const REWARD_FIRST = 3600, REWARD_REPEAT = 360, INTRO_TIME = 10, MAX_HP = { easy: 3, normal: 2, nightmare: 2 };   // serca zależą od trudności; przy odblokowanych drzwiach wraca 1 serce (na Easy wszystkie)
 export const info = { id: 'hotel', name: 'The Hotel', spawn: [0, 1.0, -1.6] };
 let S = null;
 const z0 = (i) => S.zs[i];                       // południowa krawędź pokoju i (pokój ma z od z0(i) do z0(i+1))
@@ -107,7 +107,7 @@ export function build() {
     const df = diffOf('hotel'), n = ROOMS[df.id] || ROOMS.normal;
     const zs = [0]; for (let i = 0; i < n; i++) zs.push(zs[i] - (i % 4 === 3 ? LEN_KEY : LEN_NORMAL));   // kolejne krawędzie pokoi (co 4. pokój z kluczem jest dłuższy)
     L.bounds = { minX: -HALF + 0.35, maxX: HALF - 0.35, minZ: zs[n] - 3 + 0.4, maxZ: -0.45, maxY: H - 0.3 };
-    S = { df: df, n: n, zs: zs, sq: [false, false], mats: makeMats(), ghost: createGhost('hotel'), ev: createEvents('hotel', { skip: ['fog'] }), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', hp: MAX_HP, hasKey: false, cp: 0, cur: 0, best: 0, rooms: new Map(), lights: [], caughtT: -1, leaving: false, hudT: 0, hidden: false, carried: false,
+    S = { df: df, n: n, zs: zs, sq: [false, false], mats: makeMats(), ghost: createGhost('hotel'), ev: createEvents('hotel', { skip: ['fog'] }), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', hp: MAX_HP[df.id] || 2, maxHp: MAX_HP[df.id] || 2, hasKey: false, cp: 0, cur: 0, best: 0, rooms: new Map(), lights: [], caughtT: -1, leaving: false, hudT: 0, hidden: false, carried: false,
         rush: { state: 'wait', t: 0, z: 0, next: 18 }, screech: { state: 'none', t: 0, room: -1, tried: -1, dir: 0 }, hint: '', msgT: 0 };
     S.flash = buildFlashlight();
     L.onTrigger = (i) => { if (renderer.xr.isPresenting && i === 1) toggleFlash(); };   // VR: spust prawej ręki (na komputerze: klawisz G)
@@ -293,10 +293,10 @@ function hurt(why) {
 const INTRO = [
     'Walk through the rooms and open the numbered doors. Every 4th door is locked: its key lies in the same room.',
     'RUSH: lights flicker, a rumble grows. Open a wardrobe (grab the handle), step in and press the latch inside to shut the doors, or you die.',
-    'PSST: if you hear it, turn around and LOOK at the face within 2 seconds, or it bites (you have 3 hearts).',
-    'From room 7 a blind butler patrols the key rooms. He hears running: sneak. Wardrobes hide you from him too.',
+    'PSST: if you hear it, turn around and LOOK at the face within 2 seconds, or it bites (you have 2 hearts, 3 on Easy).',
+    'From room 4 a blind butler patrols the key rooms. He hears running: sneak. Wardrobes hide you from him too.',
     'Your flashlight is in your right hand: trigger (VR) or G (desktop) switches it on and off.',
-    'Unlocking a door saves a checkpoint and heals you (not on Nightmare). Reach the last door and escape.'
+    'Unlocking a door saves a checkpoint and heals you by 1 heart (fully on Easy). Reach the last door and escape.'
 ];
 function isHidden(p, room) {   // ukryty = w środku szafy przy w pełni zamkniętych drzwiach
     return !!room && room.wardrobes.some(w => inZone(p, w) && w.t === 0 && !w.open);
@@ -346,7 +346,7 @@ export function update(dt, t, ctx) {
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.15; drawHud(); }
 }
 function respawn(ctx) {
-    const cp = S.cp; S.cur = -1; S.rush.state = 'wait'; S.rush.next = 14; S.screech.state = 'none'; S.hp = MAX_HP; S.hasKey = false; S.carried = true;
+    const cp = S.cp; S.cur = -1; S.rush.state = 'wait'; S.rush.next = 14; S.screech.state = 'none'; S.hp = S.maxHp; S.hasKey = false; S.carried = true;
     for (const i of [...S.rooms.keys()]) dropRoom(i);
     ensureRooms(cp); S.cur = cp; setPlayerPosition(0, 1.0, z0(cp) - 1.6);
     S.caughtT = -1; toast('Back at the last unlocked door.', '#7fc47f');
@@ -359,7 +359,7 @@ function doors(p, dt, room) {
             if (d.locked && !S.hasKey) { if (S.msgT <= 0) { toast('Locked. The key is in this room.', '#ff6a4a'); SFX.creak(0.5, { x: 0, y: 1.5, z: dz }); S.msgT = 3; } }
             else {
                 d.open = true; const k = L.obstacles.indexOf(d.col); if (k >= 0) L.obstacles.splice(k, 1); d.col = null; SFX.creak(0.9, { x: 0, y: 1.5, z: dz });
-                if (d.locked) { S.hasKey = false; S.cp = r.i + 1; S.hp = MAX_HP; SFX.fuse(); toast('Door unlocked. Checkpoint saved, hearts restored.', '#7fc47f'); }
+                if (d.locked) { S.hasKey = false; S.cp = r.i + 1; S.hp = S.df.id === 'easy' ? S.maxHp : Math.min(S.maxHp, S.hp + 1); SFX.fuse(); toast('Door unlocked. Checkpoint saved, ' + (S.df.id === 'easy' ? 'hearts restored.' : '+1 heart.'), '#7fc47f'); }
                 if (r.i === S.n - 1) toast('The last door. The EXIT is just behind it!', '#ffd27a');
             }
         }
@@ -430,7 +430,7 @@ function drawHud() {
     x.font = 'bold 78px "Courier New", monospace'; x.fillStyle = '#ffe8c8'; x.fillText(fmt(S.runT), 30, 74);
     if (S.df.id !== 'normal') { x.font = 'bold 22px "Courier New", monospace'; x.fillStyle = S.df.color; x.fillText(S.df.name.toUpperCase(), 330, 18); }
     x.font = 'bold 30px "Courier New", monospace'; x.fillStyle = '#ffd890'; x.fillText('Room ' + Math.min(S.n, S.cur + 1) + '/' + S.n + (S.hasKey ? '   KEY' : ''), 330, 46);
-    x.fillStyle = '#ff4a4a'; x.fillText('♥'.repeat(S.hp) + '♡'.repeat(MAX_HP - S.hp), 330, 80);
+    x.fillStyle = '#ff4a4a'; x.fillText('♥'.repeat(S.hp) + '♡'.repeat(S.maxHp - S.hp), 330, 80);
     x.font = 'bold 24px "Courier New", monospace';
     let msg = 'Open the doors. Listen.', c = '#e8d4c4';
     if (S.rush.state === 'warn' || S.rush.state === 'run') { msg = S.hidden ? 'Stay hidden...' : (S.inWardrobe ? 'PRESS THE LATCH: CLOSE THE DOORS!' : 'OPEN A WARDROBE AND HIDE!'); c = S.hidden ? '#7fe8a0' : '#ff3a2a'; }
@@ -440,6 +440,7 @@ function drawHud() {
     x.fillStyle = c; x.fillText(msg, 330, 122);
     S.hud.update();
 }
+export const testState = () => S;   // dla testów: dostęp do stanu poziomu
 export function dispose() {
     L.noSlide = false;
     restoreFlashlight();

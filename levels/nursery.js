@@ -21,8 +21,8 @@ import { ARRIVAL_FROM_NURSERY } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
 
 const N = 7, P = 6.5, WT = 0.6, H = 3.2, X = N * P / 2;               // siatka 7 x 7 pokoi po 6,5 m (45,5 x 45,5 m)
-const KEYS = 4, CATCH_DIST = 0.95, CREEP = 1.3, CHASE = 4.4, FREEZE_AT = 0.3;   // FREEZE_AT: poniżej tej części muzyki Lalka zaczyna się skradać
-const MUSIC = { easy: 70, normal: 45, nightmare: 32 }, COOLDOWN = { easy: 14, normal: 20, nightmare: 28 }, TEDDY_BITE = 0.2;   // sekundy muzyki, odpoczynek stacji, część muzyki zjadana przez misia
+const KEYS = 4, CATCH_DIST = 0.95, CREEP = 1.6, CHASE = 5.0, FREEZE_AT = 0.3;   // FREEZE_AT: poniżej tej części muzyki Lalka zaczyna się skradać
+const MUSIC = { easy: 60, normal: 38, nightmare: 28 }, COOLDOWN = { easy: 14, normal: 26, nightmare: 32 }, TEDDY_BITE = 0.2;   // sekundy muzyki, odpoczynek stacji, część muzyki zjadana przez misia
 const REWARD_FIRST = 3200, REWARD_REPEAT = 320, INTRO_TIME = 10;
 export const info = { id: 'nursery', name: 'The Nursery', spawn: [-X + P / 2, 1.0, -1.6] };
 let S = null;
@@ -35,7 +35,8 @@ const KEY_CELLS = GM.pickDeadEnds(KEYS, START, [START, EXIT_CELL], 4);
 const KEY_POS = KEY_CELLS.map(c => [cx(c[0]), cz(c[1])]);
 const STATION_CELLS = [[2, 1], [5, 2], [1, 4], [4, 5], [6, 3]];                  // kluczyki do nakręcania pozytywki (w rogu pokoju)
 const STATION_POS = STATION_CELLS.map(c => [cx(c[0]) + 1.7, cz(c[1]) + 1.7]);
-const DOLL_START = [[3, 3], [5, 1]];
+const DOLL_START = [[3, 3], [5, 1], [1, 5]];
+const WAKE_KEYS = 2;   // po tylu misiach budzi się kolejna Lalka: Normal druga, Nightmare trzecia po 3 misiach (nie na Easy)
 
 export function build() {
     L.spawn = info.spawn.slice();
@@ -52,7 +53,7 @@ export function build() {
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     S.scare = createJumpscare({ seed: 9393 });
-    if (df.id !== 'normal') toast('Difficulty: ' + df.name + ' (music lasts ' + m0 + ' s' + (df.checkpoints ? '' : ', no checkpoints, 2 dolls') + ')', df.color);
+    if (df.id !== 'normal') toast('Difficulty: ' + df.name + ' (music lasts ' + m0 + ' s' + (df.checkpoints ? '' : ', no checkpoints, 2 dolls, a 3rd after 3 teddies') + ')', df.color);
 }
 
 // ---------- BUDOWA ----------
@@ -118,15 +119,22 @@ function buildGate() {
 // Lalka: mała, porcelanowa, czerwone oczy świecą tylko, gdy jest obudzona
 function buildDolls() {
     const count = S.df.id === 'nightmare' ? 2 : 1;
-    for (let i = 0; i < count; i++) {
-        const m = buildMannequin(T.mkRng(2300 + i)); m.group.scale.set(0.95, 0.85, 0.95); L.root.add(m.group);
-        m.group.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: 0xe6d8cc, roughness: 0.35 }); });
-        const eyes = [];
-        for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1808, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })); e.scale.set(0.16, 0.16, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); eyes.push(e); }
-        const start = DOLL_START[i], st = createBot(cx(start[0]), cz(start[1])); st.mode = 'asleep'; st.path = [];
-        m.group.position.set(st.x, 0, st.z);
-        S.bots.push({ m: m, st: st, eyes: eyes, repath: 0, startCell: start, stepT: 0 });
-    }
+    for (let i = 0; i < count; i++) addDoll(i);
+}
+function addDoll(i) {
+    const m = buildMannequin(T.mkRng(2300 + i)); m.group.scale.set(0.95, 0.85, 0.95); L.root.add(m.group);
+    m.group.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: 0xe6d8cc, roughness: 0.35 }); });
+    const eyes = [];
+    for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1808, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })); e.scale.set(0.16, 0.16, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); eyes.push(e); }
+    const start = DOLL_START[i], st = createBot(cx(start[0]), cz(start[1])); st.mode = 'asleep'; st.path = [];
+    m.group.position.set(st.x, 0, st.z);
+    S.bots.push({ m: m, st: st, eyes: eyes, repath: 0, startCell: start, stepT: 0 });
+}
+// Kolejna Lalka: po WAKE_KEYS misiach (Normal) albo 3 (Nightmare); śpi, dopóki muzyka gra, jak pozostałe
+function reinforceDolls() {
+    const id = S.df.id; if (id === 'easy') return;
+    const need = id === 'nightmare' ? (S.keys >= 3 ? 3 : 2) : (S.keys >= WAKE_KEYS ? 2 : 1);
+    while (S.bots.length < need) { addDoll(S.bots.length); toast('Another doll is in the house...', '#ff4a2a'); }
 }
 
 // ---------- ZDARZENIA ----------
@@ -146,6 +154,7 @@ function takeKey(i) {
     S.music = Math.max(0, S.music - S.m0 * TEDDY_BITE);   // miś mruczy i zjada część muzyki
     toast('Teddy ' + S.keys + '/' + KEYS + '. It hummed over the music box!', '#ffa860');
     if (S.df.checkpoints) { S.cp = i; toast('Checkpoint saved', '#7fc47f'); }
+    reinforceDolls();
     if (S.keys === KEYS) {
         const k = L.obstacles.indexOf(S.gateOb); if (k >= 0) L.obstacles.splice(k, 1);
         if (S.gateOb.body) S.gateOb.body.position.y = -50;
@@ -162,7 +171,8 @@ const INTRO = [
     'Below 30% she starts creeping. When the music stops she runs and she knows where you are.',
     'Wind it up at the golden keys on pedestals. Each key then rests for a while, so keep moving.',
     'Take 4 teddy bears from the dead ends. Each one hums and eats part of the music.',
-    'The gate by the EXIT opens with all 4. Each teddy saves a checkpoint (not on Nightmare).'
+    'The gate by the EXIT opens with all 4. Each teddy saves a checkpoint (not on Nightmare).',
+    'Careful: the music is shorter and stations rest longer. After the second teddy another doll joins the house.'
 ];
 
 // ---------- CO KLATKĘ ----------
@@ -271,6 +281,7 @@ function drawHud() {
     x.fillStyle = c; x.fillText(msg, 330, 120);
     S.hud.update();
 }
+export const testState = () => S;   // dla testów: dostęp do stanu poziomu
 export function dispose() {
     if (S) { S.ev.dispose(); S.ghost.dispose(); S.hud.dispose(); S.intro.dispose(); S.scare.dispose(); }
     S = null;
