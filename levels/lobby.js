@@ -12,6 +12,7 @@ import { computer, shop, board, dailyBoard } from '../core/ui.js';
 import { machine, attachGorillaMachine, detachGorillaMachine, updateGorillaMachine } from '../core/gorillamachine.js';
 import { track } from '../core/economy.js';
 import { buildTrainingDummy, updateTrainingDummy } from '../core/trainingdummy.js';
+import { buildLobbyPlay, updateLobbyPlay, disposeLobbyPlay, lobbyDim, debugLobbyPlay } from '../core/lobbyplay.js';
 
 export const info = { id: 'lobby', name: 'Lobby', spawn: [0, 2, 0] };
 const ENV = LP.envIntensity;
@@ -24,6 +25,7 @@ export function build() {
     fx = { flickers: [], muralMats: [], trampMats: [], lampSprites: [], shaftMats: [], mist: [], mannequins: [], meatSpots: [], bulbSpots: [], cloudTex: null, };
     L.spawn = info.spawn.slice();
     const root = L.root;
+    buildLobbyPlay();   // Brama Wspólna (głosowanie na tryb) i Nocna Zmiana (core/lobbyplay.js)
 
     for (const f of LP.flickers) {
         const l = new THREE.PointLight(f[3], f[4], f[5], 2); l.position.set(f[0], f[1], f[2]); root.add(l);
@@ -540,6 +542,7 @@ function createEyeball(id, x, y, z) {
 // ---------- ANIMACJE CO KLATKĘ ----------
 export function update(dt, t, ctx) {
     if (!fx) return;
+    const dimF = lobbyDim();   // Nocna Zmiana ściemnia światła lobby
     for (const f of fx.flickers) {
         let v;
         if (f.subtle) {
@@ -550,10 +553,10 @@ export function update(dt, t, ctx) {
             v = f.base * (0.7 + 0.3 * Math.sin(t * 6.1 + f.ph) * Math.sin(t * 11.7 + f.ph * 1.9));
             if (Math.sin(t * 0.53 + f.ph * 2.7) > 0.985) v *= 0.04;
         }
-        f.l.intensity = v;
+        f.l.intensity = v * dimF;
     }
     if (flashlight) flashlight.intensity = LP.flashlight.intensity * (Math.sin(t * 0.37) > 0.992 ? 0.15 : 0.96 + 0.04 * Math.sin(t * 23));
-    fx.muralMats.forEach((m, i) => { m.emissiveIntensity = LP.muralBase + LP.muralPulse * Math.sin(t * 1.1 + i * 1.7); });
+    fx.muralMats.forEach((m, i) => { m.emissiveIntensity = (LP.muralBase + LP.muralPulse * Math.sin(t * 1.1 + i * 1.7)) * dimF; });
     fx.trampMats.forEach((m) => { m.emissiveIntensity = LP.trampBase + LP.trampPulse * Math.sin(t * 3.0); });
     fx.lampSprites.forEach((s, i) => { s.material.opacity = 0.45 + 0.35 * Math.sin(t * 2.2 + i * 1.3); });
     fx.shaftMats.forEach((m, i) => { m.opacity = m.userData.base * (0.8 + 0.3 * Math.sin(t * 0.5 + i)); });
@@ -575,10 +578,12 @@ export function update(dt, t, ctx) {
     if (fx.flyN > 0) fx.flyGeo.attributes.position.needsUpdate = true;
     updateGorillaMachine(dt);
     updateMannequins(dt); updateTrainingDummy(dt);
+    updateLobbyPlay(dt, t, ctx);
     // Zadanie dzienne: stanie na szczycie spiralnych schodów
     const p = ctx.pos;
     if (p.y > 15.4 && Math.hypot(p.x + 7, p.z + 7) < 2.2) track('top');
 }
 
 // Po wyjściu z lobby zwykła prędkość (inne poziomy ustawiają własną)
-export function dispose() { L.moveScale = 1; detachGorillaMachine(); }
+export function debug(cmd) { return debugLobbyPlay(cmd); }   // dla testów
+export function dispose() { L.moveScale = 1; detachGorillaMachine(); disposeLobbyPlay(); }

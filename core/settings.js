@@ -7,6 +7,7 @@ export const SETTINGS = Object.assign({
     music: 1.0,        // muzyka tła 0..1
     effects: 1.0,      // efekty dźwiękowe 0..1
     scare: 1.0,        // głośność jumpscare'ów 0..1
+    lobbyEvents: true,  // Nocna Zmiana w lobby (wydarzenie co kilkanaście minut)
     vignette: true,    // przyciemnianie brzegów przy szybkim ruchu (komfort)
     haptics: true,     // wibracje kontrolerów
     brightness: 1.0,   // jasność obrazu 0.6..1.8 (mnożnik ekspozycji)

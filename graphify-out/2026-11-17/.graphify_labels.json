@@ -1,8 +1,6 @@
 {
   "0": "Network & Host Identity",
   "1": "Economy & Achievements",
-  "2": "Procedural Textures & Jumpscares",
-  "3": "Mic, Rewards & Rope",
   "4": "Config & Staff Names",
   "5": "Furas Bot",
   "6": "Avatar & Badges",
@@ -19,7 +17,6 @@
   "23": "Lobby & Physics Bodies",
   "28": "Role Tags & Lobby Door",
   "31": "Banana Mode",
-  "32": "Hide and Seek",
   "34": "Round Kit",
   "35": "Dodgeball",
   "40": "Statues Level",
@@ -32,6 +29,5 @@
   "66": "VR Menu",
   "67": "Dependencies",
   "68": "Presence",
-  "69": "Terminal Widget",
   "70": "Gooby"
 }
