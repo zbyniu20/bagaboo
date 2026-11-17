@@ -2,7 +2,7 @@
   "name": "bagaboo-tests",
   "private": true,
   "type": "module",
-  "scripts": { "registry": "node registry.mjs", "smoke": "node smoke.mjs", "test": "node registry.mjs && node smoke.mjs" },
+  "scripts": { "fast": "node registry.mjs && node static.mjs && node logic.mjs", "registry": "node registry.mjs", "static": "node static.mjs", "logic": "node logic.mjs", "smoke": "node smoke.mjs", "test": "npm run fast && node smoke.mjs" },
   "devDependencies": {
     "cannon-es": "0.20.0",
     "peerjs": "1.5.2",
