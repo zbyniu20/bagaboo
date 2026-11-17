@@ -438,10 +438,10 @@
     "semantic_hash": "67e16cffb9c6792de5ada7b876709b96"
   },
   "levels/potato.js": {
-    "mtime": 1794940696.1438665,
-    "seen": 1794940782.4000833,
-    "ast_hash": "8bb348a6e2f9c67597a7fc2916318589",
-    "semantic_hash": "8bb348a6e2f9c67597a7fc2916318589"
+    "mtime": 1794953298.125607,
+    "seen": 1794953577.2282698,
+    "ast_hash": "660796c683e4de9b6b0aa5cfe642c492",
+    "semantic_hash": ""
   },
   "levels/race.js": {
     "mtime": 1794948939.486808,
@@ -522,15 +522,15 @@
     "semantic_hash": ""
   },
   "tests/smoke.mjs": {
-    "mtime": 1794952916.1987386,
-    "seen": 1794953161.0853744,
-    "ast_hash": "fc3d7f0f3bc820d416c44adcd03a63aa",
+    "mtime": 1794953313.4783542,
+    "seen": 1794953577.228382,
+    "ast_hash": "751db8738043ff90d40b210437d16d76",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1794953157.6959834,
-    "seen": 1794953161.0853786,
-    "ast_hash": "4a28b82b1a36e665402a85fe2831010f",
+    "mtime": 1794953574.5069785,
+    "seen": 1794953577.228392,
+    "ast_hash": "25615b8e418c7ca697868ebc65fd8e99",
     "semantic_hash": ""
   },
   "README.md": {
@@ -540,9 +540,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1794952651.0881517,
-    "seen": 1794953161.085383,
-    "ast_hash": "c5e0ae4e9a7e384aa7e07cce25e805ac",
+    "mtime": 1794953300.3759866,
+    "seen": 1794953577.2284012,
+    "ast_hash": "a9a4299996aabb61621da9d346ce7f12",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -687,6 +687,18 @@
     "mtime": 1794952925.5621817,
     "seen": 1794953161.0853636,
     "ast_hash": "94acae7a0009f8a13b6b8236cf39401d",
+    "semantic_hash": ""
+  },
+  "core/botcrew.js": {
+    "mtime": 1794953305.0150216,
+    "seen": 1794953577.2280512,
+    "ast_hash": "4c9a35e9be37126f7fdb54d185865319",
+    "semantic_hash": ""
+  },
+  "tests/modes/potato.mjs": {
+    "mtime": 1794953298.1291335,
+    "seen": 1794953577.22835,
+    "ast_hash": "d1bd028476e2a0ceab7db49f87546b96",
     "semantic_hash": ""
   },
   "tests/package-lock.json": {

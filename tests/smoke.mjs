@@ -416,9 +416,36 @@ const modeSim = await run(`
             if (!until(m, d => d.phase === 'results' || d.alive.length <= 1, 2500, () => { PL.playerBody.position.set(0, 1.0, 12); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('potato: a solo round with bots never ended');
         } finally { clear(); }
     }
+    // Mój Pokój: zakup mebla (portfel maleje o cenę), ustawianie, przenoszenie i usuwanie; odwiedziny u hosta są tylko do odczytu
+    {
+        const LD = await import('./core/leveldata.js'), wallet0 = E.SAVE.wallet, home0 = E.SAVE.home;
+        try {
+            E.SAVE.wallet = 5000; E.SAVE.home = undefined; LD.LEVEL_DATA.current = null;
+            m = await load('home'); let d = m.debug(); const w0 = E.SAVE.wallet;
+            if (!d || d.visiting || d.owned.length || d.furniture !== 0) bad.push('home: expected an empty own room ' + JSON.stringify(d));
+            else {
+                if (m._press('pick-plant')) bad.push('home: a piece that is not owned should not be pickable');
+                m._press('buy-plant'); d = m.debug(); if (!d.owned.includes('plant') || E.SAVE.wallet !== w0 - 200) bad.push('home: buying a plant did not take exactly its price ' + JSON.stringify(d));
+                m._press('buy-plant'); if (E.SAVE.wallet !== w0 - 200) bad.push('home: buying the same piece twice took money again');
+                m._press('slot0'); if (m.debug().slots[0] !== null) bad.push('home: a spot was filled without picking a piece first');
+                m._press('pick-plant'); m._press('slot0'); d = m.debug(); if (d.slots[0] !== 'plant' || d.furniture !== 1) bad.push('home: placing the plant failed ' + JSON.stringify(d));
+                m._press('slot3'); d = m.debug(); if (d.slots[3] !== 'plant' || d.slots[0] !== null || d.furniture !== 1) bad.push('home: placing the same piece elsewhere should move it ' + JSON.stringify(d));
+                m._press('clear3'); d = m.debug(); if (d.slots[3] !== null || d.furniture !== 0) bad.push('home: removing the piece failed ' + JSON.stringify(d));
+                E.SAVE.wallet = 100; m.update(0.1, T += 0.1, ctx); if (m._press('buy-couch') || E.SAVE.wallet !== 100 || m.debug().owned.includes('couch')) bad.push('home: a piece the player cannot afford was bought');
+                E.SAVE.wallet = 5000; E.SAVE.home = { owned: ['jukebox', 'zzz', 'statue'], slots: ['statue', 'couch', null] }; m = await load('home'); d = m.debug();
+                if (d.owned.join() !== 'jukebox,statue' || d.slots[0] !== 'statue' || d.slots[1] !== null) bad.push('home: a hand-edited save was not cleaned ' + JSON.stringify(d));
+            }
+            // Odwiedziny: układ hosta (po walidacji) tylko do odczytu
+            LD.LEVEL_DATA.current = LD.accept('home', { o: 'Zed', s: ['couch', null, 'lamp', null, null, null, null, null], a: 9 });
+            m = await load('home'); d = m.debug();
+            if (!d.visiting || d.owner !== 'Zed' || d.furniture !== 2) bad.push('home: visiting did not show the host layout ' + JSON.stringify(d));
+            if (m._press('buy-plant') || m._press('slot0') || m._press('pick-couch')) bad.push('home: a visitor must not be able to buy, pick or place furniture');
+            if (LD.accept('home', { s: 'evil' }) !== null || LD.accept('home', { o: 'x' }) !== null) bad.push('home: the layout validator accepted a broken payload');
+        } finally { LD.LEVEL_DATA.current = null; E.SAVE.wallet = wallet0; E.SAVE.home = home0; }
+    }
     return bad;
 `);
-if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels and Games terminals, Statues, Blind Tag, the lobby (group gate, night shift) and the Workshop with Custom Race and Hot Potato bots simulate correctly');
+if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels and Games terminals, Statues, Blind Tag, the lobby (group gate, night shift) and the Workshop with Custom Race, Hot Potato bots and My Room simulate correctly');
 
 // ---- stats / achievements / audio ----
 setPhase('stats');

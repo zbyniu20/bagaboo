@@ -21,6 +21,7 @@ import { drawScoreboard } from './core/ui.js';
 import { PAUSE, pauseMenu, pollPauseButtons, closePause } from './core/pause.js';
 import { LEVEL_DATA, payload as levelPayload, accept as levelAccept } from './core/leveldata.js';
 import './core/workshopstore.js';   // rejestruje dane mapy dla gości (Własna mapa)
+import './core/homestore.js';       // rejestruje układ pokoju dla gości (odwiedziny)
 import { SETTINGS, saveSettings } from './core/settings.js';
 import { enableDesktop, updateDesktop, setDesktopFacing } from './core/desktop.js';
 import { startPresence } from './core/presence.js';
