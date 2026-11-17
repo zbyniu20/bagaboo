@@ -19,6 +19,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url)), ROOT = path.resolve(H
 const PORT = +process.env.PORT || 8766;
 // Domyślnie wszystkie poziomy, sale i tryby z rejestru (nowy tryb jest testowany od razu); lista po przecinku w argumencie zawęża
 const { LEVEL_DEFS } = await import(pathToFileURL(path.join(ROOT, 'core/registry.js')).href);
+const TARGETED = !!process.argv[2] && !process.env.SMOKE_ALL;   // lista poziomów w argumencie = tylko pętla poziomów
 const LEVELS = (process.argv[2] || LEVEL_DEFS.filter(d => d.kind !== 'virtual').map(d => d.id).join(',')).split(',');
 // Draw-call budget per level (medium quality, renderer.info.render.calls on the first frames). Raise only on purpose.
 const BUDGET = { default: 260, laundry: 230, memory: 310 };
@@ -37,28 +38,8 @@ const fail = (m) => { failures.push(m); console.log('FAIL', m); };
 const ok = (m) => { notes.push(m); console.log('ok  ', m); };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-// ---- Quest browser: user agent detection, light landing page, level still loads ----
-// (runs first, before the main page exists, on purpose: on slow CI runners a second software-GL page next to a rendering page starved and hung for minutes; a lone page starts normally)
-let phase = 'quest';
-const qctx = await browser.newContext({ viewport: { width: 1000, height: 640 }, userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/33.0 SamsungBrowser/4.0 Chrome/126.0 VR Safari/537.36' });
-const qpage = await qctx.newPage();
-const qerr = []; qpage.on('pageerror', (e) => qerr.push(e.message));
-await qctx.route(/unpkg\.com/, async (route) => { const u = route.request().url(); let f = null;
-    if (u.includes('three@0.160.0/build/three.module.js')) f = DEPS + '/three/build/three.module.js';
-    else if (u.includes('three@0.160.0/examples/jsm/')) f = DEPS + '/three/examples/jsm/' + u.split('examples/jsm/')[1].split('?')[0];
-    else if (u.includes('cannon-es')) f = DEPS + '/cannon-es/dist/cannon-es.js'; else if (u.includes('peerjs')) f = DEPS + '/peerjs/dist/peerjs.min.js';
-    if (f && fs.existsSync(f)) route.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(f) }); else route.fulfill({ status: 404, body: '' }); });
-await qpage.goto(`http://localhost:${PORT}/`);
-await qpage.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 90000 });
-const lite = await qpage.evaluate(() => document.documentElement.classList.contains('lite'));
-if (!lite) fail('quest: landing page did not switch to lite mode for an OculusBrowser user agent'); else ok('quest: lite landing page');
-const qstatus = await qpage.evaluate(() => document.getElementById('status').innerText); if (/Could not/.test(qstatus)) fail('quest: game did not start: ' + qstatus);
-await qpage.click('#btnGuest', { timeout: 240000 }); await qpage.click('#btnSolo', { timeout: 240000 });   // pierwszy ekran to logowanie: test gra jako gość await qpage.waitForTimeout(1500);
-const qinfo = await qpage.evaluate(async () => { const D = await import('./core/device.js'), M = await import('./main.js'); await M.loadLevel('maze'); const E = await import('./core/engine.js'); return { quest: D.IS_QUEST, aniso: E.tex.wall.anisotropy }; });
-if (!qinfo.quest || qinfo.aniso > 2) fail('quest: device detection or anisotropy cap failed ' + JSON.stringify(qinfo)); else ok('quest: detected, anisotropy capped at ' + qinfo.aniso);
-if (qerr.length) qerr.forEach((e) => fail('quest: ' + e)); await qctx.close();
-
-
+// (wykrywanie Questa i lekka strona startowa są sprawdzane w logic.mjs, w czystym Node: drugi render software-GL obok pierwszego wieszał wolne runnery CI)
+let phase = 'boot';
 const ctx = await browser.newContext({ viewport: { width: 1000, height: 640 } });
 await ctx.route(/unpkg\.com/, (route) => {
     const u = route.request().url();
@@ -71,7 +52,8 @@ await ctx.route(/unpkg\.com/, (route) => {
     else route.fulfill({ status: 404, body: '' });
 });
 const page = await ctx.newPage();
-phase = 'boot';
+const phaseMs = {}; let phaseT = Date.now();
+const setPhase = (p) => { phaseMs[phase] = (phaseMs[phase] || 0) + Date.now() - phaseT; phaseT = Date.now(); phase = p; };
 const errors = [];
 page.on('pageerror', (e) => errors.push(`[${phase}] PAGEERROR ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed to load resource/i.test(m.text())) errors.push(`[${phase}] CONSOLE ${m.text().slice(0, 300)}`); });
@@ -81,19 +63,20 @@ await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById(
 await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });   // pierwszy ekran to logowanie: test gra jako gość
 await page.waitForTimeout(1500);
 
+// czekanie na klatki renderera zamiast sztywnych pauz: zwykle ułamek sekundy (po limicie czasu test idzie dalej, jak wcześniej po stałej pauzie)
+const waitFrames = async (n) => {
+    const f0 = await page.evaluate(async () => (await import('./core/engine.js')).renderer.info.render.frame);
+    await page.waitForFunction(async ([f0, n]) => (await import('./core/engine.js')).renderer.info.render.frame >= f0 + n, [f0, n], { timeout: 15000, polling: 100 }).catch(() => {});
+};
 const run = (code, arg) => page.evaluate(async ([code, arg]) => { const F = Object.getPrototypeOf(async function () {}).constructor; return await new F('arg', code)(arg); }, [code, arg]);
 
 // ---- data consistency ----
-phase = 'data';
+if (!TARGETED) {
+setPhase('data');
 const data = await run(`
     const E = await import('./core/economy.js'), EM = await import('./core/emotes.js');
-    const bad = [], keys = new Set(E.CATALOG.map(i => i.slot + ':' + i.id)), ids = new Set();
-    for (const a of E.ACHIEVEMENTS) {
-        if (ids.has(a.id)) bad.push('duplicate achievement ' + a.id); ids.add(a.id);
-        if (a.reward[0] !== 'bones' && !keys.has(a.reward[0] + ':' + a.reward[1])) bad.push('achievement ' + a.id + ' rewards unknown item ' + a.reward.join(':'));
-        if (a.goal && typeof a.val !== 'function') bad.push('achievement ' + a.id + ' has goal without val()');
-    }
-    const catKeys = new Set(); for (const k of E.CATALOG.map(i => i.slot + ':' + i.id)) { if (catKeys.has(k)) bad.push('duplicate catalog item ' + k); catKeys.add(k); }
+    const bad = [], keys = new Set(E.CATALOG.map(i => i.slot + ':' + i.id));
+    // (spójność osiągnięć i katalogu oraz premia ekipy są w logic.mjs)
     for (const it of E.CATALOG) if (it.slot === 'emote' && !EM.EMOTES[it.id]) bad.push('emote item without animation ' + it.id);
     for (const id of Object.keys(EM.EMOTES)) if (!keys.has('emote:' + id)) bad.push('animation without catalog item ' + id);
     // every emote pose must run on a dummy avatar
@@ -128,16 +111,6 @@ const data = await run(`
     const NW = await import('./core/network.js');
     const e1 = NW.electNewHost('b', ['a', 'b', 'c', 'H'], 'H'); if (e1.order.join() !== 'a,b,c' || e1.rank !== 1) bad.push('election order/rank wrong: ' + JSON.stringify(e1));
     const e2 = NW.electNewHost('solo', [], 'H'); if (e2.rank !== 0) bad.push('lone guest should be rank 0');
-    // staff bonus: only password-verified permanent staff, once, never for locally promoted moderators
-    const MODS = E.SAVE.profile.name, w0 = E.SAVE.wallet;
-    localStorage.setItem('bagaboo_mods', JSON.stringify(['hacker'])); E.markNickVerified('hacker'); E.setProfile({ name: 'hacker' });
-    if (E.SAVE.wallet !== w0) bad.push('locally promoted moderator received the staff bonus');
-    localStorage.removeItem('bagaboo_mods'); E.setProfile({ name: 'lincolnvr' });
-    if (E.SAVE.wallet !== w0) bad.push('staff name without a verified password received the bonus');
-    E.markNickVerified('lincolnvr'); E.setProfile({ name: 'lincolnvr' });
-    if (E.SAVE.wallet < w0 + 10000) bad.push('verified staff did not receive the bonus');
-    const w1 = E.SAVE.wallet; E.setProfile({ name: 'lincolnvr' }); if (E.SAVE.wallet !== w1) bad.push('staff bonus paid twice');
-    E.markNickVerified(''); E.setProfile({ name: MODS });
     // voice hub: each listener hears everyone except himself; mute works
     const A0 = await import('./core/audio.js'); A0.initAudio(); const ac = A0.getAudioContext();
     if (ac) {
@@ -156,8 +129,8 @@ const data = await run(`
     }
     // Gorilla Machine: every category lists items, trying shows them on the model only, buying then wearing works; shop sells only unowned items and has no try/wear
     const GM = await import('./core/gorillamachine.js'), UIM = await import('./core/ui.js');
-    for (const c of GM.CATS) if (!GM.itemsFor(c.id).length) bad.push('machine category empty: ' + c.id);
-    GM.machine.redraw(); const catBtns = GM.machine.buttons.filter(b => b.id.startsWith('cat')).length; if (catBtns !== GM.CATS.length) bad.push('machine shows ' + catBtns + ' category buttons');
+    for (const c of GM.CATS) if (c.id !== 'nametag' && !GM.itemsFor(c.id).length) bad.push('machine category empty: ' + c.id);
+    GM.machine.redraw(); const catBtns = GM.machine.buttons.filter(b => b.id.startsWith('cat')).length; const wantCats = GM.CATS.length - (E.roleTagOptions().length > 1 ? 0 : 1); if (catBtns !== wantCats) bad.push('machine shows ' + catBtns + ' category buttons');
     GM.machine.buttons.find(b => b.id === 'cathat').action(); GM.machine.redraw();
     const beanieBtn = GM.machine.buttons.find(b => b.id === 'ithatbeanie'); if (!beanieBtn) bad.push('machine: beanie row missing'); else {
         const worn0 = E.getLook().hat; beanieBtn.action();
@@ -185,13 +158,14 @@ const data = await run(`
 if (data.length) data.forEach((m) => fail('data: ' + m)); else ok('data: achievements, catalog and emote poses consistent');
 
 // (kontrola rejestru poziomów, FILES, kart i drzwi jest w registry.mjs: działa w czystym Node, bez przeglądarki)
+}
 
 // ---- levels ----
 for (const lv of LEVELS) {
-    phase = lv;
+    setPhase(lv);
     try {
         await run(`const M = await import('./main.js'); const PL = await import('./core/player.js'); await M.loadLevel('${lv}'); if ('${lv}' === 'wardrobe') PL.setPlayerPosition(-5, 1.0, 0); return 1;`);
-        await page.waitForTimeout(2500);
+        await waitFrames(2);
         const r = await run(`const ENG = await import('./core/engine.js'), I = ENG.renderer.info; let pl = 0; ENG.scene.traverse(o => { if (o.isPointLight && o.visible) pl++; }); return { calls: I.render.calls, tris: I.render.triangles, pl: pl };`);
         // level-specific rules fixed in the last round
         const rules = await run(`const E = await import('./core/engine.js'), A = await import('./core/avatar.js'); return { floorY: E.L.floorY, moveScale: E.L.moveScale, tagsHidden: A.TAGS.hidden, maxZ: E.L.bounds.maxZ, minZ: E.L.bounds.minZ, minX: E.L.bounds.minX, maxX: E.L.bounds.maxX };`);
@@ -214,16 +188,19 @@ for (const lv of LEVELS) {
     } catch (e) { fail(`${lv}: ${e.message.slice(0, 200)}`); }
 }
 
+// Z listą poziomów w argumencie uruchamia się tylko pętla poziomów (szybko, ok. minuta); SMOKE_ALL=1 wymusza wszystkie fazy
+if (TARGETED) { console.log('     targeted run: only the level loop (SMOKE_ALL=1 runs every phase)'); await finish(); }
+
 // ---- memory: repeated level changes must not keep growing GPU resources (Quest tabs have little memory) ----
-phase = 'memory';
+setPhase('memory');
 const CYCLE = ['maze', 'well', 'hospital', 'cemetery', 'lobby'];
-const memAfterCycle = async () => { for (const lv of CYCLE) { await run(`const M = await import('./main.js'); await M.loadLevel('${lv}'); return 1;`); await page.waitForTimeout(600); } return run(`const I = (await import('./core/engine.js')).renderer.info.memory; return { geo: I.geometries, tex: I.textures };`); };
+const memAfterCycle = async () => { for (const lv of CYCLE) { await run(`const M = await import('./main.js'); await M.loadLevel('${lv}'); return 1;`); await waitFrames(1); } return run(`const I = (await import('./core/engine.js')).renderer.info.memory; return { geo: I.geometries, tex: I.textures };`); };
 const m1 = await memAfterCycle(), m2 = await memAfterCycle(), m3 = await memAfterCycle();
 console.log('     memory after cycles:', JSON.stringify([m1, m2, m3]));
 if (m3.tex > m2.tex + 30 || m3.geo > m2.geo + 100) fail(`memory: resources keep growing across level changes (${JSON.stringify(m2)} -> ${JSON.stringify(m3)})`); else ok('memory: textures/geometries stable across level cycles');
 
 // ---- new game modes: simulate rounds by stepping each level's update() ----
-phase = 'modes';
+setPhase('modes');
 const modeSim = await run(`
     const M = await import('./main.js'), PL = await import('./core/player.js'), ENG = await import('./core/engine.js'), E = await import('./core/economy.js');
     const bad = [], ctx = { body: PL.playerBody, pos: PL.playerBody.position, goto() {} };
@@ -309,14 +286,15 @@ const modeSim = await run(`
     }
     // Levels terminal: picking a row and difficulty works, OPEN THE DOOR sends you to that level, the secret door scares on the 2nd knock
     {
-        const TM = await import('./core/terminal.js'); let went = null; const gctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
+        const TM = await import('./core/terminal.js'), RG = await import('./core/registry.js'); const NROWS = RG.LEVEL_DEFS.filter(d => d.kind === 'level').length + 1; let went = null;   // wiersze: poziomy z rejestru plus ukryte drzwi room000 na końcu
+        const gctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
         m = await load('levels'); if (ENG.lighting.headLamp.parent !== ENG.camera) bad.push('levels: the flashlight lamp was not returned to the camera after leaving the hotel'); const tick = (n) => { for (let i = 0; i < n; i++) m.update(0.1, T += 0.1, gctx); TM.redrawTerminals(); };
-        tick(3); let ld = m.debug(); if (ld.screens !== 5) bad.push('levels: expected 5 terminal screens, got ' + ld.screens); if (!(ld.visitors >= 1)) bad.push('levels: visitor count wrong'); if (!ld || !ld.buttons.includes('enter') || ld.buttons.filter(x => x.startsWith('row')).length !== 11) bad.push('levels: terminal buttons missing (' + (ld && ld.buttons.length) + ')');
+        tick(3); let ld = m.debug(); if (ld.screens !== 5) bad.push('levels: expected 5 terminal screens, got ' + ld.screens); if (!(ld.visitors >= 1)) bad.push('levels: visitor count wrong'); if (!ld || !ld.buttons.includes('enter') || ld.buttons.filter(x => x.startsWith('row')).length !== NROWS) bad.push('levels: terminal buttons missing (' + (ld && ld.buttons.length) + ')');
         if (!m._press('row2')) bad.push('levels: row2 not clickable'); tick(1); if (m.debug().sel !== 2) bad.push('levels: row click did not select');
         const E2 = await import('./core/economy.js'); E2.setDiff('well', 'normal');
         tick(1); if (!m._press('diff-nightmare')) bad.push('levels: difficulty buttons missing'); if (E2.getDiff('well') !== 'nightmare') bad.push('levels: difficulty not set'); E2.setDiff('well', 'normal');
         tick(1); m._press('enter'); if (went !== 'well') bad.push('levels: OPEN THE DOOR did not go to the well (went=' + went + ')');
-        went = null; tick(1); m._press('row10'); tick(1); m._press('enter'); m._press('enter'); if (m.debug().knocks < 2 || went) bad.push('levels: secret door knocking wrong (knocks=' + m.debug().knocks + ', went=' + went + ')');
+        went = null; tick(1); m._press('row' + (NROWS - 1)); tick(1); m._press('enter'); m._press('enter'); if (m.debug().knocks < 2 || went) bad.push('levels: secret door knocking wrong (knocks=' + m.debug().knocks + ', went=' + went + ')');
     }
     // Games terminals: 6 computers in a ring, category tabs, pick a mode, PLAY goes to it
     {
@@ -345,7 +323,7 @@ const modeSim = await run(`
 if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels and Games terminals, Statues and Blind Tag simulate correctly');
 
 // ---- stats / achievements / audio ----
-phase = 'stats';
+setPhase('stats');
 const st = await run(`
     const E = await import('./core/economy.js'); const bad = [];
     const before = E.stat('emotes'); E.bumpStat('emotes', 3); if (E.stat('emotes') !== before + 3) bad.push('bumpStat did not add');
@@ -355,7 +333,7 @@ const st = await run(`
 `);
 if (st.length) st.forEach((m) => fail('stats: ' + m)); else ok('stats: counters and stat achievements work');
 
-phase = 'highfive';
+setPhase('highfive');
 const hf = await run(`
     const E = await import('./core/economy.js'), EM = await import('./core/emotes.js'), N = await import('./core/network.js'), H = await import('./core/highfive.js'), ENG = await import('./core/engine.js'), AV = await import('./core/avatar.js');
     const bad = [], before = E.stat('highFives');
@@ -370,7 +348,7 @@ const hf = await run(`
 `);
 if (hf.length) hf.forEach((m) => fail('highfive: ' + m)); else ok('highfive: detected once, cooldown respected');
 
-phase = 'audio';
+setPhase('audio');
 const au = await run(`
     const A = await import('./core/audio.js'); A.initAudio(); await new Promise(r => setTimeout(r, 300));
     const bad = []; try { for (const r of ['levels','maze','well','cemetery','nonexistent']) A.setRoom(r); A.step(1, { x: 3, y: 0, z: -4 }); A.slap({ x: 0, y: 1, z: -1 }); A.roar(1, { x: 20, y: 1, z: 20 }); } catch (e) { bad.push(e.message); }
@@ -378,7 +356,13 @@ const au = await run(`
 `);
 if (au.length) au.forEach((m) => fail('audio: ' + m)); else ok('audio: rooms, reverb sends and spatial sounds run');
 
-errors.forEach((e) => fail(e));
-await browser.close(); server.close();
-console.log(failures.length ? `\n${failures.length} failure(s)` : `\nAll ${notes.length} checks passed`);
-process.exit(failures.length ? 1 : 0);
+await finish();
+
+async function finish() {
+    errors.forEach((e) => fail(e));
+    await browser.close(); server.close();
+    console.log(failures.length ? `\n${failures.length} failure(s)` : `\nAll ${notes.length} checks passed`);
+    const slow = Object.entries(phaseMs).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => k + ' ' + (v / 1000).toFixed(0) + 's').join(', ');
+    console.log('slowest phases: ' + slow);
+    process.exit(failures.length ? 1 : 0);
+}

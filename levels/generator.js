@@ -19,14 +19,9 @@ import { createBot, stepBot } from '../core/botkit.js';
 import { participants, isAuthority, headOf, toNet, fromNet } from '../core/roundkit.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
 import { ARRIVAL_FROM_GENERATOR } from './games.js';
+import { A, GENS, GATE_Z, TIMES, MON, NOISE, noiseAt, micNoise, moveNoise, repairStep, helpersAt, rescueStep, helpersAtCage, pickTarget, canCatch, monsterSpeed, gateOpen, doneCount, roundOver as isRoundOver, outcomeOf, rewardFor } from '../core/generatorlogic.js';
 
-const A = 20, H = 8;                                  // hala 40 x 40 m, drzwi GAMES na południu, brama ucieczki na północy
-const WAIT = 12, SOLO_WAIT = 4, ROUND = 240, RESULTS = 8, REWARD = 200, GRACE = 6;
-export const GENS = [[-12, 7], [12, 3], [-11, -8], [12, -11]];   // generatory (x, z); te same współrzędne ma pętla 'hum' w registry.js
-const REPAIR_SEC = 14, REPAIR_R = 2.3, RESCUE_SEC = 2.5, RESCUE_R = 1.7;
-const GATE_Z = -A + 3.5;                              // za tą linią jest strefa ucieczki
-const MON = { patrol: 2.2, hunt: 4.0, boost: 0.35, see: 5, hearBase: 3, hearMax: 28, lose: 5, catchR: 1.0, stun: 3.5, immune: 3 };
-const MIC_QUIET = 0.04, MIC_LOUD = 0.24;              // głośność mikrofonu: szept / krzyk (jak w Absolute Silence)
+const H = 8;                                          // wysokość hali; wymiary, stałe i logika rundy: core/generatorlogic.js
 export const info = { id: 'generator', name: 'Generator', spawn: [0, 1.0, 18.5] };
 let S = null;
 const WAYPOINTS = [];                                 // punkty patrolu potwora (wypełniane przy budowie)
@@ -35,7 +30,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -A + 0.4, maxX: A - 0.4, minZ: -A + 0.4, maxZ: A - 0.4, maxY: H - 0.4 };
     S = {
-        clock: 0, phase: 'wait', t: N.NET.mode === 'solo' ? SOLO_WAIT : WAIT, gen: GENS.map(() => 0), caged: new Map(), esc: new Set(), imm: {}, noise: {},
+        clock: 0, phase: 'wait', t: N.NET.mode === 'solo' ? TIMES.SOLO_WAIT : TIMES.WAIT, gen: GENS.map(() => 0), caged: new Map(), esc: new Set(), imm: {}, noise: {},
         bot: createBot(0, -12), lastHostMsg: -10, netT: 0, noiseT: 0, introT: 10, hudT: 0, rewarded: false, myNoise: 0, step: -1, gateWarn: -9, cages: new Map(), flicker: 0
     };
     S.bot.stun = 0;
@@ -126,83 +121,77 @@ function startedPlay() {
     setPlayerPosition((Math.random() * 2 - 1) * 10, 1.0, A - 3 + Math.random() * 1.5);
     toast('Repair all 4 generators, then escape north. Stay quiet!', '#ffe060');
 }
-function genDone(i) { toast('Generator ' + (i + 1) + ' online (' + S.gen.filter(v => v >= 1).length + '/' + GENS.length + ')', '#7fff90'); SFX.bell && SFX.bell(); if (S.gen.every(v => v >= 1)) toast('The gate is open! Run north!', '#7fff90'); }
+function genDone(i) { toast('Generator ' + (i + 1) + ' online (' + doneCount(S.gen) + '/' + GENS.length + ')', '#7fff90'); SFX.bell && SFX.bell(); if (gateOpen(S.gen)) toast('The gate is open! Run north!', '#7fff90'); }
 function localCaught() { toast('Caught! Wait for a teammate to free you.', '#e0533f'); SFX.scare(); buzz('both', 0.9, 300); if (S.scare) S.scare.trigger(); }
 function localEscaped() { toast('You escaped!', '#7fc47f'); SFX.bell && SFX.bell(); }
 function roundOver() {
     if (S.rewarded) return; S.rewarded = true;
-    if (S.esc.has('me')) { toast('You made it out!', '#7fc47f'); levelReward('generator', REWARD, REWARD, 'escaped the generator hall'); }
-    else if (S.caged.has('me')) toast('You were caught. No reward this round.', '#e0533f');
+    const res = outcomeOf('me', S.caged, S.esc);
+    if (res === 'escaped') { toast('You made it out!', '#7fc47f'); levelReward('generator', rewardFor(res), rewardFor(res), 'escaped the generator hall'); }
+    else if (res === 'caged') toast('You were caught. No reward this round.', '#e0533f');
     else toast('Time is up. The monster wins.', '#e0533f');
 }
 
 // ---------- MÓZG RUNDY (host albo gracz solo) ----------
-const noiseOf = (id) => { const n = S.noise[id]; return n ? n.v * Math.max(0, 1 - (S.clock - n.t) / 0.8) : 0; };
+const noiseOf = (id) => noiseAt(S.noise[id], S.clock);
 const addNoise = (id, v) => { S.noise[id] = { v: Math.max(noiseOf(id), v), t: S.clock }; };
 function resetRound() {
     S.gen = GENS.map(() => 0); S.caged.clear(); S.esc.clear(); S.imm = {}; S.noise = {};
-    S.bot = createBot(0, -12); S.bot.stun = GRACE;
+    S.bot = createBot(0, -12); S.bot.stun = TIMES.GRACE;
 }
 function think(dt) {
     S.t -= dt;
-    if (S.phase === 'wait') { if (S.t <= 0) { resetRound(); S.phase = 'play'; S.t = ROUND; startedPlay(); } }
+    if (S.phase === 'wait') { if (S.t <= 0) { resetRound(); S.phase = 'play'; S.t = TIMES.ROUND; startedPlay(); } }
     else if (S.phase === 'play') {
         const ids = participants('generator'), act = ids.filter(id => !S.caged.has(id) && !S.esc.has(id));
         // Naprawa: im więcej osób przy generatorze (do 3), tym szybciej; praca robi hałas
-        GENS.forEach(([gx, gz], i) => {
+        GENS.forEach((g, i) => {
             if (S.gen[i] >= 1) return;
-            let n = 0;
-            for (const id of act) { const h = headOf(id); if (h && Math.hypot(h.x - gx, h.z - gz) < REPAIR_R && h.y < 4) { n++; addNoise(id, 0.35); } }
-            if (!n) return;
-            S.gen[i] = Math.min(1, S.gen[i] + dt / REPAIR_SEC * Math.min(n, 3));
-            if (S.gen[i] >= 1) { genDone(i); S.bot.mode = 'hunt'; S.bot.last = [gx, gz, 1.6]; S.bot.lostT = 0; S.bot.stun = 0; }   // alarm: potwór biegnie do naprawionego generatora
+            const near = act.filter(id => helpersAt(g, [headOf(id)]) > 0);
+            if (!near.length) return;
+            for (const id of near) addNoise(id, NOISE.REPAIR);
+            S.gen[i] = repairStep(S.gen[i], near.length, dt);
+            if (S.gen[i] >= 1) { genDone(i); S.bot.mode = 'hunt'; S.bot.last = [g[0], g[1], 1.6]; S.bot.lostT = 0; S.bot.stun = 0; }   // alarm: potwór biegnie do naprawionego generatora
         });
         // Uwalnianie z klatek: wolny gracz blisko klatki ładuje pasek, bez nikogo pasek opada
         for (const [id, c] of S.caged) {
-            let n = 0;
-            for (const fid of act) { const h = headOf(fid); if (h && Math.hypot(h.x - c.x, h.z - c.z) < RESCUE_R) n++; }
-            c.p = n ? c.p + dt / RESCUE_SEC : Math.max(0, c.p - dt * 0.5);
-            if (c.p >= 1) { S.caged.delete(id); S.imm[id] = S.clock + MON.immune; if (id === 'me') toast('You are free! Run!', '#7fc47f'); }
+            const r = rescueStep(c.p, helpersAtCage(c, act.map(fid => headOf(fid))), dt); c.p = r.p;
+            if (r.freed) { S.caged.delete(id); S.imm[id] = S.clock + MON.immune; if (id === 'me') toast('You are free! Run!', '#7fc47f'); }
         }
         monsterThink(dt, act);
         // Ucieczka: brama otwarta po naprawie wszystkich generatorów, strefa za linią GATE_Z
-        const open = S.gen.every(v => v >= 1);
+        const open = gateOpen(S.gen);
         for (const id of act) { const h = headOf(id); if (open && h && h.z < GATE_Z && !S.esc.has(id)) { S.esc.add(id); if (id === 'me') localEscaped(); } }
-        if (S.t <= 0 || ids.every(id => S.caged.has(id) || S.esc.has(id))) { S.phase = 'results'; S.t = RESULTS; roundOver(); }
-    } else if (S.phase === 'results' && S.t <= 0) { S.phase = 'wait'; S.t = N.NET.mode === 'solo' ? SOLO_WAIT : WAIT; resetRound(); S.bot.stun = 0; }
+        if (isRoundOver(ids, S.caged, S.esc, S.t)) { S.phase = 'results'; S.t = TIMES.RESULTS; roundOver(); }
+    } else if (S.phase === 'results' && S.t <= 0) { S.phase = 'wait'; S.t = N.NET.mode === 'solo' ? TIMES.SOLO_WAIT : TIMES.WAIT; resetRound(); S.bot.stun = 0; }
 }
 // Potwór: słyszy hałas gracza w promieniu zależnym od jego głośności (plus krótki zasięg wzroku), idzie na ostatni znany ślad, w patrolu zagląda do generatorów
 function monsterThink(dt, act) {
     const b = S.bot;
     if (b.stun > 0) { b.stun -= dt; return; }
-    let best = null, bd = 1e9;
-    for (const id of act) {
-        if ((S.imm[id] || 0) > S.clock) continue;
-        const h = headOf(id); if (!h) continue;
-        const d = Math.hypot(h.x - b.x, h.z - b.z), hear = MON.hearBase + MON.hearMax * noiseOf(id);
-        if ((d < hear || d < MON.see) && d < bd) { bd = d; best = h; }
-    }
+    const players = act.map(id => { const h = headOf(id); return h && { id: id, x: h.x, y: h.y, z: h.z, noise: noiseOf(id), immune: (S.imm[id] || 0) > S.clock }; }).filter(Boolean);
+    const best = pickTarget(b, players);
     if (best) { b.mode = 'hunt'; b.lostT = 0; b.last = [best.x, best.z, best.y]; }
     else if (b.mode === 'hunt') {
         b.lostT += dt;
         if (b.lostT > MON.lose || !b.last || Math.hypot(b.last[0] - b.x, b.last[1] - b.z) < 1.3) { b.mode = 'patrol'; b.goal = null; }
     }
-    const done = S.gen.filter(v => v >= 1).length;
+    const done = doneCount(S.gen);
     let tx, tz, ty = 0, speed = MON.patrol;
-    if (b.mode === 'hunt' && b.last) { tx = b.last[0]; tz = b.last[1]; ty = (b.last[2] || 1.6) - 1.2; speed = MON.hunt + MON.boost * done; }
+    if (b.mode === 'hunt' && b.last) { tx = b.last[0]; tz = b.last[1]; ty = (b.last[2] || 1.6) - 1.2; speed = monsterSpeed('hunt', done); }
     else {
         if (!b.goal || Math.hypot(b.goal[0] - b.x, b.goal[1] - b.z) < 1.3) {
             const open = GENS.filter((g, i) => S.gen[i] < 1);
             if (open.length && Math.random() < 0.4) { const g = open[(Math.random() * open.length) | 0]; b.goal = [g[0] + (Math.random() - 0.5) * 3, g[1] + (Math.random() - 0.5) * 3]; }
             else b.goal = WAYPOINTS.length ? WAYPOINTS[(Math.random() * WAYPOINTS.length) | 0] : [0, 0];
         }
-        tx = b.goal[0]; tz = b.goal[1]; speed = MON.patrol + MON.boost * done * 0.5;
+        tx = b.goal[0]; tz = b.goal[1]; speed = monsterSpeed('patrol', done);
     }
     stepBot(b, dt, tx, tz, ty, speed, b.mode === 'hunt');
     for (const id of act) {
         if ((S.imm[id] || 0) > S.clock) continue;
         const h = headOf(id); if (!h) continue;
-        if (Math.hypot(h.x - b.x, h.z - b.z) < MON.catchR && Math.abs(h.y - (b.y + 1.4)) < 1.6) {
+        if (canCatch(b, h)) {
             S.caged.set(id, { x: h.x, z: h.z, p: 0 }); if (id === 'me') localCaught();
             b.stun = MON.stun; b.mode = 'patrol'; b.goal = null; break;
         }
@@ -228,8 +217,8 @@ export function update(dt, t, ctx) {
     }
     // Mój hałas (mikrofon i ruch). Host liczy go od razu, gość wysyła do hosta co 0,25 s
     const caged = S.caged.has('me'), out = S.esc.has('me');
-    const mic = SFX.micLevel(), micN = mic > MIC_QUIET ? Math.min(1, (mic - MIC_QUIET) / (MIC_LOUD - MIC_QUIET)) : 0;
-    const speedXZ = Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), moveN = speedXZ > 2 ? Math.min(0.7, (speedXZ - 2) / 8) : 0;
+    const micN = micNoise(SFX.micLevel());
+    const speedXZ = Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), moveN = moveNoise(speedXZ);
     S.myNoise += (Math.max(micN, moveN) - S.myNoise) * Math.min(1, dt * 10);
     if (auth) {
         S.noise.me = { v: playing && !caged && !out ? S.myNoise : 0, t: S.clock };
@@ -244,7 +233,7 @@ export function update(dt, t, ctx) {
     }
     // Klatka: zamrożenie w miejscu. Brama zamknięta: miękka bariera (wraca przed linię)
     if (caged) { const c = S.caged.get('me'); ctx.body.position.set(c.x, Math.max(p.y, 1.0), c.z); ctx.body.velocity.set(0, 0, 0); }
-    const open = S.gen.every(v => v >= 1);
+    const open = gateOpen(S.gen);
     if (playing && !open && !out && p.z < GATE_Z) {
         setPlayerPosition(p.x, p.y, GATE_Z + 1.0); ctx.body.velocity.set(0, 0, 0);
         if (S.clock - S.gateWarn > 3) { S.gateWarn = S.clock; toast('The gate is locked. Repair all generators.', '#ff6a4a'); }
@@ -288,7 +277,7 @@ function drawHud() {
     x.textBaseline = 'middle'; x.textAlign = 'left';
     x.font = 'bold 80px "Courier New", monospace'; x.fillStyle = '#fff0b0'; x.fillText(fmt(S.t), 30, 74);
     x.font = 'bold 30px "Courier New", monospace';
-    const done = S.gen.filter(v => v >= 1).length;
+    const done = doneCount(S.gen);
     let msg, col = '#fff0b0';
     if (S.phase === 'wait') { msg = 'Next round starts soon'; col = '#ffb030'; }
     else if (S.phase === 'results') { msg = S.esc.has('me') ? 'You escaped! +200' : 'Round over'; col = '#9aff60'; }

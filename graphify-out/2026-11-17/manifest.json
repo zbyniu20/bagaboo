@@ -66,8 +66,8 @@
     "semantic_hash": "a5afb8e9bb215279e0fa2227cad1e3ed"
   },
   "core/economy.js": {
-    "mtime": 1794943041.5880814,
-    "seen": 1794943131.6527984,
+    "mtime": 1794943545.6304064,
+    "seen": 1794943592.5074363,
     "ast_hash": "205674b8c3bb062f05c30b6d0be0307c",
     "semantic_hash": "205674b8c3bb062f05c30b6d0be0307c"
   },
@@ -234,8 +234,8 @@
     "semantic_hash": "a760a564096d71ae94000df38fb62a32"
   },
   "core/registry.js": {
-    "mtime": 1794941929.1891334,
-    "seen": 1794941939.0077534,
+    "mtime": 1794943572.3908284,
+    "seen": 1794943592.5074759,
     "ast_hash": "fce3913a793cb4160de75b9a182c9a01",
     "semantic_hash": ""
   },
@@ -348,8 +348,8 @@
     "semantic_hash": ""
   },
   "levels/hideseek.js": {
-    "mtime": 1794943113.1717508,
-    "seen": 1794943131.652864,
+    "mtime": 1794943572.1800947,
+    "seen": 1794943592.5074992,
     "ast_hash": "baaf9b08ddeeb6235cb8ca0347159b3f",
     "semantic_hash": "baaf9b08ddeeb6235cb8ca0347159b3f"
   },
@@ -366,14 +366,14 @@
     "semantic_hash": ""
   },
   "levels/infection.js": {
-    "mtime": 1794940696.1413178,
-    "seen": 1794940782.400071,
+    "mtime": 1794943572.3166206,
+    "seen": 1794943592.5075023,
     "ast_hash": "e9ff1ee5f754d1fd136830f9c54ef184",
     "semantic_hash": "e9ff1ee5f754d1fd136830f9c54ef184"
   },
   "levels/koth.js": {
-    "mtime": 1794940696.1413178,
-    "seen": 1794940782.400072,
+    "mtime": 1794943572.4657571,
+    "seen": 1794943592.5075033,
     "ast_hash": "b0a40ba252b3b348cebc66f6828f3c5b",
     "semantic_hash": "b0a40ba252b3b348cebc66f6828f3c5b"
   },
@@ -516,9 +516,9 @@
     "semantic_hash": "a42bc6986f3602c4f1fda1940aecdc4f"
   },
   "tests/package.json": {
-    "mtime": 1794943120.3348475,
-    "seen": 1794943131.6528957,
-    "ast_hash": "67a47763bf73092db9265079c08a3904",
+    "mtime": 1794943580.233722,
+    "seen": 1794943592.507572,
+    "ast_hash": "fbbab6bb159eca47a40edd6ca2257513",
     "semantic_hash": ""
   },
   "tests/smoke.mjs": {
@@ -528,9 +528,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1794943120.335761,
-    "seen": 1794943131.6529005,
-    "ast_hash": "1831c537b9f3c9fc76bf352460a8b034",
+    "mtime": 1794943580.234071,
+    "seen": 1794943592.507577,
+    "ast_hash": "39edca315ee6cf97e22029fb4daff724",
     "semantic_hash": ""
   },
   "README.md": {
@@ -585,6 +585,24 @@
     "mtime": 1794943103.9119043,
     "seen": 1794943131.652899,
     "ast_hash": "2e5a665a1e9131621402be63b05a7fd4",
+    "semantic_hash": ""
+  },
+  "tests/changed.mjs": {
+    "mtime": 1794943545.6399305,
+    "seen": 1794943592.507564,
+    "ast_hash": "28dfc5b111f24432842f28ed908f83a7",
+    "semantic_hash": ""
+  },
+  "tests/levelpack.mjs": {
+    "mtime": 1794943545.6399305,
+    "seen": 1794943592.5075655,
+    "ast_hash": "3bd6695d9890c807451ce0832bf2c312",
+    "semantic_hash": ""
+  },
+  "tests/modes/generator.mjs": {
+    "mtime": 1794943545.6399305,
+    "seen": 1794943592.5075693,
+    "ast_hash": "abad64b5372373f520b8a0cd34f68740",
     "semantic_hash": ""
   },
   "tests/package-lock.json": {
