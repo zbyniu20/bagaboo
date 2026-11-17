@@ -23,7 +23,9 @@ const ROOM_Z = [0, -12, -24, -36, -48];                               // granice
 const CARDS = [[-6.5, 1.0, -18], [6.5, 1.0, -30], [-6.5, 1.0, -42]];
 const CP = [[0, 1.0, -18.5], [0, 1.0, -30.5], [0, 1.0, -42.5]];       // punkty kontrolne w korytarzu przy salach z kartami
 const STATUES = [[0, -22], [-5, -16], [5, -33], [-5, -45]];           // 4. posąg tylko na Nightmare
-const WALK = 2.9, CATCH_DIST = 1.0, SEE_CONE = 0.82, SEE_DIST = 30;   // cos(35°): w smudze latarki
+const WALK = 3.6, WALK_PER_CARD = 0.3, LUNGE_DIST = 6, LUNGE_MUL = 1.35, CATCH_DIST = 1.0, SEE_DIST = 30;   // prędkość posągów (m/s): rośnie z każdą kartą, a w odległości do LUNGE_DIST nieoświetlony posąg rzuca się szybciej
+const SEE_CONE = { easy: 0.82, normal: 0.9, nightmare: 0.93 };   // cos kąta stożka latarki (35° / 26° / 21°): węższy = trzeba trafić precyzyjniej
+const WAKE_CARDS = [0, 1], WAKE_BEHIND = 14;                       // po zabraniu tych kart budzi się dodatkowy posąg za plecami gracza (nie na Easy)
 const GATE_Z = -48.4, EXIT_Z = -51.9;
 const REWARD_FIRST = 2200, REWARD_REPEAT = 220, INTRO_TIME = 10;
 export const info = { id: 'hospital', name: 'The Hospital', spawn: [0, 1.0, 2.5] };
@@ -45,7 +47,7 @@ export function build() {
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     S.scare = createJumpscare({ seed: 6161 });
-    if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints, a 4th patient)'), df.color);
+    if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints, 4 patients at the start)'), df.color);
 }
 
 // ---------- BUDOWA ----------
@@ -102,13 +104,19 @@ function buildGate() {
 }
 function buildStatues() {
     const count = S.df.id === 'nightmare' ? 4 : 3;
-    for (let i = 0; i < count; i++) {
-        const m = buildMannequin(T.mkRng(900 + i)); m.group.scale.setScalar(1.15); L.root.add(m.group);
-        m.group.traverse(o => { if (o.isMesh && o.material && o.material.map) o.material = new THREE.MeshStandardMaterial({ color: 0xd8d4cc, roughness: 0.55 }); });
-        for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.08, 0.08, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
-        const st = { m: m, x: STATUES[i][0], z: STATUES[i][1], home: STATUES[i].slice(), yaw: Math.random() * 6.28, moving: false, stepT: 0 };
-        m.group.position.set(st.x, 0, st.z); S.st.push(st);
-    }
+    for (let i = 0; i < count; i++) addStatue(STATUES[i][0], STATUES[i][1], 900 + i);
+}
+function addStatue(x, z, seed) {
+    const m = buildMannequin(T.mkRng(seed)); m.group.scale.setScalar(1.15); L.root.add(m.group);
+    m.group.traverse(o => { if (o.isMesh && o.material && o.material.map) o.material = new THREE.MeshStandardMaterial({ color: 0xd8d4cc, roughness: 0.55 }); });
+    for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.08, 0.08, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 6; m.head.add(e); }
+    const st = { m: m, x: x, z: z, home: [x, z], yaw: Math.random() * 6.28, moving: false, stepT: 0 };
+    m.group.position.set(x, 0, z); S.st.push(st); return st;
+}
+// Karta budzi kolejnego pacjenta: pojawia się w korytarzu WAKE_BEHIND m za graczem (w stronę wejścia), a gdyby tam nie było miejsca, przed nim
+function wakeStatue(p) {
+    let z = Math.min(Z0 - 1.5, p.z + WAKE_BEHIND); if (Math.abs(z - p.z) < 8) z = Math.max(Z1 + 6, p.z - WAKE_BEHIND);
+    addStatue(0, z, 920 + S.st.length); toast('Another patient wakes up behind you...', '#ff4a2a'); SFX.stinger({ x: 0, y: 1.5, z: z });
 }
 // Siatka 1 m do wyznaczania drogi posągów (komórka zablokowana, gdy stoi w niej przeszkoda wyższa niż 0,5 m)
 function buildGrid() {
@@ -146,10 +154,11 @@ function caught() {
     toast('A patient touched you...', '#e0533f');
 }
 function resetStatues() { for (const st of S.st) { st.x = st.home[0]; st.z = st.home[1]; } }
-function takeCard(i) {
+function takeCard(i, p) {
     S.got[i] = true; S.cards++; S.cardMesh[i].visible = false; SFX.fuse(); buzz('both', 0.7, 200);
     toast('Keycard ' + S.cards + '/3', '#7fe8ff');
     if (S.df.checkpoints) { S.cp = i; toast('Checkpoint saved', '#7fc47f'); }
+    if (WAKE_CARDS.includes(i) && S.df.id !== 'easy' && p) wakeStatue(p);
     if (S.cards === 3) {
         const k = L.obstacles.indexOf(S.gateOb); if (k >= 0) L.obstacles.splice(k, 1);
         if (S.gateOb.body) S.gateOb.body.position.y = -50;
@@ -163,6 +172,7 @@ const INTRO = [
     'Look away and they creep closer. Walk backwards if you must, but keep the beam on them!',
     'Find 3 keycards in the side rooms. The red gate at the end opens when you have all of them.',
     'A touch from a patient and you are caught. Each keycard saves a checkpoint (not on Nightmare).',
+    'Careful: every keycard makes them faster, and the first two wake another patient behind you. In the dark they lunge when close.',
     'You can hear them scraping when they move. Silence means they are watched.'
 ];
 
@@ -183,7 +193,7 @@ export function update(dt, t, ctx) {
     if (S.phase === 'play' && S.caughtT < 0) S.runT += dt;
     S.ghost.tick(dt, p, S.phase === 'play' && S.caughtT < 0);
     // Karty: dotknięcie ciałem
-    S.cardMesh.forEach((g, i) => { if (!S.got[i]) { g.rotation.y = t * 1.5; g.position.y = CARDS[i][1] + Math.sin(t * 2 + i) * 0.08; if (Math.hypot(p.x - CARDS[i][0], p.z - CARDS[i][2]) < 0.9 && Math.abs(p.y - 1.0) < 1.2) takeCard(i); } });
+    S.cardMesh.forEach((g, i) => { if (!S.got[i]) { g.rotation.y = t * 1.5; g.position.y = CARDS[i][1] + Math.sin(t * 2 + i) * 0.08; if (Math.hypot(p.x - CARDS[i][0], p.z - CARDS[i][2]) < 0.9 && Math.abs(p.y - 1.0) < 1.2) takeCard(i, p); } });
     if (S.caughtT >= 0) {
         S.caughtT += dt;
         if (S.caughtT > 1.6) {
@@ -201,7 +211,7 @@ function lit(st) {
     camera.getWorldPosition(_c); camera.getWorldDirection(_d);
     _q.set(st.x - _c.x, 1.3 - _c.y, st.z - _c.z); const dist = _q.length(); if (dist > SEE_DIST) return false;
     _q.divideScalar(dist);
-    const cone = S.df.id === 'nightmare' ? SEE_CONE + 0.06 : SEE_CONE;
+    const cone = SEE_CONE[S.df.id] || SEE_CONE.normal;
     if (_d.dot(_q) < cone) return false;
     const steps = Math.ceil(dist / 0.6);
     for (let i = 1; i < steps; i++) {
@@ -212,7 +222,7 @@ function lit(st) {
 }
 function think(dt, p) {
     S.pathT -= dt; if (S.pathT <= 0) { S.pathT = 0.35; bfsFrom(p.x, p.z); }
-    const speed = WALK * S.df.speed; let near = 99, moving = 0;
+    const baseSpeed = (WALK + WALK_PER_CARD * S.cards) * S.df.speed; let near = 99, moving = 0;
     for (const st of S.st) {
         const dist = Math.hypot(p.x - st.x, p.z - st.z); near = Math.min(near, dist);
         st.moving = !lit(st);
@@ -230,6 +240,7 @@ function think(dt, p) {
             }
             tx = X0 + bi + 0.5; tz = Z1 + bj + 0.5;
         }
+        const speed = dist < LUNGE_DIST ? baseSpeed * LUNGE_MUL : baseSpeed;   // blisko i w ciemności: rzuca się
         const dx = tx - st.x, dz = tz - st.z, d = Math.max(1e-4, Math.hypot(dx, dz)), m = Math.min(d, speed * dt);
         st.x += dx / d * m; st.z += dz / d * m; st.yaw = Math.atan2(p.x - st.x, p.z - st.z);
         st.stepT -= dt; if (st.stepT <= 0) { st.stepT = 0.7; SFX.step(0.55, { x: st.x, y: 0, z: st.z }); SFX.creak && Math.random() < 0.25 && SFX.creak(0.4, { x: st.x, y: 1, z: st.z }); }
@@ -261,6 +272,7 @@ function drawHud() {
     x.fillStyle = col; x.fillText(msg, 330, 108);
     S.hud.update();
 }
+export const testState = () => S;   // dla testów: dostęp do stanu poziomu
 export function dispose() {
     if (S) { S.ev.dispose(); S.ghost.dispose(); S.hud.dispose(); S.intro.dispose(); S.scare.dispose(); }
     S = null;

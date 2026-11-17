@@ -33,11 +33,11 @@ const WALL_GRIP = 0.75, HOLD_GRIP = 1.0, PIPE_GRIP = 1.0;  // przyczepność: ś
 const MOVE_SCALE = 1.0;                    // siła odepchnięć (1.0 = jak w lobby)
 const MAX_UP = 6.5;                        // maks. prędkość w górę (m/s)
 const EXTRA_GRAVITY = -3.0;                // ujemne = lżej niż w lobby (grawitacja 9 zamiast 12 m/s²)
-const OOZE_SPEED = 0.07, OOZE_ACCEL = 0.00015;      // maź: prędkość startowa i przyspieszenie
+const OOZE_SPEED = 0.16, OOZE_ACCEL = 0.0004;        // maź: prędkość startowa i przyspieszenie (m/s, m/s²); na Normal ok. 42 z 64 m, gdy po 190 s otwiera się klapa
 const SURGE_MIN = 40, SURGE_MAX = 60, SURGE_HEIGHT = 1.5;
 const SCARE_MIN = 22, SCARE_MAX = 38;      // co ile sekund jumpscare
 const CRUMBLE_TIME = 3.0;                  // tyle wytrzyma pękająca kość
-const SECOND_CHANCE_DROP = 8;              // ułatwienie: po złapaniu wracasz nad ostatnią otwartą kratę, a maź opada o tyle metrów
+const SECOND_CHANCE_DROP = { easy: 12, normal: 4 };   // ułatwienie (tylko Easy i Normal): po złapaniu wracasz nad ostatnią otwartą kratę, a maź opada o tyle metrów
 const REWARD_FIRST = 2500, REWARD_REPEAT = 250;
 export const info = { id: 'well', name: 'The Well', spawn: [0, 1.0, 0.8] };
 
@@ -518,7 +518,7 @@ export function update(dt, t, ctx) {
                 const last = S.grates.filter(g => g.open).pop();
                 if (last && S.df.checkpoints && isAuthority()) {
                     setPlayerPosition(-(HS - 0.6), last.y - 2.4, -(HS - 0.6) - 0.2);   // na półce pod łańcuchem tej kraty
-                    S.ooze = Math.max(-1.2, Math.min(S.ooze, last.y - 3) - SECOND_CHANCE_DROP * (S.df.id === 'easy' ? 1.5 : 1));
+                    S.ooze = Math.max(-1.2, Math.min(S.ooze, last.y - 3) - (SECOND_CHANCE_DROP[S.df.id] || SECOND_CHANCE_DROP.normal));
                     toast('The well spits you back out... Climb!', '#b8ffcf');
                 } else { S.leaving = true; restartFlag = true; ctx.goto('well', null, N.NET.mode === 'solo' ? undefined : { seed: S.seed, noFollow: true }); return; }
             }
@@ -528,6 +528,7 @@ export function update(dt, t, ctx) {
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.12; drawHud(p); }
 }
 
+export const testState = () => S;   // dla testów: dostęp do stanu poziomu
 export function dispose() {
     if (S && S.ghost) S.ghost.dispose();
     if (S && S.ev) S.ev.dispose();

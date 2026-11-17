@@ -1,7 +1,7 @@
 // ==========================================
 // POZIOM: LABIRYNT 100 x 100 m, ściany 20 m, ciemność (preset 'night')
 // Przy każdym wejściu losuje się nowy układ. Start na południu, wyjście na północy.
-// Po 20 s manekin wyłamuje się z klatki i goni gracza. Złapanie = nowy labirynt od początku.
+// Po 15 s manekin wyłamuje się z klatki i goni gracza. Złapanie = nowy labirynt od początku.
 // Jumpscare'y: ślepe zaułki, błądzenie, zjawy na końcu korytarzy. Dotarcie do pokoju końcowego = 2000 Bagabucks
 // (kolejne razy 200) i otwiera się dziura w podłodze prowadząca prosto do poziomu Cisza.
 // ==========================================
@@ -24,14 +24,14 @@ const NP = LIGHT_PRESETS.night;
 const N = 25, CELL = 4, HALF = 50, WT = 0.6, H = 20;   // 25 x 25 komórek po 4 m = 100 x 100 m
 const START_I = 12;
 const REWARD_FIRST = 2000, REWARD_REPEAT = 200;   // pierwsze przejście / każde kolejne
-const CAGE_TIME = 20;          // po ilu sekundach manekin się uwalnia
-const SPEED_START = 2.2, SPEED_MAX = 3.4, SPEED_RAMP = 120;   // m/s, rośnie przez 2 minuty
+const CAGE_TIME = 15;          // po ilu sekundach manekin się uwalnia
+const SPEED_START = 3.0, SPEED_MAX = 5.0, SPEED_RAMP = 90;   // m/s, rośnie przez 1,5 minuty
 const LOST_TIME = 10;          // ile sekund błądzenia poza główną drogą do jumpscare'a
 const SCARE_COOLDOWN = 15;     // minimalna przerwa między jumpscare'ami
 const DEADEND_CHANCE = 0.6;    // szansa na jumpscare po wejściu w ślepy zaułek
 const PHANTOM_MIN = 22, PHANTOM_MAX = 45;   // co ile sekund zjawa na końcu korytarza
 const START_NODE = N * N, END_NODE = N * N + 1;
-const TWIN_DELAY = 45;         // Nightmare: po tylu sekundach pościgu pojawia się drugi manekin
+const TWIN_DELAY = { normal: 120, nightmare: 45 };   // po tylu sekundach pościgu pojawia się drugi manekin (nie na Easy)
 
 export const info = { id: 'maze', name: 'The Maze', spawn: [2, 1.0, 56] };
 let S = null;   // stan poziomu
@@ -406,9 +406,10 @@ export function update(dt, t, ctx) {
         S.chaseT += dt;
         chase(dt, t, p, q, S, S.chaseT);
         let dist = Math.hypot(p.x - q.x, p.z - q.z);
-        // Nightmare: po 45 s pościgu pojawia się drugi manekin (bliźniak) 14-24 komórek od ciebie i też cię goni
-        if (S.df.id === 'nightmare' && !S.tw && S.chaseT > TWIN_DELAY) spawnTwin(p);
-        if (S.tw) { chase(dt, t, p, S.tw, S.tw, S.chaseT - TWIN_DELAY); dist = Math.min(dist, Math.hypot(p.x - S.tw.x, p.z - S.tw.z)); }
+        // Po 120 s pościgu (Nightmare: po 45 s) pojawia się drugi manekin (bliźniak) 14-24 komórek od ciebie i też cię goni
+        const twinAt = TWIN_DELAY[S.df.id];
+        if (twinAt && !S.tw && S.chaseT > twinAt) spawnTwin(p);
+        if (S.tw) { chase(dt, t, p, S.tw, S.tw, S.chaseT - twinAt); dist = Math.min(dist, Math.hypot(p.x - S.tw.x, p.z - S.tw.z)); }
         SFX.heartbeat(Math.max(0, 1 - dist / 22));
         if (dist < 0.85 && p.y < 3.2) { S.phase = 'caught'; S.phaseT = 0; jumpscare(); }
     } else if (S.phase === 'caught') {
@@ -481,6 +482,7 @@ function spawnTwin(p) {
 }
 
 // Wywoływane przy wyjściu z poziomu: sprzątanie rzeczy przyczepionych do kamery
+export const testState = () => S;   // dla testów: dostęp do stanu poziomu
 export function dispose() {
     if (S && S.ghost) S.ghost.dispose();
     if (S && S.ev) S.ev.dispose();
