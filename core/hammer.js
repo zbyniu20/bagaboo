@@ -2,6 +2,7 @@
 // MŁOTKI EKIPY: Kick hammer (wyrzuca z sesji, można wrócić) i Ban hammer (ban na dobę).
 // Działają tylko dla admina i moderatorów. Trzeba zamachnąć się i trafić główką w głowę albo tułów gracza.
 // Młotek zakłada się i kupuje na komputerze w pokoju szefa.
+// Oprócz graczy młotek trafia też cele z L.hammerTargets (manekin treningowy w lobby: działa także solo, można na nim sprawdzić Nothing Hammer).
 // ==========================================
 import { THREE, scene, L } from './engine.js';
 import { hands } from './player.js';
@@ -27,7 +28,11 @@ export function updateHammer(dt) {
     const speed = first ? 0 : head.distanceTo(prev) / Math.max(dt, 1 / 120);
     prev.copy(head); first = false;
     cool -= dt;
-    if (cool > 0 || N.NET.mode === 'solo' || speed < (tool === 'ban' ? SWING_BAN : SWING_KICK)) return;
+    if (cool > 0 || speed < (tool === 'ban' ? SWING_BAN : SWING_KICK)) return;
+    for (const tg of L.hammerTargets) {   // manekin treningowy: trafienie głową młotka w klatkę piersiową albo głowę
+        if (head.distanceTo(tg.chest) < tg.r) { cool = 1.5; tg.hit(tool, head); SFX.bang(head); buzz(1, 1, 150); return; }
+    }
+    if (N.NET.mode === 'solo') return;
     for (const id in N.playersState) {
         if (id === N.myId()) continue;
         const st = N.playersState[id];

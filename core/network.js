@@ -47,7 +47,8 @@ export function sendRouted(to, msg) {
 const cleanRouted = (m) => (m && typeof m === 'object' && typeof m.k === 'string' && m.k.length < 16) ? { k: m.k, item: String(m.item || '').slice(0, 40), ok: !!m.ok } : null;
 // Drużyna idzie za hostem: host wysyła poziom (i ziarno układu), goście wchodzą tam za nim
 let followHandler = null, lastFollow = null, inviteHandler = null, goobyHandler = null;
-export function onGooby(fn) { goobyHandler = fn; }   // main.js: pokazuje jumpscare Gooby, gdy ktoś trafi nas Nothing Hammerem
+export function onGooby(fn) { goobyHandler = fn; }
+export function triggerGooby() { if (goobyHandler) goobyHandler(); }   // lokalny podgląd jumpscare'a Gooby (manekin treningowy w lobby)   // main.js: pokazuje jumpscare Gooby, gdy ktoś trafi nas Nothing Hammerem
 
 // ---------- MODERACJA: wyrzucenie (można wrócić), ban na dobę, role ----------
 const BAN_KEY = 'bagaboo_banlist', MY_BAN_KEY = 'bagaboo_banned', DAY = 24 * 3600 * 1000;
