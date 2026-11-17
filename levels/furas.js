@@ -2,8 +2,8 @@
 // POZIOM 11: THE FUR DEN (legowisko Furasa, pościg)
 // Ponury dom z tekturowych ścian, wielkich kłębków włóczki i drapaków, wyściełany skołtunioną sierścią. Znajdź 4 złote ryby, a brama na końcu się otworzy.
 // Po legowisku krąży FURAS: kudłaty stwór z kocią maską pełną zębów i ogromnym, puchatym ogonem. Widzi do 16 m (tylko przed sobą i nie przez ściany),
-// biegnącego słyszy z 8 m, a o jego bliskości zdradza pomruk. Gdy jest blisko i widzi cię, przykuca (ogon drży), a potem SKACZE: kierunek skoku
-// zapada na końcu przykucnięcia, więc wystarczy w ostatniej chwili uskoczyć w bok. Po skoku jest chwilę wolny. Na Nightmare są dwa Furasy.
+// biegnącego słyszy z 10 m, po utracie wzroku jeszcze kilka sekund "czuje" cię, a o jego bliskości zdradza pomruk. Gdy jest blisko i widzi cię, przykuca (ogon drży), a potem SKACZE: kierunek skoku
+// zapada na końcu przykucnięcia, więc wystarczy w ostatniej chwili uskoczyć w bok. Po skoku jest chwilę wolny. Każda ryba przyspiesza Furasa, a po dwóch rybach budzi się drugi (na Nightmare są dwa od początku, trzeci po trzech rybach). Po zebraniu wszystkich ryb Furas wpada w szał.
 // Układ jest stały (działa duch). Po każdej rybie zapisuje się punkt kontrolny (Easy i Normal).
 // ==========================================
 import { THREE, L, tex, addCrispBlock, addInstancedBlocks } from '../core/engine.js';
@@ -29,11 +29,12 @@ const GATE_Z = -57.5, EXIT_Z = Z1 + 0.03;
 const NODES = [[0, -8], [0, -16], [-10, -25], [10, -25], [-17, -34], [17, -34], [-10, -42], [10, -42], [0, -50], [0, -54], [-12, -57], [12, -57]];
 const LINKS = [[0, 1], [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7], [6, 8], [7, 8], [8, 9], [9, 10], [9, 11]];
 const ADJ = NODES.map(() => []); LINKS.forEach(([a, b]) => { ADJ[a].push(b); ADJ[b].push(a); });
-const SEE_DIST = 16, HEAR_DIST = 8, LOSE_TIME = 6, CATCH_DIST = 1.0, POUNCE_CATCH = 1.5;
-const WALK = 2.2, INVESTIGATE = 3.2, CHASE = 4.8, POUNCE_SPEED = 10.5, POUNCE_RANGE = 6.5, POUNCE_MIN = 2.2;
-const TELEGRAPH = 0.8, POUNCE_T = 0.55, RECOVER_T = 1.3, POUNCE_CD = 4.5;
+const SEE_DIST = 18, HEAR_DIST = 10, LOSE_TIME = 9, SMELL_TIME = 4, CATCH_DIST = 1.1, POUNCE_CATCH = 1.6;   // SMELL_TIME: tyle sekund po utracie wzroku wciąż czuje, gdzie jesteś
+const WALK = 2.6, INVESTIGATE = 3.7, CHASE = 5.4, POUNCE_SPEED = 11.5, POUNCE_RANGE = 7.5, POUNCE_MIN = 2.2;
+const TELEGRAPH = 0.7, POUNCE_T = 0.55, RECOVER_T = 1.0, POUNCE_CD = 3.5;
+const FISH_BOOST = 0.07, RAGE_BOOST = 0.3;   // każda ryba przyspiesza Furasa o 7%, po wszystkich rybach dostaje szału (+30%)
 const REWARD_FIRST = 3000, REWARD_REPEAT = 300, INTRO_TIME = 10;
-const STARTS = [[-10, -42], [12, -57]];
+const STARTS = [6, 11, 3];   // węzły startowe kolejnych Furasów (trzeci wchodzi dopiero po rybach)
 export const info = { id: 'furas', name: 'The Fur Den', spawn: [0, 1.0, 2.0] };
 let S = null;
 const _q = new THREE.Vector3(), _Yv = new THREE.Vector3(0, 1, 0), _tq = new THREE.Quaternion(), _tn = new THREE.Vector3();
@@ -147,7 +148,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -X + 0.4, maxX: X - 0.4, minZ: Z1 + 0.4, maxZ: Z0 - 0.4, maxY: WALL_H - 0.2 };
     const df = diffOf('furas');
-    S = { df: df, ghost: createGhost('furas'), ev: createEvents('furas'), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', fish: 0, got: [false, false, false, false], cp: -1, bots: [], caughtT: -1, leaving: false, hudT: 0, seen: 0, carried: false, purrT: 0 };
+    S = { df: df, ghost: createGhost('furas'), ev: createEvents('furas'), clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', fish: 0, got: [false, false, false, false], cp: -1, bots: [], caughtT: -1, leaving: false, hudT: 0, seen: 0, carried: false, purrT: 0, lastP: { x: 0, z: 2 } };
     buildRoom();
     buildDividers();
     buildDecor();
@@ -188,7 +189,7 @@ function buildDecor() {
     const crate = (x, z, w, h, d, col) => boxes.push({ x: x, y: h / 2, z: z, w: w, h: h, d: d, color: col || (R() < 0.5 ? 0xb08a5a : 0x9a7648), rotY: (R() - 0.5) * 0.25 });
     for (const [x, z, w, h, d] of [[-14, -4, 3, 2, 3], [-11, -5.5, 1.5, 1.2, 1.5], [14, -3, 5, 1, 2], [15, -9, 2, 2, 2], [-6, -11, 2, 2, 2], [8, -12, 1.5, 1.5, 1.5],
         [-17, -21, 2, 2, 3], [-6, -28, 2, 2, 2], [7, -30, 3, 1.4, 2], [17, -22, 2.5, 2.4, 2.5], [-8, -32, 2, 1.2, 2],
-        [-17, -39, 2.5, 2, 2.5], [4, -38, 2, 2, 2], [-4, -45, 2, 1.4, 2], [14, -47, 3, 2, 2], [-9, -47, 2, 2.4, 2],
+        [-17, -39, 2.5, 2, 2.5], [4, -38, 2, 2, 2], [-2, -45, 2, 1.4, 2], [14, -47, 3, 2, 2], [-9, -47, 2, 2.4, 2],
         [-14, -53, 3, 2, 3], [14, -54, 2.5, 2, 2.5], [-10, -61, 2, 1.4, 2], [11, -61, 3, 2, 2]]) crate(x, z, w, h, d);
     addInstancedBlocks(boxes, tex.wood);
     // Drapaki: schody z trzech stopni (0,8 / 1,6 / 2,4 m)
@@ -242,13 +243,26 @@ function buildGate() {
     buildDoor({ x: 0, z: EXIT_Z, rotY: 0, label: 'EXIT', color: '#ffd0e8', glow: 0xff80c0, wood: 0x5a3a46, light: true, portal: { target: 'levels', spawn: ARRIVAL_FROM_FURAS, onEnter: finish } });
 }
 function buildFurasBots() {
-    const count = S.df.id === 'nightmare' ? 2 : 1;
-    for (let i = 0; i < count; i++) {
-        const f = buildFuras(true); if (i) f.root.scale.setScalar(1.0);
-        L.root.add(f.root);
-        const start = STARTS[i], st = createBot(start[0], start[1]); st.mode = 'patrol'; st.goal = null;
-        f.root.position.set(start[0], 0, start[1]);
-        S.bots.push({ f: f, st: st, node: i ? 11 : 6, prevNode: -1, lostT: 0, last: null, t: 0, cd: 2, dirx: 0, dirz: 1, ph: 0, px: start[0], pz: start[1], crouch: 0, purr: Math.random() });
+    const nm = S.df.id === 'nightmare';
+    addBot(0); if (nm) addBot(1);
+}
+// Nowy Furas na węźle: gracz nie dostaje go pod nos (przy dobudowywaniu wybieramy węzeł najdalszy od niego)
+function addBot(idx, node) {
+    const n = node === undefined ? STARTS[idx] : node, f = buildFuras(true); if (idx) f.root.scale.setScalar(1.1);
+    L.root.add(f.root);
+    const st = createBot(NODES[n][0], NODES[n][1]); st.mode = 'patrol';
+    f.root.position.set(st.x, 0, st.z);
+    const b = { f: f, st: st, home: n, node: n, prevNode: -1, goal: null, lostT: 0, last: null, t: 0, cd: 2.5, dirx: 0, dirz: 1, ph: 0, px: st.x, pz: st.z, crouch: 0, purr: Math.random(), wT: 0, wx: st.x, wz: st.z, smellT: 0 };
+    S.bots.push(b); return b;
+}
+// Furas dobudowuje się, gdy w legowisku jest coraz niebezpieczniej (Normal: po 2 rybach, Nightmare: trzeci po 3)
+function reinforce() {
+    const need = S.df.id === 'nightmare' ? (S.fish >= 3 ? 3 : 2) : (S.df.id === 'easy' ? 1 : (S.fish >= 2 ? 2 : 1));
+    while (S.bots.length < need) {
+        let best = 0, bd = -1; const me = S.lastP || { x: 0, z: 0 };
+        NODES.forEach((n, i) => { const d = Math.hypot(n[0] - me.x, n[1] - me.z); if (d > bd) { bd = d; best = i; } });
+        const b = addBot(S.bots.length, best); b.cd = 4;
+        toast('Another FURAS wakes up...', '#ff4a2a'); SFX.screech({ x: NODES[best][0], y: 1.5, z: NODES[best][1] });
     }
 }
 
@@ -267,35 +281,53 @@ function caught() {
 function takeFish(i) {
     S.got[i] = true; S.fish++; S.fishMesh[i].visible = false; SFX.fuse(); buzz('both', 0.7, 200);
     toast('Golden fish ' + S.fish + '/4', '#ffd870');
-    for (const b of S.bots) { b.st.mode = 'investigate'; b.st.goal = [FISH[i][0], FISH[i][1]]; }   // zabranie ryby przyciąga Furasa
+    for (const b of S.bots) { if (b.st.mode === 'patrol' || b.st.mode === 'investigate') { b.st.mode = 'investigate'; b.goal = [FISH[i][0], FISH[i][1]]; b.invT = 0; } }   // zabranie ryby przyciąga Furasa
+    reinforce();
     SFX.stinger({ x: FISH[i][0], y: 1.5, z: FISH[i][1] });
     if (S.df.checkpoints) { S.cp = i; toast('Checkpoint saved', '#ffb0d8'); }
     if (S.fish === 4) {
         const k = L.obstacles.indexOf(S.gateOb); if (k >= 0) L.obstacles.splice(k, 1);
         if (S.gateOb.body) S.gateOb.body.position.y = -50;
         S.gate.visible = false; S.gateLamp.color.setHex(0x30ff60); SFX.bell && SFX.bell();
-        toast('The gate is open! Run to the EXIT!', '#ffd27a');
+        toast('The gate is open! Run to the EXIT! FURAS is ENRAGED!', '#ffd27a');
+        for (const b of S.bots) { if (b.st.mode !== 'telegraph' && b.st.mode !== 'pounce') { b.st.mode = 'chase'; b.lostT = 0; b.last = [S.lastP.x, S.lastP.z]; } }   // szał: wszystkie Furasy ruszają na gracza
     }
 }
 const INTRO = [
     'FURAS lives here: a huge, matted creature with a fluffy tail and a mouth full of teeth.',
     'You hear him purr before you see him: the louder, the closer. Green eyes glow in the dark (some are only illusions).',
-    'He sees up to 16 m ahead, not through cardboard walls, and he hears running from 8 m.',
+    'He sees up to 18 m ahead, not through cardboard walls, hears running from 10 m and smells you for a few seconds after losing sight.',
     'When he crouches and his tail quivers, he POUNCES. The direction is locked at the end: sidestep at the last moment.',
-    'Collect 4 golden fish. The gate at the back opens when you have them all.'
+    'Collect 4 golden fish. The gate at the back opens when you have them all. But every fish makes him faster, more FURASES wake up, and with the last fish he goes into a RAGE.'
 ];
 
 // ---------- AI ----------
-function nearestNode(x, z) { let best = 0, bd = 1e9; NODES.forEach((n, i) => { const d = Math.hypot(n[0] - x, n[1] - z); if (d < bd) { bd = d; best = i; } }); return best; }
-// Następny punkt na drodze do celu po grafie przejść (gdy nie widzi gracza i ściany zasłaniają prostą drogę)
+function nearestNode(x, z, clearFrom) {   // najbliższy węzeł; clearFrom = [x, z]: tylko taki, do którego prosta jest wolna (w razie braku: po prostu najbliższy)
+    let best = -1, bd = 1e9, any = 0, ad = 1e9;
+    NODES.forEach((n, i) => { const d = Math.hypot(n[0] - x, n[1] - z); if (d < ad) { ad = d; any = i; } if (clearFrom && d < bd && lineClear(clearFrom[0], clearFrom[1], n[0], n[1])) { bd = d; best = i; } });
+    return clearFrom && best >= 0 ? best : any;
+}
+// Czy prosta od (x0,z0) do (x1,z1) jest wolna od ścian i skrzyń (na wysokości ok. 0,9 m)?
+function lineClear(x0, z0, x1, z1) {
+    const d = Math.hypot(x1 - x0, z1 - z0), steps = Math.max(1, Math.ceil(d / 0.5));
+    for (let i = 1; i <= steps; i++) {
+        const k = i / steps; _q.set(x0 + (x1 - x0) * k, 0.9, z0 + (z1 - z0) * k);
+        for (const o of L.obstacles) if (o.box3.containsPoint(_q)) return false;
+    }
+    return true;
+}
+// Następny punkt na drodze do celu: prosto, gdy nic nie zasłania, inaczej po grafie przejść. Wybiera najdalszy węzeł trasy, do którego prosta jest wolna
+// (bez progów odległości, które powodowały drgania w miejscu).
 function routeStep(st, tx, tz) {
-    const a = nearestNode(st.x, st.z), b = nearestNode(tx, tz);
-    if (a === b) return [tx, tz];
+    if (lineClear(st.x, st.z, tx, tz)) return [tx, tz];
+    const a = nearestNode(st.x, st.z, [st.x, st.z]), b = nearestNode(tx, tz, [tx, tz]);
     const prev = new Array(NODES.length).fill(-2); prev[a] = -1; const q = [a];
     while (q.length) { const u = q.shift(); if (u === b) break; for (const v of ADJ[u]) if (prev[v] === -2) { prev[v] = u; q.push(v); } }
-    let u = b, nxt = b; while (prev[u] >= 0 && prev[u] !== a) u = prev[u]; nxt = prev[u] === a ? u : b;
-    if (Math.hypot(NODES[a][0] - st.x, NODES[a][1] - st.z) > 3.0) nxt = a;
-    return NODES[nxt];
+    const path = []; for (let u = b; u >= 0; u = prev[u]) path.unshift(u);   // a ... b
+    if (path[0] !== a) return NODES[a];   // brak drogi w grafie: przynajmniej do najbliższego węzła
+    let pick = a;
+    for (let i = 1; i < path.length; i++) { if (lineClear(st.x, st.z, NODES[path[i]][0], NODES[path[i]][1])) pick = path[i]; else break; }
+    return NODES[pick];
 }
 function sees(b, p) {
     const st = b.st, dx = p.x - st.x, dz = p.z - st.z, d = Math.hypot(dx, dz), range = SEE_DIST * (S.df.id === 'nightmare' ? 1.2 : (S.df.id === 'easy' ? 0.8 : 1));
@@ -308,8 +340,23 @@ function sees(b, p) {
     }
     return true;
 }
+// Patrol po grafie: losowy sąsiad (bez cofania się, jeśli jest inne wyjście); z pewnym prawdopodobieństwem idzie w stronę gracza (poluje)
+function pickPatrol(b, p) {
+    const opts = ADJ[b.node].filter(n => n !== b.prevNode), pool = opts.length ? opts : ADJ[b.node], hunt = S.df.id === 'nightmare' ? 0.55 : (S.df.id === 'easy' ? 0.1 : 0.4);
+    let nxt = pool[(Math.random() * pool.length) | 0];
+    if (Math.random() < hunt) { let bd = 1e9; for (const n of ADJ[b.node]) { const d = Math.hypot(NODES[n][0] - p.x, NODES[n][1] - p.z); if (d < bd) { bd = d; nxt = n; } } }
+    b.prevNode = b.node; b.node = nxt; b.goal = NODES[nxt].slice();
+}
+// Zaklinowany Furas nigdy nie stoi w miejscu: najpierw nowy cel, a jeśli to nie pomaga, przeskakuje na najbliższy węzeł
+function unstick(b, p) {
+    const st = b.st; b.stuckN = (b.stuckN || 0) + 1;
+    if (b.stuckN >= 2) { const n = nearestNode(st.x, st.z); st.x = NODES[n][0]; st.z = NODES[n][1]; st.y = 0; st.vy = 0; b.node = n; b.prevNode = -1; b.stuckN = 0; }
+    st.mode = 'patrol'; b.goal = null; st.side = 0; b.invT = 0;
+    if (!b.goal) pickPatrol(b, p);
+}
 function think(dt, ctx) {
-    const p = ctx.body.position, speedXZ = Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), mul = S.df.speed;
+    const p = ctx.body.position, speedXZ = Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), df = S.df;
+    const mul = df.speed * (S.fish >= 4 ? 1 + RAGE_BOOST : 1 + FISH_BOOST * S.fish);   // trudność razy przyspieszenie z rybami
     let seenBy = 0;
     for (const b of S.bots) {
         const st = b.st, seesMe = sees(b, p), dx = p.x - st.x, dz = p.z - st.z, d = Math.hypot(dx, dz), pos = { x: st.x, y: 1.4, z: st.z };
@@ -317,10 +364,20 @@ function think(dt, ctx) {
         if (b.purr <= 0 && d < 24) { b.purr = 1.15; SFX.purr(pos, Math.max(0.12, 1 - d / 24)); }   // pomruk zdradza, jak blisko jest
         if (d < 14) SFX.heartbeat(Math.max(0, 1 - d / 14) * 0.8);
         const tall = Math.abs(p.y - (st.y + 1.0)) < 1.6;
+        // Strażnik: co 2,5 s sprawdza, czy Furas w ogóle się przesunął (poza skokiem i przykucnięciem)
+        if (st.mode === 'patrol' || st.mode === 'investigate' || st.mode === 'chase') {
+            b.wT += dt;
+            if (b.wT >= 2.5) {
+                const moved = Math.hypot(st.x - b.wx, st.z - b.wz); b.wT = 0; b.wx = st.x; b.wz = st.z;
+                if (moved >= 0.5) b.stuckN = 0;
+                else if (st.mode === 'chase') { st.side = Math.random() < 0.5 ? -1 : 1; st.sideT = 1.2; }
+                else unstick(b, p);
+            }
+        } else { b.wT = 0; b.wx = st.x; b.wz = st.z; }
         if (st.mode === 'telegraph') {   // przykuca i drży ogonem, patrzy na gracza; kierunek skoku zapada na końcu
             b.t += dt; b.crouch = Math.min(1, b.t / 0.25);
             const want = Math.atan2(dx, dz); let dd = want - st.dir; while (dd > Math.PI) dd -= Math.PI * 2; while (dd < -Math.PI) dd += Math.PI * 2; st.dir += dd * Math.min(1, dt * 9);
-            if (b.t >= TELEGRAPH * S.df.grace) { st.mode = 'pounce'; b.t = 0; b.dirx = Math.sin(st.dir); b.dirz = Math.cos(st.dir); SFX.screech(pos); }
+            if (b.t >= TELEGRAPH * df.grace) { st.mode = 'pounce'; b.t = 0; b.dirx = Math.sin(st.dir); b.dirz = Math.cos(st.dir); SFX.screech(pos); }
             if (d < CATCH_DIST && tall) { caught(); return; }
             seenBy++; continue;
         }
@@ -333,37 +390,40 @@ function think(dt, ctx) {
         }
         if (st.mode === 'recover') {   // po skoku jest chwilę wolny: czas na ucieczkę
             b.t += dt;
-            stepBot(st, dt, p.x, p.z, p.y - 0.35, CHASE * 0.35 * mul, true);
+            stepBot(st, dt, p.x, p.z, p.y - 0.35, CHASE * 0.4 * mul, true);
             if (d < CATCH_DIST && tall) { caught(); return; }
-            if (b.t >= RECOVER_T) { st.mode = 'chase'; b.lostT = 0; }
+            if (b.t >= RECOVER_T) { st.mode = 'chase'; b.lostT = 0; b.smellT = 0; b.last = [p.x, p.z]; }
             seenBy++; continue;
         }
         const prev = st.mode;
-        if (seesMe) { if (prev !== 'chase') SFX.screech(pos); st.mode = 'chase'; b.lostT = 0; b.last = [p.x, p.z]; seenBy++; }
-        else if (st.mode === 'chase') { b.lostT += dt; if (b.lostT > LOSE_TIME) { st.mode = 'patrol'; st.goal = null; b.node = nearestNode(st.x, st.z); } }
-        else if (speedXZ > 3.4 && d < HEAR_DIST * (S.df.id === 'nightmare' ? 1.3 : 1)) { st.mode = 'investigate'; st.goal = [p.x, p.z]; }
+        if (seesMe) { if (prev !== 'chase') SFX.screech(pos); st.mode = 'chase'; b.lostT = 0; b.smellT = 0; b.last = [p.x, p.z]; seenBy++; }
+        else if (st.mode === 'chase') {
+            b.lostT += dt; b.smellT += dt;
+            if (b.smellT < SMELL_TIME) { b.smellR = (b.smellR || 0) - dt; if (b.smellR <= 0) { b.smellR = 1.2; b.last = [p.x + (Math.random() - 0.5) * 6, p.z + (Math.random() - 0.5) * 6]; } }   // węch: przez kilka sekund wie mniej więcej, gdzie jesteś
+            if (b.lostT > LOSE_TIME) { st.mode = 'patrol'; b.goal = null; b.prevNode = -1; b.node = nearestNode(st.x, st.z, [st.x, st.z]); }
+        }
+        else if (speedXZ > 3.4 && d < HEAR_DIST * (df.id === 'nightmare' ? 1.3 : 1)) { st.mode = 'investigate'; b.goal = [p.x, p.z]; b.invT = 0; }
         let tx, tz, speed = WALK * mul;
         if (st.mode === 'chase') {
             const tgt = seesMe || !b.last ? [p.x, p.z] : b.last; speed = CHASE * mul;
             // Skok: blisko, widzi, jest gotowy
             if (seesMe && b.cd <= 0 && d < POUNCE_RANGE && d > POUNCE_MIN) { st.mode = 'telegraph'; b.t = 0; SFX.growl(pos); continue; }
-            if (seesMe) { tx = tgt[0]; tz = tgt[1]; } else { const r = routeStep(st, tgt[0], tgt[1]); tx = r[0]; tz = r[1]; }
+            const r = seesMe ? tgt : routeStep(st, tgt[0], tgt[1]); tx = r[0]; tz = r[1];
         } else if (st.mode === 'investigate') {
-            speed = INVESTIGATE * mul; const g = st.goal, r = Math.hypot(g[0] - st.x, g[1] - st.z) > 5 ? routeStep(st, g[0], g[1]) : g; tx = r[0]; tz = r[1];
-            if (Math.hypot(g[0] - st.x, g[1] - st.z) < 1.6) { st.mode = 'patrol'; st.goal = null; b.node = nearestNode(st.x, st.z); }
+            speed = INVESTIGATE * mul; b.invT = (b.invT || 0) + dt;
+            if (!b.goal) b.goal = [p.x, p.z];
+            const r = routeStep(st, b.goal[0], b.goal[1]); tx = r[0]; tz = r[1];
+            if (Math.hypot(b.goal[0] - st.x, b.goal[1] - st.z) < 1.6 || b.invT > 10) { st.mode = 'patrol'; b.goal = null; b.prevNode = -1; b.node = nearestNode(st.x, st.z, [st.x, st.z]); }
         } else {
-            // Patrol po grafie przejść: losowy sąsiad, bez cofania się, jeśli jest inne wyjście
-            if (!st.goal || Math.hypot(st.goal[0] - st.x, st.goal[1] - st.z) < 1.4) {
-                const opts = ADJ[b.node].filter(n => n !== b.prevNode), pool = opts.length ? opts : ADJ[b.node], nxt = pool[(Math.random() * pool.length) | 0];
-                b.prevNode = b.node; b.node = nxt; st.goal = NODES[nxt].slice();
-            }
-            tx = st.goal[0]; tz = st.goal[1];
+            if (!b.goal || Math.hypot(b.goal[0] - st.x, b.goal[1] - st.z) < 1.4) pickPatrol(b, p);
+            tx = b.goal[0]; tz = b.goal[1];
         }
         stepBot(st, dt, tx, tz, p.y - 0.35, speed, st.mode === 'chase');
         if (d < CATCH_DIST && tall) { caught(); return; }
     }
     S.seen = seenBy;
 }
+export const testEdges = () => LINKS.filter(([a, c]) => [-0.5, 0, 0.5].some(o => !lineClear(NODES[a][0] + o, NODES[a][1] + o, NODES[c][0] + o, NODES[c][1] + o)));   // dla testów: krawędzie patrolu zasłonięte przez skrzynie lub ściany
 
 // ---------- CO KLATKĘ ----------
 function animateFuras(b, t, dt) {
@@ -397,13 +457,14 @@ export function update(dt, t, ctx) {
     S.ghost.tick(dt, p, S.phase === 'play' && S.caughtT < 0);
     S.fishMesh.forEach((g, i) => { if (!S.got[i]) { g.rotation.y = t * 1.6; g.position.y = 1.1 + Math.sin(t * 2 + i) * 0.1; if (Math.hypot(p.x - FISH[i][0], p.z - FISH[i][1]) < 1.0 && Math.abs(p.y - 1.0) < 1.6) takeFish(i); } });
     S.fakeEyes.forEach((e) => { const k = Math.max(0, Math.sin(t * 0.7 + e.ph)); e.g.children.forEach((c) => { c.material.opacity = k > 0.8 ? 0.9 : 0; }); });
+    S.lastP = { x: p.x, z: p.z };
     S.dust.rotation.y = Math.sin(t * 0.05) * 0.03; S.dust.position.y = Math.sin(t * 0.3) * 0.15;
     if (S.caughtT >= 0) {
         S.caughtT += dt;
         if (S.caughtT > 1.6) {
             if (S.df.checkpoints && S.cp >= 0) {
                 const r = FISH[S.cp]; setPlayerPosition(r[0], 1.0, r[1] + 1.2);
-                S.bots.forEach((b, i) => { b.st.x = STARTS[i][0]; b.st.z = STARTS[i][1]; b.st.mode = 'patrol'; b.st.goal = null; b.lostT = 0; b.cd = 3; b.node = i ? 11 : 6; b.prevNode = -1; b.px = b.st.x; b.pz = b.st.z; });
+                S.bots.forEach((b) => { b.st.x = NODES[b.home][0]; b.st.z = NODES[b.home][1]; b.st.y = 0; b.st.mode = 'patrol'; b.goal = null; b.lostT = 0; b.cd = 3; b.node = b.home; b.prevNode = -1; b.px = b.st.x; b.pz = b.st.z; b.wx = b.st.x; b.wz = b.st.z; b.wT = 0; b.stuckN = 0; });
                 S.caughtT = -1;
             } else { S.leaving = true; ctx.goto('furas'); return; }
         }

@@ -11,6 +11,7 @@ import * as M from '../core/murals.js';
 import { computer, shop, board, dailyBoard } from '../core/ui.js';
 import { machine, attachGorillaMachine, detachGorillaMachine, updateGorillaMachine } from '../core/gorillamachine.js';
 import { track } from '../core/economy.js';
+import { buildTrainingDummy, updateTrainingDummy } from '../core/trainingdummy.js';
 
 export const info = { id: 'lobby', name: 'Lobby', spawn: [0, 2, 0] };
 const ENV = LP.envIntensity;
@@ -79,6 +80,7 @@ export function build() {
     buildShop();
     buildChains();
     buildParticles();
+    buildTrainingDummy(-5.5, 2.2, Math.PI / 2 - 0.35);   // manekin do testów młotków ekipy (Nothing Hammer), obok miejsca startu; przed ozdobnymi manekinami, bo rezerwuje miejsce
     buildMannequins();
     for (const r of [[4, 18, -4, 12], [-4, 18, 4, 12], [0, 15, 0, 10], [6, 15, 6, 10], [-8, 14, -2, 9]]) addGutsRope(r[0], r[1], r[2], r[3]);
     createEyeball('ball1', 2, 1, -2); createEyeball('ball2', -2, 1, -2);
@@ -572,7 +574,7 @@ export function update(dt, t, ctx) {
     }
     if (fx.flyN > 0) fx.flyGeo.attributes.position.needsUpdate = true;
     updateGorillaMachine(dt);
-    updateMannequins(dt);
+    updateMannequins(dt); updateTrainingDummy(dt);
     // Zadanie dzienne: stanie na szczycie spiralnych schodów
     const p = ctx.pos;
     if (p.y > 15.4 && Math.hypot(p.x + 7, p.z + 7) < 2.2) track('top');

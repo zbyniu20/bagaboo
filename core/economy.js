@@ -439,18 +439,26 @@ export function getLook() {
 }
 // Napisy ról nad głową do wyboru w Gorilla Machine (np. BoyIsGamer: owner, admin, mod). Konto z jedną rolą nie ma wyboru (null = bez filtra).
 export function roleTagOptions() { return roleTagsFor(SAVE.profile.name).map(r => ({ id: r.id, text: r.text })); }
+// Zapisujemy, które napisy gracz WYŁĄCZYŁ (roleTagsOff), a nie które włączył: dzięki temu nowa rola (np. FURAS) pokazuje się od razu, także na starym zapisie.
+// Stary zapis (lista pokazywanych roleTags) jest przy odczycie przeliczany na listę wyłączonych; nowych ról w nim nie było, więc FURAS zostaje widoczny.
+function hiddenRoleTags(all) {
+    const off = SAVE.profile.roleTagsOff;
+    if (Array.isArray(off)) return off;
+    const sel = SAVE.profile.roleTags;
+    return Array.isArray(sel) ? all.filter(id => id !== 'furas' && !sel.includes(id)) : [];
+}
 export function activeRoleTags() {
-    const all = roleTagOptions().map(o => o.id), sel = SAVE.profile.roleTags;
+    const all = roleTagOptions().map(o => o.id);
     if (all.length < 2) return null;
-    const pick = Array.isArray(sel) ? all.filter(id => sel.includes(id)) : all;
+    const off = hiddenRoleTags(all), pick = all.filter(id => !off.includes(id));
     return pick.length ? pick : all;
 }
-// Włącza / wyłącza jeden napis; zawsze zostaje przynajmniej jeden (pokazać można 1, 2 albo 3)
+// Włącza / wyłącza jeden napis; zawsze zostaje przynajmniej jeden (pokazać można od 1 do wszystkich)
 export function toggleRoleTag(id) {
     const cur = activeRoleTags(); if (!cur) return;
-    const next = cur.includes(id) ? cur.filter(x => x !== id) : cur.concat(id);
+    const all = roleTagOptions().map(o => o.id), next = cur.includes(id) ? cur.filter(x => x !== id) : cur.concat(id);
     if (!next.length) return;
-    SAVE.profile.roleTags = next; saveGame(); notifyLook();
+    SAVE.profile.roleTagsOff = all.filter(x => !next.includes(x)); delete SAVE.profile.roleTags; saveGame(); notifyLook();
 }
 // Ukrywanie własnego napisu z rolą nad głową (przełącznik w pokoju szefa)
 export function setHideTag(on) { SAVE.profile.hideTag = !!on; saveGame(); notifyLook(); }

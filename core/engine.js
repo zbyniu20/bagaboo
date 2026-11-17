@@ -87,6 +87,7 @@ export const L = {
     root: new THREE.Group(),
     obstacles: [], trampolines: [], ropes: [], throwables: [], bodies: [], constraints: [], reserved: [],
     portals: [],      // przejścia do innych poziomów { box3, target, spawn, onEnter }
+    hammerTargets: [],   // cele młotków ekipy poza graczami, np. manekin treningowy w lobby { chest: Vector3, r, hit(tool, headPos) }
     tramp: null,      // animacja maty trampoliny { mat, k }
     heldId: null,     // id piłki trzymanej przez lokalnego gracza
     spawn: [0, 2, 0],
@@ -98,7 +99,7 @@ scene.add(L.root);
 export function clearLevel() {
     for (const c of L.constraints) world.removeConstraint(c);
     for (const b of L.bodies) world.removeBody(b);
-    for (const k of ['obstacles', 'trampolines', 'ropes', 'throwables', 'bodies', 'constraints', 'reserved', 'portals']) L[k].length = 0;
+    for (const k of ['obstacles', 'trampolines', 'ropes', 'throwables', 'bodies', 'constraints', 'reserved', 'portals', 'hammerTargets']) L[k].length = 0;
     L.tramp = null; L.heldId = null; L.floorY = undefined;
     L.bounds = { minX: -14.6, maxX: 14.6, minZ: -14.6, maxZ: 14.6, maxY: 19.6 };
     // Zwolnienie pamięci karty graficznej po starym poziomie
