@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "grep -q \"git commit\" || exit 0; cd \"${CLAUDE_PROJECT_DIR:-.}/tests\" && npm run fast 1>&2 || { echo \"ZABLOKOWANO commit: npm run fast nie przechodzi, popraw testy\" >&2; exit 2; }",
+            "timeout": 120,
+            "statusMessage": "Szybkie testy przed commitem..."
+          }
+        ]
+      }
+    ]
+  }
+}
