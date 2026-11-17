@@ -15,6 +15,9 @@ import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { createGhost } from '../core/runkit.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, introSeen } from '../core/levelkit.js';
+import { stepPhase, registerFinish, raceOutcome, outcomeReward } from '../core/racelogic.js';
+import { pastFinishLine, elapsedSince } from '../core/netguard.js';
+import { headOf } from '../core/roundkit.js';
 import { ARRIVAL_FROM_RACE } from './games.js';
 
 const WAIT = 12, SOLO_WAIT = 4, COUNTDOWN = 4, RACE_MAX = 170, GRACE = 20, RESULTS = 9, REWARD = 200, PAR = 95;
@@ -127,7 +130,7 @@ const toNet = (id) => id === 'me' ? N.myId() : id;
 const fromNet = (id) => id === N.myId() ? 'me' : id;
 function onNet(msg, from) {
     if (!S || !msg) return;
-    if (N.NET.mode === 'host') { if (msg.k === 'fin') handleFinish(from, msg.t); return; }
+    if (N.NET.mode === 'host') { if (msg.k === 'fin') guestFinish(from); return; }
     if (msg.k !== 'st') return;
     S.lastHostMsg = S.clock;
     const prev = S.phase;
@@ -147,38 +150,31 @@ function startedCountdown() {
     setPlayerPosition(START[0] + (Math.random() - 0.5) * 5, START[1], START[2] + (Math.random() - 0.5) * 3);
     toast('Get ready!', '#ff7ac0');
 }
-function startedRace() { toast('GO!', '#7fff90'); SFX.roar(0.5); buzz('both', 0.6, 250); }
-function handleFinish(id, t) {
-    if (S.phase !== 'race' || S.order.includes(id)) return;
-    S.order.push(id); S.times[id] = Math.round(t * 10) / 10;
-    if (S.order.length === 1) S.t = Math.min(S.t, GRACE);   // po pierwszym na mecie reszta ma jeszcze chwilę
-}
+function startedRace() { S.t0 = S.clock; toast('GO!', '#7fff90'); SFX.roar(0.5); buzz('both', 0.6, 250); }
+// Meta gościa: host nie ufa zgłoszonemu czasowi ani samemu zgłoszeniu. Liczy tylko, gdy głowa gracza jest przy mecie, a czas bierze z własnego zegara
+function guestFinish(id) { if (S.phase === 'race' && S.finish && pastFinishLine(headOf(id), S.finish.z, S.finish.top - 1)) handleFinish(id, elapsedSince(S.clock, S.t0)); }
+function handleFinish(id, t) { if (S.phase === 'race') registerFinish(S, id, t, GRACE); }
 function roundOver() {
     if (S.rewarded) return; S.rewarded = true;
-    const total = S.total || participants().length, mine = S.order.indexOf('me');
-    if (total >= 2) {
-        if (mine === 0) { toast('You won the race!', '#7fc47f'); levelReward('race', REWARD, REWARD, 'won the race'); }
-        else if (mine > 0) toast('You finished #' + (mine + 1), '#ffd27a');
-        else toast('You did not finish', '#e0533f');
-    } else if (mine === 0) {
-        const t = S.times.me, rec = recordTime('race', t);
-        S.ghost.finish(rec, t);
-        if (t <= PAR) { toast('Under par (' + PAR + ' s)! ' + t.toFixed(1) + ' s', '#7fc47f'); levelReward('race', 150, 150, 'beat the par time'); }
-        else toast('Finished in ' + t.toFixed(1) + ' s. Par is ' + PAR + ' s', '#ffd27a');
+    const total = S.total || participants().length, o = raceOutcome(S.order, total, S.times, PAR);
+    if (o.kind === 'won') toast('You won the race!', '#7fc47f');
+    else if (o.kind === 'place') toast('You finished #' + o.place, '#ffd27a');
+    else if (o.kind === 'dnf') toast('You did not finish', '#e0533f');
+    else if (o.kind === 'par' || o.kind === 'slow') {
+        const rec = recordTime('race', o.time); S.ghost.finish(rec, o.time);
+        toast(o.kind === 'par' ? 'Under par (' + PAR + ' s)! ' + o.time.toFixed(1) + ' s' : 'Finished in ' + o.time.toFixed(1) + ' s. Par is ' + PAR + ' s', o.kind === 'par' ? '#7fc47f' : '#ffd27a');
     } else toast('Time ran out. Try again!', '#e0533f');
+    const reward = outcomeReward(o, REWARD, 150); if (reward) levelReward('race', reward, reward, o.kind === 'won' ? 'won the race' : 'beat the par time');
 }
 
 // ---------- MÓZG RUNDY (host albo gracz solo) ----------
 function think(dt) {
-    S.t -= dt;
-    if (S.phase === 'wait') {
-        if (S.t <= 0) { S.phase = 'countdown'; S.t = COUNTDOWN; S.total = participants().length; startedCountdown(); }
-    } else if (S.phase === 'countdown') {
-        if (S.t <= 0) { S.phase = 'race'; S.t = RACE_MAX; startedRace(); }
-    } else if (S.phase === 'race') {
-        const parts = participants();
-        if (S.t <= 0 || parts.every(id => S.order.includes(id))) { S.phase = 'results'; S.t = RESULTS; roundOver(); }
-    } else if (S.phase === 'results' && S.t <= 0) { S.phase = 'wait'; S.t = N.NET.mode === 'solo' ? SOLO_WAIT : WAIT; S.order = []; S.times = {}; }
+    const r = stepPhase(S.phase, S.t, dt, { play: 'race', countdown: COUNTDOWN, roundMax: RACE_MAX, results: RESULTS, wait: N.NET.mode === 'solo' ? SOLO_WAIT : WAIT, allFinished: S.phase === 'race' && participants().every(id => S.order.includes(id)) });
+    S.phase = r.phase; S.t = r.t;
+    if (r.event === 'countdown') { S.total = participants().length; startedCountdown(); }
+    else if (r.event === 'play') startedRace();
+    else if (r.event === 'results') roundOver();
+    else if (r.event === 'wait') { S.order = []; S.times = {}; }
 }
 
 // ---------- CO KLATKĘ ----------

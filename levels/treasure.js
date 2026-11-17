@@ -12,7 +12,8 @@ import { setPlayerPosition } from '../core/player.js';
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
-import { participants, isAuthority, toNet, fromNet } from '../core/roundkit.js';
+import { participants, isAuthority, toNet, fromNet, headOf } from '../core/roundkit.js';
+import { nearTarget, validIndex, TOL } from '../core/netguard.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, introSeen } from '../core/levelkit.js';
 import { ARRIVAL_FROM_TREASURE } from './games.js';
 
@@ -68,7 +69,7 @@ function placeTreasures(seed) {
 // ---------- SIEĆ ----------
 function onNet(msg, from) {
     if (!S || !msg) return;
-    if (N.NET.mode === 'host') { if (msg.k === 'got') take(+msg.i, from); return; }
+    if (N.NET.mode === 'host') { if (msg.k === 'got') hostGot(msg.i, from); return; }
     if (msg.k !== 'st') return;
     S.lastHostMsg = S.clock;
     const prev = S.phase;
@@ -98,6 +99,8 @@ function roundOver() {
 }
 
 // ---------- MÓZG RUNDY ----------
+// Zebranie skarbu przez gościa: host przyjmuje je tylko dla poprawnego indeksu i gdy głowa gracza jest przy tym skarbie (z zapasem na opóźnienie sieci)
+function hostGot(i, id) { if (validIndex(i, COUNT) && S.tre[i] && nearTarget(headOf(id), S.tre[i], GRAB + TOL.GRAB)) take(i, id); }
 function take(i, id) {
     if (S.phase !== 'play' || !(i >= 0 && i < COUNT) || S.taken[i]) return;
     S.taken[i] = id; S.scores[id] = (S.scores[id] || 0) + 1;
