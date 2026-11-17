@@ -164,6 +164,8 @@ if (data.length) data.forEach((m) => fail('data: ' + m)); else ok('data: achieve
 for (const lv of LEVELS) {
     setPhase(lv);
     try {
+        // pokój szefa (staff) uznaje gracza bez roli i bez zaproszenia za włamywacza (CHEATER, ban, przeładowanie strony), więc test wchodzi tam jako zaproszony
+        await run(`const N = await import('./core/network.js'); N.setInvitedToStaff(${lv === 'staff'}); return 1;`);
         await run(`const M = await import('./main.js'); const PL = await import('./core/player.js'); await M.loadLevel('${lv}'); if ('${lv}' === 'wardrobe') PL.setPlayerPosition(-5, 1.0, 0); return 1;`);
         await waitFrames(2);
         const r = await run(`const ENG = await import('./core/engine.js'), I = ENG.renderer.info; let pl = 0; ENG.scene.traverse(o => { if (o.isPointLight && o.visible) pl++; }); return { calls: I.render.calls, tris: I.render.triangles, pl: pl };`);
