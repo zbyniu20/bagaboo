@@ -16,6 +16,9 @@ import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { createGhost } from '../core/runkit.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, introSeen } from '../core/levelkit.js';
+import { stepPhase, registerFinish, raceOutcome, outcomeReward } from '../core/racelogic.js';
+import { pastFinishLine, elapsedSince } from '../core/netguard.js';
+import { headOf } from '../core/roundkit.js';
 import { ARRIVAL_FROM_REDLIGHT } from './games.js';
 
 const AX = 14, Z0 = 24, Z1 = -58, START_Z = 20, FINISH_Z = -48, DOLL_Z = -53, H = 10;   // hala 28 x 82 m: dwa razy dłuższy bieg i dwa razy szersza
@@ -74,7 +77,7 @@ const toNet = (id) => id === 'me' ? N.myId() : id;
 const fromNet = (id) => id === N.myId() ? 'me' : id;
 function onNet(msg, from) {
     if (!S || !msg) return;
-    if (N.NET.mode === 'host') { if (msg.k === 'fin') handleFinish(from, msg.t); return; }
+    if (N.NET.mode === 'host') { if (msg.k === 'fin') guestFinish(from); return; }
     if (msg.k !== 'st') return;
     S.lastHostMsg = S.clock;
     const prev = S.phase;
@@ -98,39 +101,38 @@ function startedCountdown() {
     setPlayerPosition((Math.random() * 2 - 1) * 11, 1.0, START_Z + 1.5 + Math.random() * 2);
     toast('Get ready!', '#ff7a7a');
 }
-function startedPlay() { toast('GO! Run on green, freeze on red!', '#7fff90'); SFX.roar(0.4); }
-function handleFinish(id, t) {
-    if (S.phase !== 'play' || S.order.includes(id)) return;
-    S.order.push(id); S.times[id] = Math.round(t * 10) / 10;
-    if (S.order.length === 1) S.t = Math.min(S.t, GRACE);
-}
+function startedPlay() { S.t0 = S.clock; toast('GO! Run on green, freeze on red!', '#7fff90'); SFX.roar(0.4); }
+// Meta gościa: host nie ufa zgłoszonemu czasowi ani samemu zgłoszeniu. Liczy tylko, gdy głowa gracza jest za linią mety, a czas bierze z własnego zegara
+function guestFinish(id) { if (S.phase === 'play' && pastFinishLine(headOf(id), FINISH_Z)) handleFinish(id, elapsedSince(S.clock, S.t0)); }
+function handleFinish(id, t) { if (S.phase === 'play') registerFinish(S, id, t, GRACE); }
 function roundOver() {
     if (S.rewarded) return; S.rewarded = true;
-    const total = S.total || participants().length, mine = S.order.indexOf('me');
-    if (total >= 2) {
-        if (mine === 0) { toast('You won!', '#7fc47f'); levelReward('redlight', REWARD, REWARD, 'won Red Light'); }
-        else if (mine > 0) toast('You finished #' + (mine + 1), '#ffd27a'); else toast('You did not make it', '#e0533f');
-    } else if (mine === 0) {
-        const t = S.times.me, rec = recordTime('redlight', t); S.ghost.finish(rec, t);
-        if (t <= PAR) { toast('Under par (' + PAR + ' s)! ' + t.toFixed(1) + ' s', '#7fc47f'); levelReward('redlight', 150, 150, 'beat the par time'); }
-        else toast('Finished in ' + t.toFixed(1) + ' s. Par is ' + PAR + ' s', '#ffd27a');
+    const total = S.total || participants().length, o = raceOutcome(S.order, total, S.times, PAR);
+    if (o.kind === 'won') toast('You won!', '#7fc47f');
+    else if (o.kind === 'place') toast('You finished #' + o.place, '#ffd27a');
+    else if (o.kind === 'dnf') toast('You did not make it', '#e0533f');
+    else if (o.kind === 'par' || o.kind === 'slow') {
+        const rec = recordTime('redlight', o.time); S.ghost.finish(rec, o.time);
+        toast(o.kind === 'par' ? 'Under par (' + PAR + ' s)! ' + o.time.toFixed(1) + ' s' : 'Finished in ' + o.time.toFixed(1) + ' s. Par is ' + PAR + ' s', o.kind === 'par' ? '#7fc47f' : '#ffd27a');
     } else toast('Time ran out. Try again!', '#e0533f');
+    const reward = outcomeReward(o, REWARD, 150); if (reward) levelReward('redlight', reward, reward, o.kind === 'won' ? 'won Red Light' : 'beat the par time');
 }
 
 // ---------- MÓZG RUNDY ----------
 function think(dt) {
-    S.t -= dt;
-    if (S.phase === 'wait') { if (S.t <= 0) { S.phase = 'countdown'; S.t = COUNTDOWN; S.total = participants().length; startedCountdown(); } }
-    else if (S.phase === 'countdown') { if (S.t <= 0) { S.phase = 'play'; S.t = N.NET.mode === 'solo' ? ROUND : ROUND; S.lightT = 3; startedPlay(); } }
-    else if (S.phase === 'play') {
+    if (S.phase === 'play') {   // sygnalizacja świetlna działa w trakcie biegu, niezależnie od zegara rundy
         S.lightT -= dt;
         if (S.lightT <= 0) {
             const next = S.light === 'green' ? 'red' : 'green';
             S.lightN++; setLight(next); S.lightT = next === 'green' ? 2.5 + Math.random() * 3 : 2 + Math.random() * 1.5;
         }
-        const parts = participants();
-        if (S.t <= 0 || parts.every(id => S.order.includes(id))) { S.phase = 'results'; S.t = RESULTS; roundOver(); }
-    } else if (S.phase === 'results' && S.t <= 0) { S.phase = 'wait'; S.t = N.NET.mode === 'solo' ? SOLO_WAIT : WAIT; S.order = []; S.times = {}; setLight('green'); }
+    }
+    const r = stepPhase(S.phase, S.t, dt, { play: 'play', countdown: COUNTDOWN, roundMax: ROUND, results: RESULTS, wait: N.NET.mode === 'solo' ? SOLO_WAIT : WAIT, allFinished: S.phase === 'play' && participants().every(id => S.order.includes(id)) });
+    S.phase = r.phase; S.t = r.t;
+    if (r.event === 'countdown') { S.total = participants().length; startedCountdown(); }
+    else if (r.event === 'play') { S.lightT = 3; startedPlay(); }
+    else if (r.event === 'results') roundOver();
+    else if (r.event === 'wait') { S.order = []; S.times = {}; setLight('green'); }
 }
 
 // ---------- CO KLATKĘ ----------

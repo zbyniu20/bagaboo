@@ -148,4 +148,15 @@ check('network.js: the host keeps the verified nick in conn.vNick', /conn\.vNick
 check('network.js: reserved nicks without proof are sent to login', /isReservedNick\(nm\)\)\s*\{\s*requireLogin\(conn\)/.test(net));
 check('network.js: guests leave a room whose host fakes a reserved nick', /hostGraceOver\)\s*checkHost\(\)/.test(net) && /HOST_PROOF_WAIT_MS/.test(net));
 
+// Zgłoszenia gości w trybach rund (meta, wynik, skarb) host sprawdza strażnikiem z core/netguard.js, a nie przyjmuje na wiarę (CLAUDE.md: nie ufaj klientowi)
+const modeFiles = fs.readdirSync(path.join(ROOT, 'levels')).filter(f => f.endsWith('.js')).map(f => 'levels/' + f).concat(['core/racemode.js']);
+let guarded = 0;
+for (const f of modeFiles) {
+    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    if (/msg\.k === 'fin'/.test(src)) { guarded++; check(f + ': the host validates a guest finish (guestFinish + finish line from the host\'s own view of the player)', /guestFinish\(from\)/.test(src) && /function guestFinish/.test(src) && /(pastFinishLine|S\.finish)\(/.test(src) && /elapsedSince\(/.test(src)); check(f + ': the host never takes the finish time from the client', !/handleFinish\(from, msg\.t\)/.test(src)); }
+    if (/msg\.k === 'score'/.test(src)) { guarded++; check(f + ': the host clamps a guest score and never uses the client-sent name', /clampScore\(/.test(src) && !/msg\.name/.test(src)); }
+    if (/msg\.k === 'got'/.test(src)) { guarded++; check(f + ': the host checks that a guest is near the treasure it claims', /nearTarget\(/.test(src) && /validIndex\(/.test(src) && !/take\(\+msg\.i/.test(src)); }
+}
+check('guest results: the guarded modes were found (race, redlight, racemode, range, treasure)', guarded >= 5, guarded);
+
 done('logic');

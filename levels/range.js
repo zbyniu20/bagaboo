@@ -14,6 +14,7 @@ import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions , introSeen } from '../core/levelkit.js';
 import { ARRIVAL_FROM_RANGE } from './games.js';
+import { clampScore, safeName } from '../core/netguard.js';
 
 const WAIT = 8, ROUND = 120, RESULTS = 8, REWARD = 200, SOLO_WIN = 25;
 const MAX_ACTIVE = 3, SHOW_TIME = 3.5;
@@ -133,14 +134,19 @@ function isAuthority() {
 }
 function onNet(msg, from) {
     if (!S || !msg) return;
-    if (N.NET.mode === 'host') { if (msg.k === 'score') S.scores[from] = { name: msg.name, s: msg.s }; return; }
+    if (N.NET.mode === 'host') { if (msg.k === 'score') hostScore(from, msg.s); return; }
     if (msg.k !== 'st') return;
     S.lastHostMsg = S.clock;
     const prev = S.phase; S.phase = msg.ph; S.t = msg.t; S.list = msg.list || [];
     if (msg.ph === 'play' && prev !== 'play') startRound();
     if (msg.ph === 'results' && prev !== 'results') endRound(msg.win || []);
 }
-function startRound() { S.kills = 0; S.rewarded = false; clearTargets(); S.spawnT = 0.5; toast('Shoot the monsters!', '#ffd27a'); }
+// Wynik gościa: host nie ufa zgłoszonej liczbie ani nazwie. Wynik rośnie najwyżej tak szybko, jak pojawiają się potwory (ok. 1 na sekundę, plus zapas), a nazwa pochodzi z hosta
+function hostScore(id, s) {
+    const prev = S.scores[id];
+    S.scores[id] = { name: safeName(N.nameOfPlayer(id)), s: clampScore(prev ? prev.s : 0, s, S.clock - (prev ? prev.t : S.t0 || 0), 1, 3), t: S.clock };
+}
+function startRound() { S.t0 = S.clock; S.kills = 0; S.rewarded = false; clearTargets(); S.spawnT = 0.5; toast('Shoot the monsters!', '#ffd27a'); }
 function endRound(winners) {
     clearTargets();
     if (S.rewarded) return; S.rewarded = true;
