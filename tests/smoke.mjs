@@ -396,9 +396,29 @@ const modeSim = await run(`
         const SW = await import('./core/workshopstore.js'); SW.WS.slots = [SW.WS.slots[0], null, null]; SW.WS.sel = 0; SW.WS.slots[0] = 'AAAA';
         m = await load('custom'); if (ENG.L.obstacles.length < 5) bad.push('custom: a broken saved map should fall back to the demo course'); SW.WS.slots[0] = null;
     }
+    // Hot Potato: boty uzupełniają pokój do 4 uczestników (sam: 3 boty, dwóch graczy: 2, czterech: 0)
+    {
+        const NW = await import('./core/network.js');
+        const fake = (n) => { for (let i = 0; i < n; i++) NW.playersState['peer' + i] = { lvl: 'potato', head: { p: [2 + i, 1.6, 6], q: [0, 0, 0, 1] }, profile: { name: 'Friend' + i } }; };
+        const clear = () => { for (const k of Object.keys(NW.playersState)) delete NW.playersState[k]; NW.NET.mode = 'solo'; };
+        try {
+            for (const [humans, want] of [[1, 3], [2, 2], [3, 1], [4, 0]]) {
+                clear(); if (humans > 1) { NW.NET.mode = 'host'; fake(humans - 1); }
+                m = await load('potato');
+                if (!until(m, d => d.phase === 'play', 500)) { bad.push('potato: the round never started with ' + humans + ' player(s)'); continue; }
+                const d = m.debug();
+                if (d.nbots !== want || d.alive.length !== humans + want) bad.push('potato: ' + humans + ' player(s) should get ' + want + ' bot(s) and ' + (humans + want) + ' alive, got ' + JSON.stringify(d));
+                step(m, 20); const d2 = m.debug();
+                if (want > 0 && d2.bots.length !== want) bad.push('potato: expected ' + want + ' moving bots, got ' + d2.bots.length);
+            }
+            // sami żywi ludzie odpadli: runda z botami się kończy (tu: wszyscy ludzie poza grą)
+            clear(); m = await load('potato'); until(m, d => d.phase === 'play', 500);
+            if (!until(m, d => d.phase === 'results' || d.alive.length <= 1, 2500, () => { PL.playerBody.position.set(0, 1.0, 12); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('potato: a solo round with bots never ended');
+        } finally { clear(); }
+    }
     return bad;
 `);
-if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels and Games terminals, Statues, Blind Tag, the lobby (group gate, night shift) and the Workshop with Custom Race simulate correctly');
+if (modeSim.length) modeSim.forEach((m) => fail('modes: ' + m)); else ok('modes: Swing Run, Tower Climb, Nursery, Hotel, Levels and Games terminals, Statues, Blind Tag, the lobby (group gate, night shift) and the Workshop with Custom Race and Hot Potato bots simulate correctly');
 
 // ---- stats / achievements / audio ----
 setPhase('stats');

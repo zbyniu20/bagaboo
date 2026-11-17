@@ -16,6 +16,7 @@ import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { participants, isAuthority, handsOf, headOf, touching, toNet, fromNet } from '../core/roundkit.js';
+import { botsNeeded, humansIn, rewardWithBots, spawnX, encodeBots, decodeBots, nearestTo, fleePoint, wanderPoint } from '../core/botcrew.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, introSeen } from '../core/levelkit.js';
 import { ARRIVAL_FROM_POTATO } from './games.js';
 
@@ -29,7 +30,7 @@ const bots = {};
 export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -A + 0.4, maxX: A - 0.4, minZ: -A + 0.4, maxZ: A - 0.4, maxY: H - 0.4 };
-    S = { clock: 0, phase: 'wait', t: N.NET.mode === 'solo' ? SOLO_WAIT : WAIT, alive: new Set(), out: new Set(), holder: null, from: null, fuse: 0, delay: 0, coolUntil: 0, lockUntil: 0, solo: true, winner: null, iAmOut: false, lastHostMsg: -10, netT: 0, hudT: 0, introT: 10, rewarded: false, ev: { n: 0 }, seenEv: 0, tickT: 0, spriteSec: -1, roundT: 0 };
+    S = { clock: 0, phase: 'wait', t: N.NET.mode === 'solo' ? SOLO_WAIT : WAIT, alive: new Set(), out: new Set(), holder: null, from: null, fuse: 0, delay: 0, coolUntil: 0, lockUntil: 0, solo: true, nbots: 0, winner: null, iAmOut: false, lastHostMsg: -10, netT: 0, hudT: 0, introT: 10, rewarded: false, ev: { n: 0 }, seenEv: 0, tickT: 0, spriteSec: -1, roundT: 0 };
     buildArena();
     buildDoor({ x: 0, z: A - 0.03, rotY: Math.PI, label: 'GAMES', color: '#d080ff', wood: 0x3a3048, portal: { target: 'games', spawn: ARRIVAL_FROM_POTATO, onEnter: () => toast('Back to BagaBoo Games') } });
     // Bomba nad głową trzymającego: tekst z liczbą sekund
@@ -92,7 +93,7 @@ function startedPlay() {
 function roundOver() {
     if (S.rewarded) return; S.rewarded = true;
     L.bounds = { minX: -A + 0.4, maxX: A - 0.4, minZ: -A + 0.4, maxZ: A - 0.4, maxY: H - 0.4 };
-    if (S.winner === 'me') { toast('You are the last one standing!', '#7fc47f'); levelReward('potato', S.solo ? 150 : REWARD, S.solo ? 150 : REWARD, 'won Hot Potato'); }
+    if (S.winner === 'me') { toast('You are the last one standing!', '#7fc47f'); { const r = rewardWithBots(S.nbots, REWARD, 150); levelReward('potato', r, r, 'won Hot Potato'); } }
     else if (S.winner) toast(nameOf(S.winner) + ' wins.', '#ffd27a'); else toast('Draw!', '#ffd27a');
 }
 
@@ -101,15 +102,29 @@ function onNet(msg) {
     if (!S || !msg || N.NET.mode === 'host' || msg.k !== 'st') return;
     S.lastHostMsg = S.clock;
     const prev = S.phase;
-    S.phase = msg.ph; S.t = msg.t; S.solo = !!msg.solo; S.fuse = msg.f; S.winner = msg.w ? fromNet(msg.w) : null;
+    S.phase = msg.ph; S.t = msg.t; S.solo = !!msg.solo; S.nbots = Math.max(0, Math.min(3, msg.nb | 0)); applyBotPositions(msg.bp); S.fuse = msg.f; S.winner = msg.w ? fromNet(msg.w) : null;
     S.alive = new Set((msg.al || []).map(fromNet)); S.out = new Set((msg.out || []).map(fromNet));
     S.holder = msg.h ? fromNet(msg.h) : null;
     if (msg.ev && msg.ev.n > S.seenEv) { S.seenEv = msg.ev.n; applyEvent({ k: msg.ev.k, id: msg.ev.id ? fromNet(msg.ev.id) : null }); }
     if (msg.ph === 'play' && prev !== 'play') startedPlay();
     if (msg.ph === 'results' && prev !== 'results') roundOver();
 }
+// Boty uzupełniające: host liczy ich ruch i wysyła pozycje, gość tylko je wyświetla (decodeBots czyści dane z sieci)
+const activeBots = () => { const out = []; for (let i = 0; i < S.nbots; i++) if (S['bot' + i].st) out.push(S['bot' + i].st); return out; };
+function applyBotPositions(raw) {
+    for (const k in bots) if (!(+k.slice(1) < S.nbots)) delete bots[k];
+    decodeBots(raw, S.nbots, A).forEach((e, i) => {
+        const b = S['bot' + i], id = 'b' + i; if (!b.st) b.st = createBot(e[0], e[1]);
+        b.tx = e[0]; b.tz = e[1]; b.td = e[2];
+        if (!bots[id]) bots[id] = { head: () => new THREE.Vector3(b.st.x, b.st.y + 1.6, b.st.z), st: b.st, mesh: b.mesh, dead: false };
+    });
+}
+function smoothBots(dt) {
+    const k = Math.min(1, dt * 8);
+    for (let i = 0; i < S.nbots; i++) { const b = S['bot' + i]; if (!b.st || b.tx === undefined) continue; b.st.x += (b.tx - b.st.x) * k; b.st.z += (b.tz - b.st.z) * k; let dd = b.td - b.st.dir; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); b.st.dir += dd * k; }
+}
 function broadcast() {
-    N.sendLevelMsg({ k: 'st', ph: S.phase, t: S.t, solo: S.solo, f: Math.round(S.fuse * 10) / 10, w: S.winner ? toNet(S.winner) : null, al: [...S.alive].map(toNet), out: [...S.out].map(toNet), h: S.holder ? toNet(S.holder) : null, ev: { n: S.ev.n, k: S.ev.k, id: S.ev.id ? toNet(S.ev.id) : null } });
+    N.sendLevelMsg({ k: 'st', ph: S.phase, t: S.t, solo: S.solo, nb: S.nbots, bp: encodeBots(activeBots()), f: Math.round(S.fuse * 10) / 10, w: S.winner ? toNet(S.winner) : null, al: [...S.alive].map(toNet), out: [...S.out].map(toNet), h: S.holder ? toNet(S.holder) : null, ev: { n: S.ev.n, k: S.ev.k, id: S.ev.id ? toNet(S.ev.id) : null } });
 }
 
 // ---------- MÓZG RUNDY ----------
@@ -119,9 +134,9 @@ function think(dt, p) {
     if (S.phase === 'wait') {
         if (S.t <= 0) {
             const parts = participants('potato');
-            S.solo = parts.length < 2; S.alive = new Set(parts); S.out = new Set(); S.winner = null; S.holder = null; S.from = null; S.roundT = 0; S.delay = FIRST_DELAY;
+            S.solo = parts.length < 2; S.nbots = botsNeeded('potato', parts.length); S.alive = new Set(parts); S.out = new Set(); S.winner = null; S.holder = null; S.from = null; S.roundT = 0; S.delay = FIRST_DELAY;
             for (const k in bots) delete bots[k];
-            if (S.solo) for (let i = 0; i < 3; i++) { const b = S['bot' + i], id = 'b' + i; b.st = createBot((i - 1) * 8, -6); b.dead = false; bots[id] = { head: () => new THREE.Vector3(b.st.x, b.st.y + 1.6, b.st.z), st: b.st, mesh: b.mesh, dead: false }; S.alive.add(id); }
+            for (let i = 0; i < S.nbots; i++) { const b = S['bot' + i], id = 'b' + i; b.st = createBot(spawnX(i, S.nbots), -6); b.dead = false; bots[id] = { head: () => new THREE.Vector3(b.st.x, b.st.y + 1.6, b.st.z), st: b.st, mesh: b.mesh, dead: false }; S.alive.add(id); }
             S.phase = 'play'; S.t = MAX_ROUND; startedPlay();
         }
     } else if (S.phase === 'play') {
@@ -139,29 +154,29 @@ function think(dt, p) {
             if (S.fuse <= 0) {
                 const dead = S.holder; S.alive.delete(dead); S.out.add(dead); S.holder = null; S.delay = NEXT_DELAY; post('boom', dead);
                 if (S.alive.size <= 1) { endRound([...S.alive][0] || null); return; }
+                if (S.nbots > 0 && humansIn([...S.alive]).length === 0) { endRound([...S.alive][0] || null); return; }   // zostały same boty: koniec rundy
             }
         }
-        if (S.solo) botsThink(dt, p);
+        if (S.nbots > 0) botsThink(dt, p);
         if (S.t <= 0) endRound(null);
     } else if (S.phase === 'results' && S.t <= 0) { S.phase = 'wait'; S.t = N.NET.mode === 'solo' ? SOLO_WAIT : WAIT; S.holder = null; }
 }
-// Manekiny: trzymający goni najbliższego żywego, reszta ucieka od trzymającego
+// Manekiny: trzymający goni najbliższego żywego, reszta ucieka od trzymającego (zachowania: core/botcrew.js)
+const FLEE_BOUNDS = { minX: -A + 2, maxX: A - 2, minZ: -A + 6, maxZ: A - 2 };
 function botsThink(dt, p) {
-    const hpos = S.holder ? headOf(S.holder, bots) : null, me = headOf('me');
+    const hpos = S.holder ? headOf(S.holder, bots) : null;
     for (const id in bots) {
         const b = bots[id]; if (S.out.has(id)) continue;
         const st = b.st; let tx, tz, speed = 3.0;
         if (S.holder === id) {
-            let best = null, bd = 1e9; for (const o of S.alive) { if (o === id || (o === S.from && S.clock < S.coolUntil)) continue; const h = headOf(o, bots); if (!h) continue; const d = Math.hypot(h.x - st.x, h.z - st.z); if (d < bd) { bd = d; best = h; } }
+            const cand = []; for (const o of S.alive) { if (o === id || (o === S.from && S.clock < S.coolUntil)) continue; const h = headOf(o, bots); if (h) cand.push(h); }
+            const best = nearestTo(st, cand);
             if (best) { tx = best.x; tz = best.z; } else { tx = st.x; tz = st.z; } speed = 3.5;
-        } else if (hpos) {
-            const dx = st.x - hpos.x, dz = st.z - hpos.z, d = Math.max(0.5, Math.hypot(dx, dz));
-            tx = Math.max(-A + 2, Math.min(A - 2, st.x + dx / d * 6)); tz = Math.max(-A + 6, Math.min(A - 2, st.z + dz / d * 6)); speed = 3.2;
-        } else { tx = st.x + Math.sin(S.clock * 0.5 + id.charCodeAt(1)) * 2; tz = st.z + Math.cos(S.clock * 0.5) * 2; speed = 1.5; }
+        } else if (hpos) { const f = fleePoint(st, hpos, FLEE_BOUNDS); tx = f.x; tz = f.z; speed = 3.2; }
+        else { const w = wanderPoint(st, S.clock, id.charCodeAt(1)); tx = w.x; tz = w.z; speed = 1.5; }
         stepBot(st, dt, tx, tz, p.y - 0.35, speed, S.holder === id);
         st.x = Math.max(-A + 1, Math.min(A - 1, st.x)); st.z = Math.max(-A + 5, Math.min(A - 1, st.z));
     }
-    void me;
 }
 
 // ---------- CO KLATKĘ ----------
@@ -177,12 +192,12 @@ export function update(dt, t, ctx) {
             'You cannot pass it straight back for a moment, so move and chase.',
             'When the fuse runs out the bomb explodes in the holder hands: they are out and go to the balcony.',
             'Last one standing wins 200 Bagabucks.',
-            'Playing alone? You and 3 mannequins. They flee from the bomb and chase when they hold it.',
+            'Too few players? Mannequins join until there are 4 of you. They flee from the bomb and chase when they hold it (reward 150 with mannequins).',
             'The GAMES door behind you takes you back.'], 'This closes in ' + sec + ' s', { bg: 'rgba(24,10,4,0.9)', border: '#ff9a40', title: '#ffe0c0', text: '#f4e4d8', footer: '#ffb030', size: 28 }); }
         S.intro.mesh.visible = S.introT > 0 && !S.introSkip;
     }
     if (auth) { think(dt, p); if (N.NET.mode === 'host') { S.netT -= dt; if (S.netT <= 0) { S.netT = 0.2; broadcast(); } } }
-    else if (S.phase === 'play' && S.holder) S.fuse -= dt;   // gość: odliczanie między wiadomościami hosta
+    else { if (S.phase === 'play' && S.holder) S.fuse -= dt; smoothBots(dt); }   // gość: odliczanie między wiadomościami hosta i płynny ruch botów
     // Gość: jeśli host uznał mnie za odpadniętego
     if (S.phase === 'play' && !S.iAmOut && S.out.has('me')) localOut();
     // Bomba nad głową i dźwięk tykania
@@ -194,7 +209,7 @@ export function update(dt, t, ctx) {
         S.tickT -= dt; if (S.tickT <= 0) { S.tickT = S.fuse < 3 ? 0.35 : 1; SFX.step(S.holder === 'me' ? 0.6 : 0.25); if (S.holder === 'me') buzz('both', 0.5, 80); }
     } else S.bombGlow.intensity = 0;
     // Manekiny
-    for (let i = 0; i < 3; i++) { const b = S['bot' + i], id = 'b' + i, show = S.solo && b.st && S.phase === 'play' && !S.out.has(id); b.mesh.group.visible = !!show; if (show) { b.mesh.group.position.set(b.st.x, b.st.y + (b.st.ground ? Math.abs(Math.sin(t * 8)) * 0.04 : 0), b.st.z); b.mesh.group.rotation.y = b.st.dir; } }
+    for (let i = 0; i < 3; i++) { const b = S['bot' + i], id = 'b' + i, show = i < S.nbots && b.st && S.phase === 'play' && !S.out.has(id); b.mesh.group.visible = !!show; if (show) { b.mesh.group.position.set(b.st.x, b.st.y + (b.st.ground ? Math.abs(Math.sin(t * 8)) * 0.04 : 0), b.st.z); b.mesh.group.rotation.y = b.st.dir; } }
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.15; drawHud(); }
 }
 function fmt(t) { t = Math.max(0, Math.ceil(t)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); }
@@ -205,7 +220,7 @@ function drawHud() {
     x.font = 'bold 26px "Courier New", monospace';
     let msg, col = '#ffe8d0';
     if (S.phase === 'wait') { msg = 'Round starts soon'; col = '#ffb030'; }
-    else if (S.phase === 'results') { msg = S.winner === 'me' ? 'You win! +200' : (S.winner ? nameOf(S.winner) + ' wins' : 'Draw'); col = '#9aff60'; }
+    else if (S.phase === 'results') { msg = S.winner === 'me' ? 'You win!' : (S.winner ? nameOf(S.winner) + ' wins' : 'Draw'); col = '#9aff60'; }
     else if (S.iAmOut) { msg = 'You are out. Watch the game.'; col = '#ff8a6a'; }
     else if (S.holder === 'me') { msg = 'YOU HAVE THE BOMB! Touch someone!'; col = '#ff3a20'; }
     else if (S.holder) { msg = nameOf(S.holder) + ' has the bomb. Keep away!'; col = '#ffd27a'; }
@@ -214,6 +229,7 @@ function drawHud() {
     x.font = '24px "Courier New", monospace'; x.fillStyle = '#d8c0a8'; x.fillText('Alive: ' + S.alive.size, 330, 110);
     S.hud.update();
 }
+export function debug() { return S ? { phase: S.phase, nbots: S.nbots, alive: [...S.alive], out: [...S.out], holder: S.holder, solo: S.solo, bots: activeBots().map(b => [b.x, b.z]) } : null; }   // dla testów
 export function dispose() {
     if (S) { S.hud.dispose(); S.intro.dispose(); }
     N.onLevelMsg(null);
