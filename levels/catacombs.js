@@ -18,7 +18,7 @@ import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_CATACOMBS } from './levels.js';
 import { createGridMaze } from '../core/gridmaze.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
 
 const N = 8, P = 5.5, WT = 0.8, H = 3.4, X = N * P / 2;              // siatka 8 x 8 komórek po 5,5 m (44 x 44 m), ściany 0,8 m
 const SEE_DIST = 14, HEAR_RUN = 10, HEAR_BONE = 22, LOSE_TIME = 8, SMELL_TIME = 4, CATCH_DIST = 1.0, KEYS = 4;   // SMELL_TIME: kilka sekund po utracie wzroku wciąż czuje, mniej więcej gdzie jesteś
@@ -204,7 +204,7 @@ export function update(dt, t, ctx) {
     if (S.caughtT >= 0) {
         S.caughtT += dt;
         if (S.caughtT > 1.6) {
-            if (S.df.checkpoints && S.cp >= 0) { const r = KEY_POS[S.cp]; setPlayerPosition(r[0], 1.0, r[1] + 1.2); S.bots.forEach((b) => resetBot(b)); S.caughtT = -1; S.carried = true; toast('Back at the last key. The Warden lost you.', '#7fc47f'); }
+            if (S.cp >= 0 && takeRespawn(S)) { const r = KEY_POS[S.cp]; setPlayerPosition(r[0], 1.0, r[1] + 1.2); S.bots.forEach((b) => resetBot(b)); S.caughtT = -1; S.carried = true; toast('Back at the last key. The Warden lost you.', '#7fc47f'); }
             else { S.leaving = true; ctx.goto('catacombs'); return; }
         }
         animate(t); return;

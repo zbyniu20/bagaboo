@@ -18,7 +18,7 @@ import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { createGridMaze } from '../core/gridmaze.js';
 import { ARRIVAL_FROM_NURSERY } from './levels.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
 
 const N = 7, P = 6.5, WT = 0.6, H = 3.2, X = N * P / 2;               // siatka 7 x 7 pokoi po 6,5 m (45,5 x 45,5 m)
 const KEYS = 4, CATCH_DIST = 0.95, CREEP = 1.6, CHASE = 5.0, FREEZE_AT = 0.3;   // FREEZE_AT: poniżej tej części muzyki Lalka zaczyna się skradać
@@ -201,7 +201,7 @@ export function update(dt, t, ctx) {
     if (S.caughtT >= 0) {
         S.caughtT += dt;
         if (S.caughtT > 1.6) {
-            if (S.df.checkpoints && S.cp >= 0) { const r = KEY_POS[S.cp]; setPlayerPosition(r[0], 1.0, r[1] + 1.2); S.bots.forEach(resetBot); S.music = S.m0; S.caughtT = -1; S.carried = true; toast('Back at the last teddy. The doll fell asleep again.', '#7fc47f'); }
+            if (S.cp >= 0 && takeRespawn(S)) { const r = KEY_POS[S.cp]; setPlayerPosition(r[0], 1.0, r[1] + 1.2); S.bots.forEach(resetBot); S.music = S.m0; S.caughtT = -1; S.carried = true; toast('Back at the last teddy. The doll fell asleep again.', '#7fc47f'); }
             else { S.leaving = true; ctx.goto('nursery'); return; }
         }
         animate(t); return;

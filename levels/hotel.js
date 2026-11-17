@@ -19,7 +19,7 @@ import { createGhost } from '../core/runkit.js';
 import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_HOTEL } from './levels.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
 
 const RW = 12, H = 3.4, HALF = RW / 2, DOOR_W = 1.7, DOOR_H = 2.6, WALL_T = 0.4;   // szerokość pokoju 12 m, wysokość 3,4 m
 const LEN_NORMAL = 16, LEN_KEY = 24;                                                // długość zwykłego pokoju i pokoju z kluczem (większy: więcej mebli i kryjówek)
@@ -331,7 +331,7 @@ export function update(dt, t, ctx) {
     if (S.caughtT >= 0) {
         S.caughtT += dt;
         if (S.caughtT > 1.6) {
-            if (S.df.checkpoints) respawn(ctx);
+            if (S.cp > 0 && takeRespawn(S)) respawn(ctx);
             else { S.leaving = true; ctx.goto('hotel'); return; }
         }
         S.rushMesh.visible = false; S.screechMesh.visible = false; return;

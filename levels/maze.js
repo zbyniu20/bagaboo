@@ -18,7 +18,7 @@ import { toast } from '../core/terminal.js';
 import * as SFX from '../core/audio.js';
 import * as NET from '../core/network.js';
 import { ARRIVAL_FROM_MAZE as ARRIVAL } from './levels.js';
-import { buildDoor, createJumpscare } from '../core/levelkit.js';
+import { buildDoor, createJumpscare, takeRespawn } from '../core/levelkit.js';
 
 const NP = LIGHT_PRESETS.night;
 const N = 25, CELL = 4, HALF = 50, WT = 0.6, H = 20;   // 25 x 25 komórek po 4 m = 100 x 100 m
@@ -414,7 +414,7 @@ export function update(dt, t, ctx) {
         if (dist < 0.85 && p.y < 3.2) { S.phase = 'caught'; S.phaseT = 0; jumpscare(); }
     } else if (S.phase === 'caught') {
         freeze(body);
-        if (S.phaseT > 1.5 && S.cp >= 0) { respawnAtCheckpoint(); return; }
+        if (S.phaseT > 1.5 && S.cp >= 0 && takeRespawn(S)) { respawnAtCheckpoint(); return; }
         if (S.phaseT > 1.5) { S.phase = 'leaving'; S.frozen = null; toast('The mannequin caught you. A new maze awaits...', '#e0533f'); 
             // Solo: nowy labirynt. W drużynie: ten sam układ, żeby nie rozdzielać graczy.
             if (NET.NET.mode === 'solo') ctx.goto('maze'); else ctx.goto('maze', null, { seed: S.seed, noFollow: true }); }

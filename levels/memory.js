@@ -36,18 +36,23 @@ const BACK_Z = END_EDGE - 5.8;                           // ściana z drzwiami E
 const POOL_C = (8.5 + BACK_Z) / 2, POOL_L = 8.5 - BACK_Z;   // środek i długość jaskini
 const SLOW_DELAY = 0.35, SLOW_SPEED = 0.45;              // powolny kwadrat: zaczyna tonąć po chwili, ok. 2 s do lawy
 const FAST_SPEED = 5;                                    // szybki: wpada od razu
-const HEAD_START = 10, INTRO_TIME = 10;                  // 10 s instrukcji (tylko za pierwszym razem) + 10 s przewagi
-const PREVIEW_TIME = 10;                                 // 10 s podglądu z góry: jasno, dobre kamienie świecą na zielono, gracz stoi w miejscu
+const HEAD_START = 8, INTRO_TIME = 10;                   // 10 s instrukcji (tylko za pierwszym razem) + 8 s przewagi
+const PREVIEW_TIME = 6;                                  // 6 s podglądu z góry: jasno, dobre kamienie świecą na zielono, gracz stoi w miejscu
 const SCARE_MIN = 5, SCARE_MAX = 8;                      // jumpscare losowo co 5-8 linii (ok. 3 na całą trasę)
-const BEAST_SPEED = 1.8, BEAST_MAX = 2.9, BEAST_RAMP = 40;   // Bestia: m/s, przyspiesza przez 40 s
+const BEAST_SPEED = 2.4, BEAST_MAX = 4.0, BEAST_RAMP = 40;   // Bestia: m/s, przyspiesza przez 40 s
 const CATCH_DIST = 1.7, ARRIVE_TIME = 1.0;               // po wpadnięciu do lawy Bestia jest przy tobie w 1 s
 // Ograniczony skok (ok. 2,3 m lotu): przerwa 1,1 m (także na skos) w zasięgu, linia albo kolumna dalej (3,7 m) już nie
 const MOVE_SCALE = 0.95, MAX_UP = 4.0, MAX_SPEED_XZ = 4.0, EXTRA_GRAVITY = 4.0;
 const REWARD_FIRST = 2200, REWARD_REPEAT = 220;
 export const info = { id: 'memory', name: 'Burning Memory', spawn: [0, 1.4, 3.0] };
 let S = null;
-// Nightmare: w podglądzie świecą tylko dobre kamienie w co drugim rzędzie (parzyste), resztę trzeba zapamiętać po drodze
-const shown = (r) => S.df.id !== 'nightmare' || r % 2 === 0;
+// Które rzędy świecą w podglądzie: Easy zawsze wszystkie; Normal wszystkie, po pierwszej śmierci co drugi, po trzeciej żaden; Nightmare co drugi, po drugiej śmierci żaden
+const shown = (r) => {
+    const deaths = (S.attempt || 1) - 1, id = S.df.id;
+    if (id === 'easy') return true;
+    if (id === 'nightmare') return deaths < 2 && r % 2 === 0;
+    return deaths === 0 || (deaths < 3 && r % 2 === 0);
+};
 const _c = new THREE.Vector3();
 
 // ---------- BUDOWA ----------
@@ -126,11 +131,12 @@ function buildTrack(R) {
             const opts = [a - 1, a + 1].filter(c => c >= 0 && c < COLS && (r === 0 || Math.abs(c - pb) <= 1));
             b = opts[Math.floor(R() * opts.length)];
         }
-        const rest = ['slow', 'slow', 'fast', 'fast'];
+        // Losowanie jest takie samo na każdej trudności (Daily Run: ten sam układ), zmienia się tylko, co z niego zostaje stabilne: Easy 2 stoją + 2 powolne + 2 szybkie, Normal 1 + 2 + 3, Nightmare 1 + 1 + 4
+        const rest = S.df.id === 'nightmare' ? ['slow', 'fast', 'fast', 'fast'] : ['slow', 'slow', 'fast', 'fast'];
         for (let i = 3; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [rest[i], rest[j]] = [rest[j], rest[i]]; }
         const z = FIRST_Z - r * ROW_DZ, row = [];
         COL_X.forEach((x, c) => {
-            const kind = c === a || c === b ? 'solid' : rest.pop();
+            const kind = c === a ? 'solid' : (c === b ? (S.df.id === 'easy' ? 'solid' : 'fast') : rest.pop());
             const m = addCrispBlock(x, TOP / 2 - 0.5, z, SQ, TOP + 1, SQ, 0x5a4038, 0xff4a10, tex.floor);   // jednakowe z wyglądu: trzeba zapamiętać, które są dobre
             const ob = L.obstacles[L.obstacles.length - 1];
             row.push({ m: m, ob: ob, kind: kind, x: x, z: z, y: 0, t: 0, state: 'up' });
@@ -228,10 +234,10 @@ function finish() {
 }
 const INTRO = [
     'A lava beast lives in this pool. Cross 20 lines of stones to reach the EXIT.',
-    'Every line has 6 stones: 2 stay, 2 sink slowly and 2 drop at once. They all look the same.',
-    'First you see the path from above for 10 seconds: the green stones are safe. Remember them!',
+    'Every line has 6 stones. On Normal 1 stays, 2 sink slowly and 3 drop at once (Easy: 2 stay, 2 sink, 2 drop). They all look the same.',
+    'First you see the path from above for 6 seconds: the green stones are safe. Remember them! After each fall you see fewer lines, and after 3 falls none.',
     'There is lava between all stones: jump forward, diagonally or sideways, one stone at a time.',
-    'The beast starts 10 seconds after your first jump. Touch the lava and it is on you in a second.'
+    'The beast starts 8 seconds after your first jump and gets faster. Touch the lava and it is on you in a second.'
 ];
 
 // ---------- CO KLATKĘ ----------
@@ -322,7 +328,7 @@ function startPreview() {
     S.phase = 'preview'; S.previewT = PREVIEW_TIME * S.df.grace; S.hemiBase = lighting.hemi.intensity;
     releaseAll();
     S.rows.forEach((row, r) => { if (shown(r)) for (const st of row) if (st.kind === 'solid') { st.m.material.emissive = new THREE.Color(0x30ff60); st.m.material.emissiveIntensity = 1.2; } });
-    if (S.df.id === 'nightmare') toast('Nightmare: only every second row is shown!', '#ff6a4a');
+    { const d = (S.attempt || 1) - 1; if (S.df.id === 'nightmare') toast(d >= 2 ? 'Nightmare: no hints now. Only your memory!' : 'Nightmare: only every second row is shown!', '#ff6a4a'); else if (S.df.id === 'normal' && d >= 1) toast(d >= 3 ? 'No more hints. Only your memory!' : 'Only every second row is shown now.', '#ff6a4a'); }
     toast('Memorize the green stones! ' + Math.round(S.previewT) + ' seconds.', '#7fff90');
 }
 function endPreview() {
@@ -395,6 +401,7 @@ function drawHud() {
     else { x.fillStyle = '#ff4a2a'; x.fillText('THE BEAST IS COMING! Do not stop!', 30, 162); }
     S.hud.update();
 }
+export const testState = () => S;   // dla testów: dostęp do stanu poziomu
 export function dispose() {
     if (S) { S.ghost.dispose(); S.ev.dispose(); if (S.phase === 'preview') lighting.hemi.intensity = S.hemiBase; S.scare.dispose(); S.hud.dispose(); S.intro.dispose(); for (const o of [S.burn.orange, S.burn.grey, S.burn.ash]) camera.remove(o); S.burn.flames.forEach(f => camera.remove(f.s)); }
     L.moveScale = 1; L.maxUp = 99; L.maxSpeedXZ = 0;

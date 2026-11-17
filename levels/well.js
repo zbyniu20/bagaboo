@@ -20,7 +20,7 @@ import * as SFX from '../core/audio.js';
 import { createEvents } from '../core/events.js';
 import * as N from '../core/network.js';
 import { ARRIVAL_FROM_WELL as ARRIVAL_WELL } from './levels.js';
-import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions , introSeen, signTexture } from '../core/levelkit.js';
+import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions , introSeen, signTexture, takeRespawn } from '../core/levelkit.js';
 
 // ---------- USTAWIENIA (trudność) ----------
 const NP = LIGHT_PRESETS.night;
@@ -516,7 +516,7 @@ export function update(dt, t, ctx) {
             } else {
                 // Ułatwienie: jeśli otwarłeś już jakąś kratę, wracasz nad nią, a maź opada
                 const last = S.grates.filter(g => g.open).pop();
-                if (last && S.df.checkpoints && isAuthority()) {
+                if (last && isAuthority() && takeRespawn(S)) {
                     setPlayerPosition(-(HS - 0.6), last.y - 2.4, -(HS - 0.6) - 0.2);   // na półce pod łańcuchem tej kraty
                     S.ooze = Math.max(-1.2, Math.min(S.ooze, last.y - 3) - (SECOND_CHANCE_DROP[S.df.id] || SECOND_CHANCE_DROP.normal));
                     toast('The well spits you back out... Climb!', '#b8ffcf');

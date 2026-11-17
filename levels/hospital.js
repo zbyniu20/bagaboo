@@ -16,7 +16,7 @@ import { buzz } from '../core/haptics.js';
 import { createGhost } from '../core/runkit.js';
 import { createEvents } from '../core/events.js';
 import { ARRIVAL_FROM_HOSPITAL } from './levels.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
 
 const X0 = -11, X1 = 11, Z0 = 5, Z1 = -52, H = 3.4, CORR = 2.5;       // budynek 22 x 57 m, korytarz 5 m szerokości
 const ROOM_Z = [0, -12, -24, -36, -48];                               // granice sal wzdłuż korytarza
@@ -197,7 +197,7 @@ export function update(dt, t, ctx) {
     if (S.caughtT >= 0) {
         S.caughtT += dt;
         if (S.caughtT > 1.6) {
-            if (S.df.checkpoints && S.cp >= 0) { const c = CP[S.cp]; setPlayerPosition(c[0], c[1], c[2]); resetStatues(); S.caughtT = -1; S.carried = true; toast('Back to checkpoint ' + (S.cp + 1) + '. The patients return to their rooms.', '#7fc47f'); }
+            if (S.cp >= 0 && takeRespawn(S)) { const c = CP[S.cp]; setPlayerPosition(c[0], c[1], c[2]); resetStatues(); S.caughtT = -1; S.carried = true; toast('Back to checkpoint ' + (S.cp + 1) + '. The patients return to their rooms.', '#7fc47f'); }
             else { S.leaving = true; ctx.goto('hospital'); return; }
         }
         animate(t); return;

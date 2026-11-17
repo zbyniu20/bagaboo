@@ -17,7 +17,7 @@ import { createGhost } from '../core/runkit.js';
 import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_CEMETERY } from './levels.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
 
 const X = 24, Z0 = 4, Z1 = -62;                                       // cmentarz 48 x 66 m
 const AISLES_Z = [-4, -12, -20, -28, -36, -44, -52], AISLES_X = [-21, 0, 21];   // alejki (poziome i pionowe), tędy patrolują grabarze
@@ -210,7 +210,7 @@ export function update(dt, t, ctx) {
     if (S.caughtT >= 0) {
         S.caughtT += dt;
         if (S.caughtT > 1.6) {
-            if (S.df.checkpoints && S.cp >= 0) { const r = RELICS[S.cp]; setPlayerPosition(r[0], 1.0, r[1] + 1.2); S.bots.forEach((b) => { if (!b.active) return; b.st.x = b.home[0]; b.st.z = b.home[1]; b.st.y = 0; b.st.mode = 'patrol'; b.goal = null; b.lostT = 0; b.smellT = 0; b.wx = b.st.x; b.wz = b.st.z; b.wT = 0; b.stuckN = 0; }); S.caughtT = -1; S.carried = true; toast('Back to the last relic. The gravedigger lost you.', '#7fc47f'); }
+            if (S.cp >= 0 && takeRespawn(S)) { const r = RELICS[S.cp]; setPlayerPosition(r[0], 1.0, r[1] + 1.2); S.bots.forEach((b) => { if (!b.active) return; b.st.x = b.home[0]; b.st.z = b.home[1]; b.st.y = 0; b.st.mode = 'patrol'; b.goal = null; b.lostT = 0; b.smellT = 0; b.wx = b.st.x; b.wz = b.st.z; b.wT = 0; b.stuckN = 0; }); S.caughtT = -1; S.carried = true; toast('Back to the last relic. The gravedigger lost you.', '#7fc47f'); }
             else { S.leaving = true; ctx.goto('cemetery'); return; }
         }
         animate(t); return;
