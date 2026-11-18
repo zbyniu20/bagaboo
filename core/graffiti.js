@@ -28,7 +28,7 @@ import { ROUND, nextContestIn, pickTheme, contestStep, assignSlots, idOfSlot, re
 const POS = { x: 14.9, y: 2.4, z: 3.5 };            // środek ściany
 const GPOS = { x: 14.9, y: 2.4, z: 9.4 };           // środek Galerii
 const AREA = { x: 32, y: 56, w: 960, h: 480 };      // obszar obrazu na płótnie terminala (1024 x 640)
-const KEY = 'bagaboo_graffiti_v1', GKEY = 'bagaboo_gallery_v1';
+const KEY = 'bagaboo_graffiti_v1', GKEY = 'bagaboo_gallery_v1', PKEY = 'bagaboo_graffiti_private_v1';
 const SNAP_EVERY = 8, DELTA_EVERY = 0.2, SAVE_EVERY = 5, CONTEST_EVERY = 0.5;
 const SLOT_COLS = ['#ff6a4a', '#6ad0ff', '#a0ff60', '#ffd24a'];
 let G = null;
@@ -39,7 +39,7 @@ export function buildGraffiti() {
     G = {
         wall: emptyWall(), day: dayKey(Date.now()), week: weekKey(Date.now()), gallery: [], color: 3, brush: 0, cell: null, lastPaint: '', vrLast: ['', ''], out: [], buckets: {},
         clock: 0, snapT: 1, deltaT: 0, saveT: SAVE_EVERY, dayT: 1, snapNow: false, saveDirty: false, galleryDirty: false, sprayT: -9, noticeT: -9, dim: 1,
-        posterAt: -99, posterBy: {}, contest: newContest(true), saved: null, ctT: 0, ctNow: false, lastGc: 0, sec: -1, padSig: '', term: null, gterm: null
+        priv: emptyWall(), mode: 'shared', privDirty: false, posterAt: -99, posterBy: {}, contest: newContest(true), saved: null, ctT: 0, ctNow: false, lastGc: 0, sec: -1, padSig: '', term: null, gterm: null
     };
     load();
     const t = new Terminal(draw, 1024, 640), gt = new Terminal(drawGallery, 640, 560); G.term = t; G.gterm = gt;
@@ -57,13 +57,24 @@ function mount(term, w, h, pos, fw, fh) {
 export function disposeGraffiti() {
     if (!G) return;
     if (G.saved) { G.wall = G.saved; G.saveDirty = true; }   // wyjście w trakcie konkursu: zapisujemy ścianę sprzed konkursu
-    save(true); saveGallery(true);
+    save(true); saveGallery(true); savePrivate(true);
     for (const t of [G.term, G.gterm]) { const i = terminals.indexOf(t); if (i >= 0) terminals.splice(i, 1); }
     G = null;
 }
 
 // ---------- zapis dnia i tygodnia (host i solo) ----------
+// Prywatny ekran każdego gracza: rysunek tylko u niego (nic nie idzie do sieci), zapis na tym urządzeniu; nie blaknie co dobę (jest Twój)
+function loadPrivate() { try { const raw = JSON.parse(localStorage.getItem(PKEY) || 'null'); const w = raw && decodeWall(raw.w); if (w) G.priv = w; } catch (e) { /* brak zapisu: pusty ekran */ } }
+function savePrivate(force) {
+    if (!G || (!G.privDirty && !force)) return; G.privDirty = false;
+    if (!G.priv.some(v => v)) { try { localStorage.removeItem(PKEY); } catch (e) { /* jw. */ } return; }
+    try { localStorage.setItem(PKEY, JSON.stringify({ w: encodeWall(G.priv) })); } catch (e) { /* pełny dysk: rysunek zostaje tylko w sesji */ }
+}
+const isPrivate = () => G.mode === 'private' && G.contest.ph === 'idle';
+const viewWall = () => (isPrivate() ? G.priv : G.wall);
+function setMode(m) { G.mode = m; G.cell = null; G.lastPaint = ''; G.term.dirty = true; toast(m === 'private' ? 'MY SCREEN: only you see what you draw here' : 'SHARED WALL: everyone sees it', m === 'private' ? '#9fd0ff' : GOLD); }
 function load() {
+    loadPrivate();
     if (N.NET.mode === 'guest') return;
     try { const raw = JSON.parse(localStorage.getItem(KEY) || 'null'); if (raw && raw.d === G.day) { const w = decodeWall(raw.w); if (w) G.wall = w; } } catch (e) { /* brak zapisu albo zepsuty: goła ściana */ }
     try { const raw = JSON.parse(localStorage.getItem(GKEY) || 'null'); if (raw && raw.w === G.week) G.gallery = cleanGallery(raw.l); } catch (e) { /* jw. */ }
@@ -80,7 +91,7 @@ function saveGallery(force) {
 }
 
 // ---------- malowanie ----------
-const canClear = () => N.NET.mode !== 'guest' && G.contest.ph === 'idle';
+const canClear = () => G.contest.ph === 'idle' && (G.mode === 'private' || N.NET.mode !== 'guest');
 const mySlot = () => { const s = G.contest.slots.me; return s === undefined ? -1 : s; };
 function spray(v) { if (G.clock - G.sprayT > 0.9) { G.sprayT = G.clock; SFX.hiss({ x: POS.x - 1, y: POS.y, z: POS.z }, v); } }
 function notice() {
@@ -89,6 +100,11 @@ function notice() {
 }
 function apply(cells) { if (paintCells(G.wall, cells) > 0) { G.term.dirty = true; G.saveDirty = true; return true; } return false; }
 function paintAt(cx, cy) {
+    if (G.mode === 'private' && G.contest.ph !== 'idle') setMode('shared');   // konkurs maluje się na wspólnej ścianie, w swojej kolumnie
+    if (isPrivate()) {   // prywatny ekran: tylko lokalnie, bez sieci, hosta i limitów
+        if (paintCells(G.priv, brushCells(cx, cy, WALL.BRUSHES[G.brush], G.color)) > 0) { G.term.dirty = true; G.privDirty = true; spray(0.1); }
+        return;
+    }
     let cells = brushCells(cx, cy, WALL.BRUSHES[G.brush], G.color);
     if (G.contest.ph !== 'idle') {
         cells = G.contest.ph === 'draw' && !G.contest.ready.me ? restrictToSlot(cells, mySlot()) : [];
@@ -106,8 +122,8 @@ function saveWork() {
 }
 // SAVE poza konkursem: CAŁY mural trafia jako plakat do Galerii (skalowany) (osobny przycisk w górnym pasku ściany)
 const POSTER_CD = 20;
-function addPoster(id) {
-    const cells = G.wall.slice(); if (!cells.some(v => v)) return false;   // cały mural 48x24; Galeria skaluje go do szerokości plakatu
+function addPoster(id, wall) {
+    const cells = (wall || G.wall).slice(); if (!cells.some(v => v)) return false;   // cały mural 48x24; Galeria skaluje go do szerokości plakatu
     G.gallery = galleryAdd(G.gallery, { t: 'Free drawing', n: nameOf(id), d: encodeRle(cells), cells: cells, w: WALL.W }); G.galleryDirty = true; G.gterm.dirty = true; G.snapNow = true;
     return true;
 }
@@ -115,10 +131,12 @@ function savePoster() {
     if (G.contest.ph !== 'idle') { toast('During a contest use the SAVE button at the bottom', '#ffb030'); return; }
     if (G.clock - G.posterAt < POSTER_CD) { toast('Wait a moment before saving again', '#ffb030'); return; }
     G.posterAt = G.clock;
-    if (N.NET.mode === 'guest') { N.sendLevelMsg({ k: 'gq' }); toast('Sent to the gallery board', '#7fff90'); return; }
-    if (addPoster('me')) toast('Saved to the gallery board', '#7fff90'); else toast('The wall is empty, paint something first', '#ffb030');
+    const priv = G.mode === 'private';
+    if (priv && !G.priv.some(v => v)) { toast('Your screen is empty, paint something first', '#ffb030'); return; }
+    if (N.NET.mode === 'guest') { N.sendLevelMsg(priv ? { k: 'gq', w: encodeWall(G.priv) } : { k: 'gq' }); toast('Sent to the gallery board', '#7fff90'); return; }
+    if (addPoster('me', priv ? G.priv : null)) toast('Saved to the gallery board', '#7fff90'); else toast('The wall is empty, paint something first', '#ffb030');
 }
-function clearWall() { if (!canClear()) return; G.wall.fill(0); G.term.dirty = true; G.saveDirty = true; G.snapNow = true; }
+function clearWall() { if (!canClear()) return; if (isPrivate()) { G.priv.fill(0); G.privDirty = true; G.term.dirty = true; return; } G.wall.fill(0); G.term.dirty = true; G.saveDirty = true; G.snapNow = true; }
 function onWallClick() {
     const p = G.term.pointer; if (!p) return;
     const c = cellAt(p.x - AREA.x, p.y - AREA.y, AREA.w, AREA.h);
@@ -129,11 +147,12 @@ function onWallClick() {
 const mmss = (s) => { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 function slotName(slot) { const id = idOfSlot(G.contest.slots, slot); return id === null ? '' : (G.contest.names[id] || 'Player'); }
 function draw(t) {
-    const c = t.ctx, k = G.contest; t.background();
+    const c = t.ctx, k = G.contest, pv = isPrivate(), wallV = viewWall(); t.background();
     if (k.ph === 'idle') {
-        t.text('GRAFFITI WALL', 32, 28, 28, AMBER, 'left', true);
-        t.btn('post', 290, 8, 150, 42, 'SAVE', savePoster, { tone: 'ok', size: 22 });
-        t.text('click to paint, hold to draw  |  fades daily', 992, 28, 20, AMBER_DIM, 'right', true);
+        t.text(pv ? 'MY SCREEN' : 'GRAFFITI WALL', 32, 28, 28, pv ? '#9fd0ff' : AMBER, 'left', true);
+        t.btn('post', 280, 8, 110, 42, 'SAVE', savePoster, { tone: 'ok', size: 22 });
+        t.btn('mode', 400, 8, 230, 42, pv ? 'SHARED WALL' : 'MY SCREEN', () => setMode(pv ? 'shared' : 'private'), { tone: pv ? 'gold' : undefined, size: 20 });
+        t.text(pv ? 'private: only you see it' : 'shared  |  fades daily', 992, 28, 20, pv ? '#9fd0ff' : AMBER_DIM, 'right', true);
     } else {
         t.text('THEME: ' + k.theme, 32, 28, 26, GOLD, 'left', true);
         const info = k.ph === 'draw' ? 'DRAW! ' + mmss(k.t) : (k.ph === 'vote' ? 'VOTE: stand on a pad ' + mmss(k.t) : (k.winner >= 0 ? 'WINNER: ' + slotName(k.winner) : 'NO VOTES'));
@@ -142,7 +161,7 @@ function draw(t) {
     c.fillStyle = WALL.BG; c.fillRect(AREA.x, AREA.y, AREA.w, AREA.h);
     const cw = AREA.w / WALL.W, ch = AREA.h / WALL.H;
     for (let y = 0; y < WALL.H; y++) for (let x = 0; x < WALL.W; x++) {
-        const v = G.wall[y * WALL.W + x]; if (!v) continue;
+        const v = wallV[y * WALL.W + x]; if (!v) continue;
         c.fillStyle = WALL.COLORS[v]; c.fillRect(AREA.x + x * cw, AREA.y + y * ch, cw + 0.5, ch + 0.5);
     }
     if (k.ph !== 'idle') drawColumns(c, k);
@@ -162,6 +181,7 @@ function draw(t) {
     }
     for (let b = 0; b < WALL.BRUSHES.length; b++) t.btn('brush' + b, 808 + b * 64, 556, 56, 56, WALL.BRUSHES[b] + 'x', () => { G.brush = b; }, { active: G.brush === b, size: 24 });
     if (k.ph === 'draw' && mySlot() >= 0) t.btn('save', 936, 556, 56, 56, k.ready.me ? 'DONE' : 'SAVE', saveWork, { tone: 'ok', size: 15, disabled: !!k.ready.me });
+    if (pv) { c.lineWidth = 6; c.strokeStyle = '#9fd0ff'; c.strokeRect(AREA.x - 3, AREA.y - 3, AREA.w + 6, AREA.h + 6); }
     if (canClear()) t.btn('clear', 936, 556, 56, 56, 'CLR', clearWall, { tone: 'bad', size: 20 });
 }
 // Kolumny konkursu: ramki w kolorach pól, nazwy autorów, głosy; kolumny bez autora przyciemnione
@@ -228,7 +248,9 @@ export function onGraffitiMsg(msg, from) {
         const st = N.playersState[from];
         if (G.contest.ph !== 'idle' || !st || st.lvl !== 'lobby' || !st.head || !near(headOf(from), POS)) return true;
         if (G.clock - (G.posterBy[from] === undefined ? -99 : G.posterBy[from]) < POSTER_CD) return true;
-        G.posterBy[from] = G.clock; addPoster(from);
+        const pw = msg.w === undefined ? null : decodeWall(msg.w);   // rysunek z prywatnego ekranu gościa: tylko przez walidator ściany
+        if (msg.w !== undefined && !pw) return true;
+        G.posterBy[from] = G.clock; addPoster(from, pw);
         return true;
     }
     if (N.NET.mode === 'host' && msg.k === 'gv') {   // gość zapisał pracę: liczy się tylko jego kolumna w fazie rysowania
@@ -349,6 +371,6 @@ export function updateGraffiti(dt, auth, o) {
         G.ctT -= dt; if (G.ctNow || (k.ph !== 'idle' && G.ctT <= 0)) { G.ctT = CONTEST_EVERY; G.ctNow = false; sendContest(); }
         G.snapT -= dt; if (G.snapT <= 0 || G.snapNow) { G.snapT = SNAP_EVERY; G.snapNow = false; sendSnapshot(); }
     } else { G.ctNow = false; G.snapNow = false; }
-    G.saveT -= dt; if (G.saveT <= 0) { G.saveT = SAVE_EVERY; save(false); saveGallery(false); }
+    G.saveT -= dt; if (G.saveT <= 0) { G.saveT = SAVE_EVERY; save(false); saveGallery(false); savePrivate(false); }
 }
 export function debugGraffiti() { return G ? { wall: G.wall, day: G.day, color: G.color, brush: G.brush, contest: G.contest, gallery: G.gallery } : null; }
