@@ -112,7 +112,7 @@ function updateMine(dt, t, ctx) {
         if (r.ok) { SFX.purr(posOf(), 0.7); toast(p.name + ' loves it!', '#ff9ec0'); }
     }
     const camD = Math.hypot(ctx.pos.x - b.x, ctx.pos.z - b.z);
-    p.model.update(dt, t, { speed: p.sp, sleeping: stage === 'sleep' && p.petted <= 0 && p.eating <= 0, sitting: stage !== 'idle', sad: p.sad, hungry: p.hungry, petted: p.petted > 0 ? Math.min(1, p.petted) : 0, eating: p.eating, tag: camD < 9 });
+    p.model.update(dt, t, { speed: p.sp, sleeping: stage === 'sleep' && p.petted <= 0 && p.eating <= 0, sitting: stage !== 'idle', sad: p.sad, hungry: p.hungry, petted: p.petted > 0 ? Math.min(1, p.petted) : 0, eating: p.eating, tag: camD > 1.0 && camD < 9 });   // tuż przy kamerze plakietka byłaby ogromna
     if (p.eating > 0 && Math.random() < dt * 5) p.model.burst('heart', 1);
 }
 

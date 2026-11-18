@@ -10032,9 +10032,9 @@
     "semantic_hash": ""
   },
   "core/pet.js": {
-    "mtime": 1794961915.4547029,
-    "seen": 1794961944.3046777,
-    "ast_hash": "8444cbd355754a26c4f0a03ed095f4db",
+    "mtime": 1794963261.7975075,
+    "seen": 1794963274.425307,
+    "ast_hash": "faac187873893c9f823bc2973576f8fb",
     "semantic_hash": ""
   },
   "core/petlogic.js": {
