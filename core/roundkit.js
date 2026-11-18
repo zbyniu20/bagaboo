@@ -1,5 +1,5 @@
 // ==========================================
-// WSPÓLNE POMOCNIKI TRYBÓW RUND (King of the Hill, Infection, Dodgeball): lista uczestników, role w sieci,
+// WSPÓLNE POMOCNIKI TRYBÓW RUND (Dodgeball, Capture the Banana): lista uczestników, role w sieci,
 // pozycje głów i dłoni graczy (lokalnych, zdalnych i botów), autorytet hosta.
 // Host liczy stan rundy i rozsyła go co 0,2 s; gość bez hosta w tym poziomie liczy sam (jak gracz solo).
 // ==========================================

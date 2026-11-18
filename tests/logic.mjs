@@ -162,7 +162,7 @@ for (const f of modeFiles) {
     if (/msg\.k === 'score'/.test(src)) { guarded++; check(f + ': the host clamps a guest score and never uses the client-sent name', /clampScore\(/.test(src) && !/msg\.name/.test(src)); }
     if (/msg\.k === 'got'/.test(src)) { guarded++; check(f + ': the host checks that a guest is near the treasure it claims', /nearTarget\(/.test(src) && /validIndex\(/.test(src) && !/take\(\+msg\.i/.test(src)); }
 }
-check('guest results: the guarded modes were found (race, redlight, racemode, range, treasure)', guarded >= 5, guarded);
+check('guest results: the guarded modes were found (redlight, racemode, range)', guarded >= 3, guarded);
 
 // ---------- Ściana Graffiti (core/graffitilogic.js i zasady zaufania w core/graffiti.js) ----------
 const G = await import(url('core/graffitilogic.js'));
@@ -235,10 +235,13 @@ const R = await import(url('core/graffitiround.js'));
     const base = { p: 'draw', t: 90, th: 'A cursed banana', s: [['peer-1', 0, 'Anna'], ['peer-2', 1, 'Bob']], c: [0, 0, 0, 0], w: -1 };
     const cc = R.cleanContest(base);
     check('contest state: a valid host message is accepted', !!cc && cc.ph === 'draw' && cc.slots.length === 2 && cc.slots[0].id === 'peer-1' && cc.slots[1].name === 'Bob' && cc.t === 90 && cc.winner === -1);
+    check('contest: when every author has pressed SAVE the voting starts early, not otherwise', R.contestStep({ ph: 'draw', t: 90 }, 0.1, { enabled: true, present: 2, blocked: false, ready: true }, () => 0).ph === 'vote' && R.contestStep({ ph: 'draw', t: 90 }, 0.1, { enabled: true, present: 2, blocked: false, ready: false }, () => 0).ph === 'draw');
+    check('contest state: the saved flag of an author is read as a strict 1', (() => { const x = R.cleanContest({ ...base, s: [['a', 0, 'A', 1], ['b', 1, 'B', true], ['c', 2, 'C']] }); return x.slots[0].ready === true && x.slots[1].ready === false && x.slots[2].ready === false; })());
     check('contest state: bad phases and shapes are refused', [null, 5, {}, { ...base, p: 'win' }, { ...base, p: 'constructor' }].every(x => R.cleanContest(x) === null));
     check('contest state: slots, counters, time and winner are clamped and duplicates dropped', (() => { const x = R.cleanContest({ ...base, t: 99999, c: [1e9, -1, 'x', 2], w: 9, s: [['a', 0, 'A'], ['b', 0, 'B'], ['c', 7, 'C'], [5, 1, 'D'], ['d'.repeat(200), 2, 'E'], 'x'] }); return x.t === 600 && x.counts.join() === '0,0,0,2' && x.winner === -1 && x.slots.length === 1 && x.slots[0].id === 'a'; })());
 }
-check('graffiti.js: the host cuts guest strokes to the contest column and ignores them outside the drawing phase', /G\.contest\.ph === 'draw' \? restrictToSlot\(cells, G\.contest\.slots\[from\]\) : \[\]/.test(gfx));
+check('graffiti.js: the host cuts guest strokes to the contest column and ignores them outside the drawing phase', /G\.contest\.ph === 'draw' && !G\.contest\.ready\[from\] \? restrictToSlot\(cells, G\.contest\.slots\[from\]\) : \[\]/.test(gfx));
+check('graffiti.js: the SAVE message is honoured only from a slot owner in the drawing phase', /msg\.k === 'gv'/.test(gfx) && /k\.ph === 'draw' && k\.slots\[from\] !== undefined/.test(gfx));
 check('graffiti.js: the host counts votes and picks the winner from its own view of the players', /countVotes\(heads, k\.slots\)/.test(gfx) && /winnerOf\(k\.counts, Math\.random\)/.test(gfx) && /headOf\(id\)/.test(gfx));
 check('graffiti.js: a guest accepts contest state and gallery only through the validators', /cleanContest\(msg\)/.test(gfx) && /cleanGallery\(msg\.g\)/.test(gfx));
 check('graffiti.js: the contest follows the lobby events setting and waits for the Night Shift', /enabled: o\.enabled, present: ids\.length, blocked: o\.night !== 'calm'/.test(gfx) && /SETTINGS\.lobbyEvents !== false/.test(fs.readFileSync(path.join(ROOT, 'core/lobbyplay.js'), 'utf8')));
@@ -280,6 +283,11 @@ const PL = await import(url('core/petlogic.js'));
     check('pet level: old clears do not count and bad input is safe', PL.levelOf(p0, 0) === 1 && PL.levelOf(p0, -9) === 1 && PL.levelOf(p0, NaN) === 1 && PL.levelOf(p0, undefined) === 1);
     check('pet level: progress to the next level', (() => { const a = PL.progress(p0, 4), b = PL.progress(p0, 4 + 5), c = PL.progress(p0, 4 + 80); return a.level === 1 && a.frac === 0 && a.left === 3 && !a.max && b.level === 2 && b.left === 5 && b.frac > 0 && b.frac < 1 && c.max && c.frac === 1 && c.left === 0; })());
     check('pet level: the model scale grows with the level', P.SCALE.every((v, i) => PL.scaleOf(i + 1) === v) && PL.scaleOf(0) === P.SCALE[0] && PL.scaleOf(99) === P.SCALE[P.SCALE.length - 1] && PL.scaleOf('x') === P.SCALE[0]);
+    check('pet color: a normal pet cycles the five normal colors and never reaches the golden one', (() => { let p = { ...p0, c: 0, u: 0 }; const seen = new Set(); for (let i = 0; i < 12; i++) { p = PL.cycleColor(p, 1); seen.add(p.c); } return seen.size === 5 && !seen.has(5) && PL.cycleColor({ ...p0, c: 0, u: 0 }, -1).c === 4; })());
+    check('pet color: a pet hatched golden keeps the golden color in the cycle', (() => { const g = { ...p0, c: 5, u: 1 }; return PL.colorChoices(g).length === 6 && PL.cycleColor({ ...g, c: 4 }, 1).c === 5 && PL.normalizePet({ c: 5 }, 1e12).u === 1 && PL.normalizePet({ c: 1, u: 7 }, 1e12).u === 0; })());
+    check('pet carry: hands, back and ground follow the rules', (() => { const C = PL.CARRY, n = PL.carryNext; return n(0, 'grab') === 1 && n(0, 'back') === 0 && n(1, 'back') === 2 && n(1, 'drop') === 0 && n(2, 'back') === 0 && n(2, 'drop') === 2 && n(2, 'grab') === 2 && C.NONE === 0; })());
+    check('pet carry: the back is behind the head and the network value is range-checked', (() => { const b = PL.backAnchor({ x: 1, y: 1.7, z: 2 }, 0, -1); return b.z > 2 && b.x === 1 && b.y < 1.7 && PL.cleanCarry(2) === 2 && [3, -1, '1', null, 1.5].every(v => PL.cleanCarry(v) === 0); })());
+    check('pet.js: carrying is wired to the grip, the V key and the network state', (() => { const pt = fs.readFileSync(new URL('../core/pet.js', import.meta.url), 'utf8'); return /gripDown\(/.test(pt) && /onDesktopKey\('KeyV'/.test(pt) && /cleanCarry\(st\.pc\)/.test(pt) && /pc: petCarryNet\(\)/.test(fs.readFileSync(new URL('../core/network.js', import.meta.url), 'utf8')); })());
     // sieć
     check('pet look: the tuple round trip (with and without Pet Pack items)', JSON.stringify(PL.cleanLook(PL.lookOf(mk({ c: 4, n: 7 }), 4 + 10))) === '{"c":4,"l":3,"n":7,"h":0,"k":0}' && JSON.stringify(PL.cleanLook(PL.lookOf(mk({ c: 1, n: 2 }), 4, 'crown', 'cape'))) === '{"c":1,"l":1,"n":2,"h":5,"k":5}' && JSON.stringify(PL.cleanLook([2, 3, 4])) === '{"c":2,"l":3,"n":4,"h":0,"k":0}');
     check('pet look: an unknown hat or neck item id means none', PL.hatIndex('nope') === 0 && PL.neckIndex(undefined) === 0 && PL.hatIndex('party') === 1 && PL.neckIndex('bow') === 1 && PL.lookOf(mk({}), 4, 'hack', {}).slice(3).join() === '0,0');

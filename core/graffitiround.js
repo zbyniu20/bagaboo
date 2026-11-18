@@ -25,7 +25,7 @@ const rnd01 = (rnd) => (typeof rnd === 'function' ? rnd() : Math.random());
 export const nextContestIn = (first, rnd) => { const r = first ? ROUND.FIRST : ROUND.EVERY; return r[0] + rnd01(rnd) * (r[1] - r[0]); };
 export const pickTheme = (rnd) => ROUND.THEMES[Math.min(ROUND.THEMES.length - 1, Math.floor(rnd01(rnd) * ROUND.THEMES.length))];
 
-// Maszyna faz: st = { ph: 'idle' | 'draw' | 'vote' | 'result', t }; ctx = { enabled, present, blocked }.
+// Maszyna faz: st = { ph: 'idle' | 'draw' | 'vote' | 'result', t }; ctx = { enabled, present, blocked, ready }.
 // Zwraca { ph, t, event } z event: 'start' | 'vote' | 'result' | 'end' | 'abort' | null
 export function contestStep(st, dt, ctx, rnd) {
     let ph = st.ph, t = st.t, event = null;
@@ -37,7 +37,7 @@ export function contestStep(st, dt, ctx, rnd) {
     t -= dt;
     if (ph === 'draw') {
         if (ctx.present < ROUND.MIN_PLAYERS || !ctx.enabled) return { ph: 'idle', t: nextContestIn(false, rnd), event: 'abort' };
-        if (t <= 0) { ph = 'vote'; t = ROUND.VOTE; event = 'vote'; }
+        if (t <= 0 || ctx.ready) { ph = 'vote'; t = ROUND.VOTE; event = 'vote'; }   // ctx.ready: wszyscy autorzy zapisali prace (przycisk SAVE)
     } else if (ph === 'vote') {
         if (ctx.present < 1 || !ctx.enabled) return { ph: 'idle', t: nextContestIn(false, rnd), event: 'abort' };
         if (t <= 0) { ph = 'result'; t = ROUND.RESULT; event = 'result'; }
@@ -104,13 +104,13 @@ export const galleryAdd = (list, entry) => [entry].concat(list).slice(0, ROUND.G
 
 // ---------- stan konkursu od hosta (goście) ----------
 const PHASES = new Set(['idle', 'draw', 'vote', 'result']);
-// raw = { p, t, th, s: [[idSieciowy, slot, nick]], c: [liczniki], w: slotZwycięzcy }; zwraca czysty stan albo null
+// raw = { p, t, th, s: [[idSieciowy, slot, nick, 1 gdy zapisał pracę]], c: [liczniki], w: slotZwycięzcy }; zwraca czysty stan albo null
 export function cleanContest(raw) {
     if (!raw || typeof raw !== 'object' || !PHASES.has(raw.p)) return null;
     const slots = [], seen = new Set();
     for (const e of (Array.isArray(raw.s) ? raw.s.slice(0, ROUND.SLOTS) : [])) {
         if (!Array.isArray(e) || typeof e[0] !== 'string' || e[0].length > 80 || !Number.isInteger(e[1]) || e[1] < 0 || e[1] >= ROUND.SLOTS || seen.has(e[1])) continue;
-        seen.add(e[1]); slots.push({ id: e[0], slot: e[1], name: cleanName(e[2]) });
+        seen.add(e[1]); slots.push({ id: e[0], slot: e[1], name: cleanName(e[2]), ready: e[3] === 1 });
     }
     const counts = ROUND.PADS.map((_, i) => { const v = Array.isArray(raw.c) ? raw.c[i] : 0; return Number.isInteger(v) && v >= 0 && v < 100 ? v : 0; });
     const t = Number.isFinite(raw.t) ? Math.max(0, Math.min(600, raw.t)) : 0;

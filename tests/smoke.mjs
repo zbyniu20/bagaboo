@@ -172,15 +172,15 @@ for (const lv of LEVELS) {
         const r = await run(`const ENG = await import('./core/engine.js'), I = ENG.renderer.info; let pl = 0; ENG.scene.traverse(o => { if (o.isPointLight && o.visible) pl++; }); return { calls: I.render.calls, tris: I.render.triangles, pl: pl };`);
         // level-specific rules fixed in the last round
         const rules = await run(`const E = await import('./core/engine.js'), A = await import('./core/avatar.js'); return { floorY: E.L.floorY, moveScale: E.L.moveScale, tagsHidden: A.TAGS.hidden, maxZ: E.L.bounds.maxZ, minZ: E.L.bounds.minZ, minX: E.L.bounds.minX, maxX: E.L.bounds.maxX };`);
-        if ((lv === 'lasttile' || lv === 'race') && !(rules.floorY < -5)) fail(`${lv}: no pit floor (floorY=${rules.floorY}): players cannot fall`);
+        if (lv === 'lasttile' && !(rules.floorY < -5)) fail(`${lv}: no pit floor (floorY=${rules.floorY}): players cannot fall`);
         if ((lv === 'games' || lv === 'wardrobe') && rules.moveScale !== 1.15) fail(`${lv}: movement scale ${rules.moveScale}, expected the lobby value 1.15`);
-        if ((lv === 'hideseek' || lv === 'blindtag') && !rules.tagsHidden) fail(`${lv}: name tags are not hidden`);
-        if (lv !== 'hideseek' && lv !== 'blindtag' && rules.tagsHidden) fail(`${lv}: name tags still hidden after leaving a hiding mode`);
+        if (lv === 'hideseek' && !rules.tagsHidden) fail(`${lv}: name tags are not hidden`);
+        if (lv !== 'hideseek' && rules.tagsHidden) fail(`${lv}: name tags still hidden after leaving a hiding mode`);
         if (lv === 'redlight' && !(rules.maxX - rules.minX > 24 && rules.maxZ - rules.minZ > 70)) fail('redlight: hall is not big enough');
-        if (['lasttile', 'race', 'maze', 'lava'].includes(lv)) {
+        if (['lasttile', 'maze', 'lava'].includes(lv)) {
             // pit levels: with no floor under the player he must fall; floor levels: the global floor must still hold him up
             const fell = await run(`const E = await import('./core/engine.js'), PL = await import('./core/player.js'); E.L.obstacles.length = 0; PL.setPlayerPosition(0, 2, 0); for (let i = 0; i < 150; i++) PL.updatePlayer(1 / 60, i / 60); return PL.playerBody.position.y;`);
-            if ((lv === 'lasttile' || lv === 'race') && !(fell < -2)) fail(`${lv}: player did not fall without a floor (y=${fell.toFixed(2)})`);
+            if (lv === 'lasttile' && !(fell < -2)) fail(`${lv}: player did not fall without a floor (y=${fell.toFixed(2)})`);
             if ((lv === 'maze' || lv === 'lava') && !(fell > 0.2)) fail(`${lv}: player fell through the floor (y=${fell.toFixed(2)})`);
         }
         const budget = BUDGET[lv] || BUDGET.default;
@@ -212,20 +212,6 @@ const modeSim = await run(`
     const load = async (id) => { await M.loadLevel(id); return await import('./levels/' + id + '.js'); };
     let T = 0; const step = (mod, n, fn) => { for (let i = 0; i < n; i++) { if (fn) fn(i); mod.update(0.1, T += 0.1, ctx); } };
     const until = (mod, cond, max, fn) => { for (let i = 0; i < max; i++) { if (fn) fn(i); mod.update(0.1, T += 0.1, ctx); if (cond(mod.debug())) return true; } return false; };
-    // Swing Run
-    let m = await load('swingrun');
-    if (ENG.L.ropes.length < 15) bad.push('swingrun: only ' + ENG.L.ropes.length + ' ropes');
-    if (!(ENG.L.floorY < -5)) bad.push('swingrun: no pit');
-    if (!until(m, d => d.phase === 'race', 200)) bad.push('swingrun: race never started');
-    PL.playerBody.position.set(0, -10, -20); step(m, 1); if (!(PL.playerBody.position.y > 0) || m.debug().falls !== 1) bad.push('swingrun: no respawn after a fall (y=' + PL.playerBody.position.y.toFixed(1) + ')');
-    PL.playerBody.position.set(0, 3, -101); step(m, 1); if (!m.debug().finished) bad.push('swingrun: finish line not detected');
-    if (!until(m, d => d.phase === 'results', 100)) bad.push('swingrun: round did not end after the finish'); if (!(E.SAVE.records.swingrun > 0)) bad.push('swingrun: time not recorded');
-    // Tower Climb: the ooze must catch an idle player, and the top ledge must finish the run
-    m = await load('towerclimb');
-    if (!until(m, d => d.phase === 'race', 200)) bad.push('towerclimb: race never started');
-    if (!until(m, d => d.falls >= 1, 700, () => { PL.playerBody.position.set(0, 1.0, -0.4); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('towerclimb: ooze never caught an idle player');
-    PL.playerBody.position.set(0, 38.2, -2.5); step(m, 1); if (!m.debug().finished) bad.push('towerclimb: finish ledge not detected');
-    if (!until(m, d => d.phase === 'results', 100)) bad.push('towerclimb: round did not end after the finish'); if (!(E.SAVE.records.towerclimb > 0)) bad.push('towerclimb: time not recorded');
     // Nursery: the music box drains, winding refills it, a teddy eats part of it, and a silent music box wakes the doll who catches an idle player
     m = await load('nursery');
     if (!until(m, d => d.phase === 'play', 200)) bad.push('nursery: never left the intro');
@@ -308,21 +294,9 @@ const modeSim = await run(`
         tick(3); let gd = m.debug(); if (!gd || gd.screens !== 6) bad.push('games: expected 6 terminal screens, got ' + (gd && gd.screens));
         if (!gd.buttons.includes('play') || !gd.buttons.includes('tab-party') || !gd.buttons.includes('tab-team')) bad.push('games: terminal buttons missing');
         if (!m._press('tab-party')) bad.push('games: party tab not clickable'); tick(1); if (m.debug().cat !== 'party') bad.push('games: tab did not switch category');
-        m._press('row2'); tick(1); m._press('play'); if (went !== 'blindtag') bad.push('games: PLAY went to ' + went + ', expected blindtag');
+        m._press('row2'); tick(1); m._press('play'); if (went !== 'monster') bad.push('games: PLAY went to ' + went + ', expected monster');
         went = null; m = await load('games'); tick(3); m._press('tab-team'); tick(1); m._press('row0'); tick(1); m._press('play'); if (went !== 'banana') bad.push('games: team tab PLAY went to ' + went + ', expected banana');
     }
-    // Statues: standing still survives a silence, moving in a silence puts you out on the balcony
-    m = await load('statues');
-    PL.playerBody.velocity.set(0, 0, 0);
-    if (!until(m, d => d.phase === 'play' && d.cycle >= 1, 600, () => { PL.playerBody.velocity.set(0, 0, 0); })) bad.push('statues: no silence passed while standing still');
-    else if (m.debug().out) bad.push('statues: a frozen player was eliminated');
-    m = await load('statues');
-    if (!until(m, d => d.out, 800, () => { PL.playerBody.velocity.set(3, 0, 0); })) bad.push('statues: a moving player was not eliminated');
-    else if (!(PL.playerBody.position.y > 5)) bad.push('statues: eliminated player not moved to the balcony (y=' + PL.playerBody.position.y.toFixed(1) + ')');
-    // Blind Tag: solo bot hunts a noisy player nearby
-    m = await load('blindtag');
-    if (!until(m, d => d.phase === 'hunt', 300)) bad.push('blindtag: hunt never started');
-    if (!until(m, d => d.caught >= 1 || d.phase === 'results', 200, () => { PL.playerBody.position.set(1.2, 1.0, 0.2); PL.playerBody.velocity.set(4, 0, 0); })) bad.push('blindtag: the bot did not catch a noisy player next to it');
     // Lobby (solo): Brama Wspólna - stanie na polu głosuje i po odliczaniu zabiera do trybu; Nocna Zmiana - zapowiedź, ciemność, naprawa bezpiecznika, zwycięstwo i nagroda
     {
         let went = null; const lctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
@@ -395,26 +369,6 @@ const modeSim = await run(`
         localStorage.setItem('bagaboo_workshop_v1', JSON.stringify({ slots: ['AAAA', 'zzzz', null], sel: 0 }));
         const SW = await import('./core/workshopstore.js'); SW.WS.slots = [SW.WS.slots[0], null, null]; SW.WS.sel = 0; SW.WS.slots[0] = 'AAAA';
         m = await load('custom'); if (ENG.L.obstacles.length < 5) bad.push('custom: a broken saved map should fall back to the demo course'); SW.WS.slots[0] = null;
-    }
-    // Hot Potato: boty uzupełniają pokój do 4 uczestników (sam: 3 boty, dwóch graczy: 2, czterech: 0)
-    {
-        const NW = await import('./core/network.js');
-        const fake = (n) => { for (let i = 0; i < n; i++) NW.playersState['peer' + i] = { lvl: 'potato', head: { p: [2 + i, 1.6, 6], q: [0, 0, 0, 1] }, profile: { name: 'Friend' + i } }; };
-        const clear = () => { for (const k of Object.keys(NW.playersState)) delete NW.playersState[k]; NW.NET.mode = 'solo'; };
-        try {
-            for (const [humans, want] of [[1, 3], [2, 2], [3, 1], [4, 0]]) {
-                clear(); if (humans > 1) { NW.NET.mode = 'host'; fake(humans - 1); }
-                m = await load('potato');
-                if (!until(m, d => d.phase === 'play', 500)) { bad.push('potato: the round never started with ' + humans + ' player(s)'); continue; }
-                const d = m.debug();
-                if (d.nbots !== want || d.alive.length !== humans + want) bad.push('potato: ' + humans + ' player(s) should get ' + want + ' bot(s) and ' + (humans + want) + ' alive, got ' + JSON.stringify(d));
-                step(m, 20); const d2 = m.debug();
-                if (want > 0 && d2.bots.length !== want) bad.push('potato: expected ' + want + ' moving bots, got ' + d2.bots.length);
-            }
-            // sami żywi ludzie odpadli: runda z botami się kończy (tu: wszyscy ludzie poza grą)
-            clear(); m = await load('potato'); until(m, d => d.phase === 'play', 500);
-            if (!until(m, d => d.phase === 'results' || d.alive.length <= 1, 2500, () => { PL.playerBody.position.set(0, 1.0, 12); PL.playerBody.velocity.set(0, 0, 0); })) bad.push('potato: a solo round with bots never ended');
-        } finally { clear(); }
     }
     // Mój Pokój: zakup mebla (portfel maleje o cenę), ustawianie, przenoszenie i usuwanie; odwiedziny u hosta są tylko do odczytu
     {

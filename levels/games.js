@@ -1,8 +1,8 @@
 // ==========================================
 // SALON "BAGABOO GAMES": hub z trzema skrzydłami, tryby pogrupowane tematycznie
-//  - ZACHÓD  RACE & SKILL  (pomarańczowy): Floor is Lava, Parkour Race, Last Tile, Red Light Green Light, Shooting Range
-//  - PÓŁNOC  PARTY GAMES   (różowy):       Hide and Seek, Infection, Hot Potato, Treasure Hunt, Become the Monster
-//  - WSCHÓD  TEAM GAMES    (błękitny):     Capture the Banana, King of the Hill, Dodgeball
+//  - ZACHÓD  RACE & SKILL  (pomarańczowy): Floor is Lava, Last Tile, Red Light Green Light, Custom Race, Shooting Range
+//  - PÓŁNOC  PARTY GAMES   (różowy):       Hide and Seek, Workshop, Become the Monster
+//  - WSCHÓD  TEAM GAMES    (błękitny):     Capture the Banana, Dodgeball
 // Tryby wybiera się na terminalach albo wchodzi się do nich drzwiami na ścianach kategorii (nazwa trybu nad drzwiami). Drzwi LOBBY (południe) wracają do lobby, a każdy tryb ma własne drzwi powrotne do tego salonu.
 // Wokół kuli stoi 6 komputerów jak w lobby (tak samo jak w sali Levels): zakładki RACE / PARTY / TEAM, lista trybów, karta, rekordy, PLAY.
 // Każdy gracz wybiera u siebie niezależnie; terminal działa tak samo jak w sali Levels (core/hauntedui.js).
@@ -31,24 +31,14 @@ const CATS = {
 // Kolejność w kategorii = kolejność na liście terminala
 const MODES = [
     { cat: 'race', label: 'FLOOR IS LAVA', color: '#ff8a3a', glow: 0xff5a10, target: 'lava', desc: ['Do not touch the floor.', 'Heavy jumps, sinking platforms,', 'ropes and rising lava.', 'Solo or with friends.'] },
-    { cat: 'race', label: 'PARKOUR RACE', color: '#ff7ac0', glow: 0xff3aa0, target: 'race', desc: ['Race over the void.', 'First to the finish wins', '200 Bagabucks.', 'Solo: beat the par time.'] },
-    { cat: 'race', label: 'SWING RUN', color: '#ffb060', glow: 0xff8a30, target: 'swingrun', desc: ['Cross the chasm on ropes only.', 'Grab, swing, grab the next one.', 'First to the finish wins', '200 Bagabucks. Solo: par time.'] },
-    { cat: 'race', label: 'TOWER CLIMB', color: '#7fe8a0', glow: 0x30ff80, target: 'towerclimb', desc: ['Climb the shaft before the', 'ooze rises past you.', 'First to the top wins', '200 Bagabucks. Solo: par time.'] },
     { cat: 'race', label: 'LAST TILE', color: '#ffd060', glow: 0xffb020, target: 'lasttile', desc: ['The floor tiles fall away.', 'Be the last one standing', 'for 200 Bagabucks.', 'Solo: survive as long as you can.'] },
     { cat: 'race', label: 'RED LIGHT', color: '#ff5a5a', glow: 0xff2020, target: 'redlight', desc: ['Run on green, freeze on red.', 'Move on red and you go back.', 'First to the line wins.', 'Solo: beat the par time.'] },
     { cat: 'race', label: 'CUSTOM RACE', color: '#7ad0ff', glow: 0x30a0ff, target: 'custom', desc: ['Race on a course built in the', 'Workshop. The host picks the map,', 'everyone runs it together.', 'No Bagabucks on custom maps.'] },
     { cat: 'race', label: 'SHOOTING RANGE', color: '#60d0ff', glow: 0x30a0ff, target: 'range', desc: ['Shoot the monsters that pop up.', '2 minutes. Most kills wins', '200 Bagabucks.', 'Pull the trigger to shoot.'] },
     { cat: 'party', label: 'HIDE AND SEEK', color: '#7fe8ff', glow: 0x30c0ff, target: 'hideseek', desc: ['One seeker, everyone else hides', 'in a dark warehouse. 25 s to hide,', 'then 2 minutes of hunt. 200 Bagabucks.', 'Alone? A mannequin seeks you.'] },
-    { cat: 'party', label: 'STATUES', color: '#ff7ae0', glow: 0xff40c0, target: 'statues', desc: ['Dance while the music plays.', 'Freeze when it stops!', 'Move and you are out.', 'Last statue wins 200 Bagabucks.'] },
-    { cat: 'party', label: 'BLIND TAG', color: '#ff8a5a', glow: 0xff5a20, target: 'blindtag', desc: ['A blind seeker hunts by sound.', 'Running is loud, walking is quiet.', 'Caught everyone or survived:', '200 Bagabucks.'] },
-    { cat: 'party', label: 'INFECTION', color: '#a0ff40', glow: 0x70ff20, target: 'infection', desc: ['Infected players touch you', 'to spread it. Stay clean for', '90 s to win 200 Bagabucks.', 'Solo: 2 infected mannequins.'] },
-    { cat: 'party', label: 'HOT POTATO', color: '#ff9a40', glow: 0xff6a10, target: 'potato', desc: ['Pass the bomb by touching', 'someone with your hand.', 'It explodes in the holder hands.', 'Last one alive wins.'] },
-    { cat: 'party', label: 'TREASURE HUNT', color: '#ffe080', glow: 0xffc830, target: 'treasure', desc: ['Find 8 hidden treasures in', 'the dark. The detector beeps', 'faster when you are close.', 'Most treasures wins.'] },
     { cat: 'party', label: 'WORKSHOP', color: '#ffd86a', glow: 0xffc030, target: 'workshop', desc: ['Build your own parkour course', 'from blocks on a grid. Check it,', 'save it, then test it in a race.', 'Host a friend to run it too.'] },
     { cat: 'party', label: 'BECOME THE MONSTER', color: '#ff4a4a', glow: 0xff2020, target: 'monster', desc: ['One player becomes the monster.', 'Everyone else runs for 2 minutes.', 'Not caught = 200 Bagabucks.', 'Best with 2 or more players.'] },
     { cat: 'team', label: 'CAPTURE THE BANANA', color: '#ffe040', glow: 0xffc020, target: 'banana', desc: ['Two teams, two bananas.', 'Steal theirs, bring it home.', 'First to 3 captures wins', '200 Bagabucks. Solo: vs a guard.'] },
-    { cat: 'team', label: 'KING OF THE HILL', color: '#60ff80', glow: 0x30ff60, target: 'koth', desc: ['Hold the glowing ring alone', 'to collect seconds. Knock', 'rivals off with your hand.', 'First to 40 s. Solo: a rival.'] },
-    { cat: 'team', label: 'GENERATOR', color: '#80ffd8', glow: 0x30ffb0, target: 'generator', desc: ['Repair 4 generators in the dark', 'while a monster hunts by sound.', 'Escape through the gate for', '200 Bagabucks. Talking is loud!'] },
     { cat: 'team', label: 'DODGEBALL', color: '#ff9a4a', glow: 0xff7a20, target: 'dodgeball', desc: ['Two teams, one center line.', 'Hit enemies with fast balls.', 'Last team standing wins.', 'Solo: hit 4 mannequins.'] }
 ];
 // Ściany kategorii (baner, strefa na podłodze i światło skrzydła): zachód (race), północ (party), wschód (team)
@@ -72,23 +62,13 @@ for (const cat of Object.keys(CATS)) {
     list.forEach((m, i) => { m.c = (i - (list.length - 1) / 2) * gap; m.wall = WALLS[cat]; });
 }
 export const ARRIVAL_FROM_LAVA = AR.lava;
-export const ARRIVAL_FROM_RACE = AR.race;
 export const ARRIVAL_FROM_LASTTILE = AR.lasttile;
 export const ARRIVAL_FROM_REDLIGHT = AR.redlight;
 export const ARRIVAL_FROM_RANGE = AR.range;
-export const ARRIVAL_FROM_SWINGRUN = AR.swingrun;
-export const ARRIVAL_FROM_TOWERCLIMB = AR.towerclimb;
-export const ARRIVAL_FROM_STATUES = AR.statues;
-export const ARRIVAL_FROM_BLINDTAG = AR.blindtag;
 export const ARRIVAL_FROM_HIDESEEK = AR.hideseek;
-export const ARRIVAL_FROM_INFECTION = AR.infection;
-export const ARRIVAL_FROM_POTATO = AR.potato;
-export const ARRIVAL_FROM_TREASURE = AR.treasure;
 export const ARRIVAL_FROM_MONSTER = AR.monster;
 export const ARRIVAL_FROM_BANANA = AR.banana;
-export const ARRIVAL_FROM_KOTH = AR.koth;
 export const ARRIVAL_FROM_DODGEBALL = AR.dodgeball;
-export const ARRIVAL_FROM_GENERATOR = AR.generator;
 export const ARRIVAL_FROM_CUSTOM = AR.custom;
 export const ARRIVAL_FROM_WORKSHOP = AR.workshop;
 let S = null;

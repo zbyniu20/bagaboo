@@ -52,7 +52,7 @@ export function normalizePet(raw, now) {
         s: clamp(num(raw.s) ? raw.s : 0.8, 0, 1), st: past(raw.st, now, now),
         m: clamp(num(raw.m) ? raw.m : 0.8, 0, 1), mt: past(raw.mt, now, now),
         fd: { d: intIn(fd.d, 0, 1e6, 0), n: intIn(fd.n, 0, PET.FEED_LIMIT, 0) },
-        pa: past(raw.pa, now, 0),
+        pa: past(raw.pa, now, 0), u: raw.u === 1 || PET.COLORS[raw.c].rare ? 1 : 0,   // u: odblokowany rzadki (złoty) kolor
     };
 }
 // Kolor przy wykluciu wg wag (złoty rzadko)
@@ -63,8 +63,9 @@ export function pickColor(rnd) {
 }
 // Nowy stworek z jaja: 'clears' = bieżąca liczba zaliczonych poziomów (od niej liczymy wzrost)
 export function hatch(now, clears, rnd) {
-    return { c: pickColor(rnd), n: Math.min(nNames - 1, Math.floor(rnd01(rnd) * nNames)), h: now, b: num(clears) ? Math.max(0, Math.floor(clears)) : 0,
-        s: 0.8, st: now, m: 0.8, mt: now, fd: { d: dayOf(now), n: 0 }, pa: 0 };
+    const c = pickColor(rnd);
+    return { c: c, n: Math.min(nNames - 1, Math.floor(rnd01(rnd) * nNames)), h: now, b: num(clears) ? Math.max(0, Math.floor(clears)) : 0,
+        s: 0.8, st: now, m: 0.8, mt: now, fd: { d: dayOf(now), n: 0 }, pa: 0, u: PET.COLORS[c].rare ? 1 : 0 };
 }
 export function canHatch(pet, wallet) {
     if (pet) return { ok: false, reason: 'have', price: PET.HATCH_COST };
@@ -97,6 +98,12 @@ export function feed(p, now) {
 export const canPat = (p, now) => !!p && (now - p.pa >= PET.PAT_COOLDOWN || p.pa > now);
 export const pat = (p, now) => Object.assign({}, p, { m: Math.min(1, moodBase(p, now) + PET.PAT_GAIN), mt: now, pa: now, s: satiety(p, now), st: now });
 export const feedsLeft = (p, now) => (p ? PET.FEED_LIMIT - (p.fd.d === dayOf(now) ? p.fd.n : 0) : 0);
+// Wybór koloru w menu: zwykłe kolory zawsze, rzadki (złoty) tylko dla stworka, który się taki wykluł (u = 1); zmiana nie kosztuje i niczego nie daje w grze
+export const colorChoices = (p) => PET.COLORS.map((c, i) => i).filter(i => !PET.COLORS[i].rare || p.u === 1);
+export function cycleColor(p, dir) {
+    const ch = colorChoices(p), i = Math.max(0, ch.indexOf(p.c));
+    return Object.assign({}, p, { c: ch[(i + (dir < 0 ? -1 : 1) + ch.length) % ch.length] });
+}
 // Imię: o krok w przód albo w tył po liście (zawija się)
 export const renamePet = (p, dir) => Object.assign({}, p, { n: (((p.n + (dir < 0 ? -1 : 1)) % nNames) + nNames) % nNames });
 
@@ -147,3 +154,22 @@ export const shouldTeleport = (d) => !(d <= PET.TELEPORT);
 export const idleStage = (sec) => (sec >= PET.IDLE_SLEEP ? 'sleep' : (sec >= PET.IDLE_SIT ? 'sit' : 'idle'));
 // Skala modelu na poziom
 export const scaleOf = (level) => PET.SCALE[clamp((Number.isInteger(level) ? level : 1) - 1, 0, nLv - 1)];
+
+// ---------- noszenie stworka (czysta logika; chwyt chwytem kontrolera albo klawiszem E, plecy i zdjęcie klawiszem V) ----------
+// Stan: 0 = chodzi sam, 1 = na rękach, 2 = na plecach. Zdarzenia: 'grab' (chwyt przy stworku na ziemi), 'back' (chwyt ręką za plecami albo klawisz V), 'drop' (chwyt gdzie indziej).
+// Z rąk: 'back' = na plecy, 'drop' = na ziemię. Z pleców: 'back' (chwyt ręką za plecami albo V) = na ziemię. Nic nie zmienia statystyk stworka i nic nie kosztuje.
+export const CARRY = { NONE: 0, ARMS: 1, BACK: 2, REACH: 0.6, DESKTOP_REACH: 2.4, BACK_REACH: 0.5, BACK_X: 0.3, BACK_DROP: 0.95, FRONT: 0.75 };
+export function carryNext(state, ev) {
+    if (state === CARRY.NONE) return ev === 'grab' ? CARRY.ARMS : CARRY.NONE;
+    if (state === CARRY.ARMS) return ev === 'back' ? CARRY.BACK : (ev === 'drop' || ev === 'grab' ? CARRY.NONE : CARRY.ARMS);
+    if (state === CARRY.BACK) return ev === 'back' ? CARRY.NONE : CARRY.BACK;
+    return CARRY.NONE;
+}
+// Punkt na plecach gracza (stopy stworka), gdy głowa jest w (x, y, z), a gracz patrzy w (fx, fz) (wektor poziomy, znormalizowany)
+export const backAnchor = (head, fx, fz) => ({ x: head.x - fx * CARRY.BACK_X, y: Math.max(0, head.y - CARRY.BACK_DROP), z: head.z - fz * CARRY.BACK_X });
+// Miejsce na ziemi tuż przed graczem (po zdjęciu z rąk albo z pleców)
+export const dropSpot = (head, fx, fz) => ({ x: head.x + fx * CARRY.FRONT, y: Math.max(0, head.y - 1.0), z: head.z + fz * CARRY.FRONT });
+// Pozycja na rękach: przy dłoni, a bez dłoni (nie ma kontrolerów) przed klatką piersiową
+export const armsAnchor = (head, fx, fz, hand) => (hand ? { x: hand.x, y: Math.max(0, hand.y - 0.25), z: hand.z } : { x: head.x + fx * 0.4, y: Math.max(0, head.y - 0.8), z: head.z + fz * 0.4 });
+// Wartość noszenia z sieci: tylko 0, 1 albo 2
+export const cleanCarry = (v) => (v === 1 || v === 2 ? v : 0);

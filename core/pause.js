@@ -9,9 +9,12 @@ import { SETTINGS, saveSettings } from './settings.js';
 import * as SFX from './audio.js';
 import { SAVE, CATALOG, isOwned, equipItem } from './economy.js';
 import { isStaffName } from './config.js';
+import { petStatus, cycleColorPet, cycleName } from './petstore.js';
+import { PET, colorChoices } from './petlogic.js';
 
 export const PAUSE = { on: false, onLobby: null, inLobby: true };
 const prev = new Map();
+let page = 'main';   // 'main' albo 'pet' (wybór stworka)
 const _p = new THREE.Vector3(), _d = new THREE.Vector3();
 
 function slider(t, id, label, key, y) {
@@ -32,11 +35,37 @@ function slider2(t, id, label, key, y, min, max, step) {
     t.btn(id + 'p', 820, y, 80, 52, '+', () => { SETTINGS[key] = clamp(SETTINGS[key] + step); changed(); }, { size: 34 });
     t.text(Math.round(SETTINGS[key] * 100) + '%', 990, y + 26, 22, AMBER_DIM, 'right');
 }
+// Strona wyboru stworka: kolor (rzadki złoty tylko dla złotego stworka) i imię z zamkniętych list; zmiany nic nie kosztują i niczego nie dają w grze
+function petPage(t) {
+    t.header('Choose your pet', 'BagaBoo VR', AMBER_DIM);
+    t.btn('back', 60, 92, 420, 72, 'Back', () => { page = 'main'; pauseMenu.dirty = true; }, { tone: 'ok' });
+    const st = petStatus();
+    if (!st) {
+        t.text('You have no pet yet.', 60, 250, 34, GOLD, 'left', true);
+        t.text('Buy an egg in the lobby (north wall, the nest) for ' + PET.HATCH_COST + ' Bagabucks.', 60, 310, 24, AMBER, 'left');
+    } else {
+        t.text(st.name + '  (level ' + st.level + ', ' + st.moodLabel + ')', 60, 215, 34, GOLD, 'left', true);
+        const row = (id, y, label, value, fn) => {
+            t.text(label, 60, y + 30, 28, AMBER, 'left', true);
+            t.btn(id + 'm', 380, y, 80, 56, '<', () => { fn(-1); pauseMenu.dirty = true; }, { size: 34 });
+            t.text(value, 640, y + 30, 30, GOLD, 'center', true);
+            t.btn(id + 'p', 820, y, 80, 56, '>', () => { fn(1); pauseMenu.dirty = true; }, { size: 34 });
+        };
+        row('pc', 290, 'Color', st.color.name + (st.color.rare ? ' (rare)' : ''), cycleColorPet);
+        row('pn', 370, 'Name', st.name, cycleName);
+        t.text(colorChoices(st.pet).length + ' colors to pick from. Feed and hat settings are at the nest in the lobby.', 60, 470, 22, AMBER_DIM, 'left');
+    }
+    t.text('Your pet only follows you in the halls (lobby, Levels, Games, Staff, Wardrobe, My Room).', 60, 560, 20, AMBER_DIM, 'left');
+    t.text('Hold the grip (E on keyboard) next to it to pick it up, V puts it on your back or on the floor.', 60, 590, 20, AMBER_DIM, 'left');
+    t.scanlines();
+}
 export const pauseMenu = new Terminal((t) => {
     t.background();
+    if (page === 'pet') { petPage(t); return; }
     t.header('Paused', 'BagaBoo VR', AMBER_DIM);
-    t.btn('resume', 60, 92, 420, 72, 'Resume', () => closePause(), { tone: 'ok' });
-    t.btn('lobby', 540, 92, 420, 72, 'Back to lobby', () => { closePause(); if (PAUSE.onLobby) PAUSE.onLobby(); }, { disabled: PAUSE.inLobby });
+    t.btn('resume', 60, 92, 300, 72, 'Resume', () => closePause(), { tone: 'ok' });
+    t.btn('lobby', 380, 92, 300, 72, 'Back to lobby', () => { closePause(); if (PAUSE.onLobby) PAUSE.onLobby(); }, { disabled: PAUSE.inLobby });
+    t.btn('pet', 700, 92, 260, 72, 'Choose pet', () => { page = 'pet'; pauseMenu.dirty = true; }, { tone: 'gold' });
     slider(t, 'mus', 'Music', 'music', 180);
     slider(t, 'fx', 'Effects', 'effects', 240);
     slider(t, 'sc', 'Jumpscares', 'scare', 300);
@@ -64,7 +93,7 @@ mesh.renderOrder = 50;
 
 export function openPause() {
     if (PAUSE.on) return;
-    PAUSE.on = true;
+    PAUSE.on = true; page = 'main';
     camera.getWorldPosition(_p); camera.getWorldDirection(_d); _d.y = 0;
     if (_d.lengthSq() < 0.01) _d.set(0, 0, -1);
     _d.normalize();

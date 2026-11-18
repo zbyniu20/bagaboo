@@ -1,5 +1,5 @@
 // ==========================================
-// MANEKIN TRENINGOWY (lobby): cel dla młotków ekipy, głównie do sprawdzenia Nothing Hammer (Gooby) bez drugiego gracza.
+// MANEKIN TRENINGOWY (Staff room): cel dla młotków ekipy, głównie do sprawdzenia Nothing Hammer (Gooby) bez drugiego gracza.
 // Działa także solo. Trafiony kołysze się na sprężynie; Nothing Hammer pokazuje na jego twarzy Gooby'ego i odpala TWÓJ podgląd jumpscare'a
 // (to, co widziałby trafiony gracz). Kick i Ban młotek nic mu nie robią, tylko go kołyszą. Tablica obok liczy trafienia.
 // Rejestruje się w L.hammerTargets (core/engine.js), a trafienia obsługuje core/hammer.js.

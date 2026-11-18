@@ -4,7 +4,7 @@
 // nic nie zarabia. Wygląd dla innych graczy to krotka z lookOf (network.js dokleja ją do stanu gracza, odbiorca przyjmuje ją przez cleanLook).
 // ==========================================
 import { SAVE, saveGame, spendBones, CATALOG, isOwned, equipItem } from './economy.js';
-import { PET, normalizePet, hatch, canHatch, canFeed, feed, canPat, pat, renamePet, levelOf, progress, lookOf, satiety, moodOf, moodLabel, isHungry, feedsLeft } from './petlogic.js';
+import { PET, normalizePet, hatch, canHatch, canFeed, feed, canPat, pat, renamePet, cycleColor, levelOf, progress, lookOf, satiety, moodOf, moodLabel, isHungry, feedsLeft } from './petlogic.js';
 
 export const clearsNow = () => (SAVE.stats && SAVE.stats.clears) || 0;
 export function getPet() { const p = normalizePet(SAVE.pet, Date.now()); SAVE.pet = p; return p; }
@@ -43,6 +43,7 @@ export function cycleWear(kind, dir) {
     const cur = petWear()[kind], i = Math.max(0, opts.findIndex(o => o.id === cur)), next = opts[(i + (dir < 0 ? -1 : 1) + opts.length) % opts.length];
     equipItem(next); return { ok: true, name: next.name, id: next.id };
 }
+export function cycleColorPet(dir) { const p = getPet(); if (!p) return false; SAVE.pet = cycleColor(p, dir); saveGame(); return true; }
 export function cycleName(dir) { const p = getPet(); if (!p) return false; SAVE.pet = renamePet(p, dir); saveGame(); return true; }
 // Zwięzły stan do wyświetlania (panel, plakietka): bez zapisu
 export function petStatus() {
@@ -54,3 +55,7 @@ export function petStatus() {
 }
 const wearName = (kind) => { const id = petWear()[kind], it = CATALOG.find(x => x.slot === WEAR_SLOT[kind] && x.id === id); return it ? it.name : '-'; };
 export function petLookNet() { const p = getPet(); if (!p) return null; const w = petWear(); return lookOf(p, clearsNow(), w.hat, w.neck); }
+// Czy stworek jest noszony (0 idzie, 1 na rękach, 2 na plecach): tylko stan chwilowy, nie zapisuje się; idzie do sieci jako pc obok wyglądu
+let carry = 0;
+export const petCarryNet = () => carry;
+export const setPetCarry = (v) => { carry = v === 1 || v === 2 ? v : 0; };

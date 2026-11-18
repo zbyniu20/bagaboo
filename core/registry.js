@@ -31,25 +31,15 @@ export const LEVEL_DEFS = [
     { id: 'home', name: 'My Room', kind: 'hub', light: 'staff', theme: 'calm' },
     { id: 'furas', name: 'The Fur Den', kind: 'level', light: 'nursery', rec: 'The Fur Den', diff: true, theme: 'chase', room: { sec: 2.2, wet: 0.2 }, ambience: { rand: [{ t: 'creak', e: [7, 15], d: [8, 22], v: 0.16 }, { t: 'whisper', e: [18, 40], d: [3, 8], v: 0.35 }, { t: 'thud', e: [12, 26], d: [10, 24], v: 0.25 }] } },
     { id: 'route', kind: 'virtual', rec: 'Red route' },
-    { id: 'race', name: 'Parkour Race', kind: 'game', light: 'arcade', rec: 'Parkour race', theme: 'arcade' },
     { id: 'redlight', name: 'Red Light, Green Light', kind: 'game', light: 'station', rec: 'Red Light, Green Light', theme: 'chase' },
-    { id: 'swingrun', name: 'Swing Run', kind: 'game', light: 'arcade', rec: 'Swing Run', theme: 'arcade' },
-    { id: 'towerclimb', name: 'Tower Climb', kind: 'game', light: 'night', rec: 'Tower Climb', theme: 'dread' },
     { id: 'lasttile', name: 'Last Tile', kind: 'game', light: 'arcade', rec: 'Last Tile (seconds)', score: true, theme: 'arcade' },
-    { id: 'statues', name: 'Statues', kind: 'game', light: 'arcade', rec: 'Statues (silences)', score: true, theme: 'arcade' },
-    { id: 'blindtag', name: 'Blind Tag', kind: 'game', light: 'hideseek', rec: 'Blind Tag (seconds)', score: true, theme: 'dread' },
     { id: 'range', name: 'Shooting Range', kind: 'game', light: 'night', rec: 'Shooting range (kills)', score: true, theme: 'arcade' },
     { id: 'monster', name: 'Become the Monster', kind: 'game', light: 'station', theme: 'chase' },
     { id: 'hideseek', name: 'Hide and Seek', kind: 'game', light: 'hideseek', theme: 'dread' },
     { id: 'banana', name: 'Capture the Banana', kind: 'game', light: 'station', theme: 'arcade' },
-    { id: 'potato', name: 'Hot Potato', kind: 'game', light: 'station', theme: 'arcade' },
-    { id: 'treasure', name: 'Treasure Hunt', kind: 'game', light: 'hideseek', theme: 'dread' },
-    { id: 'koth', name: 'King of the Hill', kind: 'game', light: 'station', theme: 'arcade' },
-    { id: 'infection', name: 'Infection', kind: 'game', light: 'station', theme: 'chase' },
     { id: 'dodgeball', name: 'Dodgeball', kind: 'game', light: 'station', theme: 'arcade' },
     { id: 'custom', name: 'Custom Race', kind: 'game', light: 'arcade', theme: 'arcade' },
-    { id: 'workshop', name: 'Workshop', kind: 'game', light: 'arcade', theme: 'arcade' },
-    { id: 'generator', name: 'Generator', kind: 'game', light: 'hideseek', theme: 'dread', room: { sec: 2.4, wet: 0.2 }, ambience: { loops: [['hum', [[-12, 1.2, 7], [12, 1.2, 3], [-11, 1.2, -8], [12, 1.2, -11]]]], rand: [{ t: 'creak', e: [8, 16], d: [8, 20], v: 0.16 }, { t: 'thud', e: [14, 30], d: [12, 28], v: 0.25 }] } }
+    { id: 'workshop', name: 'Workshop', kind: 'game', light: 'arcade', theme: 'arcade' }
 ];
 
 export const LEVEL_BY_ID = Object.fromEntries(LEVEL_DEFS.filter(d => d.kind !== 'virtual').map(d => [d.id, d]));

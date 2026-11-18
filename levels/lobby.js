@@ -11,7 +11,6 @@ import * as M from '../core/murals.js';
 import { computer, shop, board, dailyBoard } from '../core/ui.js';
 import { machine, attachGorillaMachine, detachGorillaMachine, updateGorillaMachine } from '../core/gorillamachine.js';
 import { track } from '../core/economy.js';
-import { buildTrainingDummy, updateTrainingDummy } from '../core/trainingdummy.js';
 import { buildLobbyPlay, updateLobbyPlay, disposeLobbyPlay, lobbyDim, debugLobbyPlay } from '../core/lobbyplay.js';
 import { buildPetNest, updatePetNest, disposePetNest } from '../core/petnest.js';   // gniazdo Stworka: jajo, wykluwanie i panel opieki
 
@@ -84,7 +83,6 @@ export function build() {
     buildShop();
     buildChains();
     buildParticles();
-    buildTrainingDummy(-5.5, 2.2, Math.PI / 2 - 0.35);   // manekin do testów młotków ekipy (Nothing Hammer), obok miejsca startu; przed ozdobnymi manekinami, bo rezerwuje miejsce
     buildMannequins();
     for (const r of [[4, 18, -4, 12], [-4, 18, 4, 12], [0, 15, 0, 10], [6, 15, 6, 10], [-8, 14, -2, 9]]) addGutsRope(r[0], r[1], r[2], r[3]);
     createEyeball('ball1', 2, 1, -2); createEyeball('ball2', -2, 1, -2);
@@ -579,7 +577,7 @@ export function update(dt, t, ctx) {
     }
     if (fx.flyN > 0) fx.flyGeo.attributes.position.needsUpdate = true;
     updateGorillaMachine(dt);
-    updateMannequins(dt); updateTrainingDummy(dt);
+    updateMannequins(dt);
     updateLobbyPlay(dt, t, ctx);
     updatePetNest(dt, t, ctx);
     // Zadanie dzienne: stanie na szczycie spiralnych schodów

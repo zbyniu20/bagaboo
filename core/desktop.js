@@ -28,12 +28,15 @@ export function enableDesktop() { DESKTOP.enabled = true; }
 export function setDesktopFacing(y) { yaw = y; pitch = 0; }
 const locked = () => document.pointerLockElement === canvas;
 
+const keyHooks = {};   // dodatkowe akcje klawiszy dla modułów (np. V: stworek na plecy)
+export function onDesktopKey(code, fn) { keyHooks[code] = fn; }
 window.addEventListener('keydown', (e) => {
     if (!DESKTOP.enabled || renderer.xr.isPresenting) return;
     if (keys[e.code]) return;
     keys[e.code] = true;
     if (e.code === 'KeyE') squeeze(1, true);
     if (e.code === 'KeyF') fly = !fly;
+    if (keyHooks[e.code] && !/INPUT|TEXTAREA/.test((e.target && e.target.tagName) || '')) keyHooks[e.code]();
     if (e.code === 'KeyG' && L.onKeyG) L.onKeyG();   // klawisz G: akcja poziomu (np. latarka w Hotelu)
 });
 window.addEventListener('keyup', (e) => {

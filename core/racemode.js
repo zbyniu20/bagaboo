@@ -1,7 +1,7 @@
 // ==========================================
-// FABRYKA TRYBÓW WYŚCIGOWYCH (Swing Run, Tower Climb): runda oczekiwanie -> odliczanie -> wyścig -> wyniki, kolejność mety,
+// FABRYKA TRYBÓW WYŚCIGOWYCH (Custom Race): runda oczekiwanie -> odliczanie -> wyścig -> wyniki, kolejność mety,
 // host liczy stan i rozsyła go co 0,2 s, tryb solo to próba czasowa z czasem wzorcowym, rekordem i duchem (core/runkit.js).
-// Mniej więcej to samo robi levels/race.js (Parkour Race) na sztywno; tutaj tor, kryteria mety i dodatkowe reguły podaje konfiguracja.
+// Wyścig Red Light robi to samo na sztywno; tutaj tor, kryteria mety i dodatkowe reguły podaje konfiguracja.
 //   cfg.build(S)             buduje halę i tor (L.root), zwraca { finish(p) -> bool, exit: opcje drzwi EXIT za metą (buildDoor) }; może dopisać pola do S
 //   cfg.frame(S, dt, p, ctx) co klatkę w wyścigu; zwrócenie 'caught' cofa gracza na start (np. maź), ustawia S.extra do HUD
 //   cfg.respawn              'platform' (po upadku wracasz na ostatnią platformę) albo 'start'
