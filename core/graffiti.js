@@ -39,7 +39,8 @@ export function buildGraffiti() {
     G = {
         wall: emptyWall(), day: dayKey(Date.now()), week: weekKey(Date.now()), gallery: [], color: 3, brush: 0, cell: null, lastPaint: '', vrLast: ['', ''], out: [], buckets: {},
         clock: 0, snapT: 1, deltaT: 0, saveT: SAVE_EVERY, dayT: 1, snapNow: false, saveDirty: false, galleryDirty: false, sprayT: -9, noticeT: -9, dim: 1,
-        priv: emptyWall(), mode: 'shared', privDirty: false, posterAt: -99, posterBy: {}, voteBy: {}, voted: {}, contest: newContest(true), saved: null, ctT: 0, ctNow: false, lastGc: 0, sec: -1, padSig: '', term: null, gterm: null
+        priv: emptyWall(), mode: 'private',   // domyślnie własny ekran: nikt inny nie przeszkodzi w rysowaniu, wspólna ściana to świadomy wybór
+         privDirty: false, posterAt: -99, posterBy: {}, voteBy: {}, voted: {}, contest: newContest(true), saved: null, ctT: 0, ctNow: false, lastGc: 0, sec: -1, padSig: '', term: null, gterm: null
     };
     load();
     const t = new Terminal(draw, 1024, 640), gt = new Terminal(drawGallery, 640, 560); G.term = t; G.gterm = gt;
@@ -170,7 +171,7 @@ function draw(t) {
         t.text(pv ? 'MY SCREEN' : 'GRAFFITI WALL', 32, 28, 28, pv ? '#9fd0ff' : AMBER, 'left', true);
         t.btn('post', 280, 8, 110, 42, 'SAVE', savePoster, { tone: 'ok', size: 22 });
         t.btn('mode', 400, 8, 230, 42, pv ? 'SHARED WALL' : 'MY SCREEN', () => setMode(pv ? 'shared' : 'private'), { tone: pv ? 'gold' : undefined, size: 20 });
-        t.text(pv ? 'private: only you see it' : 'shared  |  fades daily', 992, 28, 20, pv ? '#9fd0ff' : AMBER_DIM, 'right', true);
+        t.text(pv ? 'private: only you see it' : 'shared: everyone can paint | fades daily', 992, 28, 20, pv ? '#9fd0ff' : AMBER_DIM, 'right', true);
     } else {
         t.text('THEME: ' + k.theme, 32, 28, 26, GOLD, 'left', true);
         const info = k.ph === 'draw' ? 'DRAW! ' + mmss(k.t) : (k.ph === 'vote' ? 'VOTE: stand on a pad ' + mmss(k.t) : (k.winner >= 0 ? 'WINNER: ' + slotName(k.winner) : 'NO VOTES'));

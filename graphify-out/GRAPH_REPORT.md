@@ -1,7 +1,7 @@
 # Graph Report - bagaboo  (2026-11-18)
 
 ## Corpus Check
-- 429 files · ~1,211,975 words
+- 429 files · ~1,212,023 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 87 file(s) not represented in the graph (top: .css 84, (none) 3)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7d32684c`
+- Built from commit: `4c702963`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1015,7 +1015,7 @@ Nodes (5): mount(), params, poolX(), tones(), uniforms()
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `f()` connect `build.js` to `custom.js`, `logic.mjs`, `ref_url`, `copy-lint.mjs`, `static.mjs`, `gate.mjs`, `changed.mjs`, `ref_node_fs`?**
-  _High betweenness centrality (0.448) - this node is a cross-community bridge._
+  _High betweenness centrality (0.479) - this node is a cross-community bridge._
 - **Are the 51 inferred relationships involving `lib()` (e.g. with `arrive()` and `audit()`) actually correct?**
   _`lib()` has 51 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `./core/audio.js`, `./core/avatar.js`, `./core/economy.js` to the rest of the system?**
@@ -1023,8 +1023,8 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `network.js` be split into smaller, more focused modules?**
   _Cohesion score 0.04697102721685689 - nodes in this community are weakly interconnected._
 - **Why does `mode` connect `custom.js` to `build.js`?**
-  _High betweenness centrality (0.421) - this node is a cross-community bridge._
+  _High betweenness centrality (0.424) - this node is a cross-community bridge._
 - **Should `toast` be split into smaller, more focused modules?**
   _Cohesion score 0.04660493827160494 - nodes in this community are weakly interconnected._
-- **Why does `lib()` connect `lib` to `consistency.mjs`?**
-  _High betweenness centrality (0.063) - this node is a cross-community bridge._
+- **Why does `sub()` connect `build.js` to `init`?**
+  _High betweenness centrality (0.078) - this node is a cross-community bridge._

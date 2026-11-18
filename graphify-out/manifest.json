@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795019896.8631492,
-    "seen": 1795019904.4941514,
-    "ast_hash": "cc33aa5a2e2fca3aef5177e60d1ec60e",
+    "mtime": 1795019927.2743146,
+    "seen": 1795019934.123231,
+    "ast_hash": "c553332c52c40f986ea59ede500c0c57",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795019887.830922,
-    "seen": 1795019904.4939623,
-    "ast_hash": "253dc0b9f99226df7477dc76e17af1d5",
+    "mtime": 1795019927.2738502,
+    "seen": 1795019934.1230173,
+    "ast_hash": "5cfdd80d4116698602c34f6247eeb369",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -9936,9 +9936,9 @@
     "semantic_hash": ""
   },
   "core/graffiti.js": {
-    "mtime": 1795019869.061472,
-    "seen": 1795019904.4938476,
-    "ast_hash": "df3945c4cf4a869173f636baa41f5122",
+    "mtime": 1795019927.2732337,
+    "seen": 1795019934.1228423,
+    "ast_hash": "dd8a1ce2c7325098da2654e955ca7682",
     "semantic_hash": ""
   },
   "core/graffitilogic.js": {
