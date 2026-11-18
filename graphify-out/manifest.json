@@ -540,8 +540,8 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1794959366.828019,
-    "seen": 1794960038.059919,
+    "mtime": 1794960047.480045,
+    "seen": 1794960935.0533566,
     "ast_hash": "3985eca95c4244424a871396b68296f3",
     "semantic_hash": ""
   },
@@ -570,9 +570,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1794959375.4524128,
-    "seen": 1794960038.0596888,
-    "ast_hash": "7701d464cf21e8703fdb93a1aaa1b0fd",
+    "mtime": 1794960913.8656342,
+    "seen": 1794960935.053172,
+    "ast_hash": "5518d280b82a410b7980b19fffe63b81",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10032,15 +10032,15 @@
     "semantic_hash": ""
   },
   "core/pet.js": {
-    "mtime": 1794959278.9750395,
-    "seen": 1794960038.0596037,
-    "ast_hash": "739b7c9222f4799100ed677724e8a783",
+    "mtime": 1794960913.8651502,
+    "seen": 1794960935.053098,
+    "ast_hash": "11554f10c5406cf0f5020477d18b49b3",
     "semantic_hash": ""
   },
   "core/petlogic.js": {
-    "mtime": 1794959083.1279876,
-    "seen": 1794960038.0596056,
-    "ast_hash": "b2a3a1a29b5da32954a1f24890df0156",
+    "mtime": 1794960902.793241,
+    "seen": 1794960935.0530999,
+    "ast_hash": "4c68f980c5d53b3d468bd409957b5783",
     "semantic_hash": ""
   },
   "core/petmodel.js": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "core/petnest.js": {
-    "mtime": 1794959366.8263185,
-    "seen": 1794960038.0596092,
-    "ast_hash": "db0f4fe87c84a799808715726c0b3c12",
+    "mtime": 1794960902.7939854,
+    "seen": 1794960935.0531023,
+    "ast_hash": "fa2912058a2a527bdab5d40fb5ecb19a",
     "semantic_hash": ""
   },
   "core/petstore.js": {

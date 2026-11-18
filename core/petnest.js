@@ -49,7 +49,7 @@ export function buildPetNest(x, z) {
     const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xfff2c0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); flash.visible = false; g.add(flash);
     // panel opieki na ścianie nad podestem
     const term = new Terminal(draw, 768, 480);
-    const pg = new THREE.Group(); pg.position.set(x, 2.55, -14.86); L.root.add(pg);
+    const pg = new THREE.Group(); pg.position.set(x, 2.55, -14.4);   // 0,6 m od ściany: żeberka ściany północnej nie przecinają ekranu L.root.add(pg);
     pg.add(new THREE.Mesh(new THREE.BoxGeometry(3.45, 2.2, 0.1), mat(0x2a221c, { metalness: 0.4, roughness: 0.5 })));
     const screen = term.createMesh(3.3, 2.06); screen.position.z = 0.055; pg.add(screen);
     L.reserved.push([x, z, 2.6]);

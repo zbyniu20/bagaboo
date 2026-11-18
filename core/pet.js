@@ -7,8 +7,8 @@
 // SIEĆ: do stanu gracza idzie tylko krotka wyglądu (petLookNet); u odbiorcy stworek innego gracza powstaje WYŁĄCZNIE z cleanLook(st.pt), na tej samej sali, nigdy dla
 // niewidzialnych graczy, i chodzi obok głowy właściciela (pozycji nikt nie wysyła). Stworek nic nie daje (żadnych bonusów w grze), więc nie ma czego tu nadużywać.
 // ==========================================
-import { THREE, L } from './engine.js';
-import { PET, cleanLook, followSpeed, shouldTeleport, idleStage } from './petlogic.js';
+import { THREE, L, camera } from './engine.js';
+import { PET, cleanLook, followSpeed, shouldTeleport, idleStage, restSpot, shouldFollow } from './petlogic.js';
 import { petStatus, patPet } from './petstore.js';
 import { createPetModel } from './petmodel.js';
 import { createBot, stepBot } from './botkit.js';
@@ -21,7 +21,7 @@ import { toast, GOLD } from './terminal.js';
 let HUB = false, P = null, holdSpawn = false;
 const remote = {};   // id gracza -> { model, x, y, z, sp }
 const MAX_REMOTE = 5;
-const _v = new THREE.Vector3();
+const _v = new THREE.Vector3(), _dir = new THREE.Vector3();
 
 export function buildPet(levelId) { const def = LEVEL_BY_ID[levelId]; HUB = !!def && def.kind === 'hub'; P = null; }
 export function disposePet() {
@@ -37,7 +37,7 @@ function spawn(ctx, born, at) {
     const x = at ? at.x : pl.x + Math.cos(a) * 1.3, z = at ? at.z : pl.z + Math.sin(a) * 1.3, bot = createBot(x, z);
     bot.y = at && at.y !== undefined ? at.y : Math.max(0, pl.y - 1.0);
     L.root.add(model.group);
-    P = { model: model, bot: bot, lvl: st.level, name: st.name, idleT: 0, last: { x: pl.x, z: pl.z }, sp: 0, petted: 0, eating: 0, handT: 0, patCd: 0, squeakIn: 8 + Math.random() * 10, jumpCd: 0, statT: 0, hungry: st.hungry, sad: st.mood < 0.35, mood: st.moodLabel, tagMood: '' };
+    P = { model: model, bot: bot, lvl: st.level, name: st.name, idleT: 0, last: { x: pl.x, z: pl.z }, sp: 0, petted: 0, eating: 0, handT: 0, patCd: 0, squeakIn: 8 + Math.random() * 10, jumpCd: 0, statT: 0, follow: false, hungry: st.hungry, sad: st.mood < 0.35, mood: st.moodLabel, tagMood: '' };
     model.group.position.set(bot.x, bot.y, bot.z);
     model.setTag(st.name, st.level, st.moodLabel);
 }
@@ -79,16 +79,20 @@ function updateMine(dt, t, ctx) {
     }
     // bezruch gracza: siadanie i spanie
     const ps = Math.hypot(pl.x - p.last.x, pl.z - p.last.z) / Math.max(dt, 0.001); p.last.x = pl.x; p.last.z = pl.z;
-    p.idleT = ps < 0.35 && d < 3.5 ? p.idleT + dt : 0;
+    p.idleT = ps < 0.35 && d < PET.STAY + 0.5 ? p.idleT + dt : 0;
     const stage = idleStage(p.idleT);
     // za daleko: pojawia się obok gracza (z obłoczkiem)
     if (shouldTeleport(d)) { const a = Math.random() * Math.PI * 2; b.x = pl.x + Math.cos(a) * 1.3; b.z = pl.z + Math.sin(a) * 1.3; b.y = Math.max(0, pl.y - 1.0); b.vy = 0; p.model.burst('poof', 6); }
     // ruch: idzie za graczem; skacze razem z nim
     p.petted = Math.max(0, p.petted - dt); p.eating = Math.max(0, p.eating - dt); p.patCd = Math.max(0, p.patCd - dt); p.jumpCd = Math.max(0, p.jumpCd - dt);
-    const busy = p.petted > 0 || p.eating > 0 || stage !== 'idle';
-    const want = busy ? 0 : followSpeed(d);
+    // Gdy gracz odejdzie dalej niż STAY, stworek biegnie do miejsca 2 m przed nim (po prawej), żeby było go widać; blisko gracza zostaje, więc można go pogłaskać
+    camera.getWorldDirection(_dir);
+    const rest = restSpot(pl.x, pl.z, _dir.x, _dir.z, L.bounds), dRest = Math.hypot(rest.x - b.x, rest.z - b.z);
+    p.follow = shouldFollow(p.follow, d, dRest);
+    const busy = p.petted > 0 || p.eating > 0 || (stage !== 'idle' && !p.follow);
+    const want = busy || !p.follow ? 0 : followSpeed(dRest);
     if (ctx.body && ctx.body.velocity.y > 3.5 && p.jumpCd <= 0 && b.ground && stage === 'idle' && d < 4) { b.vy = 4.6; b.ground = false; p.jumpCd = 0.9; }
-    stepBot(b, dt, pl.x, pl.z, pl.y - 1.0, want, d > 2.5);
+    stepBot(b, dt, p.follow ? rest.x : pl.x, p.follow ? rest.z : pl.z, pl.y - 1.0, want, p.follow && dRest > 2.5);
     if (want === 0 && d > 0.2) { const target = Math.atan2(dx, dz); let dd = target - p.model.group.rotation.y; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); b.dir = p.model.group.rotation.y + dd * Math.min(1, dt * 3); }
     p.model.group.position.set(b.x, b.y, b.z); p.model.group.rotation.y = b.dir;
     p.sp += (Math.min(1, want / 6.5 + (want > 0 ? 0.25 : 0)) - p.sp) * Math.min(1, dt * 8);
@@ -129,7 +133,7 @@ function updateRemote(dt, t) {
         const hp = st.head.p; if (!Number.isFinite(hp[0]) || !Number.isFinite(hp[1]) || !Number.isFinite(hp[2])) continue;
         const dx = hp[0] - e.x, dz = hp[2] - e.z, d = Math.hypot(dx, dz);
         if (!e.init || shouldTeleport(d)) { e.x = hp[0] + 1.2; e.z = hp[2]; e.y = Math.max(0, hp[1] - 1.62); e.init = true; continue; }
-        const sp = followSpeed(d); if (sp > 0) { const k = Math.min(1, sp * dt / d); e.x += dx * k; e.z += dz * k; }
+        const sp = followSpeed(d - 1.8); if (sp > 0) { const k = Math.min(1, sp * dt / d); e.x += dx * k; e.z += dz * k; }
         e.y += (Math.max(0, hp[1] - 1.62) - e.y) * Math.min(1, dt * 6);
         e.sp += (Math.min(1, sp / 6.5 + (sp > 0 ? 0.25 : 0)) - e.sp) * Math.min(1, dt * 8);
         const face = Math.atan2(dx, dz); let dd = face - e.model.group.rotation.y; dd = Math.atan2(Math.sin(dd), Math.cos(dd));

@@ -28,6 +28,8 @@ export const PET = {
     SCALE: [0.8, 0.9, 1.0, 1.1, 1.2],       // wielkość modelu na poziom
     IDLE_SIT: 8, IDLE_SLEEP: 30,            // sekundy bezruchu gracza: stworek siada, potem zasypia
     TELEPORT: 14,                           // dalej niż tyle metrów od gracza: pojawia się obok niego
+    STAY: 3.4,                              // bliżej niż tyle metrów od gracza stworek zostaje (można go pogłaskać); dalej biegnie za nim
+    REST: 2.0, SIDE: 0.5, REST_ARRIVE: 0.6, // miejsce odpoczynku: 2 m przed graczem, 0,5 rad w prawo od kierunku patrzenia (widać go na dole kadru)
 };
 const nCol = PET.COLORS.length, nNames = PET.NAMES.length, nLv = PET.LEVELS.length;
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -121,8 +123,19 @@ export function cleanLook(raw) {
 }
 
 // ---------- zachowanie towarzysza (czyste decyzje; ruch robi core/pet.js) ----------
-// Prędkość pościgu za graczem wg odległości: stoi przy graczu, idzie spokojnie, trusia, biegnie
-export const followSpeed = (d) => (d < 1.5 ? 0 : (d < 3 ? 2.0 : (d < 6 ? 3.8 : 6.5)));
+// Prędkość biegu do miejsca odpoczynku wg odległości do niego: tuż przy nim stoi, potem idzie, trusia, biegnie
+export const followSpeed = (d) => (!(d >= 0.5) ? 0 : (d < 1.5 ? 2.0 : (d < 4 ? 3.8 : 6.5)));
+// Miejsce odpoczynku przed graczem (dir = poziomy kierunek patrzenia), przycięte do sali (bounds: minX, maxX, minZ, maxZ). Bez kierunku: obok gracza
+export function restSpot(px, pz, dirx, dirz, bounds) {
+    let dx = num(dirx) ? dirx : 0, dz = num(dirz) ? dirz : 0; const len = Math.hypot(dx, dz);
+    if (len < 1e-6) { dx = 0; dz = 1; } else { dx /= len; dz /= len; }
+    const c = Math.cos(PET.SIDE), s = Math.sin(PET.SIDE), rx = dx * c - dz * s, rz = dx * s + dz * c;   // obrót o SIDE w stronę prawej ręki
+    let x = px + rx * PET.REST, z = pz + rz * PET.REST;
+    if (bounds) { x = clamp(x, bounds.minX + 0.6, bounds.maxX - 0.6); z = clamp(z, bounds.minZ + 0.6, bounds.maxZ - 0.6); }
+    return { x: x, z: z };
+}
+// Czy stworek ma biec za graczem: zaczyna, gdy gracz odejdzie dalej niż STAY, kończy po dotarciu do miejsca odpoczynku (histereza: nie ucieka przed głaskaniem)
+export const shouldFollow = (following, dPlayer, dRest) => (following ? !(dRest < PET.REST_ARRIVE) : dPlayer > PET.STAY);
 export const shouldTeleport = (d) => !(d <= PET.TELEPORT);
 // Etap spoczynku wg bezruchu gracza (s): 'idle' -> 'sit' -> 'sleep'
 export const idleStage = (sec) => (sec >= PET.IDLE_SLEEP ? 'sleep' : (sec >= PET.IDLE_SIT ? 'sit' : 'idle'));
