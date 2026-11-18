@@ -3,12 +3,14 @@
 // Host losuje jednego gracza na potwora. Potwór łapie dłonią resztę. Runda trwa 2 minuty.
 // Kto nie zostanie złapany, dostaje 200 Bagabucks. Potwór dostaje 200, jeśli złapie wszystkich.
 // Gdy grasz sam, goni cię manekin-bot.
+// MAPY: stacja kolejowa i pięć generowanych map (core/monstermaps.js: Hedge Maze, Container Yard, Night Supermarket, City Rooftops, Ruined Temple).
+// Mapę wybiera host (albo gracz solo) na tablicy przy drzwiach w fazie oczekiwania, albo losuje się inna co rundę. Przez sieć idzie tylko numer mapy i ziarno (cleanMapPick).
 // ==========================================
-import { THREE, L, tex, camera, addCrispBlock } from '../core/engine.js';
+import { THREE, L, tex, camera, addCrispBlock, world } from '../core/engine.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { levelReward } from '../core/economy.js';
-import { toast } from '../core/terminal.js';
+import { toast, Terminal, AMBER, AMBER_DIM, GOLD, OK_COL } from '../core/terminal.js';
 import { hands, setPlayerPosition } from '../core/player.js';
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
@@ -16,14 +18,13 @@ import { buzz } from '../core/haptics.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare , introSeen } from '../core/levelkit.js';
 import { buildMonsterSkin } from '../core/monsterskins.js';
 import { ARRIVAL_FROM_MONSTER } from './games.js';
+import { MAPS, generateMap, pickMap, cleanMapPick } from '../core/monstermaps.js';
 
-const A = 30, H = 12;                       // stacja kolejowa 60 x 60 m
-const MONSTER_SPAWN = [0, 1.0, -26];        // potwór zaczyna na torach w głębi stacji
-const SURVIVOR_SPAWN = [[-18, 2.2, 26], [18, 2.2, 26], [-12, 2.2, 24], [12, 2.2, 24], [-22, 2.2, 22], [22, 2.2, 22]];   // reszta na peronach przy wejściu
 const WAIT = 10, ROUND = 120, RESULTS = 8, REWARD = 200;
 const CATCH_DIST = 0.5;                     // dłoń potwora tak blisko głowy lub tułowia = złapany
 const BOT_SPEED = 4.2, BOT_SPEED_MAX = 5.4;   // trochę wolniej od szybkiego biegu gracza: da się uciec, ale z wysiłkiem   // bot jest trochę szybszy od gracza i przyspiesza w trakcie rundy
-const BOT_GRAVITY = 18, BOT_JUMP_MAX = 4.2;    // bot skacze na perony, wagony i schody (do 4,2 m w górę)
+const BOT_GRAVITY = 18, BOT_JUMP_MAX = 4.2;   // BOT_JUMP_MAX: domyślnie, mapa może dać własny (md.botJump)
+const _unusedJump = 0;    // bot skacze na perony, wagony i schody (do 4,2 m w górę)
 const MONSTER_BOOST = 1.15;                 // potwór jest trochę szybszy
 const SCARE_MIN = 25, SCARE_MAX = 55;       // co ile sekund (losowo) jumpscare
 export const info = { id: 'monster', name: 'Become the Monster', spawn: [0, 1.0, 27.5] };
@@ -31,11 +32,11 @@ let S = null;
 const _p = new THREE.Vector3(), _h = new THREE.Vector3();
 
 export function build() {
-    L.spawn = info.spawn.slice();
-    L.bounds = { minX: -A + 0.4, maxX: A - 0.4, minZ: -A + 0.4, maxZ: A - 0.4, maxY: H - 0.4 };
-    S = { clock: 0, phase: 'wait', t: WAIT, mon: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, tinted: false, bot: null };
-    buildArena();
-    buildDoor({ x: 0, z: A - 0.03, rotY: Math.PI, label: 'GAMES', color: '#d080ff', wood: 0x3a3048, portal: { target: 'games', spawn: ARRIVAL_FROM_MONSTER, onEnter: () => toast('Back to BagaBoo Games') } });
+    S = { clock: 0, phase: 'wait', t: WAIT, mon: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, tinted: false, bot: null, map: -1, seed: 0, sel: -1, md: null, mapGroup: null, mapObs: [], mapBodies: [], mapPortals: [] };
+    // Gość zaczyna na stacji i przechodzi na mapę hosta po pierwszej wiadomości; host i solo losują mapę od razu
+    const first = N.NET.mode === 'guest' ? { i: 0, seed: 1 } : pickMap(-1, -1);
+    applyMap(first.i, first.seed, false);
+    S.board = mapBoard.createMesh(2.4, 1.5); L.root.add(S.board); placeBoard();
     // Znacznik potwora (czerwona poświata i napis nad głową)
     const mc = T.makeCanvas(256, 64), mx = mc.getContext('2d');
     mx.font = 'bold 48px sans-serif'; mx.textAlign = 'center'; mx.textBaseline = 'middle'; mx.fillStyle = '#ff3a2a'; mx.shadowColor = '#ff0000'; mx.shadowBlur = 16; mx.fillText('MONSTER', 128, 34);
@@ -59,9 +60,73 @@ export function build() {
     N.onLevelMsg(onNet);
 }
 
+// ---------- MAPY: wymiana areny w trakcie gry ----------
+const TEX = { wall: () => tex.wall, hedge: () => tex.plaster, brick: () => tex.wall, stone: () => tex.wall, shelf: () => tex.plaster, metal: () => tex.floor, step: () => tex.floor, wood: () => tex.wood };
+function buildGenerated(md) {
+    const A = md.A, H = md.H;
+    addCrispBlock(0, -0.5, 0, A * 2 + 2, 1, A * 2 + 2, md.floor, 0x101018, tex.floor, { rough: tex.floorRough });
+    addCrispBlock(0, H + 0.5, 0, A * 2 + 2, 1, A * 2 + 2, md.ceil, 0x101018);
+    for (const [x, z, w, d] of [[0, -A - 0.5, A * 2 + 2, 1], [0, A + 0.5, A * 2 + 2, 1], [-A - 0.5, 0, 1, A * 2], [A + 0.5, 0, 1, A * 2]]) addCrispBlock(x, H / 2, z, w, H, d, md.wall, 0x2a2a20, tex.wall);
+    for (const b of md.boxes) addCrispBlock(b.x, b.y, b.z, b.w, b.h, b.d, b.c, 0x101018, (TEX[b.k] || TEX.wall)());
+    for (const l of md.lights) { const pl = new THREE.PointLight(0xe8f0ff, 20, 26, 1.6); pl.position.set(l[0], l[1], l[2]); L.root.add(pl); }
+}
+function removeFrom(arr, items) { const set = new Set(items); for (let i = arr.length - 1; i >= 0; i--) if (set.has(arr[i])) arr.splice(i, 1); }
+function clearMap() {
+    if (!S.mapGroup) return;
+    for (const b of S.mapBodies) world.removeBody(b);
+    removeFrom(L.bodies, S.mapBodies); removeFrom(L.obstacles, S.mapObs); removeFrom(L.portals, S.mapPortals);
+    S.mapGroup.traverse((o) => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.isInstancedMesh) o.dispose();
+        const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+        for (const m of mats) { for (const k of ['map', 'emissiveMap', 'normalMap', 'roughnessMap']) if (m[k] && !Object.values(tex).includes(m[k])) m[k].dispose(); m.dispose(); }
+    });
+    L.root.remove(S.mapGroup); S.mapGroup = null; S.mapObs = []; S.mapBodies = []; S.mapPortals = [];
+}
+// Buduje mapę idx (numer z MAPS) z ziarnem seed; teleport = przenieś gracza do wejścia nowej mapy
+function applyMap(idx, seed, teleport) {
+    clearMap();
+    const md = generateMap(MAPS[idx].id, seed), g = new THREE.Group(), root0 = L.root, n = { o: L.obstacles.length, b: L.bodies.length, p: L.portals.length };
+    L.root = g;   // wszystko, co buduje mapa, trafia do jednej grupy: da się ją potem usunąć
+    try {
+        if (md.fixed) buildStation(); else buildGenerated(md);
+        buildDoor({ x: 0, z: md.A - 0.03, rotY: Math.PI, label: 'GAMES', color: '#d080ff', wood: 0x3a3048, portal: { target: 'games', spawn: ARRIVAL_FROM_MONSTER, onEnter: () => toast('Back to BagaBoo Games') } });
+    } finally { L.root = root0; }
+    root0.add(g);
+    S.mapGroup = g; S.mapObs = L.obstacles.slice(n.o); S.mapBodies = L.bodies.slice(n.b); S.mapPortals = L.portals.slice(n.p);
+    S.md = md; S.map = idx; S.seed = seed;
+    L.spawn = md.entry.slice();
+    L.bounds = { minX: -md.A + 0.4, maxX: md.A - 0.4, minZ: -md.A + 0.4, maxZ: md.A - 0.4, maxY: md.H - 0.4 };
+    if (S.board) placeBoard();
+    mapBoard.dirty = true;
+    if (teleport) { setPlayerPosition(md.entry[0], md.entry[1], md.entry[2]); toast('Map: ' + md.name, GOLD); }
+}
+// Tablica wyboru mapy przy południowej ścianie, na lewo od drzwi
+function placeBoard() { S.board.position.set(-4.2, 2.0, S.md.A - 0.08); S.board.rotation.y = Math.PI; }
+const canPickMap = () => S && N.NET.mode !== 'guest' && S.phase === 'wait';
+function chooseMap(sel) {
+    if (!canPickMap()) return;
+    S.sel = sel;
+    const pk = pickMap(sel, S.map);
+    if (!(MAPS[pk.i].fixed && pk.i === S.map)) applyMap(pk.i, pk.seed, true);
+    S.t = Math.max(S.t, 8); S.netT = 0; mapBoard.dirty = true;
+}
+const mapBoard = new Terminal((t) => {
+    t.background();
+    if (!S) return;
+    t.header('Choose the map', S.phase === 'wait' ? 'Next round in ' + Math.max(0, Math.ceil(S.t)) + ' s' : 'Round in progress', AMBER_DIM);
+    const mine = canPickMap(), cur = S.map;
+    t.btn('mp-1', 40, 90, 944, 52, 'Random map every round' + (S.sel < 0 ? '   (selected)' : ''), () => chooseMap(-1), { size: 26, active: S.sel < 0, disabled: !mine });
+    MAPS.forEach((m, i) => t.btn('mp' + i, 40, 154 + i * 64, 944, 54, m.name + (cur === i ? '   (now)' : ''), () => chooseMap(i), { size: 26, active: cur === i, tone: cur === i ? 'ok' : undefined, disabled: !mine }));
+    t.text(MAPS[cur].blurb, 40, 574, 22, GOLD, 'left');
+    t.text(mine ? 'Pick a map before the round starts. Walls and layouts are generated each time.' : (N.NET.mode === 'guest' ? 'The host picks the map.' : 'The map can be changed between rounds.'), 40, 610, 20, AMBER_DIM, 'left');
+    t.scanlines();
+});
+
 // Stacja kolejowa: dwa perony, tory z pociągiem, kładka nad torami, filary, ławki, kasa,
 // automaty i szyby wentylacyjne (puste w środku), którymi można się przeczołgać i uciec
-function buildArena() {
+function buildStation() {
+    const A = 30, H = 12;   // stacja kolejowa 60 x 60 m
     const P = 1.2;   // wysokość peronu
     addCrispBlock(0, -0.5, 0, A * 2 + 2, 1, A * 2 + 2, 0x6a6a6e, 0x101018, tex.floor, { rough: tex.floorRough });
     addCrispBlock(0, H + 0.5, 0, A * 2 + 2, 1, A * 2 + 2, 0x2a2a30, 0x101018);
@@ -130,6 +195,8 @@ const fromNet = (id) => id === N.myId() ? 'me' : id;
 function onNet(msg) {
     if (!S || !msg || N.NET.mode === 'host' || msg.k !== 'st') return;
     S.lastHostMsg = S.clock;
+    const pk = cleanMapPick(msg.mp, msg.sd);   // mapa od hosta: tylko liczby z zakresów
+    if (pk && (pk.i !== S.map || pk.seed !== S.seed)) applyMap(pk.i, pk.seed, true);
     const prev = S.phase;
     S.phase = msg.ph; S.t = msg.t; S.mon = msg.mon ? fromNet(msg.mon) : null;
     const wasCaught = S.caught.has('me');
@@ -139,13 +206,14 @@ function onNet(msg) {
     if (msg.ph === 'results' && prev !== 'results') roundOver();
 }
 function broadcast() {
-    N.sendLevelMsg({ k: 'st', ph: S.phase, t: S.t, mon: S.mon && S.mon !== 'bot' ? toNet(S.mon) : null, caught: [...S.caught].map(toNet), surv: S.surv.map(toNet) });
+    N.sendLevelMsg({ k: 'st', mp: S.map, sd: S.seed, ph: S.phase, t: S.t, mon: S.mon && S.mon !== 'bot' ? toNet(S.mon) : null, caught: [...S.caught].map(toNet), surv: S.surv.map(toNet) });
 }
 function startedRound() {
     S.rewarded = false;
     // Potwór i uciekający startują w różnych końcach stacji
-    if (S.mon === 'me') setPlayerPosition(MONSTER_SPAWN[0], MONSTER_SPAWN[1], MONSTER_SPAWN[2]);
-    else { const sp = SURVIVOR_SPAWN[(Math.random() * SURVIVOR_SPAWN.length) | 0]; setPlayerPosition(sp[0] + (Math.random() - 0.5) * 2, sp[1], sp[2]); }
+    const md = S.md, jit = md.fixed ? 2 : 0;   // na wygenerowanych mapach starty są z wolnych miejsc, bez losowego przesunięcia
+    if (S.mon === 'me') setPlayerPosition(md.monster[0], md.monster[1], md.monster[2]);
+    else { const sp = md.survivors[(Math.random() * md.survivors.length) | 0]; setPlayerPosition(sp[0] + (Math.random() - 0.5) * jit, sp[1], sp[2] + (Math.random() - 0.5) * jit); }
     // Start potwora: jumpscare u wszystkich uciekających (potwór dostaje ryk i wibrację)
     if (S.mon !== 'me' && S.scare) S.scare.trigger();
     if (S.mon === 'me') { toast('You are the MONSTER! Catch everyone!', '#ff4a2a'); SFX.roar(0.8); buzz('both', 0.8, 400); }
@@ -168,7 +236,7 @@ function think(dt, p) {
             const parts = participants();
             S.mon = parts.length >= 2 ? parts[(Math.random() * parts.length) | 0] : 'bot';
             S.caught = new Set(); S.surv = []; S.phase = 'play'; S.t = ROUND;
-            if (S.mon === 'bot') { S.bot = { x: MONSTER_SPAWN[0], y: 0, z: MONSTER_SPAWN[2], vy: 0, speed: BOT_SPEED, ground: true, stuck: 0, lastD: 99, side: 0 }; }
+            if (S.mon === 'bot') { S.bot = { x: S.md.monster[0], y: 0, z: S.md.monster[2], vy: 0, speed: BOT_SPEED, ground: true, stuck: 0, lastD: 99, side: 0 }; }
             startedRound();
         }
     } else if (S.phase === 'play') {
@@ -178,7 +246,12 @@ function think(dt, p) {
         if (S.t <= 0 || parts.every(id => S.caught.has(id))) {
             S.surv = parts.filter(id => !S.caught.has(id)); S.phase = 'results'; S.t = RESULTS; roundOver();
         }
-    } else if (S.phase === 'results' && S.t <= 0) { S.phase = 'wait'; S.t = WAIT; S.mon = null; S.bot = null; }
+    } else if (S.phase === 'results' && S.t <= 0) {
+        S.phase = 'wait'; S.t = WAIT; S.mon = null; S.bot = null;
+        const pk = pickMap(S.sel, S.map);   // wybrana mapa albo losowa inna; nowe ziarno przebudowuje też wygenerowaną mapę
+        if (!(MAPS[pk.i].fixed && pk.i === S.map)) applyMap(pk.i, pk.seed, true);
+        S.netT = 0; mapBoard.dirty = true;
+    }
 }
 // Pozycja dłoni potwora i głowy gracza (lokalnie albo z sieci)
 function handsOf(id) {
@@ -204,10 +277,11 @@ function localCaught() { SFX.scare(); toast('You were caught! Watch the others.'
 // Bot: biegnie prosto do gracza, wpada na przeszkody, wskakuje na nie (perony, wagony, schody, szyby)
 // i zeskakuje w dół. Stoi na górnych ściankach pudełek kolizji.
 function moveBot(dt, p) {
-    const b = S.bot, R = 0.4, TALL = 1.2;
+    const b = S.bot, R = 0.4, TALL = 1.2, jumpMax = S.md.botJump || BOT_JUMP_MAX;
     b.speed = Math.min(BOT_SPEED_MAX, b.speed + dt * 0.015);
-    let dx = p.x - b.x, dz = p.z - b.z; const d = Math.hypot(dx, dz);
-    if (d > 0.05) { dx /= d; dz /= d; } else { dx = 0; dz = 0; }
+    const goal = S.md.nav ? S.md.nav.next(b.x, b.z, p.x, p.z) : p;   // w labiryncie bot idzie trasą po komórkach
+    let dx = goal.x - b.x, dz = goal.z - b.z; const d = Math.hypot(p.x - b.x, p.z - b.z), dg = Math.hypot(dx, dz);
+    if (dg > 0.05) { dx /= dg; dz /= dg; } else { dx = 0; dz = 0; }
     if (b.side) { const sx = -dz * b.side, sz = dx * b.side; dx = dx * 0.4 + sx; dz = dz * 0.4 + sz; b.sideT -= dt; if (b.sideT <= 0) b.side = 0; }   // obejście, gdy utknie
     const ox = b.x, oz = b.z;
     b.x += dx * b.speed * dt; b.z += dz * b.speed * dt;
@@ -232,7 +306,7 @@ function moveBot(dt, p) {
     // Skok: na przeszkodę przed nim albo do gracza, który jest wyżej
     const wantUp = p.y - 0.35 > b.y + 0.8 && d < 3.5;
     if (b.ground && (blockedTop !== null || wantUp)) {
-        const h = Math.min(BOT_JUMP_MAX, Math.max(0.6, (blockedTop !== null ? blockedTop : p.y - 0.35) - b.y + 0.35));
+        const h = Math.min(jumpMax, Math.max(0.6, (blockedTop !== null ? blockedTop : p.y - 0.35) - b.y + 0.35));
         b.vy = Math.sqrt(2 * BOT_GRAVITY * h); b.ground = false;
     }
     // Utknął (nie zbliża się): obejście w bok
@@ -255,7 +329,7 @@ export function update(dt, t, ctx) {
             'The monster catches you by touching your head or body with a hand.',
             'Not caught after 2 minutes = 200 Bagabucks. The monster wins 200 if it catches everyone.',
             'Playing alone? A fast mannequin hunts you instead. It can jump, so keep moving!',
-            'The GAMES door behind you takes you back.'], 'This closes in ' + sec + ' s', { bg: 'rgba(16,4,4,0.9)', border: '#ff4a4a', title: '#ffd0c8', text: '#f4e0dc', footer: '#ffb030', size: 30 }); }
+            'Pick the map on the board by the door (the host does). The GAMES door takes you back.'], 'This closes in ' + sec + ' s', { bg: 'rgba(16,4,4,0.9)', border: '#ff4a4a', title: '#ffd0c8', text: '#f4e0dc', footer: '#ffb030', size: 30 }); }
         S.intro.mesh.visible = S.introT > 0 && !S.introSkip;
     }
     if (auth) {
@@ -281,6 +355,7 @@ export function update(dt, t, ctx) {
     L.moveScale = mon === 'me' ? MONSTER_BOOST : 1;
     if (mpos && mon !== 'me' && !S.caught.has('me')) { _h.copy(mpos); SFX.heartbeat(Math.max(0, 1 - _h.distanceTo(p) / 12)); }
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.15; drawHud(); }
+    const bs = S.phase + ':' + Math.ceil(S.t) + ':' + S.map; if (bs !== S.boardSig) { S.boardSig = bs; mapBoard.dirty = true; }
 }
 // Czerwone, świecące dłonie gdy jesteś potworem
 function setTint(on) {
@@ -302,6 +377,7 @@ function drawHud() {
     else { role = 'Run! Stay out of reach.'; col = '#9aff60'; }
     x.fillStyle = col; x.fillText(role, 330, 52);
     const total = participants().length;
+    x.textAlign = 'right'; x.font = 'bold 26px "Courier New", monospace'; x.fillStyle = '#ffb030'; x.fillText(S.md.name, 1000, 30); x.textAlign = 'left'; x.font = 'bold 32px "Courier New", monospace';
     x.fillStyle = '#ffd8d0'; x.fillText(S.phase === 'play' && S.mon !== 'bot' ? 'Caught ' + S.caught.size : (N.NET.mode === 'solo' ? 'Solo vs the mannequin' : 'Players here: ' + total), 330, 110);
     S.hud.update();
 }
@@ -343,13 +419,13 @@ function randomScares(dt, t, p) {
     // Postać pojawia się 4-7 m od gracza w losowym kierunku przed nim
     camera.getWorldDirection(_h); _h.y = 0; _h.normalize();
     const ang = Math.atan2(_h.x, _h.z) + (Math.random() - 0.5) * 1.6, r = 4 + Math.random() * 3;
-    const x = Math.max(-A + 1, Math.min(A - 1, p.x + Math.sin(ang) * r)), z = Math.max(-A + 1, Math.min(A - 1, p.z + Math.cos(ang) * r));
+    const A = S.md.A, x = Math.max(-A + 1, Math.min(A - 1, p.x + Math.sin(ang) * r)), z = Math.max(-A + 1, Math.min(A - 1, p.z + Math.cos(ang) * r));
     a.m.group.position.set(x, Math.max(0, p.y - 1.0), z); a.m.group.visible = true; a.t = 0;
     SFX.stinger({ x: x, y: 1.5, z: z });
 }
 export function dispose() {
     if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); }
-    if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); }
+    if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); S.board = null; }
     L.moveScale = 1;
     N.onLevelMsg(null);
     S = null;

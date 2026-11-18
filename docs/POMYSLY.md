@@ -20,7 +20,7 @@ Codzienna mapa z ziarnem z daty, ranking dnia na serwerze kont, duchy (odtwarzan
 ## Nowe pomysły (burza mózgów)
 
 ### 4. Potwór gracza (asymetryczny tryb 1 kontra ekipa)
-Jeden gracz steruje potworem (skórki w `core/monsterskins.js`), reszta ucieka i naprawia bezpieczniki jak w Nocnej Zmianie. Rolę losuje host z własnego widoku graczy. Wzorzec: Hot Potato i Blind Tag.
+Jeden gracz steruje potworem (skórki w `core/monsterskins.js`), reszta ucieka i naprawia bezpieczniki jak w Nocnej Zmianie. Rolę losuje host z własnego widoku graczy. Wzorzec: Dodgeball i Hide and Seek.
 
 ### 5. Potwór słyszy głos
 Czat głosowy (`core/voicehub.js`) staje się mechaniką: głośność mikrofonu podnosi „hałas” gracza, a potwór wybiera cel po hałasie. Krzyk przyciąga potwora, szept pozwala się skradać. Bez nagrywania i bez wysyłania dźwięku do serwera: poziom głośności liczony lokalnie i zgłaszany jako jedna liczba, host ogranicza ją i nigdy nie ufa jej przy nagrodach.
@@ -32,4 +32,4 @@ Halloween, zima, urodziny gry: tymczasowe dekoracje lobby, limitowane kosmetyki 
 Rozszerzenie Mojego Pokoju: wspólny pokój kilku graczy, do którego każdy kupuje jedno miejsce na mebel, wspólna tablica trofeów i puchar ekipy. Opiera się na `core/homelogic.js` i `normalizeHome`; zapis po stronie konta, odczyt dla gości tylko do wyświetlania.
 
 ### 8. Kontrakty dnia
-Trzy krótkie zadania dziennie („przejdź Szpital bez latarki”, „wygraj 2 rundy Statues”) za Bagabucksy i kosmetyki. Postęp liczy `core/economy.js` z kontrolą po stronie hosta; bez zadań wymagających obecności innych graczy, żeby grały też osoby solo.
+Trzy krótkie zadania dziennie („przejdź Szpital bez latarki”, „wygraj 2 rundy Last Tile”) za Bagabucksy i kosmetyki. Postęp liczy `core/economy.js` z kontrolą po stronie hosta; bez zadań wymagających obecności innych graczy, żeby grały też osoby solo.

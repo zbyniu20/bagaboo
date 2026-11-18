@@ -67,8 +67,9 @@ export function disposePetNest() {
 // ---------- panel ----------
 function say(text, tone) { S.msg = text; S.msgTone = tone || ''; S.msgT = 4; S.term.dirty = true; }
 const REASONS = { poor: 'Not enough Bagabucks', full: 'Not hungry right now', limit: 'Enough snacks for today', have: 'You already have a pet', nopet: 'No pet yet' };
+let species = 0;   // gatunek wybrany przy jaju (indeks z PET.SPECIES)
 function doHatch() {
-    const r = hatchPet(); if (!r.ok) { say(REASONS[r.reason] || 'Cannot hatch now', BAD_COL); return; }
+    const r = hatchPet(species); if (!r.ok) { say(REASONS[r.reason] || 'Cannot hatch now', BAD_COL); return; }
     S.state = 'shake'; S.t = 0; S.cracked = false; hatchBegin(); SFX.bell && SFX.bell(); say('Something is moving in there...', GOLD);
 }
 function doFeed() { const r = feedPet(); if (!r.ok) { say(REASONS[r.reason] || 'Cannot feed now', BAD_COL); return; } reactFeed(); say('Yum! It loves the snack', OK_COL); }
@@ -102,7 +103,10 @@ function draw(t) {
         t.text('PET EGG', 28, 36, 34, AMBER, 'left', true);
         c.save(); c.translate(150, 230); const eg = c.createLinearGradient(0, -95, 0, 95); eg.addColorStop(0, '#fff6e6'); eg.addColorStop(1, '#f1dfc4'); c.fillStyle = eg; c.beginPath(); c.ellipse(0, 0, 70, 95, 0, 0, Math.PI * 2); c.fill();
         const dots = [['#9fe6c4', -30, -40], ['#ffb4a0', 24, -56], ['#9fd0ff', 36, 4], ['#d2b4ff', -40, 20], ['#ffe08a', 6, 52], ['#ffb4a0', -12, -4]]; for (const [col, dx, dy] of dots) { c.fillStyle = col; c.beginPath(); c.ellipse(dx, dy, 11, 8, 0.4, 0, Math.PI * 2); c.fill(); } c.restore();
-        ['Hatch your very own Stworek!', '', 'It follows you around the lobby,', 'Levels, Games and My Room.', 'Feed it, pet it, name it.', 'It grows as you clear levels.', '', 'Every egg is different.', '1 in 20 is a rare GOLDEN one!'].forEach((ln, i) => t.text(ln, 270, 96 + i * 30, 22, i === 0 ? GOLD : (i === 8 ? '#ffe27a' : '#e8d8b8'), 'left', i === 0));
+        ['Hatch your very own Stworek!', '', 'It follows you around the lobby,', 'Levels, Games and My Room.', 'Feed it, pet it, name it.', 'It grows as you clear levels.', '', 'Every egg is different.', '1 in 20 is a rare GOLDEN one!'].forEach((ln, i) => t.text(ln, 270, 92 + i * 26, 21, i === 0 ? GOLD : (i === 8 ? '#ffe27a' : '#e8d8b8'), 'left', i === 0));
+        t.btn('spl', 270, 336, 44, 44, '<', () => { species = (species + PET.SPECIES.length - 1) % PET.SPECIES.length; t.dirty = true; }, { size: 24, disabled: S.state !== 'idle' });
+        t.text(PET.SPECIES[species].name, 420, 358, 28, GOLD, 'center', true);
+        t.btn('spr', 526, 336, 44, 44, '>', () => { species = (species + 1) % PET.SPECIES.length; t.dirty = true; }, { size: 24, disabled: S.state !== 'idle' });
         t.btn('hatch', 270, 390, 300, 64, 'HATCH  ' + PET.HATCH_COST, doHatch, { tone: 'gold', disabled: S.state !== 'idle', size: 32 });
     } else {
         t.text(st.name.toUpperCase(), 28, 36, 34, st.color.rare ? '#ffe27a' : AMBER, 'left', true);

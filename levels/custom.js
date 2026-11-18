@@ -3,7 +3,7 @@
 // Tor, start, meta i drzwi powstają z mapy (core/workshoplogic.js: levelOf). Host gra swoją wybraną mapą, goście dostają jej kod od hosta
 // (core/leveldata.js) i przyjmują go tylko po pełnej walidacji; bez poprawnej mapy wyścig idzie na mapie zapasowej.
 // Mapy graczy nie dają Bagabucksów i nie zapisują rekordów (autor mógłby zbudować banalny tor i go farmić), liczy się zabawa i czas na HUD.
-// Logika rund i sieci: core/racemode.js (jak Swing Run i Tower Climb).
+// Logika rund i sieci: core/racemode.js.
 // ==========================================
 import { THREE, L, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
@@ -18,7 +18,7 @@ const SPAWN = [0, 1.9, 3], BOUNDS = { minX: -30, maxX: 30, minZ: -40, maxZ: 30, 
 const mode = createRaceMode({
     id: 'custom', name: 'Custom Race', color: '#7ad0ff',
     spawn: SPAWN, startSpread: 1, arrival: ARRIVAL_FROM_CUSTOM, bounds: BOUNDS,
-    moveScale: 0.8, maxUp: 4.2, maxSpeedXZ: 3.8, extraGravity: 1.5, floorY: -40,   // te same stałe co w Parkour Race
+    moveScale: 0.8, maxUp: 4.2, maxSpeedXZ: 3.8, extraGravity: 1.5, floorY: -40,   // te same stałe co w dawny Parkour Race
     par: 90, roundMax: 240, reward: 0, noRecord: true, respawn: 'platform', fallY: -5,
     door: DOOR,
     introStyle: { bg: 'rgba(4,14,24,0.9)', border: '#7ad0ff', title: '#d8f0ff', text: '#dcecf4', footer: '#ffb030', size: 29 },

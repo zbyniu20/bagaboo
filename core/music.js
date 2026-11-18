@@ -28,7 +28,7 @@ const LEVEL_THEME = Object.fromEntries(LEVEL_DEFS.filter(d => d.theme).map(d => 
 let theme = THEMES.calm, bus = null, nextT = 0, step = 0, deg = 0, muted = false;
 const BASE = 0.32;   // głośność bazowa muzyki względem efektów
 
-// Tryby, w których cisza jest częścią zasad (Statues, Blind Tag): chwilowe wyciszenie muzyki poziomu (ucina też brzmiące pady)
+// Tryby, w których cisza jest częścią zasad (Absolute Silence): chwilowe wyciszenie muzyki poziomu (ucina też brzmiące pady)
 export function setMusicMute(on) { muted = !!on; if (bus) bus.gain.gain.setTargetAtTime(muted ? 0.0001 : BASE * SETTINGS.music, bus.ctx.currentTime, 0.04); }
 export function setLevelMusic(levelId) { theme = THEMES[LEVEL_THEME[levelId] || 'calm']; step = 0; }
 

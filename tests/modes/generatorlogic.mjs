@@ -1,5 +1,5 @@
-// Test własny trybu Generator (uruchamiany automatycznie przez levelpack.mjs): cała logika rundy z core/generatorlogic.js
-// (czyste funkcje, bez Three.js) oraz rozmieszczenie generatorów. Użycie osobno: cd tests && node modes/generator.mjs
+// Test logiki z core/generatorlogic.js (dawny tryb Generator; dziś używa jej Nocna Zmiana w lobby; uruchamia go npm run fast): cała logika rundy
+// (czyste funkcje, bez Three.js) oraz rozmieszczenie generatorów. Użycie osobno: cd tests && node modes/generatorlogic.mjs
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -82,8 +82,6 @@ check(T('outcome: escaped, caged or timeout, and only escaping pays'), G.outcome
     check(T('simulated solo round: repairing is audible to the monster (noise while working)'), noise.v === G.NOISE.REPAIR);
 }
 
-// ---------- levels/generator.js korzysta z modułu zamiast własnych kopii stałych ----------
-const src = fs.readFileSync(path.join(ROOT, 'levels/generator.js'), 'utf8'), card = fs.readFileSync(path.join(ROOT, 'core/levelcards.js'), 'utf8').match(/generator:\s*\{[^\n]*/)?.[0] || '';
-check(T('level file imports the logic module'), /from '\.\.\/core\/generatorlogic\.js'/.test(src));
-check(T('level file does not keep its own copy of the constants'), !/const (REPAIR_SEC|RESCUE_SEC|REPAIR_R|RESCUE_R|MON|GENS|GATE_Z|MIC_QUIET)\b/.test(src));
-check(T('the card mentions the number of generators (' + G.GENS.length + ')'), new RegExp('\\b(' + G.GENS.length + '|four)\\b', 'i').test(card));
+// ---------- logikę współdzieli Nocna Zmiana w lobby (core/lobbyplay.js), samego poziomu Generator już nie ma ----------
+const lp = fs.readFileSync(path.join(ROOT, 'core/lobbyplay.js'), 'utf8');
+check(T('the lobby night shift imports the logic module'), /from '\.\/generatorlogic\.js'/.test(lp));

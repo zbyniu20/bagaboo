@@ -13,6 +13,7 @@ import { PRESENCE } from '../core/presence.js';
 import { buildDoor } from '../core/levelkit.js';
 import { buildHammer } from '../core/avatar.js';
 import { ARRIVAL_STAFF } from './lobby-door.js';
+import { buildTrainingDummy, updateTrainingDummy, disposeTrainingDummy } from '../core/trainingdummy.js';
 
 const W = 7, D = 5.5, H = 3.6;     // pokój 14 x 11 m, 3,6 m wysokości
 const ENV = LIGHT_PRESETS.staff.envIntensity;
@@ -124,6 +125,7 @@ export function build() {
     S = { tvT: 0 };
     buildRoom();
     buildFurniture();
+    buildTrainingDummy(-4.6, 2.4, Math.PI / 2 - 0.2);   // manekin do testów młotków ekipy (Nothing Hammer)
     const screen = tv.createMesh(2.4, 1.5); screen.position.set(0, 1.85, -D + 0.075); L.root.add(screen);
     buildDoor({ x: 0, z: D - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x6a4a30, signY: 2.6,
         portal: { target: 'lobby', spawn: ARRIVAL_STAFF, onEnter: () => toast('Back to the lobby') } });
@@ -256,6 +258,7 @@ export function update(dt, t) {
     S.flame.sprite.material.opacity = 0.75 + 0.25 * Math.sin(t * 13) * Math.sin(t * 7.3);
     S.flame.light.intensity = 1.3 + 0.4 * Math.sin(t * 11);
     S.tvT -= dt; if (S.tvT <= 0) { S.tvT = 0.1; tv.dirty = true; }   // pasek na dole się przesuwa
+    updateTrainingDummy(dt);
     S.pcT = (S.pcT || 0) - dt; if (S.pcT <= 0) { S.pcT = 1; staffPC.dirty = true; }
 }
-export function dispose() { S = null; }
+export function dispose() { S = null; disposeTrainingDummy(); }

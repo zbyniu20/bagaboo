@@ -99,6 +99,8 @@ controllers.forEach((c, i) => {
 
 // Sterowanie z zewnątrz (tryb testowy na komputerze): chwyt dłonią i ruch bez hamowania
 export const external = { move: false };
+// Czy chwyt (squeeze) kontrolera i jest wciśnięty (na komputerze: klawisz E to chwyt prawej ręki)
+export const gripDown = (i) => !!ctrlInput[i].squeeze;
 export function squeeze(i, down) {
     if (down) { ctrlInput[i].squeeze = true; onSqueezeStart(i); }
     else { ctrlInput[i].squeeze = false; onSqueezeEnd(i); }

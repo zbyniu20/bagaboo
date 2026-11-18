@@ -33,7 +33,7 @@ const SNAP_EVERY = 8, DELTA_EVERY = 0.2, SAVE_EVERY = 5, CONTEST_EVERY = 0.5;
 const SLOT_COLS = ['#ff6a4a', '#6ad0ff', '#a0ff60', '#ffd24a'];
 let G = null;
 
-const newContest = (first) => ({ ph: 'idle', t: nextContestIn(first, Math.random), theme: '', slots: {}, names: {}, counts: ROUND.PADS.map(() => 0), winner: -1 });
+const newContest = (first) => ({ ph: 'idle', t: nextContestIn(first, Math.random), theme: '', slots: {}, names: {}, ready: {}, counts: ROUND.PADS.map(() => 0), winner: -1 });
 
 export function buildGraffiti() {
     G = {
@@ -85,19 +85,24 @@ const mySlot = () => { const s = G.contest.slots.me; return s === undefined ? -1
 function spray(v) { if (G.clock - G.sprayT > 0.9) { G.sprayT = G.clock; SFX.hiss({ x: POS.x - 1, y: POS.y, z: POS.z }, v); } }
 function notice() {
     if (G.clock - G.noticeT < 2.5) return; G.noticeT = G.clock;
-    toast(G.contest.ph === 'draw' ? 'Contest: paint in your own column' : 'Contest: wait for the voting', '#ffb030');
+    toast(G.contest.ph === 'draw' ? (G.contest.ready.me ? 'Your work is saved for voting' : 'Contest: paint in your own column') : 'Contest: wait for the voting', '#ffb030');
 }
 function apply(cells) { if (paintCells(G.wall, cells) > 0) { G.term.dirty = true; G.saveDirty = true; return true; } return false; }
 function paintAt(cx, cy) {
     let cells = brushCells(cx, cy, WALL.BRUSHES[G.brush], G.color);
     if (G.contest.ph !== 'idle') {
-        cells = G.contest.ph === 'draw' ? restrictToSlot(cells, mySlot()) : [];
+        cells = G.contest.ph === 'draw' && !G.contest.ready.me ? restrictToSlot(cells, mySlot()) : [];
         if (!cells.length) { notice(); return; }
     }
     if (!apply(cells)) return;
     spray(0.18);
     if (N.NET.mode === 'guest') N.sendLevelMsg({ k: 'gp', c: cells });   // do hosta; u siebie już namalowane
     else G.out.push(...cells);
+}
+function saveWork() {
+    const k = G.contest; if (k.ph !== 'draw' || mySlot() < 0 || k.ready.me) return;
+    k.ready.me = true; G.term.dirty = true; toast('Saved: your work goes to the voting board', '#7fff90');
+    if (N.NET.mode === 'guest') N.sendLevelMsg({ k: 'gv' }); else G.ctNow = true;
 }
 function clearWall() { if (!canClear()) return; G.wall.fill(0); G.term.dirty = true; G.saveDirty = true; G.snapNow = true; }
 function onWallClick() {
@@ -141,6 +146,7 @@ function draw(t) {
         t.buttons.push({ id: 'col' + col, x: x, y: y, w: 56, h: 56, action: () => { G.color = col; } });
     }
     for (let b = 0; b < WALL.BRUSHES.length; b++) t.btn('brush' + b, 808 + b * 64, 556, 56, 56, WALL.BRUSHES[b] + 'x', () => { G.brush = b; }, { active: G.brush === b, size: 24 });
+    if (k.ph === 'draw' && mySlot() >= 0) t.btn('save', 936, 556, 56, 56, k.ready.me ? 'DONE' : 'SAVE', saveWork, { tone: 'ok', size: 15, disabled: !!k.ready.me });
     if (canClear()) t.btn('clear', 936, 556, 56, 56, 'CLR', clearWall, { tone: 'bad', size: 20 });
 }
 // Kolumny konkursu: ramki w kolorach pól, nazwy autorów, głosy; kolumny bez autora przyciemnione
@@ -196,16 +202,20 @@ function updatePads() {
 }
 
 // ---------- sieć ----------
-const MSG = new Set(['gp', 'gd', 'gs', 'gc']);
+const MSG = new Set(['gp', 'gd', 'gs', 'gc', 'gv']);
 // Zwraca true, gdy wiadomość należy do ściany (lobbyplay nie przetwarza jej dalej)
 export function onGraffitiMsg(msg, from) {
     if (!msg || typeof msg.k !== 'string' || !MSG.has(msg.k)) return false;
     if (!G) return true;
+    if (N.NET.mode === 'host' && msg.k === 'gv') {   // gość zapisał pracę: liczy się tylko jego kolumna w fazie rysowania
+        const k = G.contest; if (k.ph === 'draw' && k.slots[from] !== undefined && !k.ready[from]) { k.ready[from] = true; G.ctNow = true; G.term.dirty = true; }
+        return true;
+    }
     if (N.NET.mode === 'host' && msg.k === 'gp') {
         const st = N.playersState[from];
         if (!st || st.lvl !== 'lobby' || !st.head) return true;
         let cells = cleanCells(msg.c);
-        if (G.contest.ph !== 'idle') cells = G.contest.ph === 'draw' ? restrictToSlot(cells, G.contest.slots[from]) : [];
+        if (G.contest.ph !== 'idle') cells = G.contest.ph === 'draw' && !G.contest.ready[from] ? restrictToSlot(cells, G.contest.slots[from]) : [];
         if (!cells.length) return true;
         const b = G.buckets[from] || (G.buckets[from] = makeBucket(G.clock));
         if (!takeTokens(b, cells.length / 3, G.clock)) return true;
@@ -230,7 +240,7 @@ function flush() {
 function sendSnapshot() { N.sendLevelMsg({ k: 'gs', d: G.day, w: encodeWall(G.wall), g: G.gallery.map(e => ({ t: e.t, n: e.n, d: e.d })) }); }
 function sendContest() {
     const k = G.contest;
-    N.sendLevelMsg({ k: 'gc', p: k.ph, t: Math.round(k.t * 10) / 10, th: k.theme, s: Object.keys(k.slots).map(id => [toNet(id), k.slots[id], k.names[id] || 'Player']), c: k.counts, w: k.winner });
+    N.sendLevelMsg({ k: 'gc', p: k.ph, t: Math.round(k.t * 10) / 10, th: k.theme, s: Object.keys(k.slots).map(id => [toNet(id), k.slots[id], k.names[id] || 'Player', k.ready[id] ? 1 : 0]), c: k.counts, w: k.winner });
 }
 
 // ---------- konkurs: host liczy, goście wyświetlają ----------
@@ -239,13 +249,13 @@ function restoreWall() { if (G.saved) { G.wall = G.saved; G.saved = null; } G.te
 function contestHost(dt, o) {
     const ids = participants('lobby'), heads = {}, k = G.contest;
     for (const id of ids) { const h = headOf(id); if (h) heads[id] = { x: h.x, z: h.z }; }
-    const r = contestStep({ ph: k.ph, t: k.t }, dt, { enabled: o.enabled, present: ids.length, blocked: o.night !== 'calm' }, Math.random);
+    const r = contestStep({ ph: k.ph, t: k.t }, dt, { enabled: o.enabled, present: ids.length, blocked: o.night !== 'calm', ready: k.ph === 'draw' && Object.keys(k.slots).length > 0 && Object.keys(k.slots).every(id => k.ready[id]) }, Math.random);
     k.ph = r.ph; k.t = r.t;
     if (k.ph === 'vote') k.counts = countVotes(heads, k.slots);
     if (!r.event) return;
     G.ctNow = true;
     if (r.event === 'start') {
-        k.theme = pickTheme(Math.random); k.slots = assignSlots(ids); k.names = {}; for (const id in k.slots) k.names[id] = nameOf(id);
+        k.theme = pickTheme(Math.random); k.slots = assignSlots(ids); k.ready = {}; k.names = {}; for (const id in k.slots) k.names[id] = nameOf(id);
         k.counts = ROUND.PADS.map(() => 0); k.winner = -1; G.saved = G.wall.slice(); G.wall.fill(0); G.term.dirty = true; G.snapNow = true;
         toast('Graffiti contest: ' + k.theme, GOLD);
     } else if (r.event === 'vote') toast('Vote: stand on a pad (not yours)', GOLD);
@@ -260,14 +270,14 @@ function contestHost(dt, o) {
         }
     } else { // end albo abort: wraca ściana sprzed konkursu
         if (r.event === 'abort') toast('Graffiti contest cancelled', '#e0533f');
-        restoreWall(); k.slots = {}; k.names = {}; k.winner = -1;
+        restoreWall(); k.slots = {}; k.names = {}; k.ready = {}; k.winner = -1;
     }
 }
 function guestContest(st) {
     if (!st) return;
     const k = G.contest, prev = k.ph; G.lastGc = G.clock;
-    k.ph = st.ph; k.t = st.t; k.theme = st.theme; k.counts = st.counts; k.winner = st.winner; k.slots = {}; k.names = {};
-    for (const e of st.slots) { const id = fromNet(e.id); k.slots[id] = e.slot; k.names[id] = e.name; }
+    k.ph = st.ph; k.t = st.t; k.theme = st.theme; k.counts = st.counts; k.winner = st.winner; k.slots = {}; k.names = {}; k.ready = {};
+    for (const e of st.slots) { const id = fromNet(e.id); k.slots[id] = e.slot; k.names[id] = e.name; if (e.ready) k.ready[id] = true; }
     G.term.dirty = true;
     if (prev === k.ph) return;
     if (k.ph === 'draw') toast('Graffiti contest: ' + k.theme, GOLD);

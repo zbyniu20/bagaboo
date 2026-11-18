@@ -1,7 +1,7 @@
 // ==========================================
 // LOGIKA WYŚCIGÓW (czyste funkcje, bez importów, testowane w Node: tests/rounds.mjs): maszyna faz rundy, rejestracja mety,
-// wynik gracza i nagroda. Używają jej Parkour Race (levels/race.js), Red Light (levels/redlight.js) oraz fabryka core/racemode.js
-// (Swing Run, Tower Climb), które dotąd miały trzy prawie identyczne kopie.
+// wynik gracza i nagroda. Używają jej Red Light (levels/redlight.js)
+// oraz fabryka core/racemode.js (Custom Race).
 // ==========================================
 
 // Jeden krok maszyny faz: wait -> countdown -> (play) -> results -> wait. Zwraca nową fazę, pozostały czas i zdarzenie przejścia

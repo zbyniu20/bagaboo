@@ -18,6 +18,8 @@ function geo() {
         body: new THREE.SphereGeometry(0.26, 24, 18), cap: cap, belly: new THREE.SphereGeometry(0.2, 16, 12), ear: new THREE.ConeGeometry(0.075, 0.2, 10), foot: new THREE.SphereGeometry(0.07, 12, 8),
         tail: new THREE.SphereGeometry(0.065, 10, 8), horn: new THREE.ConeGeometry(0.035, 0.14, 8), spike: new THREE.ConeGeometry(0.04, 0.13, 6), halo: new THREE.TorusGeometry(0.14, 0.012, 8, 30),
         shadow: new THREE.CircleGeometry(0.3, 20),
+        // gatunki: wąsy kota, skrzydło smoka, spódnica i frędzle ducha
+        whisker: new THREE.BoxGeometry(0.14, 0.006, 0.006), wing: new THREE.ConeGeometry(0.11, 0.3, 3), skirt: new THREE.CylinderGeometry(0.255, 0.215, 0.3, 20), scallop: new THREE.SphereGeometry(0.07, 8, 6),
         // Pet Pack: czapki i dodatki na szyję (podstawy w początku układu, żeby stały na głowie lub wisiały od szyi)
         partyCone: new THREE.ConeGeometry(0.09, 0.22, 12), pom: new THREE.SphereGeometry(0.03, 8, 6), petalRing: new THREE.TorusGeometry(0.042, 0.03, 6, 12), dot: new THREE.SphereGeometry(0.03, 8, 6),
         brim: new THREE.CylinderGeometry(0.2, 0.2, 0.02, 22), hatTop: new THREE.CylinderGeometry(0.095, 0.11, 0.13, 14), hatBand: new THREE.CylinderGeometry(0.112, 0.112, 0.03, 14), wizCone: new THREE.ConeGeometry(0.11, 0.34, 12), wizBrim: new THREE.CylinderGeometry(0.19, 0.19, 0.015, 22),
@@ -25,7 +27,7 @@ function geo() {
         bowWing: new THREE.ConeGeometry(0.06, 0.13, 8), bandana: new THREE.ConeGeometry(0.11, 0.16, 3), scarfTail: new THREE.BoxGeometry(0.07, 0.2, 0.03), bell: new THREE.SphereGeometry(0.042, 10, 8), cape: new THREE.BoxGeometry(0.42, 0.36, 0.015)
     };
     GEO.partyCone.translate(0, 0.11, 0); GEO.wizCone.translate(0, 0.17, 0); GEO.hatTop.translate(0, 0.065, 0); GEO.scarfTail.translate(0, -0.1, 0); GEO.cape.translate(0, -0.18, 0);
-    GEO.ear.translate(0, 0.1, 0); GEO.horn.translate(0, 0.07, 0); GEO.spike.translate(0, 0.06, 0);   // podstawy w początku układu, żeby obracać wokół nich
+    GEO.wing.translate(0, 0.15, 0); GEO.ear.translate(0, 0.1, 0); GEO.horn.translate(0, 0.07, 0); GEO.spike.translate(0, 0.06, 0);   // podstawy w początku układu, żeby obracać wokół nich
     return GEO;
 }
 function heartTex() {
@@ -87,6 +89,26 @@ export function createPetModel(look, opts) {
     part(G.ear, bodyM, 0, 0, 0, earL); part(G.ear, bodyM, 0, 0, 0, earR);
     const footL = part(G.foot, accM, -0.1, -0.245, 0.07), footR = part(G.foot, accM, 0.1, -0.245, 0.07); footL.scale.set(1, 0.62, 1.3); footR.scale.set(1, 0.62, 1.3);
     const tailP = new THREE.Group(); tailP.position.set(0, -0.12, -0.23); root.add(tailP); part(G.tail, accM, 0, 0, -0.05, tailP); part(G.tail, bodyM, 0, 0.03, -0.12, tailP).scale.setScalar(0.7);
+    // gatunek: ta sama bryła, ale inne uszy, ogon i dodatki (indeks z PET.SPECIES; 0 = Blobby bez zmian)
+    const spId = (PET.SPECIES[look.sp || 0] || PET.SPECIES[0]).id, wings = [], ghost = spId === 'ghost', inkM = mat('#241530');
+    if (spId === 'bunny') { for (const e of [earL, earR]) e.scale.set(0.8, 2.1, 0.8); tailP.scale.setScalar(1.7); footL.scale.set(1.2, 0.7, 1.7); footR.scale.set(1.2, 0.7, 1.7); }
+    else if (spId === 'cat') {
+        for (const e of [earL, earR]) e.scale.set(1.15, 0.75, 1.15); tailP.scale.set(0.8, 0.8, 2.4);
+        for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) { const w = part(G.whisker, inkM, sx * 0.27, -0.02 + k * 0.035, 0.16); w.rotation.set(0, sx * 0.5, sx * (0.12 - k * 0.12)); }
+    } else if (spId === 'dragon') {
+        earL.visible = earR.visible = false;
+        for (const sx of [-1, 1]) {
+            const h = part(G.horn, hornM, sx * 0.09, 0.235, 0.02); h.rotation.set(-0.2, 0, -sx * 0.3); h.scale.setScalar(1.3);
+            const wg = new THREE.Group(); wg.position.set(sx * 0.18, 0.06, -0.2); root.add(wg); part(G.wing, accM, 0, 0, 0, wg).scale.set(1.5, 1.2, 0.35); wings.push({ g: wg, s: -sx });
+        }
+        const ts = part(G.spike, accM, 0, 0, -0.2, tailP); ts.rotation.x = -Math.PI / 2; ts.scale.setScalar(1.5);
+        if (look.l < 4) [[0, 0.2, -0.17, -0.6], [0, 0.1, -0.245, -0.95], [0, -0.01, -0.275, -1.25]].forEach(([x, y, z, rx], i) => { const sp2 = part(G.spike, accM, x, y, z); sp2.rotation.x = rx; sp2.scale.setScalar(1 - i * 0.18); });
+    } else if (ghost) {
+        earL.visible = earR.visible = tailP.visible = footL.visible = footR.visible = false;
+        bodyM.transparent = true; bodyM.opacity = 0.88; bodyM.depthWrite = true;
+        part(G.skirt, bodyM, 0, -0.16, 0, bodyG);
+        for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; part(G.scallop, bodyM, Math.cos(a) * 0.19, -0.3, Math.sin(a) * 0.19, bodyG); }
+    }
     // poziomy: rogi, grzbiet z kolcami, aureola (nad wysoką czapką wyżej)
     const hatId = PET.HATS[look.h || 0] || 'none', neckId = PET.NECKS[look.k || 0] || 'none', haloBase = 0.47 + (hatId === 'wizard' ? 0.2 : (hatId !== 'none' ? 0.08 : 0));
     let halo = null; const spikes = [];
@@ -165,7 +187,7 @@ export function createPetModel(look, opts) {
         if (st.sleeping) { sy *= 0.9; ty = -0.035; }
         if (st.sad && !st.sleeping) { sy *= 0.97; ty -= 0.012; }
         const sx = 1 / Math.sqrt(sy), b = born >= 1 ? 1 : Math.max(0.001, easeBack(born));
-        root.scale.set(sc * sx * b, sc * sy * b, sc * sx * b); root.position.y = (0.28 + ty) * sc * sy * b + hop * sc;
+        root.scale.set(sc * sx * b, sc * sy * b, sc * sx * b); root.position.y = (0.28 + ty) * sc * sy * b + hop * sc + (ghost ? (0.1 + Math.sin(t * 2) * 0.03) * sc : 0);
         shadow.scale.setScalar(sc * b * (1 - hop * 1.4)); shadow.material.opacity = 0.3 * (1 - hop * 2);
         // ogon, uszy, łapki
         tailWag = st.sleeping ? 0.05 : (st.sad ? 0.12 : (0.35 + 0.45 * (st.petted || 0)));
@@ -177,6 +199,7 @@ export function createPetModel(look, opts) {
         if (star) star.material.opacity = 0.45 + 0.55 * Math.abs(Math.sin(t * 3));
         if (capeP) capeP.rotation.x = 0.2 + Math.sin(t * 3) * 0.05 + (moving ? 0.35 * st.speed + Math.sin(phase * 2) * 0.06 : 0) + (st.sleeping ? -0.12 : 0);
         if (scarfT) scarfT.rotation.z = Math.sin(t * 2.4) * 0.12 + (moving ? Math.sin(phase) * 0.25 * st.speed : 0);
+        for (const w of wings) w.g.rotation.z = w.s * (0.9 + Math.sin(t * (moving ? 14 : 3)) * 0.4);
         if (halo) { halo.position.y = haloBase + Math.sin(t * 2) * 0.015; halo.rotation.z += dt * 1.6; }
         sparks.forEach((sp, i) => { const a = t * (1.2 + i * 0.4) + i * 2.1; sp.position.set(Math.cos(a) * 0.36, 0.1 + Math.sin(a * 1.7) * 0.25, Math.sin(a) * 0.36); sp.material.opacity = 0.35 + 0.65 * Math.abs(Math.sin(t * 3 + i * 1.3)); });
         // mina

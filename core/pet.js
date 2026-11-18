@@ -7,9 +7,11 @@
 // SIEĆ: do stanu gracza idzie tylko krotka wyglądu (petLookNet); u odbiorcy stworek innego gracza powstaje WYŁĄCZNIE z cleanLook(st.pt), na tej samej sali, nigdy dla
 // niewidzialnych graczy, i chodzi obok głowy właściciela (pozycji nikt nie wysyła). Stworek nic nie daje (żadnych bonusów w grze), więc nie ma czego tu nadużywać.
 // ==========================================
-import { THREE, L, camera } from './engine.js';
-import { PET, cleanLook, followSpeed, shouldTeleport, idleStage, restSpot, shouldFollow, hatIndex, neckIndex } from './petlogic.js';
-import { petStatus, patPet } from './petstore.js';
+import { THREE, L, camera, renderer } from './engine.js';
+import { PET, CARRY, carryNext, backAnchor, dropSpot, armsAnchor, cleanCarry, cleanLook, followSpeed, shouldTeleport, idleStage, restSpot, shouldFollow, hatIndex, neckIndex } from './petlogic.js';
+import { petStatus, patPet, setPetCarry } from './petstore.js';
+import { gripDown } from './player.js';
+import { onDesktopKey } from './desktop.js';
 import { createPetModel } from './petmodel.js';
 import { createBot, stepBot } from './botkit.js';
 import { LEVEL_BY_ID } from './registry.js';
@@ -18,19 +20,21 @@ import * as N from './network.js';
 import * as SFX from './audio.js';
 import { toast, GOLD } from './terminal.js';
 
-let HUB = false, P = null, holdSpawn = false;
+let HUB = false, P = null, holdSpawn = false, vPress = false;
+onDesktopKey('KeyV', () => { vPress = true; });   // klawisz V: stworek z rąk na plecy, z pleców na ziemię
 const remote = {};   // id gracza -> { model, x, y, z, sp }
 const MAX_REMOTE = 5;
 const _v = new THREE.Vector3(), _dir = new THREE.Vector3();
 
-export function buildPet(levelId) { const def = LEVEL_BY_ID[levelId]; HUB = !!def && def.kind === 'hub'; P = null; }
+export function buildPet(levelId) { setPetCarry(0); const def = LEVEL_BY_ID[levelId]; HUB = !!def && def.kind === 'hub'; P = null; }
 export function disposePet() {
+    setPetCarry(0); vPress = false;
     if (P) { P.model.dispose(); P = null; }
     for (const id in remote) { remote[id].model.dispose(); delete remote[id]; }
     HUB = false;
 }
-const lookFor = (st) => ({ c: st.pet.c, l: st.level, n: st.pet.n, h: hatIndex(st.wear.hat), k: neckIndex(st.wear.neck) });
-const lookSig = (l) => l.c + ',' + l.l + ',' + l.n + ',' + l.h + ',' + l.k;   // zmiana któregokolwiek pola = nowy model
+const lookFor = (st) => ({ c: st.pet.c, l: st.level, n: st.pet.n, sp: st.pet.sp || 0, h: hatIndex(st.wear.hat), k: neckIndex(st.wear.neck) });
+const lookSig = (l) => l.c + ',' + l.l + ',' + l.n + ',' + l.h + ',' + l.k + ',' + l.sp;   // zmiana któregokolwiek pola = nowy model
 
 function spawn(ctx, born, at) {
     const st = petStatus(); if (!st) return;
@@ -38,7 +42,7 @@ function spawn(ctx, born, at) {
     const x = at ? at.x : pl.x + Math.cos(a) * 1.3, z = at ? at.z : pl.z + Math.sin(a) * 1.3, bot = createBot(x, z);
     bot.y = at && at.y !== undefined ? at.y : Math.max(0, pl.y - 1.0);
     L.root.add(model.group);
-    P = { model: model, bot: bot, lvl: st.level, sig: lookSig(lookFor(st)), name: st.name, idleT: 0, last: { x: pl.x, z: pl.z }, sp: 0, petted: 0, eating: 0, handT: 0, patCd: 0, squeakIn: 8 + Math.random() * 10, jumpCd: 0, statT: 0, follow: false, hungry: st.hungry, sad: st.mood < 0.35, mood: st.moodLabel, tagMood: '' };
+    P = { model: model, bot: bot, lvl: st.level, sig: lookSig(lookFor(st)), name: st.name, idleT: 0, last: { x: pl.x, z: pl.z }, sp: 0, petted: 0, eating: 0, handT: 0, patCd: 0, carry: 0, hand: 1, gripPrev: [false, false], squeakIn: 8 + Math.random() * 10, jumpCd: 0, statT: 0, follow: false, hungry: st.hungry, sad: st.mood < 0.35, mood: st.moodLabel, tagMood: '' };
     model.group.position.set(bot.x, bot.y, bot.z);
     model.setTag(st.name, st.level, st.moodLabel);
 }
@@ -65,6 +69,7 @@ export function updatePet(dt, t, ctx) {
 function updateMine(dt, t, ctx) {
     const p = P, b = p.bot, pl = ctx.pos;
     const dx = pl.x - b.x, dz = pl.z - b.z, d = Math.hypot(dx, dz);
+    if (carryStep(p, dt, t, ctx)) return;
     // stan z magazynu raz na 1,5 s: głód, humor, poziom (wzrost = nowy model i fajerwerki), imię
     p.statT -= dt;
     if (p.statT <= 0) {
@@ -116,6 +121,49 @@ function updateMine(dt, t, ctx) {
     if (p.eating > 0 && Math.random() < dt * 5) p.model.burst('heart', 1);
 }
 
+// ---------- noszenie: na rękach i na plecach ----------
+const _f = new THREE.Vector3(), _fq = new THREE.Quaternion();
+function flatForward() { camera.getWorldDirection(_f); _f.y = 0; if (_f.lengthSq() < 1e-4) _f.set(0, 0, -1); return _f.normalize(); }
+function setCarry(p, v) { p.carry = v; setPetCarry(v); p.model.burst('poof', 3); SFX.squeak(posOf()); }
+// Zwraca true, gdy stworek jest niesiony (wtedy zwykły ruch jest pomijany)
+function carryStep(p, dt, t, ctx) {
+    const pl = ctx.pos, b = p.bot, hs = handsOf('me'), f = flatForward(), fx = f.x, fz = f.z, xr = !!(renderer.xr && renderer.xr.isPresenting);
+    const back = backAnchor(pl, fx, fz), press = vPress; vPress = false;
+    let ev = null;
+    if (press && p.carry === CARRY.NONE && Math.hypot(pl.x - b.x, pl.z - b.z) < CARRY.DESKTOP_REACH) { ev = 'grab'; p.hand = 1; }
+    else if (press) ev = 'back';
+    for (let i = 0; i < 2; i++) {   // chwyt (grip / klawisz E): zbocze narastające
+        const down = gripDown(i), edge = down && !p.gripPrev[i]; p.gripPrev[i] = down;
+        if (!edge || ev) continue;
+        const h = hs[i];
+        if (p.carry === CARRY.NONE) {
+            const near = h ? Math.hypot(h.x - b.x, h.y - (b.y + 0.3 * p.model.scale), h.z - b.z) < CARRY.REACH : false;
+            if (near || (!xr && Math.hypot(pl.x - b.x, pl.z - b.z) < CARRY.DESKTOP_REACH)) { ev = 'grab'; p.hand = i; }
+        } else {
+            const nearBack = h ? Math.hypot(h.x - back.x, h.y - (back.y + 0.4), h.z - back.z) < CARRY.BACK_REACH : false;
+            ev = nearBack ? 'back' : 'drop';
+        }
+    }
+    if (ev) {
+        const was = p.carry, now = carryNext(was, ev);
+        if (now !== was) {
+            if (now === CARRY.NONE) { const d = dropSpot(pl, fx, fz); b.x = d.x; b.y = d.y; b.z = d.z; b.vy = 0; b.ground = false; p.follow = false; }
+            setCarry(p, now);
+            if (now === CARRY.ARMS) toast('Holding ' + p.name + ' (grip / E: put down, V: on your back)', '#ff9ec0');
+            else if (now === CARRY.BACK) toast(p.name + ' is on your back (V or grip behind you: put down)', '#ff9ec0');
+            else toast(p.name + ' is on the ground', '#ff9ec0');
+        }
+    }
+    if (p.carry === CARRY.NONE) return false;
+    const a = p.carry === CARRY.BACK ? back : armsAnchor(pl, fx, fz, hs[p.hand] || (xr ? null : hs[1]));
+    b.x = a.x; b.y = a.y; b.z = a.z; b.vy = 0; b.ground = false;
+    b.dir = Math.atan2(p.carry === CARRY.BACK ? fx : -fx, p.carry === CARRY.BACK ? fz : -fz);   // na plecach patrzy w przód, na rękach na gracza
+    p.model.group.position.set(b.x, b.y, b.z); p.model.group.rotation.y = b.dir;
+    p.idleT = 0; p.last.x = pl.x; p.last.z = pl.z; p.sp = 0;
+    p.model.update(dt, t, { speed: 0, sleeping: false, sitting: true, sad: p.sad, hungry: false, petted: 0, eating: 0, tag: false });
+    return true;
+}
+
 // ---------- zwierzaki innych graczy (tylko wygląd z sieci, pozycja liczona lokalnie przy głowie właściciela) ----------
 function updateRemote(dt, t) {
     const seen = {};
@@ -134,6 +182,16 @@ function updateRemote(dt, t) {
         }
         seen[id] = true;
         const hp = st.head.p; if (!Number.isFinite(hp[0]) || !Number.isFinite(hp[1]) || !Number.isFinite(hp[2])) continue;
+        const pc = cleanCarry(st.pc);
+        if (pc) {   // niesiony: na rękach przed graczem, na plecach za nim (kierunek z obrotu głowy); chodzenie wyłączone
+            const hq = st.head.q; _fq.set(0, 0, 0, 1); if (Array.isArray(hq) && hq.length === 4 && hq.every(Number.isFinite)) _fq.fromArray(hq);
+            _f.set(0, 0, -1).applyQuaternion(_fq); _f.y = 0; if (_f.lengthSq() < 1e-4) _f.set(0, 0, -1); _f.normalize();
+            const head = { x: hp[0], y: hp[1], z: hp[2] }, a = pc === CARRY.BACK ? backAnchor(head, _f.x, _f.z) : armsAnchor(head, _f.x, _f.z, null);
+            e.x = a.x; e.y = a.y; e.z = a.z; e.init = true; e.sp = 0;
+            e.model.group.position.set(e.x, e.y, e.z); e.model.group.rotation.y = Math.atan2(pc === CARRY.BACK ? _f.x : -_f.x, pc === CARRY.BACK ? _f.z : -_f.z);
+            e.model.update(dt, t, { speed: 0, sleeping: false, sitting: true, sad: false, hungry: false, petted: 0, eating: 0, tag: false });
+            continue;
+        }
         const dx = hp[0] - e.x, dz = hp[2] - e.z, d = Math.hypot(dx, dz);
         if (!e.init || shouldTeleport(d)) { e.x = hp[0] + 1.2; e.z = hp[2]; e.y = Math.max(0, hp[1] - 1.62); e.init = true; continue; }
         const sp = followSpeed(d - 1.8); if (sp > 0) { const k = Math.min(1, sp * dt / d); e.x += dx * k; e.z += dz * k; }
