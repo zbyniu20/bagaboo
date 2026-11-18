@@ -245,4 +245,57 @@ check('graffiti.js: the contest follows the lobby events setting and waits for t
 check('graffiti.js: only the winner of the host-sent result gets the reward', (gfx.match(/levelReward\('graffiti'/g) || []).length === 2 && /wid === 'me'/.test(gfx) && /idOfSlot\(k\.slots, k\.winner\) === 'me'/.test(gfx));
 check('graffiti.js: the wall dims with the lobby, sprays when painting and supports VR drag', /setScalar\(dim\)/.test(gfx) && /SFX\.hiss\(/.test(gfx) && /triggerDown\(i\)/.test(gfx) && /pointerHit\(i\)/.test(gfx));
 
+// ---------- Stworek (core/petlogic.js, core/petstore.js, zaufanie w sieci) ----------
+const PL = await import(url('core/petlogic.js'));
+{
+    const D = 86400000, T0 = Date.UTC(2026, 5, 1, 12), P = PL.PET;
+    const mk = (o) => ({ ...PL.hatch(T0, 4, () => 0), ...o });
+    check('pet: lists are consistent (weights, names, levels, scales)', P.WEIGHTS.length === P.COLORS.length && P.COLORS.every(c => /^#[0-9a-f]{6}$/.test(c.body) && /^#[0-9a-f]{6}$/.test(c.belly) && /^#[0-9a-f]{6}$/.test(c.accent)) && new Set(P.NAMES).size === P.NAMES.length && P.NAMES.every(n => /^[A-Za-z]{2,12}$/.test(n)) && P.LEVELS.length === P.SCALE.length && P.LEVELS.every((v, i) => i === 0 || v > P.LEVELS[i - 1]));
+    check('pet: the golden colour is the rare one', P.COLORS.filter(c => c.rare).length === 1 && P.COLORS[P.COLORS.length - 1].rare && P.WEIGHTS[P.WEIGHTS.length - 1] === Math.min(...P.WEIGHTS));
+    check('pet: colour pick follows the weights and never goes out of range', PL.pickColor(() => 0) === 0 && PL.pickColor(() => 0.999999) === P.COLORS.length - 1 && PL.pickColor(() => 0.96) === 5 && PL.pickColor(() => 0.94) === 4 && [0, 0.3, 0.7, 0.9999].every(r => { const c = PL.pickColor(() => r); return c >= 0 && c < P.COLORS.length; }));
+    check('pet: hatching gives a valid pet at the moment of hatching', (() => { const h = PL.hatch(T0, 7.9, () => 0.5); return PL.normalizePet(h, T0) && JSON.stringify(PL.normalizePet(h, T0)) === JSON.stringify(h) && h.b === 7 && h.s === 0.8 && h.pa === 0; })());
+    check('pet: hatching needs no pet and enough Bagabucks', PL.canHatch(null, P.HATCH_COST).ok && !PL.canHatch(null, P.HATCH_COST - 1).ok && PL.canHatch(null, 5).reason === 'poor' && PL.canHatch(mk({}), 1e6).reason === 'have' && !PL.canHatch(null, NaN).ok && !PL.canHatch(null, undefined).ok);
+    // zapis: normalizePet nie ufa niczemu
+    check('pet save: junk becomes no pet', [null, undefined, 5, 'x', [], {}, { c: 99 }, { c: -1 }, { c: 1.5 }, { c: '1' }].every(x => PL.normalizePet(x, T0) === null) && PL.normalizePet({ c: 1 }, NaN) === null);
+    check('pet save: every field is clamped', (() => { const p = PL.normalizePet({ c: 2, n: 999, h: 1e18, b: -5, s: 9, st: 'x', m: -3, mt: 1e18, fd: { d: 'a', n: 99 }, pa: 1e18 }, T0); return p.c === 2 && p.n === 0 && p.h === T0 && p.b === 0 && p.s === 1 && p.st === T0 && p.m === 0 && p.mt === T0 && p.fd.d === 0 && p.fd.n === 0 && p.pa === T0; })());
+    check('pet save: a clean pet survives normalisation unchanged', (() => { const p = mk({ c: 3, n: 5 }); return JSON.stringify(PL.normalizePet(JSON.parse(JSON.stringify(p)), T0)) === JSON.stringify(p); })());
+    // czas
+    const p0 = mk({});
+    check('pet hunger: satiety falls with time and stays in 0..1', PL.satiety(p0, T0) === 0.8 && Math.abs(PL.satiety(p0, T0 + 18 * 3600000) - 0.3) < 1e-9 && PL.satiety(p0, T0 + 100 * D) === 0 && PL.satiety(p0, T0 - D) === 0.8);
+    check('pet hunger: an absurdly large clock jump is capped and a backwards clock changes nothing', PL.satiety(p0, T0 + 1e15) === 0 && PL.moodOf(p0, T0 + 1e15) >= P.MOOD_FLOOR && PL.satiety(p0, T0 - 5 * D) === p0.s);
+    check('pet mood: never below the floor, nothing dies', [0, 1, 10, 100, 1e5].every(d => { const v = PL.moodOf(p0, T0 + d * D); return v >= P.MOOD_FLOOR && v <= 1; }) && PL.moodLabel(PL.moodOf(p0, T0 + 60 * D)) === 'gloomy');
+    check('pet mood: labels', PL.moodLabel(0.9) === 'happy' && PL.moodLabel(0.5) === 'content' && PL.moodLabel(0.2) === 'gloomy' && PL.moodLabel(0.66) === 'happy' && PL.moodLabel(0.35) === 'content');
+    check('pet hunger: hungry below the threshold only', !PL.isHungry(p0, T0) && PL.isHungry(p0, T0 + 24 * 3600000) && !PL.isHungry(PL.feed(p0, T0 + 24 * 3600000), T0 + 24 * 3600000));
+    // karmienie
+    const hungry = T0 + 30 * 3600000;
+    check('pet feed: needs a pet, an appetite, a daily slot and Bagabucks', PL.canFeed(null, 999, T0).reason === 'nopet' && PL.canFeed(mk({ s: 1 }), 999, T0 + 10).reason === 'full' && PL.canFeed(p0, 999, T0 + 10).ok && PL.canFeed(p0, P.FEED_COST - 1, hungry).reason === 'poor' && PL.canFeed(p0, P.FEED_COST, hungry).ok && PL.canFeed(p0, NaN, hungry).reason === 'poor');
+    check('pet feed: it fills the pet and raises the mood but never above 1', (() => { const f = PL.feed(p0, hungry); return Math.abs(PL.satiety(f, hungry) - (Math.max(0, 0.8 - 30 / P.SAT_HOURS) + P.FEED_GAIN)) < 1e-9 && PL.moodOf(f, hungry) > PL.moodOf(p0, hungry) && PL.satiety(PL.feed(mk({ s: 0.8, st: hungry }), hungry), hungry) <= 1; })());
+    check('pet feed: a daily limit, back again the next day', (() => { let p = mk({ s: 0, st: T0 }); let n = 0; while (PL.canFeed(p, 999, T0 + n).ok && n < 50) { p = PL.feed(PL.normalizePet({ ...p, s: 0 }, T0 + n + 10), T0 + n); p = { ...p, s: 0, st: T0 + n }; n++; } return n === P.FEED_LIMIT && PL.canFeed(p, 999, T0 + n).reason === 'limit' && PL.canFeed(p, 999, T0 + D).ok && PL.feedsLeft(p, T0 + n) === 0 && PL.feedsLeft(p, T0 + D) === P.FEED_LIMIT; })());
+    // głaskanie
+    check('pet pat: a cooldown, a small mood gain, free', PL.canPat(p0, T0) && (() => { const q = PL.pat(p0, T0 + 1000); return !PL.canPat(q, T0 + 1000 + P.PAT_COOLDOWN - 1) && PL.canPat(q, T0 + 1000 + P.PAT_COOLDOWN) && PL.moodOf(q, T0 + 1000) >= PL.moodOf(p0, T0 + 1000); })() && !PL.canPat(null, T0));
+    check('pet pat: a pat from the future (clock moved back) does not lock the pet for ever', PL.canPat({ ...p0, pa: T0 + 1e12 }, T0));
+    check('pet name: cycles through the list in both directions', PL.renamePet(mk({ n: 0 }), -1).n === P.NAMES.length - 1 && PL.renamePet(mk({ n: P.NAMES.length - 1 }), 1).n === 0 && PL.renamePet(mk({ n: 3 }), 1).n === 4 && PL.renamePet(mk({ n: 3 }), 0).n === 4);
+    // poziom
+    check('pet level: grows with cleared levels since hatching', PL.levelOf(p0, 4) === 1 && PL.levelOf(p0, 4 + 2) === 1 && PL.levelOf(p0, 4 + 3) === 2 && PL.levelOf(p0, 4 + 10) === 3 && PL.levelOf(p0, 4 + 25) === 4 && PL.levelOf(p0, 4 + 50) === 5 && PL.levelOf(p0, 4 + 5000) === 5);
+    check('pet level: old clears do not count and bad input is safe', PL.levelOf(p0, 0) === 1 && PL.levelOf(p0, -9) === 1 && PL.levelOf(p0, NaN) === 1 && PL.levelOf(p0, undefined) === 1);
+    check('pet level: progress to the next level', (() => { const a = PL.progress(p0, 4), b = PL.progress(p0, 4 + 5), c = PL.progress(p0, 4 + 80); return a.level === 1 && a.frac === 0 && a.left === 3 && !a.max && b.level === 2 && b.left === 5 && b.frac > 0 && b.frac < 1 && c.max && c.frac === 1 && c.left === 0; })());
+    check('pet level: the model scale grows with the level', P.SCALE.every((v, i) => PL.scaleOf(i + 1) === v) && PL.scaleOf(0) === P.SCALE[0] && PL.scaleOf(99) === P.SCALE[P.SCALE.length - 1] && PL.scaleOf('x') === P.SCALE[0]);
+    // sieć
+    check('pet look: the tuple round trip', JSON.stringify(PL.cleanLook(PL.lookOf(mk({ c: 4, n: 7 }), 4 + 10))) === '{"c":4,"l":3,"n":7}');
+    check('pet look: bad data from the network is refused', [null, 5, 'x', {}, [], [1, 2], [1, 2, 3, 4], [9, 1, 1], [-1, 1, 1], [0, 0, 0], [0, 6, 0], [0, 1, 99], [0.5, 1, 1], ['0', 1, 1], [0, null, 0], [NaN, 1, 1]].every(x => PL.cleanLook(x) === null));
+    // zachowanie
+    check('pet follow: speeds by distance and the rest zone', PL.followSpeed(0.5) === 0 && PL.followSpeed(2) > 0 && PL.followSpeed(4) > PL.followSpeed(2) && PL.followSpeed(9) > PL.followSpeed(4) && PL.followSpeed(1.49) === 0 && PL.followSpeed(1.5) > 0);
+    check('pet follow: it teleports when far away or when the distance is not a number', !PL.shouldTeleport(5) && !PL.shouldTeleport(P.TELEPORT) && PL.shouldTeleport(P.TELEPORT + 0.1) && PL.shouldTeleport(NaN) && PL.shouldTeleport(Infinity));
+    check('pet idle: sits and then sleeps with the player standing still', PL.idleStage(0) === 'idle' && PL.idleStage(P.IDLE_SIT) === 'sit' && PL.idleStage(P.IDLE_SLEEP - 0.1) === 'sit' && PL.idleStage(P.IDLE_SLEEP) === 'sleep');
+}
+{
+    const store = fs.readFileSync(path.join(ROOT, 'core/petstore.js'), 'utf8'), net2 = fs.readFileSync(path.join(ROOT, 'core/network.js'), 'utf8'), pet = fs.readFileSync(path.join(ROOT, 'core/pet.js'), 'utf8');
+    check('petstore.js: every read goes through normalizePet', /normalizePet\(SAVE\.pet, Date\.now\(\)\)/.test(store) && !/SAVE\.pet\./.test(store));
+    check('petstore.js: hatching and food are paid with spendBones and rolled back when it fails', (store.match(/spendBones\(/g) || []).length === 2 && (store.match(/SAVE\.pet = (old|p); return \{ ok: false/g) || []).length === 2);
+    check('petstore.js: the pet never earns Bagabucks', !/addBones|levelReward/.test(store) && !/addBones|levelReward/.test(pet));
+    check('network.js: the pet look rides in the player state and nothing else of the pet does', /pt: petLookNet\(\)/.test(net2) && !/SAVE\.pet/.test(net2));
+    check('pet.js: other players\' pets are shown only from a validated look, only on the same hub, never for invisible players', /cleanLook\(st\.pt\)/.test(pet) && /st\.lvl !== L\.levelId/.test(pet) && /st\.inv/.test(pet) && !/st\.pt\.[a-z]/.test(pet));
+    check('pet.js: the companion lives only in hubs (never in record levels or stealth modes)', /kind === 'hub'/.test(pet));
+}
+
 done('logic');

@@ -13,6 +13,7 @@ import { machine, attachGorillaMachine, detachGorillaMachine, updateGorillaMachi
 import { track } from '../core/economy.js';
 import { buildTrainingDummy, updateTrainingDummy } from '../core/trainingdummy.js';
 import { buildLobbyPlay, updateLobbyPlay, disposeLobbyPlay, lobbyDim, debugLobbyPlay } from '../core/lobbyplay.js';
+import { buildPetNest, updatePetNest, disposePetNest } from '../core/petnest.js';   // gniazdo Stworka: jajo, wykluwanie i panel opieki
 
 export const info = { id: 'lobby', name: 'Lobby', spawn: [0, 2, 0] };
 const ENV = LP.envIntensity;
@@ -26,6 +27,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     const root = L.root;
     buildLobbyPlay();   // Brama Wspólna (głosowanie na tryb) i Nocna Zmiana (core/lobbyplay.js)
+    buildPetNest(0, -12.6);   // Stworek: podest z jajem przy północnej ścianie
 
     for (const f of LP.flickers) {
         const l = new THREE.PointLight(f[3], f[4], f[5], 2); l.position.set(f[0], f[1], f[2]); root.add(l);
@@ -579,6 +581,7 @@ export function update(dt, t, ctx) {
     updateGorillaMachine(dt);
     updateMannequins(dt); updateTrainingDummy(dt);
     updateLobbyPlay(dt, t, ctx);
+    updatePetNest(dt, t, ctx);
     // Zadanie dzienne: stanie na szczycie spiralnych schodów
     const p = ctx.pos;
     if (p.y > 15.4 && Math.hypot(p.x + 7, p.z + 7) < 2.2) track('top');
@@ -586,4 +589,4 @@ export function update(dt, t, ctx) {
 
 // Po wyjściu z lobby zwykła prędkość (inne poziomy ustawiają własną)
 export function debug(cmd) { return debugLobbyPlay(cmd); }   // dla testów
-export function dispose() { L.moveScale = 1; detachGorillaMachine(); disposeLobbyPlay(); }
+export function dispose() { L.moveScale = 1; detachGorillaMachine(); disposeLobbyPlay(); disposePetNest(); }
