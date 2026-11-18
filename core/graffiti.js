@@ -39,7 +39,7 @@ export function buildGraffiti() {
     G = {
         wall: emptyWall(), day: dayKey(Date.now()), week: weekKey(Date.now()), gallery: [], color: 3, brush: 0, cell: null, lastPaint: '', vrLast: ['', ''], out: [], buckets: {},
         clock: 0, snapT: 1, deltaT: 0, saveT: SAVE_EVERY, dayT: 1, snapNow: false, saveDirty: false, galleryDirty: false, sprayT: -9, noticeT: -9, dim: 1,
-        contest: newContest(true), saved: null, ctT: 0, ctNow: false, lastGc: 0, sec: -1, padSig: '', term: null, gterm: null
+        lastCol: -1, posterAt: -99, posterBy: {}, contest: newContest(true), saved: null, ctT: 0, ctNow: false, lastGc: 0, sec: -1, padSig: '', term: null, gterm: null
     };
     load();
     const t = new Terminal(draw, 1024, 640), gt = new Terminal(drawGallery, 640, 560); G.term = t; G.gterm = gt;
@@ -95,6 +95,7 @@ function paintAt(cx, cy) {
         if (!cells.length) { notice(); return; }
     }
     if (!apply(cells)) return;
+    G.lastCol = Math.max(0, Math.min(ROUND.SLOTS - 1, Math.floor(cx / ROUND.COLS)));   // kolumna, którą zapisze przycisk SAVE poza konkursem
     spray(0.18);
     if (N.NET.mode === 'guest') N.sendLevelMsg({ k: 'gp', c: cells });   // do hosta; u siebie już namalowane
     else G.out.push(...cells);
@@ -103,6 +104,21 @@ function saveWork() {
     const k = G.contest; if (k.ph !== 'draw' || mySlot() < 0 || k.ready.me) return;
     k.ready.me = true; G.term.dirty = true; toast('Saved: your work goes to the voting board', '#7fff90');
     if (N.NET.mode === 'guest') N.sendLevelMsg({ k: 'gv' }); else G.ctNow = true;
+}
+// SAVE poza konkursem: kolumna (12 komórek), w której ostatnio malujesz, trafia jako plakat do Galerii (osobny przycisk w górnym pasku ściany)
+const POSTER_CD = 20;
+function addPoster(slot, id) {
+    const cells = extractSlot(G.wall, slot); if (!cells.some(v => v)) return false;
+    G.gallery = galleryAdd(G.gallery, { t: 'Free drawing', n: nameOf(id), d: encodeRle(cells), cells: cells }); G.galleryDirty = true; G.gterm.dirty = true; G.snapNow = true;
+    return true;
+}
+function savePoster() {
+    if (G.contest.ph !== 'idle') { toast('During a contest use the SAVE button at the bottom', '#ffb030'); return; }
+    if (G.lastCol < 0) { toast('Paint something first, then press SAVE', '#ffb030'); return; }
+    if (G.clock - G.posterAt < POSTER_CD) { toast('Wait a moment before saving again', '#ffb030'); return; }
+    G.posterAt = G.clock;
+    if (N.NET.mode === 'guest') { N.sendLevelMsg({ k: 'gq', s: G.lastCol }); toast('Sent to the gallery board', '#7fff90'); return; }
+    if (addPoster(G.lastCol, 'me')) toast('Saved to the gallery board', '#7fff90'); else toast('That part of the wall is empty', '#ffb030');
 }
 function clearWall() { if (!canClear()) return; G.wall.fill(0); G.term.dirty = true; G.saveDirty = true; G.snapNow = true; }
 function onWallClick() {
@@ -118,6 +134,7 @@ function draw(t) {
     const c = t.ctx, k = G.contest; t.background();
     if (k.ph === 'idle') {
         t.text('GRAFFITI WALL', 32, 28, 28, AMBER, 'left', true);
+        t.btn('post', 290, 8, 150, 42, 'SAVE', savePoster, { tone: 'ok', size: 22 });
         t.text('click to paint, hold to draw  |  fades daily', 992, 28, 20, AMBER_DIM, 'right', true);
     } else {
         t.text('THEME: ' + k.theme, 32, 28, 26, GOLD, 'left', true);
@@ -202,11 +219,18 @@ function updatePads() {
 }
 
 // ---------- sieć ----------
-const MSG = new Set(['gp', 'gd', 'gs', 'gc', 'gv']);
+const MSG = new Set(['gp', 'gd', 'gs', 'gc', 'gv', 'gq']);
 // Zwraca true, gdy wiadomość należy do ściany (lobbyplay nie przetwarza jej dalej)
 export function onGraffitiMsg(msg, from) {
     if (!msg || typeof msg.k !== 'string' || !MSG.has(msg.k)) return false;
     if (!G) return true;
+    if (N.NET.mode === 'host' && msg.k === 'gq') {   // gość zapisuje plakat: tylko w spokoju, przy ścianie, z limitem częstotliwości; nick z weryfikowanego stanu
+        const st = N.playersState[from];
+        if (G.contest.ph !== 'idle' || !st || st.lvl !== 'lobby' || !st.head || !Number.isInteger(msg.s) || msg.s < 0 || msg.s >= ROUND.SLOTS || !near(headOf(from), POS)) return true;
+        if (G.clock - (G.posterBy[from] === undefined ? -99 : G.posterBy[from]) < POSTER_CD) return true;
+        G.posterBy[from] = G.clock; addPoster(msg.s, from);
+        return true;
+    }
     if (N.NET.mode === 'host' && msg.k === 'gv') {   // gość zapisał pracę: liczy się tylko jego kolumna w fazie rysowania
         const k = G.contest; if (k.ph === 'draw' && k.slots[from] !== undefined && !k.ready[from]) { k.ready[from] = true; G.ctNow = true; G.term.dirty = true; }
         return true;

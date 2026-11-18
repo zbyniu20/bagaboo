@@ -20,7 +20,9 @@ export const PET = {
     SPECIES: [{ id: 'blob', name: 'Blobby' }, { id: 'bunny', name: 'Bunny' }, { id: 'cat', name: 'Cat' }, { id: 'dragon', name: 'Dragon' }, { id: 'ghost', name: 'Ghost' }],
     WEIGHTS: [19, 19, 19, 19, 19, 5],   // szansa na kolor przy wykluciu (złoty 5%)
     NAMES: ['Pip', 'Mochi', 'Boo', 'Nibs', 'Waffle', 'Gus', 'Pixel', 'Bean', 'Toast', 'Fudge', 'Miso', 'Pudding', 'Biscuit', 'Noodle', 'Sprout', 'Button',
-        'Ziggy', 'Cookie', 'Dumpling', 'Pebble', 'Tofu', 'Maple', 'Jelly', 'Bubbles'],
+        'Ziggy', 'Cookie', 'Dumpling', 'Pebble', 'Tofu', 'Maple', 'Jelly', 'Bubbles',
+        // straszne imiona (dopisane na końcu, żeby indeksy zapisanych stworków się nie zmieniły)
+        'Grimm', 'Vex', 'Nox', 'Wraith', 'Fang', 'Gloom', 'Skulk', 'Morbid', 'Hex', 'Crypt', 'Rot', 'Shade', 'Dread', 'Banshee', 'Ghoul', 'Reaper', 'Mortis', 'Cinder', 'Talon', 'Specter', 'Blight', 'Widow', 'Nyx', 'Gore'],
     HATCH_COST: 150, FEED_COST: 25, FEED_GAIN: 0.45, FEED_LIMIT: 6,      // karmienie: do 6 razy na dobę
     SAT_HOURS: 36, MOOD_HOURS: 60,          // po tylu godzinach sytość (humor) spada od pełnej do zera
     MOOD_FLOOR: 0.12, HUNGRY_BELOW: 0.25, FULL_ABOVE: 0.9,
