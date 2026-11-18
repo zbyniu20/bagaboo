@@ -161,7 +161,8 @@ export const shop = new Terminal((t) => {
     if (E.isFeatured && !shopUi.seenWeek) { c.fillStyle = GOLD; c.beginPath(); c.arc(28 + 164 + 146, 92, 9, 0, 7); c.fill(); }   // kropka: nowy asortyment (znika po wejściu w zakładkę)
 
     if (shopUi.tab === 'shop') {
-        E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * 108, 152, 102, 46, s.name, () => { shopUi.slot = s.id; }, { size: s.name.length > 9 ? 14 : 17, tone: s.id === 'mskin' ? 'bad' : 'gold', active: shopUi.slot === s.id }));
+        const sw = Math.floor(970 / E.SLOTS.length);   // szerokość zakładki: wszystkie sloty (z paczką Stworka) mieszczą się w jednym rzędzie
+        E.SLOTS.forEach((s, i) => t.btn('slot' + s.id, 28 + i * sw, 152, sw - 6, 46, s.name, () => { shopUi.slot = s.id; }, { size: s.name.length > 8 || sw < 96 ? 14 : 17, tone: s.id === 'mskin' ? 'bad' : 'gold', active: shopUi.slot === s.id }));
         const items = E.CATALOG.filter(it => it.slot === shopUi.slot && !E.isOwned(it));   // kupione i zdobyte znikają ze sklepu (są w Maszynie goryla)
         // Długie listy dzielone na strony po 8 przedmiotów
         const PER = 8, pages = Math.max(1, Math.ceil(items.length / PER));
@@ -175,7 +176,7 @@ export const shop = new Terminal((t) => {
             t.btn('pgPrev', 40, 590, 180, 40, 'Previous', () => { shopUi.pg--; }, { size: 20, disabled: shopUi.pg === 0 });
             t.text('Page ' + (shopUi.pg + 1) + ' of ' + pages, 512, 610, 20, AMBER, 'center');
             t.btn('pgNext', 804, 590, 180, 40, 'Next', () => { shopUi.pg++; }, { size: 20, disabled: shopUi.pg >= pages - 1 });
-        } else t.text(shopUi.slot === 'mskin' ? 'Monster skins show only in Become the Monster, when you are the monster.' : (shopUi.slot === 'emote' ? 'Play emotes on the Gorilla Machine, or in game: G (computer) / A, X (VR).' : 'Try items on and wear them at the Gorilla Machine next to this shop.'), 40, 610, 18, AMBER_DIM, 'left');
+        } else t.text(shopUi.slot === 'mskin' ? 'Monster skins show only in Become the Monster, when you are the monster.' : (shopUi.slot === 'emote' ? 'Play emotes on the Gorilla Machine, or in game: G (computer) / A, X (VR).' : (shopUi.slot === 'pethat' || shopUi.slot === 'petneck' ? 'Pet items: put them on your pet at the nest (north wall of the lobby).' : 'Try items on and wear them at the Gorilla Machine next to this shop.')), 40, 610, 18, AMBER_DIM, 'left');
     } else if (shopUi.tab === 'daily') {
         t.text('Login reward every 6 hours', 40, 176, 30, GOLD, 'left', true);
         t.text('Current streak: ' + login.streak + '   Next reward: ' + login.nextAmount + ' ' + E.CURRENCY, 40, 222, 24, AMBER, 'left');

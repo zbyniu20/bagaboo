@@ -3,7 +3,7 @@
 // Każdy odczyt idzie przez normalizePet (core/petlogic.js), więc ręcznie zmieniony zapis nie da cech spoza list. Stworek tylko kosztuje Bagabucksy,
 // nic nie zarabia. Wygląd dla innych graczy to krotka z lookOf (network.js dokleja ją do stanu gracza, odbiorca przyjmuje ją przez cleanLook).
 // ==========================================
-import { SAVE, saveGame, spendBones } from './economy.js';
+import { SAVE, saveGame, spendBones, CATALOG, isOwned, equipItem } from './economy.js';
 import { PET, normalizePet, hatch, canHatch, canFeed, feed, canPat, pat, renamePet, levelOf, progress, lookOf, satiety, moodOf, moodLabel, isHungry, feedsLeft } from './petlogic.js';
 
 export const clearsNow = () => (SAVE.stats && SAVE.stats.clears) || 0;
@@ -26,12 +26,31 @@ export function patPet() {
     const now = Date.now(); if (!canPat(p, now)) return { ok: false, reason: 'cooldown' };
     SAVE.pet = pat(p, now); saveGame(); return { ok: true };
 }
+// ---------- kosmetyki (Pet Pack ze sklepu): zakładane tylko, jeśli kupione; w zapisie ręcznie podmieniony przedmiot wraca do 'none' ----------
+export const WEAR_SLOT = { hat: 'pethat', neck: 'petneck' };
+const LIST = { hat: PET.HATS, neck: PET.NECKS };
+const ownedWear = (kind, id) => LIST[kind].includes(id) && (id === 'none' || SAVE.owned.includes(WEAR_SLOT[kind] + ':' + id));
+export function petWear() {
+    const eq = SAVE.equipped || {}, h = eq[WEAR_SLOT.hat], k = eq[WEAR_SLOT.neck];
+    return { hat: ownedWear('hat', h) ? h : 'none', neck: ownedWear('neck', k) ? k : 'none' };
+}
+// Posiadane przedmioty danego rodzaju w kolejności katalogu (z 'none' na początku)
+export const wearOptions = (kind) => CATALOG.filter(it => it.slot === WEAR_SLOT[kind] && LIST[kind].includes(it.id) && isOwned(it));
+// Następny (dir > 0) albo poprzedni posiadany przedmiot; { ok, name } albo { ok: false }
+export function cycleWear(kind, dir) {
+    if (!LIST[kind] || !getPet()) return { ok: false };
+    const opts = wearOptions(kind); if (opts.length < 2) return { ok: false, reason: 'none-owned' };
+    const cur = petWear()[kind], i = Math.max(0, opts.findIndex(o => o.id === cur)), next = opts[(i + (dir < 0 ? -1 : 1) + opts.length) % opts.length];
+    equipItem(next); return { ok: true, name: next.name, id: next.id };
+}
 export function cycleName(dir) { const p = getPet(); if (!p) return false; SAVE.pet = renamePet(p, dir); saveGame(); return true; }
 // Zwięzły stan do wyświetlania (panel, plakietka): bez zapisu
 export function petStatus() {
     const p = getPet(); if (!p) return null;
     const now = Date.now(), clears = clearsNow(), mood = moodOf(p, now);
     return { pet: p, name: PET.NAMES[p.n], color: PET.COLORS[p.c], level: levelOf(p, clears), progress: progress(p, clears), satiety: satiety(p, now), mood: mood, moodLabel: moodLabel(mood),
-        hungry: isHungry(p, now), feeds: feedsLeft(p, now), feed: canFeed(p, SAVE.wallet, now), pat: canPat(p, now) };
+        hungry: isHungry(p, now), feeds: feedsLeft(p, now), feed: canFeed(p, SAVE.wallet, now), pat: canPat(p, now), wear: petWear(),
+        wearNames: { hat: wearName('hat'), neck: wearName('neck') }, wearCount: { hat: wearOptions('hat').length - 1, neck: wearOptions('neck').length - 1 } };
 }
-export function petLookNet() { const p = getPet(); return p ? lookOf(p, clearsNow()) : null; }
+const wearName = (kind) => { const id = petWear()[kind], it = CATALOG.find(x => x.slot === WEAR_SLOT[kind] && x.id === id); return it ? it.name : '-'; };
+export function petLookNet() { const p = getPet(); if (!p) return null; const w = petWear(); return lookOf(p, clearsNow(), w.hat, w.neck); }

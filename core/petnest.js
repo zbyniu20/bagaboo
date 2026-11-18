@@ -2,6 +2,7 @@
 // GNIAZDO STWORKA (lobby, północna ściana): podest z poduszką i jajem oraz panel opieki na ścianie. Reguły i stan: core/petlogic.js i core/petstore.js, towarzysz: core/pet.js.
 // Bez stworka panel oferuje wyklucie jaja (HATCH_COST Bagabucksów): jajo drży, pęka, rozlatuje się odłamkami, a stworek wyskakuje z błyskiem. Ze stworkiem panel pokazuje
 // jego kartę (imię, kolor, poziom, paski wzrostu, sytości i humoru) i przyciski: karmienie (płatne, do 6 razy na dobę), głaskanie (za darmo) i zmiana imienia z listy.
+// Pet Pack ze sklepu (czapki i ubranka) zakłada się tu strzałkami HAT i WEAR; kupione przedmioty zmieniają model od razu.
 // Panel to zwykły Terminal (celownik lub laser kontrolera). Odświeża się po każdej akcji i co ok. sekundę, gdy jesteś blisko.
 // ==========================================
 import { THREE, L, tex } from './engine.js';
@@ -9,7 +10,7 @@ import * as T from './textures.js';
 import { Terminal, terminals, AMBER, AMBER_DIM, GOLD, OK_COL, BAD_COL } from './terminal.js';
 import { SAVE } from './economy.js';
 import { PET } from './petlogic.js';
-import { petStatus, hatchPet, feedPet, patPet, cycleName } from './petstore.js';
+import { petStatus, hatchPet, feedPet, patPet, cycleName, cycleWear } from './petstore.js';
 import { hatchBegin, hatchPop, reactFeed, reactPat } from './pet.js';
 import * as SFX from './audio.js';
 
@@ -71,6 +72,7 @@ function doHatch() {
     S.state = 'shake'; S.t = 0; S.cracked = false; hatchBegin(); SFX.bell && SFX.bell(); say('Something is moving in there...', GOLD);
 }
 function doFeed() { const r = feedPet(); if (!r.ok) { say(REASONS[r.reason] || 'Cannot feed now', BAD_COL); return; } reactFeed(); say('Yum! It loves the snack', OK_COL); }
+function doWear(kind, dir) { const r = cycleWear(kind, dir); if (!r.ok) { say('Buy pet items in the shop first', BAD_COL); return; } say(r.name, GOLD); S.term.dirty = true; }
 function doPat() { const r = patPet(); if (!r.ok) { say(r.reason === 'cooldown' ? 'Give it a moment to enjoy it' : (REASONS[r.reason] || ''), BAD_COL); return; } reactPat(); say('Aww! That feels great', OK_COL); }
 const bar = (t, x, y, w, frac, col, label, val) => { t.text(label, x, y - 14, 20, AMBER_DIM, 'left', true); t.bar(x, y, w, 20, frac, col); t.text(val, x + w, y - 14, 20, '#e8d8b8', 'right', true); };
 function portrait(c, x, y, st) {   // mała ilustracja stworka w kolorze i z miną wg humoru
@@ -85,6 +87,13 @@ function portrait(c, x, y, st) {   // mała ilustracja stworka w kolorze i z min
     c.strokeStyle = '#3a1d2a'; c.lineWidth = 4; c.beginPath(); if (sad) c.arc(0, 38, 9, 1.2 * Math.PI, 1.8 * Math.PI); else c.arc(0, 18, 10, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke();
     c.fillStyle = 'rgba(255,105,140,0.5)'; for (const sx of [-1, 1]) { c.beginPath(); c.ellipse(sx * 48, 14, 11, 6, 0, 0, Math.PI * 2); c.fill(); }
     c.restore();
+}
+// Rząd wyboru kosmetyku: strzałki przełączają po posiadanych przedmiotach (bez posiadanych: podpowiedź o sklepie)
+function wearRow(t, kind, label, x0, st) {
+    const none = st.wearCount[kind] < 1, name = st.wear[kind] === 'none' ? 'none' : st.wearNames[kind];
+    t.text(label, x0, 358, 16, AMBER_DIM, 'left', true);
+    t.btn('w' + kind + 'l', x0, 366, 44, 44, '<', () => doWear(kind, -1), { size: 24, disabled: none }); t.btn('w' + kind + 'r', x0 + 252, 366, 44, 44, '>', () => doWear(kind, 1), { size: 24, disabled: none });
+    t.text(none ? 'buy in the shop' : name.slice(0, 15), x0 + 148, 389, none ? 16 : 20, none ? AMBER_DIM : '#e8d8b8', 'center', true);
 }
 function draw(t) {
     const c = t.ctx, st = S.state === 'idle' ? petStatus() : null; t.background();   // w czasie wykluwania panel nadal pokazuje jajo
@@ -104,11 +113,13 @@ function draw(t) {
         bar(t, bx, 176, bw, st.satiety, st.hungry ? BAD_COL : OK_COL, 'FULLNESS', st.hungry ? 'hungry!' : Math.round(st.satiety * 100) + '%');
         bar(t, bx, 234, bw, st.mood, st.mood >= 0.66 ? OK_COL : (st.mood >= 0.35 ? '#ffd24a' : BAD_COL), 'MOOD', st.moodLabel);
         const feedLabel = 'FEED  ' + PET.FEED_COST;
-        t.btn('feed', 28, 330, 232, 56, feedLabel, doFeed, { tone: 'ok', size: 26, disabled: !st.feed.ok && st.feed.reason !== 'poor' });
-        t.btn('pat', 276, 330, 232, 56, 'PET', doPat, { size: 26, disabled: !st.pat });
-        t.btn('namel', 524, 330, 56, 56, '<', () => { cycleName(-1); t.dirty = true; }, { size: 28 }); t.btn('namer', 592, 330, 56, 56, '>', () => { cycleName(1); t.dirty = true; }, { size: 28 });
-        t.text('name', 586, 316, 16, AMBER_DIM, 'center', true);
-        t.text(st.feeds + ' snacks left today  |  pet it with your hand too', 28, 408, 18, AMBER_DIM, 'left', true);
+        t.btn('feed', 28, 288, 232, 52, feedLabel, doFeed, { tone: 'ok', size: 26, disabled: !st.feed.ok && st.feed.reason !== 'poor' });
+        t.btn('pat', 276, 288, 232, 52, 'PET', doPat, { size: 26, disabled: !st.pat });
+        t.btn('namel', 524, 288, 56, 52, '<', () => { cycleName(-1); t.dirty = true; }, { size: 28 }); t.btn('namer', 592, 288, 56, 52, '>', () => { cycleName(1); t.dirty = true; }, { size: 28 });
+        t.text('name', 586, 276, 16, AMBER_DIM, 'center', true);
+        // Pet Pack: czapka i ubranko z kupionych w sklepie (zakładanie po kolei)
+        wearRow(t, 'hat', 'HAT', 28, st); wearRow(t, 'neck', 'WEAR', 390, st);
+        t.text(st.feeds + ' snacks left today  |  pet it with your hand too', 28, 424, 18, AMBER_DIM, 'left', true);
     }
     if (S.msg && S.msgT > 0) t.text(S.msg, 28, 450, 24, S.msgTone || GOLD, 'left', true);
     else t.text(st ? 'Hold a hand near its head to pet it.' : 'Needs ' + PET.HATCH_COST + ' Bagabucks.', 28, 450, 20, AMBER_DIM, 'left', true);

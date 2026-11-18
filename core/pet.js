@@ -8,7 +8,7 @@
 // niewidzialnych graczy, i chodzi obok głowy właściciela (pozycji nikt nie wysyła). Stworek nic nie daje (żadnych bonusów w grze), więc nie ma czego tu nadużywać.
 // ==========================================
 import { THREE, L, camera } from './engine.js';
-import { PET, cleanLook, followSpeed, shouldTeleport, idleStage, restSpot, shouldFollow } from './petlogic.js';
+import { PET, cleanLook, followSpeed, shouldTeleport, idleStage, restSpot, shouldFollow, hatIndex, neckIndex } from './petlogic.js';
 import { petStatus, patPet } from './petstore.js';
 import { createPetModel } from './petmodel.js';
 import { createBot, stepBot } from './botkit.js';
@@ -29,7 +29,8 @@ export function disposePet() {
     for (const id in remote) { remote[id].model.dispose(); delete remote[id]; }
     HUB = false;
 }
-const lookFor = (st) => ({ c: st.pet.c, l: st.level, n: st.pet.n });
+const lookFor = (st) => ({ c: st.pet.c, l: st.level, n: st.pet.n, h: hatIndex(st.wear.hat), k: neckIndex(st.wear.neck) });
+const lookSig = (l) => l.c + ',' + l.l + ',' + l.n + ',' + l.h + ',' + l.k;   // zmiana któregokolwiek pola = nowy model
 
 function spawn(ctx, born, at) {
     const st = petStatus(); if (!st) return;
@@ -37,7 +38,7 @@ function spawn(ctx, born, at) {
     const x = at ? at.x : pl.x + Math.cos(a) * 1.3, z = at ? at.z : pl.z + Math.sin(a) * 1.3, bot = createBot(x, z);
     bot.y = at && at.y !== undefined ? at.y : Math.max(0, pl.y - 1.0);
     L.root.add(model.group);
-    P = { model: model, bot: bot, lvl: st.level, name: st.name, idleT: 0, last: { x: pl.x, z: pl.z }, sp: 0, petted: 0, eating: 0, handT: 0, patCd: 0, squeakIn: 8 + Math.random() * 10, jumpCd: 0, statT: 0, follow: false, hungry: st.hungry, sad: st.mood < 0.35, mood: st.moodLabel, tagMood: '' };
+    P = { model: model, bot: bot, lvl: st.level, sig: lookSig(lookFor(st)), name: st.name, idleT: 0, last: { x: pl.x, z: pl.z }, sp: 0, petted: 0, eating: 0, handT: 0, patCd: 0, squeakIn: 8 + Math.random() * 10, jumpCd: 0, statT: 0, follow: false, hungry: st.hungry, sad: st.mood < 0.35, mood: st.moodLabel, tagMood: '' };
     model.group.position.set(bot.x, bot.y, bot.z);
     model.setTag(st.name, st.level, st.moodLabel);
 }
@@ -70,10 +71,12 @@ function updateMine(dt, t, ctx) {
         p.statT = 1.5; const st = petStatus();
         if (!st) { p.model.dispose(); P = null; return; }
         p.hungry = st.hungry; p.sad = st.mood < 0.35; p.mood = st.moodLabel;
-        if (st.level !== p.lvl) {
+        const look = lookFor(st), sig = lookSig(look);
+        if (sig !== p.sig) {   // poziom albo kosmetyki: nowy model w tym samym miejscu
             const g = p.model.group.position.clone(), rot = p.model.group.rotation.y; p.model.dispose();
-            p.model = createPetModel(lookFor(st), { born: false }); L.root.add(p.model.group); p.model.group.position.copy(g); p.model.group.rotation.y = rot;
-            p.model.burst('spark', 14); p.model.burst('heart', 3); p.lvl = st.level; toast(st.name + ' grew to level ' + st.level + '!', GOLD); SFX.bell && SFX.bell();
+            p.model = createPetModel(look, { born: false }); L.root.add(p.model.group); p.model.group.position.copy(g); p.model.group.rotation.y = rot; p.sig = sig;
+            if (st.level !== p.lvl) { p.model.burst('spark', 14); p.model.burst('heart', 3); p.lvl = st.level; toast(st.name + ' grew to level ' + st.level + '!', GOLD); SFX.bell && SFX.bell(); }
+            else { p.model.burst('poof', 5); p.model.burst('spark', 6); SFX.squeak(posOf()); }
         }
         p.name = st.name; p.model.setTag(st.name, st.level, st.moodLabel);
     }
@@ -124,7 +127,7 @@ function updateRemote(dt, t) {
         if (!look || st.inv || st.lvl !== L.levelId) continue;
         let e = remote[id];
         if (!e) { if (count >= MAX_REMOTE) continue; count++; e = remote[id] = { model: null, look: '', x: 0, z: 0, y: 0, sp: 0, init: false }; }
-        const sig = look.c + ',' + look.l + ',' + look.n;
+        const sig = lookSig(look);
         if (!e.model || e.look !== sig) {
             if (e.model) e.model.dispose();
             e.model = createPetModel(look, { born: false }); e.look = sig; L.root.add(e.model.group); e.model.setTag(PET.NAMES[look.n], look.l, 'happy');
@@ -143,4 +146,4 @@ function updateRemote(dt, t) {
     for (const id in remote) if (!seen[id]) { remote[id].model.dispose(); delete remote[id]; }
 }
 
-export function debugPet() { return { hub: HUB, mine: P ? { x: P.bot.x, y: P.bot.y, z: P.bot.z, lvl: P.lvl, sp: P.sp, petted: P.petted, eating: P.eating, idleT: P.idleT, hungry: P.hungry } : null, remote: Object.keys(remote), hold: holdSpawn }; }
+export function debugPet() { return { hub: HUB, mine: P ? { x: P.bot.x, y: P.bot.y, z: P.bot.z, lvl: P.lvl, sig: P.sig, follow: P.follow, sp: P.sp, petted: P.petted, eating: P.eating, idleT: P.idleT, hungry: P.hungry } : null, remote: Object.keys(remote), hold: holdSpawn }; }

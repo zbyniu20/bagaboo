@@ -28,6 +28,8 @@ export const PET = {
     SCALE: [0.8, 0.9, 1.0, 1.1, 1.2],       // wielkość modelu na poziom
     IDLE_SIT: 8, IDLE_SLEEP: 30,            // sekundy bezruchu gracza: stworek siada, potem zasypia
     TELEPORT: 14,                           // dalej niż tyle metrów od gracza: pojawia się obok niego
+    // Paczka kosmetyków (sklep, zakładki Pet hats i Pet wear): indeks 0 = brak. Identyfikatory są też w CATALOG (core/economy.js, sloty 'pethat' i 'petneck')
+    HATS: ['none', 'party', 'flower', 'cowboy', 'wizard', 'crown'], NECKS: ['none', 'bow', 'bandana', 'scarf', 'bell', 'cape'],
     STAY: 3.4,                              // bliżej niż tyle metrów od gracza stworek zostaje (można go pogłaskać); dalej biegnie za nim
     REST: 2.0, SIDE: 0.5, REST_ARRIVE: 0.6, // miejsce odpoczynku: 2 m przed graczem, 0,5 rad w prawo od kierunku patrzenia (widać go na dole kadru)
 };
@@ -113,13 +115,17 @@ export function progress(p, clears) {
 }
 
 // ---------- wygląd w sieci ----------
-export const lookOf = (p, clears) => [p.c, levelOf(p, clears), p.n];
-// Wygląd od innego gracza: tylko liczby całkowite w zakresach, inaczej null
+// Indeks kosmetyku z listy (nieznany identyfikator = 0, brak)
+export const hatIndex = (id) => Math.max(0, PET.HATS.indexOf(id));
+export const neckIndex = (id) => Math.max(0, PET.NECKS.indexOf(id));
+export const lookOf = (p, clears, hat, neck) => [p.c, levelOf(p, clears), p.n, hatIndex(hat), neckIndex(neck)];
+// Wygląd od innego gracza [kolor, poziom, imię, czapka, szyja]: tylko liczby całkowite w zakresach, inaczej null (starsza krotka z 3 liczb = bez kosmetyków)
 export function cleanLook(raw) {
-    if (!Array.isArray(raw) || raw.length !== 3) return null;
-    const [c, l, n] = raw;
+    if (!Array.isArray(raw) || (raw.length !== 3 && raw.length !== 5)) return null;
+    const [c, l, n] = raw, h = raw.length === 5 ? raw[3] : 0, k = raw.length === 5 ? raw[4] : 0;
     if (!Number.isInteger(c) || c < 0 || c >= nCol || !Number.isInteger(l) || l < 1 || l > nLv || !Number.isInteger(n) || n < 0 || n >= nNames) return null;
-    return { c: c, l: l, n: n };
+    if (!Number.isInteger(h) || h < 0 || h >= PET.HATS.length || !Number.isInteger(k) || k < 0 || k >= PET.NECKS.length) return null;
+    return { c: c, l: l, n: n, h: h, k: k };
 }
 
 // ---------- zachowanie towarzysza (czyste decyzje; ruch robi core/pet.js) ----------

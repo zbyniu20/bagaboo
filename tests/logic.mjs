@@ -281,7 +281,9 @@ const PL = await import(url('core/petlogic.js'));
     check('pet level: progress to the next level', (() => { const a = PL.progress(p0, 4), b = PL.progress(p0, 4 + 5), c = PL.progress(p0, 4 + 80); return a.level === 1 && a.frac === 0 && a.left === 3 && !a.max && b.level === 2 && b.left === 5 && b.frac > 0 && b.frac < 1 && c.max && c.frac === 1 && c.left === 0; })());
     check('pet level: the model scale grows with the level', P.SCALE.every((v, i) => PL.scaleOf(i + 1) === v) && PL.scaleOf(0) === P.SCALE[0] && PL.scaleOf(99) === P.SCALE[P.SCALE.length - 1] && PL.scaleOf('x') === P.SCALE[0]);
     // sieć
-    check('pet look: the tuple round trip', JSON.stringify(PL.cleanLook(PL.lookOf(mk({ c: 4, n: 7 }), 4 + 10))) === '{"c":4,"l":3,"n":7}');
+    check('pet look: the tuple round trip (with and without Pet Pack items)', JSON.stringify(PL.cleanLook(PL.lookOf(mk({ c: 4, n: 7 }), 4 + 10))) === '{"c":4,"l":3,"n":7,"h":0,"k":0}' && JSON.stringify(PL.cleanLook(PL.lookOf(mk({ c: 1, n: 2 }), 4, 'crown', 'cape'))) === '{"c":1,"l":1,"n":2,"h":5,"k":5}' && JSON.stringify(PL.cleanLook([2, 3, 4])) === '{"c":2,"l":3,"n":4,"h":0,"k":0}');
+    check('pet look: an unknown hat or neck item id means none', PL.hatIndex('nope') === 0 && PL.neckIndex(undefined) === 0 && PL.hatIndex('party') === 1 && PL.neckIndex('bow') === 1 && PL.lookOf(mk({}), 4, 'hack', {}).slice(3).join() === '0,0');
+    check('pet look: cosmetic indices from the network are range-checked', [[0, 1, 0, 6, 0], [0, 1, 0, 0, 6], [0, 1, 0, -1, 0], [0, 1, 0, 0, 1.5], [0, 1, 0, '1', 0], [0, 1, 0, null, 0], [0, 1, 0, NaN, 0], [0, 1, 0, 0], [0, 1, 0, 0, 0, 0]].every(x => PL.cleanLook(x) === null) && PL.cleanLook([0, 1, 0, 5, 5]) !== null);
     check('pet look: bad data from the network is refused', [null, 5, 'x', {}, [], [1, 2], [1, 2, 3, 4], [9, 1, 1], [-1, 1, 1], [0, 0, 0], [0, 6, 0], [0, 1, 99], [0.5, 1, 1], ['0', 1, 1], [0, null, 0], [NaN, 1, 1]].every(x => PL.cleanLook(x) === null));
     // zachowanie
     check('pet follow: speeds by distance to the rest spot (stand, walk, trot, run)', PL.followSpeed(0.49) === 0 && PL.followSpeed(0) === 0 && PL.followSpeed(0.5) > 0 && PL.followSpeed(2) > PL.followSpeed(1) && PL.followSpeed(5) > PL.followSpeed(2) && PL.followSpeed(NaN) === 0 && PL.followSpeed(-3) === 0);
@@ -302,6 +304,34 @@ const PL = await import(url('core/petlogic.js'));
     const nestSrc = fs.readFileSync(path.join(ROOT, 'core/petnest.js'), 'utf8');
     check('petnest.js: the care panel and the nest are really added to the level (a trailing comment must not swallow the add call)', /pg\.position\.set\(x, 2\.55, -14\.4\); L\.root\.add\(pg\);/.test(nestSrc) && /const g = new THREE\.Group\(\); g\.position\.set\(x, 0, z\); L\.root\.add\(g\);/.test(nestSrc) && nestSrc.split('\n').every(l => !/\/\/[^'"`]*\bL\.root\.add\(/.test(l)));
     check('pet.js: the companion lives only in hubs (never in record levels or stealth modes)', /kind === 'hub'/.test(pet));
+}
+
+// ---------- Pet Pack: kosmetyki Stworka w sklepie (CATALOG, SLOTS, petstore) ----------
+{
+    const PS = await import(url('core/petstore.js')), P = PL.PET, snap = JSON.stringify(E.SAVE), pk = { pethat: P.HATS, petneck: P.NECKS };
+    check('pet pack: the catalog items match the PET lists in both slots', Object.keys(pk).every(slot => { const ids = E.CATALOG.filter(i => i.slot === slot).map(i => i.id); return ids.length === pk[slot].length && pk[slot].every(id => ids.includes(id)) && new Set(ids).size === ids.length; }));
+    check('pet pack: "none" is free and first, the rest cost Bagabucks within the shop range', Object.keys(pk).every(slot => { const items = E.CATALOG.filter(i => i.slot === slot); return items[0].id === 'none' && items[0].price === 0 && items.slice(1).every(i => Number.isInteger(i.price) && i.price >= 200 && i.price <= 3500 && !i.locked); }));
+    check('pet pack: names are unique, short and plain', (() => { const names = E.CATALOG.filter(i => pk[i.slot]).map(i => i.name); return names.length === 12 && new Set(names).size === 12 && names.every(n => /^[A-Za-z ]{3,16}$/.test(n)); })());
+    check('pet pack: the shop has a tab for each slot and all tabs fit in one row', ['pethat', 'petneck'].every(id => E.SLOTS.some(s => s.id === id)) && 28 + E.SLOTS.length * Math.floor(970 / E.SLOTS.length) <= 1024 && Math.floor(970 / E.SLOTS.length) >= 80 && /Math\.floor\(970 \/ E\.SLOTS\.length\)/.test(fs.readFileSync(path.join(ROOT, 'core/ui.js'), 'utf8')));
+    check('pet pack: a fresh save owns and wears "none" in both slots', (() => { E.SAVE.owned = ['skin:none']; E.SAVE.equipped = {}; E.SAVE.owned.push('pethat:none', 'petneck:none'); return PS.petWear().hat === 'none' && PS.petWear().neck === 'none'; })());
+    check('pet pack: an item that is not bought is never worn (tampered save)', (() => { E.SAVE.equipped = { pethat: 'crown', petneck: 'cape' }; return PS.petWear().hat === 'none' && PS.petWear().neck === 'none'; })());
+    check('pet pack: an unknown id in the save is never worn', (() => { E.SAVE.equipped = { pethat: 'hack', petneck: { x: 1 } }; E.SAVE.owned.push('pethat:hack'); return PS.petWear().hat === 'none' && PS.petWear().neck === 'none'; })());
+    check('pet pack: buying takes the price, adds the item and points to the nest', (() => { E.SAVE.wallet = 2000; E.SAVE.owned = ['pethat:none', 'petneck:none']; E.SAVE.equipped = { pethat: 'none', petneck: 'none' }; globalThis.__toasts.length = 0; const it = E.findItem('pethat:party'), r = E.buyItem(it), r2 = E.buyItem(it); return r === 'ok' && r2 === 'owned' && E.SAVE.wallet === 2000 - 300 && E.isOwned(it) && globalThis.__toasts.some(t => /nest/.test(t)) && !globalThis.__toasts.some(t => /Gorilla Machine/.test(t)); })());
+    check('pet pack: a poor player cannot buy', (() => { E.SAVE.wallet = 100; const r = E.buyItem(E.findItem('petneck:cape')); return r === 'poor' && E.SAVE.wallet === 100 && !E.isOwned(E.findItem('petneck:cape')); })());
+    check('pet pack: wearing needs a pet and an owned item, the arrows cycle through owned ones only', (() => {
+        E.SAVE.pet = null; const noPet = PS.cycleWear('hat', 1).ok;
+        E.SAVE.pet = PL.hatch(Date.now(), 0, () => 0); E.SAVE.owned = ['pethat:none', 'petneck:none']; E.SAVE.equipped = { pethat: 'none', petneck: 'none' };
+        const nothing = PS.cycleWear('hat', 1);   // tylko "none" w posiadaniu: nie ma czego przełączać
+        E.SAVE.owned.push('pethat:party', 'pethat:crown');
+        const a = PS.cycleWear('hat', 1), b = PS.cycleWear('hat', 1), c = PS.cycleWear('hat', 1), d = PS.cycleWear('hat', -1);
+        return noPet === false && nothing.ok === false && a.id === 'party' && b.id === 'crown' && c.id === 'none' && d.id === 'crown' && E.SAVE.equipped.pethat === 'crown' && PS.cycleWear('wing', 1).ok === false;
+    })());
+    check('pet pack: the look sent to other players carries the worn item indices and nothing unowned', (() => { E.SAVE.owned = ['pethat:none', 'petneck:none', 'pethat:wizard']; E.SAVE.equipped = { pethat: 'wizard', petneck: 'cape' }; const l = PS.petLookNet(); return l.length === 5 && l[3] === P.HATS.indexOf('wizard') && l[4] === 0 && PL.cleanLook(l) !== null; })());
+    check('pet pack: the care panel status shows what is worn and how many items are owned', (() => { E.SAVE.owned = ['pethat:none', 'petneck:none', 'petneck:bow', 'petneck:bell']; E.SAVE.equipped = { pethat: 'none', petneck: 'bell' }; const st = PS.petStatus(); return st.wear.neck === 'bell' && st.wearNames.neck === 'Bell collar' && st.wearCount.neck === 2 && st.wearCount.hat === 0 && st.wearNames.hat === 'No pet hat'; })());
+    const mdl = fs.readFileSync(path.join(ROOT, 'core/petmodel.js'), 'utf8');
+    check('pet pack: the model has a branch for every hat and every neck item', P.HATS.filter(x => x !== 'none').every(id => new RegExp("hatId === '" + id + "'").test(mdl)) && P.NECKS.filter(x => x !== 'none').every(id => new RegExp("neckId === '" + id + "'").test(mdl)));
+    check('pet pack: the care panel lets you wear items and pet.js rebuilds the model when they change', /cycleWear\(kind, dir\)/.test(fs.readFileSync(path.join(ROOT, 'core/petnest.js'), 'utf8')) && /sig !== p\.sig/.test(fs.readFileSync(path.join(ROOT, 'core/pet.js'), 'utf8')) && /h: hatIndex\(st\.wear\.hat\)/.test(fs.readFileSync(path.join(ROOT, 'core/pet.js'), 'utf8')));
+    for (const k of Object.keys(E.SAVE)) delete E.SAVE[k]; Object.assign(E.SAVE, JSON.parse(snap));   // przywraca zapis z początku bloku
 }
 
 done('logic');
