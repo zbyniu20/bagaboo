@@ -34,6 +34,7 @@ import { LEVEL_DEFS, levelPath } from './core/registry.js';
 import { isReservedNick, isStaffName } from './core/config.js';
 import * as AUTH from './core/auth.js';
 import { updateModMenu } from './core/modmenu.js';
+import { buildPet, updatePet, disposePet } from './core/pet.js';   // Stworek: towarzysz w salach (lobby, Levels, Games, Staff, Wardrobe, My Room)
 
 // Lista poziomów jest w core/registry.js (nowy poziom = plik w levels/ + wpis w rejestrze).
 // light: preset oświetlenia z config.js ('@mode' = tryb lobby), extras: dodatkowe pliki doładowywane razem z poziomem
@@ -46,6 +47,7 @@ export async function loadLevel(id, spawn) {
     if (level && level.dispose) level.dispose();
     for (const e of extras) if (e.dispose) e.dispose();
     for (const t of terminals) if (t !== pauseMenu && t !== vrMenuTerminal && !t.persistent) t.mesh = null;   // ekrany starego poziomu przestają reagować na laser
+    disposePet();   // stworek zostaje w starym poziomie, w nowej sali powstaje od nowa
     clearLevel();
     applyLighting(LIGHT_PRESETS[cfg.light]);
     level = await import(cfg.path);
@@ -55,6 +57,7 @@ export async function loadLevel(id, spawn) {
     for (const e of extras) if (e.prebuild) e.prebuild();
     level.build();
     for (const e of extras) e.build();
+    buildPet(id);
     onLevelBuilt(cfg.light, LIGHT_PRESETS[cfg.light]);   // warstwa wizualna (odbicia, szczegół, poświaty, cząsteczki)
     registerLevelLights(L.root);                           // pula świateł: do renderu trafia tylko K najważniejszych
     // Prawdziwe odbicia: jednorazowe zdjęcie poziomu z miejsca startu (światła wybrane dla tego miejsca, latarka wyłączona na czas zdjęcia)
@@ -320,6 +323,7 @@ renderer.setAnimationLoop(() => {
         const ctx = { pos: playerBody.position, body: playerBody, goto: (id, sp, o) => goToLevel(id, sp, o) };
         level.update(dt, t, ctx);
         for (const e of extras) if (e.update) e.update(dt, t, ctx);
+        updatePet(dt, t, ctx);
         // Drzwi do innych poziomów
         if (started) for (const pt of L.portals) {
             if (pt.box3.containsPoint(playerBody.position)) {

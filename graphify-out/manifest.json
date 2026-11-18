@@ -66,9 +66,9 @@
     "semantic_hash": "a5afb8e9bb215279e0fa2227cad1e3ed"
   },
   "core/economy.js": {
-    "mtime": 1794955860.9797962,
-    "seen": 1794956045.3152518,
-    "ast_hash": "0b94626f9688c28959f06c5bbc404c9c",
+    "mtime": 1794961731.1779048,
+    "seen": 1794961944.30461,
+    "ast_hash": "eb527a80acc47e7cded095ddb9f9e68a",
     "semantic_hash": ""
   },
   "core/emotepanel.js": {
@@ -204,9 +204,9 @@
     "semantic_hash": "f4876c4b8711e4c8298432ccf0b157e6"
   },
   "core/network.js": {
-    "mtime": 1794955860.9837961,
-    "seen": 1794956045.3152907,
-    "ast_hash": "dee05b7c503e925fb419d60f64a06e3f",
+    "mtime": 1794959282.8299804,
+    "seen": 1794960038.0596,
+    "ast_hash": "b949e795154e3e528af8dbd428134aa2",
     "semantic_hash": ""
   },
   "core/pause.js": {
@@ -276,10 +276,10 @@
     "semantic_hash": "5cec5f0a950f104f3048abe162a024bf"
   },
   "core/ui.js": {
-    "mtime": 1794940696.9377995,
-    "seen": 1794956045.315306,
-    "ast_hash": "5c558b76ca9ca2dbdea6531e9b96b744",
-    "semantic_hash": "5c558b76ca9ca2dbdea6531e9b96b744"
+    "mtime": 1794961739.2514076,
+    "seen": 1794961944.304704,
+    "ast_hash": "7f0b6ca85725d7248bd1fe4efddfac3b",
+    "semantic_hash": ""
   },
   "core/visuals.js": {
     "mtime": 1794940696.9405687,
@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "levels/lobby.js": {
-    "mtime": 1794955861.023796,
-    "seen": 1794956045.315341,
-    "ast_hash": "0b7d555c3d316b24d61a8e2256502835",
+    "mtime": 1794959366.8273249,
+    "seen": 1794960038.0596619,
+    "ast_hash": "983669be0c9ba3119972db7708664c05",
     "semantic_hash": ""
   },
   "levels/maze.js": {
@@ -510,9 +510,9 @@
     "semantic_hash": "d2969ca6591f6efdd00476b182e9a5b0"
   },
   "main.js": {
-    "mtime": 1794955861.0277963,
-    "seen": 1794956045.3153617,
-    "ast_hash": "70fb457bd90e1d27e5535d8f11e94366",
+    "mtime": 1794959286.5726545,
+    "seen": 1794960038.059683,
+    "ast_hash": "6debd00e52268f6c00af926633fd24b6",
     "semantic_hash": ""
   },
   "tests/package.json": {
@@ -528,9 +528,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1794955860.9797962,
-    "seen": 1794956045.315528,
-    "ast_hash": "01d73c4c15b0d3da0c942c246c15dc2f",
+    "mtime": 1794961930.650387,
+    "seen": 1794961944.3049843,
+    "ast_hash": "4c687d55a40a7c2bc9ed96ccbd6aaf0b",
     "semantic_hash": ""
   },
   "README.md": {
@@ -540,9 +540,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1794957284.973523,
-    "seen": 1794957331.7835608,
-    "ast_hash": "c5a392502f24162d6a4b4f864bc0a85c",
+    "mtime": 1794960047.480045,
+    "seen": 1794960935.0533566,
+    "ast_hash": "3985eca95c4244424a871396b68296f3",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -570,9 +570,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1794957312.1113756,
-    "seen": 1794957331.7833796,
-    "ast_hash": "40ab47d916f5d6675823c8b892254a81",
+    "mtime": 1794961867.7298706,
+    "seen": 1794961944.3047671,
+    "ast_hash": "c0eebbe2814036ef00c83024507f5ccb",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10029,6 +10029,36 @@
     "mtime": 1794957317.5534708,
     "seen": 1794957331.7832725,
     "ast_hash": "fdabee9988a0c98daf7971d8cad28962",
+    "semantic_hash": ""
+  },
+  "core/pet.js": {
+    "mtime": 1794963261.7975075,
+    "seen": 1794963274.425307,
+    "ast_hash": "faac187873893c9f823bc2973576f8fb",
+    "semantic_hash": ""
+  },
+  "core/petlogic.js": {
+    "mtime": 1794961717.6748917,
+    "seen": 1794961944.3046796,
+    "ast_hash": "ff54463428cacb86b6a982c27fa9b7d0",
+    "semantic_hash": ""
+  },
+  "core/petmodel.js": {
+    "mtime": 1794961796.0717838,
+    "seen": 1794961944.3046818,
+    "ast_hash": "3716d4c0a949464044cde37d67e347cd",
+    "semantic_hash": ""
+  },
+  "core/petnest.js": {
+    "mtime": 1794961830.6356294,
+    "seen": 1794961944.3046837,
+    "ast_hash": "a782075fb847264ffaa0a99892031d11",
+    "semantic_hash": ""
+  },
+  "core/petstore.js": {
+    "mtime": 1794961752.7870977,
+    "seen": 1794961944.3046854,
+    "ast_hash": "f4df07b2b3df6a270b64899925ca2eab",
     "semantic_hash": ""
   },
   "tests/package-lock.json": {

@@ -68,6 +68,20 @@ export const CATALOG = [
     { slot: 'mskin', id: 'ooze', name: 'Tar Crawler (The Well)', price: 2500 },
     { slot: 'mskin', id: 'thread', name: 'Threadman (Laundromat)', price: 3000 },
     { slot: 'mskin', id: 'lava', name: 'Lava Beast (Burning Memory)', price: 3500 },
+    // Pet Pack: kosmetyki Stworka (zakładki Pet hats i Pet wear w sklepie). Zakłada się je na panelu opieki przy gnieździe w lobby, nie w Maszynie goryla.
+    // Identyfikatory są też w PET.HATS i PET.NECKS (core/petlogic.js), model w core/petmodel.js; test pilnuje zgodności.
+    { slot: 'pethat', id: 'none', name: 'No pet hat', price: 0 },
+    { slot: 'pethat', id: 'party', name: 'Party hat', price: 300 },
+    { slot: 'pethat', id: 'flower', name: 'Spring flower', price: 400 },
+    { slot: 'pethat', id: 'cowboy', name: 'Cowboy hat', price: 800 },
+    { slot: 'pethat', id: 'wizard', name: 'Wizard hat', price: 1200 },
+    { slot: 'pethat', id: 'crown', name: 'Tiny crown', price: 2200 },
+    { slot: 'petneck', id: 'none', name: 'No pet wear', price: 0 },
+    { slot: 'petneck', id: 'bow', name: 'Bow tie', price: 300 },
+    { slot: 'petneck', id: 'bandana', name: 'Bandana', price: 450 },
+    { slot: 'petneck', id: 'scarf', name: 'Cozy scarf', price: 600 },
+    { slot: 'petneck', id: 'bell', name: 'Bell collar', price: 900 },
+    { slot: 'petneck', id: 'cape', name: 'Hero cape', price: 1800 },
     { slot: 'badge', id: 'none', name: 'No badge', price: 0 },
     { slot: 'badge', id: 'early', name: 'Early player', price: 0 },
     { slot: 'badge', id: 'skull', name: 'Skull pin', price: 500 },
@@ -247,7 +261,7 @@ export function lockText(item) {
     if (item.weekly && !isFeatured(item)) return 'Not in stock this week';
     return '';
 }
-export const SLOTS = [{ id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badges' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }, { id: 'mskin', name: 'BagaBoo Games' }, { id: 'emote', name: 'Emotes' }];
+export const SLOTS = [{ id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badges' }, { id: 'hat', name: 'Hats' }, { id: 'glasses', name: 'Glasses' }, { id: 'mask', name: 'Masks' }, { id: 'sleeve', name: 'Sleeves' }, { id: 'gloves', name: 'Hands' }, { id: 'mskin', name: 'BagaBoo Games' }, { id: 'emote', name: 'Emotes' }, { id: 'pethat', name: 'Pet hats' }, { id: 'petneck', name: 'Pet wear' }];
 
 // Pula zadań dziennych: każdego dnia losowane są 3 (takie same dla wszystkich graczy danego dnia)
 export const QUEST_POOL = [
@@ -346,8 +360,8 @@ export const HIGH_DAILY_BONUS = 30;      // pierwsze wejście na 15 m danego dni
 function defaultSave() {
     return {
         v: 1, wallet: START_BONES, earned: 0,
-        owned: ['skin:none', 'badge:none', 'tool:none', 'mskin:none', 'hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none', 'emote:wave', 'emote:cheer', 'emote:highfive'],
-        equipped: { skin: 'none', badge: 'none', tool: 'none', mskin: 'none', hat: 'none', glasses: 'none', mask: 'none', sleeve: 'cloth', gloves: 'none', emote: 'wave' },
+        owned: ['skin:none', 'badge:none', 'tool:none', 'mskin:none', 'hat:none', 'hat:cap', 'glasses:none', 'mask:none', 'sleeve:cloth', 'gloves:none', 'pethat:none', 'petneck:none', 'emote:wave', 'emote:cheer', 'emote:highfive'],
+        equipped: { skin: 'none', badge: 'none', tool: 'none', mskin: 'none', hat: 'none', glasses: 'none', mask: 'none', sleeve: 'cloth', gloves: 'none', pethat: 'none', petneck: 'none', emote: 'wave' },
         profile: { name: 'Acrobat', color: '#3d2314' },
         best: { height: 0, jumps: 0 },
         login: { last: 0, streak: 0 },
@@ -637,13 +651,14 @@ export function unlockItem(slot, id) {
     saveGame(); notifyLook(); checkCompletionist();
     return true;
 }
+const PET_SLOTS = ['pethat', 'petneck'];   // kosmetyki Stworka zakłada się na panelu przy gnieździe (core/petnest.js)
 export function buyItem(item) {
     if (isOwned(item)) return 'owned';
     if (isLocked(item)) return 'locked';
     const price = priceOf(item);
     if (SAVE.wallet < price) { toast('Not enough ' + CURRENCY + ' for ' + item.name, '#e0533f'); return 'poor'; }
     SAVE.wallet -= price; SAVE.owned.push(item.slot + ':' + item.id);   // zakładanie jest w Maszynie goryla (nie tu): kupiony przedmiot trafia do niej
-    toast('Bought ' + item.name + ' (-' + price + '). Wear it at the Gorilla Machine.', '#7fc47f');
+    toast('Bought ' + item.name + ' (-' + price + '). ' + (PET_SLOTS.includes(item.slot) ? 'Put it on your pet at the nest in the lobby.' : 'Wear it at the Gorilla Machine.'), '#7fc47f');
     track('shop'); saveGame(); markAllDirty();
     return 'ok';
 }

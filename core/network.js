@@ -8,6 +8,7 @@ import { THREE, camera, scene, L, CANNON, containBall, playerRig } from './engin
 import { createAvatar, poseHand, lookKey, animateFace, TAGS } from './avatar.js';
 import { createVoiceHub } from './voicehub.js';
 import { getLook, SESSION, SAVE } from './economy.js';
+import { petLookNet } from './petstore.js';
 import { markAllDirty, toast } from './terminal.js';
 import { rankOf, setLocalMod, isStaffName, isOwnerName, isUltimateName, isReservedNick, canPunish, BANS_CLEARED, isModMenuUser } from './config.js';
 import { MOD } from './modstate.js';
@@ -638,6 +639,7 @@ export function networkTick(handL, handR) {
         profile: getLook(),
         lvl: L.levelId,
         ses: SESSION.wins || 0,   // wygrane w sesji: tablica Bramy Wspólnej w lobby (tylko do wyświetlania, bez nagród)
+        pt: petLookNet(),   // wygląd stworka [kolor, poziom, imię] (tylko liczby; odbiorca przyjmuje go przez cleanLook, pozycję liczy sam)
         inv: MOD.invisible ? 1 : 0, sz: MOD.size,   // BagaBooModMenu: niewidzialność i rozmiar (host honoruje je tylko dla kont z listy menu)
         head: { p: hp.toArray(), q: hq.toArray() },
         h1: { p: l1p.toArray(), q: l1q.toArray(), g: handL.userData.rig.grip },
