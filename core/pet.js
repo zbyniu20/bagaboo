@@ -33,8 +33,8 @@ export function disposePet() {
     for (const id in remote) { remote[id].model.dispose(); delete remote[id]; }
     HUB = false;
 }
-const lookFor = (st) => ({ c: st.pet.c, l: st.level, n: st.pet.n, h: hatIndex(st.wear.hat), k: neckIndex(st.wear.neck) });
-const lookSig = (l) => l.c + ',' + l.l + ',' + l.n + ',' + l.h + ',' + l.k;   // zmiana któregokolwiek pola = nowy model
+const lookFor = (st) => ({ c: st.pet.c, l: st.level, n: st.pet.n, sp: st.pet.sp || 0, h: hatIndex(st.wear.hat), k: neckIndex(st.wear.neck) });
+const lookSig = (l) => l.c + ',' + l.l + ',' + l.n + ',' + l.h + ',' + l.k + ',' + l.sp;   // zmiana któregokolwiek pola = nowy model
 
 function spawn(ctx, born, at) {
     const st = petStatus(); if (!st) return;

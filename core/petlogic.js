@@ -16,6 +16,8 @@ export const PET = {
         { id: 'sun', name: 'Sun', body: '#ffd95a', belly: '#fff8dd', accent: '#d99a10' },
         { id: 'gold', name: 'Golden', body: '#ffcf3d', belly: '#fff3b0', accent: '#b8860b', rare: true },
     ],
+    // Gatunki (inny model 3D, ten sam stworek): wybierane przy zakupie jaja i w menu pauzy, bez wpływu na grę; indeks 0 = Blobby
+    SPECIES: [{ id: 'blob', name: 'Blobby' }, { id: 'bunny', name: 'Bunny' }, { id: 'cat', name: 'Cat' }, { id: 'dragon', name: 'Dragon' }, { id: 'ghost', name: 'Ghost' }],
     WEIGHTS: [19, 19, 19, 19, 19, 5],   // szansa na kolor przy wykluciu (złoty 5%)
     NAMES: ['Pip', 'Mochi', 'Boo', 'Nibs', 'Waffle', 'Gus', 'Pixel', 'Bean', 'Toast', 'Fudge', 'Miso', 'Pudding', 'Biscuit', 'Noodle', 'Sprout', 'Button',
         'Ziggy', 'Cookie', 'Dumpling', 'Pebble', 'Tofu', 'Maple', 'Jelly', 'Bubbles'],
@@ -33,7 +35,7 @@ export const PET = {
     STAY: 3.4,                              // bliżej niż tyle metrów od gracza stworek zostaje (można go pogłaskać); dalej biegnie za nim
     REST: 2.0, SIDE: 0.5, REST_ARRIVE: 0.6, // miejsce odpoczynku: 2 m przed graczem, 0,5 rad w prawo od kierunku patrzenia (widać go na dole kadru)
 };
-const nCol = PET.COLORS.length, nNames = PET.NAMES.length, nLv = PET.LEVELS.length;
+const nSp = PET.SPECIES.length, nCol = PET.COLORS.length, nNames = PET.NAMES.length, nLv = PET.LEVELS.length;
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dayOf = (ms) => Math.floor(ms / 86400000);
@@ -47,7 +49,7 @@ export function normalizePet(raw, now) {
     if (!Number.isInteger(raw.c) || raw.c < 0 || raw.c >= nCol) return null;
     const fd = raw.fd && typeof raw.fd === 'object' ? raw.fd : {};
     return {
-        c: raw.c, n: intIn(raw.n, 0, nNames - 1, 0),
+        c: raw.c, n: intIn(raw.n, 0, nNames - 1, 0), sp: intIn(raw.sp, 0, nSp - 1, 0),
         h: past(raw.h, now, now), b: intIn(raw.b, 0, 1e7, 0),
         s: clamp(num(raw.s) ? raw.s : 0.8, 0, 1), st: past(raw.st, now, now),
         m: clamp(num(raw.m) ? raw.m : 0.8, 0, 1), mt: past(raw.mt, now, now),
@@ -62,9 +64,9 @@ export function pickColor(rnd) {
     return nCol - 1;
 }
 // Nowy stworek z jaja: 'clears' = bieżąca liczba zaliczonych poziomów (od niej liczymy wzrost)
-export function hatch(now, clears, rnd) {
+export function hatch(now, clears, rnd, species) {
     const c = pickColor(rnd);
-    return { c: c, n: Math.min(nNames - 1, Math.floor(rnd01(rnd) * nNames)), h: now, b: num(clears) ? Math.max(0, Math.floor(clears)) : 0,
+    return { c: c, n: Math.min(nNames - 1, Math.floor(rnd01(rnd) * nNames)), sp: intIn(species, 0, nSp - 1, 0), h: now, b: num(clears) ? Math.max(0, Math.floor(clears)) : 0,
         s: 0.8, st: now, m: 0.8, mt: now, fd: { d: dayOf(now), n: 0 }, pa: 0, u: PET.COLORS[c].rare ? 1 : 0 };
 }
 export function canHatch(pet, wallet) {
@@ -104,6 +106,8 @@ export function cycleColor(p, dir) {
     const ch = colorChoices(p), i = Math.max(0, ch.indexOf(p.c));
     return Object.assign({}, p, { c: ch[(i + (dir < 0 ? -1 : 1) + ch.length) % ch.length] });
 }
+// Gatunek: o krok w przód albo w tył po liście (zawija się)
+export const cycleSpecies = (p, dir) => Object.assign({}, p, { sp: (((p.sp + (dir < 0 ? -1 : 1)) % nSp) + nSp) % nSp });
 // Imię: o krok w przód albo w tył po liście (zawija się)
 export const renamePet = (p, dir) => Object.assign({}, p, { n: (((p.n + (dir < 0 ? -1 : 1)) % nNames) + nNames) % nNames });
 
@@ -125,14 +129,15 @@ export function progress(p, clears) {
 // Indeks kosmetyku z listy (nieznany identyfikator = 0, brak)
 export const hatIndex = (id) => Math.max(0, PET.HATS.indexOf(id));
 export const neckIndex = (id) => Math.max(0, PET.NECKS.indexOf(id));
-export const lookOf = (p, clears, hat, neck) => [p.c, levelOf(p, clears), p.n, hatIndex(hat), neckIndex(neck)];
+export const lookOf = (p, clears, hat, neck) => [p.c, levelOf(p, clears), p.n, hatIndex(hat), neckIndex(neck), p.sp || 0];
 // Wygląd od innego gracza [kolor, poziom, imię, czapka, szyja]: tylko liczby całkowite w zakresach, inaczej null (starsza krotka z 3 liczb = bez kosmetyków)
 export function cleanLook(raw) {
-    if (!Array.isArray(raw) || (raw.length !== 3 && raw.length !== 5)) return null;
-    const [c, l, n] = raw, h = raw.length === 5 ? raw[3] : 0, k = raw.length === 5 ? raw[4] : 0;
+    if (!Array.isArray(raw) || (raw.length !== 3 && raw.length !== 5 && raw.length !== 6)) return null;
+    const [c, l, n] = raw, h = raw.length >= 5 ? raw[3] : 0, k = raw.length >= 5 ? raw[4] : 0, sp = raw.length === 6 ? raw[5] : 0;
     if (!Number.isInteger(c) || c < 0 || c >= nCol || !Number.isInteger(l) || l < 1 || l > nLv || !Number.isInteger(n) || n < 0 || n >= nNames) return null;
     if (!Number.isInteger(h) || h < 0 || h >= PET.HATS.length || !Number.isInteger(k) || k < 0 || k >= PET.NECKS.length) return null;
-    return { c: c, l: l, n: n, h: h, k: k };
+    if (!Number.isInteger(sp) || sp < 0 || sp >= nSp) return null;
+    return { c: c, l: l, n: n, h: h, k: k, sp: sp };
 }
 
 // ---------- zachowanie towarzysza (czyste decyzje; ruch robi core/pet.js) ----------

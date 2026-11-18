@@ -9,7 +9,7 @@ import { SETTINGS, saveSettings } from './settings.js';
 import * as SFX from './audio.js';
 import { SAVE, CATALOG, isOwned, equipItem } from './economy.js';
 import { isStaffName } from './config.js';
-import { petStatus, cycleColorPet, cycleName } from './petstore.js';
+import { petStatus, cycleColorPet, cycleName, cycleSpeciesPet } from './petstore.js';
 import { PET, colorChoices } from './petlogic.js';
 
 export const PAUSE = { on: false, onLobby: null, inLobby: true };
@@ -44,16 +44,17 @@ function petPage(t) {
         t.text('You have no pet yet.', 60, 250, 34, GOLD, 'left', true);
         t.text('Buy an egg in the lobby (north wall, the nest) for ' + PET.HATCH_COST + ' Bagabucks.', 60, 310, 24, AMBER, 'left');
     } else {
-        t.text(st.name + '  (level ' + st.level + ', ' + st.moodLabel + ')', 60, 215, 34, GOLD, 'left', true);
+        t.text(st.name + '  (level ' + st.level + ', ' + st.moodLabel + ')', 60, 205, 34, GOLD, 'left', true);
         const row = (id, y, label, value, fn) => {
             t.text(label, 60, y + 30, 28, AMBER, 'left', true);
             t.btn(id + 'm', 380, y, 80, 56, '<', () => { fn(-1); pauseMenu.dirty = true; }, { size: 34 });
             t.text(value, 640, y + 30, 30, GOLD, 'center', true);
             t.btn(id + 'p', 820, y, 80, 56, '>', () => { fn(1); pauseMenu.dirty = true; }, { size: 34 });
         };
-        row('pc', 290, 'Color', st.color.name + (st.color.rare ? ' (rare)' : ''), cycleColorPet);
-        row('pn', 370, 'Name', st.name, cycleName);
-        t.text(colorChoices(st.pet).length + ' colors to pick from. Feed and hat settings are at the nest in the lobby.', 60, 470, 22, AMBER_DIM, 'left');
+        row('ps', 270, 'Species', st.species.name, cycleSpeciesPet);
+        row('pc', 340, 'Color', st.color.name + (st.color.rare ? ' (rare)' : ''), cycleColorPet);
+        row('pn', 410, 'Name', st.name, cycleName);
+        t.text(colorChoices(st.pet).length + ' colors to pick from. Feed and hat settings are at the nest in the lobby.', 60, 490, 22, AMBER_DIM, 'left');
     }
     t.text('Your pet only follows you in the halls (lobby, Levels, Games, Staff, Wardrobe, My Room).', 60, 560, 20, AMBER_DIM, 'left');
     t.text('Hold the grip (E on keyboard) next to it to pick it up, V puts it on your back or on the floor.', 60, 590, 20, AMBER_DIM, 'left');
