@@ -570,9 +570,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1794960913.8656342,
-    "seen": 1794960935.053172,
-    "ast_hash": "5518d280b82a410b7980b19fffe63b81",
+    "mtime": 1794961604.61364,
+    "seen": 1794961634.6329973,
+    "ast_hash": "b38d443eb08097db9b0922e105f7723e",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "core/petnest.js": {
-    "mtime": 1794960902.7939854,
-    "seen": 1794960935.0531023,
-    "ast_hash": "fa2912058a2a527bdab5d40fb5ecb19a",
+    "mtime": 1794961604.6128633,
+    "seen": 1794961634.6328945,
+    "ast_hash": "a9d4843485155f53b7021443988b1bee",
     "semantic_hash": ""
   },
   "core/petstore.js": {

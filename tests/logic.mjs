@@ -299,6 +299,8 @@ const PL = await import(url('core/petlogic.js'));
     check('petstore.js: the pet never earns Bagabucks', !/addBones|levelReward/.test(store) && !/addBones|levelReward/.test(pet));
     check('network.js: the pet look rides in the player state and nothing else of the pet does', /pt: petLookNet\(\)/.test(net2) && !/SAVE\.pet/.test(net2));
     check('pet.js: other players\' pets are shown only from a validated look, only on the same hub, never for invisible players', /cleanLook\(st\.pt\)/.test(pet) && /st\.lvl !== L\.levelId/.test(pet) && /st\.inv/.test(pet) && !/st\.pt\.[a-z]/.test(pet));
+    const nestSrc = fs.readFileSync(path.join(ROOT, 'core/petnest.js'), 'utf8');
+    check('petnest.js: the care panel and the nest are really added to the level (a trailing comment must not swallow the add call)', /pg\.position\.set\(x, 2\.55, -14\.4\); L\.root\.add\(pg\);/.test(nestSrc) && /const g = new THREE\.Group\(\); g\.position\.set\(x, 0, z\); L\.root\.add\(g\);/.test(nestSrc) && nestSrc.split('\n').every(l => !/\/\/[^'"`]*\bL\.root\.add\(/.test(l)));
     check('pet.js: the companion lives only in hubs (never in record levels or stealth modes)', /kind === 'hub'/.test(pet));
 }
 
