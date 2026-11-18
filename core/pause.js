@@ -9,7 +9,7 @@ import { SETTINGS, saveSettings } from './settings.js';
 import * as SFX from './audio.js';
 import { SAVE, CATALOG, isOwned, equipItem } from './economy.js';
 import { isStaffName } from './config.js';
-import { petStatus, cycleColorPet, cycleName, cycleSpeciesPet } from './petstore.js';
+import { petStatus, cycleColorPet, cycleName, cycleSpeciesPet, toggleNameStylePet } from './petstore.js';
 import { PET, colorChoices } from './petlogic.js';
 
 export const PAUSE = { on: false, onLobby: null, inLobby: true };
@@ -54,7 +54,9 @@ function petPage(t) {
         row('ps', 270, 'Species', st.species.name, cycleSpeciesPet);
         row('pc', 340, 'Color', st.color.name + (st.color.rare ? ' (rare)' : ''), cycleColorPet);
         row('pn', 410, 'Name', st.name, cycleName);
-        t.text(colorChoices(st.pet).length + ' colors to pick from. Feed and hat settings are at the nest in the lobby.', 60, 490, 22, AMBER_DIM, 'left');
+        t.text('Name style', 60, 500, 28, AMBER, 'left', true);
+        t.btn('pstyle', 380, 474, 520, 52, st.nameStyle === 'cute' ? 'Cute names (tap for scary)' : 'Scary names (tap for cute)', () => { toggleNameStylePet(); pauseMenu.dirty = true; }, { size: 26, tone: st.nameStyle === 'cute' ? 'ok' : 'bad' });
+        t.text(colorChoices(st.pet).length + ' colors to pick from. Feed and hat settings are at the nest in the lobby.', 60, 546, 20, AMBER_DIM, 'left');
     }
     t.text('Your pet only follows you in the halls (lobby, Levels, Games, Staff, Wardrobe, My Room).', 60, 560, 20, AMBER_DIM, 'left');
     t.text('Hold the grip (E on keyboard) next to it to pick it up, V puts it on your back or on the floor.', 60, 590, 20, AMBER_DIM, 'left');

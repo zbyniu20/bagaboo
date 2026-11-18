@@ -4,7 +4,7 @@
 // Kto nie zostanie złapany, dostaje 200 Bagabucks. Potwór dostaje 200, jeśli złapie wszystkich.
 // Gdy grasz sam, goni cię manekin-bot.
 // MAPY: stacja kolejowa i pięć generowanych map (core/monstermaps.js: Hedge Maze, Container Yard, Night Supermarket, City Rooftops, Ruined Temple).
-// Mapę wybiera host (albo gracz solo) na tablicy przy drzwiach w fazie oczekiwania, albo losuje się inna co rundę. Przez sieć idzie tylko numer mapy i ziarno (cleanMapPick).
+// Mapę wybiera host (albo gracz solo) na tablicy przed sobą zaraz po wejściu: runda czeka na przycisk START (do HOLD_MAX s), potem co rundę losuje się inna albo zostaje wybrana. Przez sieć idzie tylko numer mapy i ziarno (cleanMapPick).
 // ==========================================
 import { THREE, L, tex, camera, addCrispBlock, world } from '../core/engine.js';
 import * as T from '../core/textures.js';
@@ -20,6 +20,7 @@ import { buildMonsterSkin } from '../core/monsterskins.js';
 import { ARRIVAL_FROM_MONSTER } from './games.js';
 import { MAPS, generateMap, pickMap, cleanMapPick } from '../core/monstermaps.js';
 
+const HOLD_MAX = 120;   // tyle sekund czeka start rundy na wybór mapy (potem rusza sam)
 const WAIT = 10, ROUND = 120, RESULTS = 8, REWARD = 200;
 const CATCH_DIST = 0.5;                     // dłoń potwora tak blisko głowy lub tułowia = złapany
 const BOT_SPEED = 4.2, BOT_SPEED_MAX = 5.4;   // trochę wolniej od szybkiego biegu gracza: da się uciec, ale z wysiłkiem   // bot jest trochę szybszy od gracza i przyspiesza w trakcie rundy
@@ -32,11 +33,12 @@ let S = null;
 const _p = new THREE.Vector3(), _h = new THREE.Vector3();
 
 export function build() {
-    S = { clock: 0, phase: 'wait', t: WAIT, mon: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, tinted: false, bot: null, map: -1, seed: 0, sel: -1, md: null, mapGroup: null, mapObs: [], mapBodies: [], mapPortals: [] };
+    S = { clock: 0, phase: 'wait', t: WAIT, mon: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, tinted: false, bot: null, hold: N.NET.mode !== 'guest', holdT: HOLD_MAX, map: -1, seed: 0, sel: -1, md: null, mapGroup: null, mapObs: [], mapBodies: [], mapPortals: [] };
     // Gość zaczyna na stacji i przechodzi na mapę hosta po pierwszej wiadomości; host i solo losują mapę od razu
     const first = N.NET.mode === 'guest' ? { i: 0, seed: 1 } : pickMap(-1, -1);
     applyMap(first.i, first.seed, false);
-    S.board = mapBoard.createMesh(2.4, 1.5); L.root.add(S.board); placeBoard();
+    S.board = mapBoard.createMesh(3.0, 1.875); L.root.add(S.board); placeBoard();
+    if (S.hold) toast('Choose a map on the board, then press START', GOLD);
     // Znacznik potwora (czerwona poświata i napis nad głową)
     const mc = T.makeCanvas(256, 64), mx = mc.getContext('2d');
     mx.font = 'bold 48px sans-serif'; mx.textAlign = 'center'; mx.textBaseline = 'middle'; mx.fillStyle = '#ff3a2a'; mx.shadowColor = '#ff0000'; mx.shadowBlur = 16; mx.fillText('MONSTER', 128, 34);
@@ -101,8 +103,8 @@ function applyMap(idx, seed, teleport) {
     mapBoard.dirty = true;
     if (teleport) { setPlayerPosition(md.entry[0], md.entry[1], md.entry[2]); toast('Map: ' + md.name, GOLD); }
 }
-// Tablica wyboru mapy przy południowej ścianie, na lewo od drzwi
-function placeBoard() { S.board.position.set(-4.2, 2.0, S.md.A - 0.08); S.board.rotation.y = Math.PI; }
+// Tablica wyboru mapy tuż przed graczem po wejściu (widoczna tylko w fazie oczekiwania)
+function placeBoard() { S.board.position.set(S.md.entry[0], 1.75, S.md.entry[2] - 2.6); S.board.rotation.y = 0; }   // 2,6 m przed wejściem, zwrócona do gracza (patrzy na północ)
 const canPickMap = () => S && N.NET.mode !== 'guest' && S.phase === 'wait';
 function chooseMap(sel) {
     if (!canPickMap()) return;
@@ -111,13 +113,19 @@ function chooseMap(sel) {
     if (!(MAPS[pk.i].fixed && pk.i === S.map)) applyMap(pk.i, pk.seed, true);
     S.t = Math.max(S.t, 8); S.netT = 0; mapBoard.dirty = true;
 }
+function startRound() {
+    if (!canPickMap()) return;
+    S.hold = false; S.t = Math.min(S.t, 4); S.netT = 0; mapBoard.dirty = true;
+}
 const mapBoard = new Terminal((t) => {
     t.background();
     if (!S) return;
-    t.header('Choose the map', S.phase === 'wait' ? 'Next round in ' + Math.max(0, Math.ceil(S.t)) + ' s' : 'Round in progress', AMBER_DIM);
+    t.header('Choose the map', S.phase !== 'wait' ? 'Round in progress' : (S.hold ? 'Choose a map, then START' : 'Round starts in ' + Math.max(0, Math.ceil(S.t)) + ' s'), AMBER_DIM);
     const mine = canPickMap(), cur = S.map;
-    t.btn('mp-1', 40, 90, 944, 52, 'Random map every round' + (S.sel < 0 ? '   (selected)' : ''), () => chooseMap(-1), { size: 26, active: S.sel < 0, disabled: !mine });
-    MAPS.forEach((m, i) => t.btn('mp' + i, 40, 154 + i * 64, 944, 54, m.name + (cur === i ? '   (now)' : ''), () => chooseMap(i), { size: 26, active: cur === i, tone: cur === i ? 'ok' : undefined, disabled: !mine }));
+    t.btn('mp-1', 40, 90, 620, 52, 'Random map every round' + (S.sel < 0 ? '   (selected)' : ''), () => chooseMap(-1), { size: 26, active: S.sel < 0, disabled: !mine });
+    MAPS.forEach((m, i) => t.btn('mp' + i, 40, 154 + i * 64, 620, 54, m.name + (cur === i ? '   (now)' : ''), () => chooseMap(i), { size: 26, active: cur === i, tone: cur === i ? 'ok' : undefined, disabled: !mine }));
+    t.btn('start', 690, 154, 294, 130, S.hold || mine ? 'START' : 'WAIT', startRound, { tone: 'ok', size: 44, disabled: !mine });
+    t.text(mine ? 'You are the host: press START' : (N.NET.mode === 'guest' ? 'The host is choosing...' : ''), 837, 316, 20, AMBER_DIM, 'center');
     t.text(MAPS[cur].blurb, 40, 574, 22, GOLD, 'left');
     t.text(mine ? 'Pick a map before the round starts. Walls and layouts are generated each time.' : (N.NET.mode === 'guest' ? 'The host picks the map.' : 'The map can be changed between rounds.'), 40, 610, 20, AMBER_DIM, 'left');
     t.scanlines();
@@ -197,7 +205,7 @@ function onNet(msg) {
     S.lastHostMsg = S.clock;
     const pk = cleanMapPick(msg.mp, msg.sd);   // mapa od hosta: tylko liczby z zakresów
     if (pk && (pk.i !== S.map || pk.seed !== S.seed)) applyMap(pk.i, pk.seed, true);
-    const prev = S.phase;
+    const prev = S.phase; S.hold = msg.hd === 1 && msg.ph === 'wait';
     S.phase = msg.ph; S.t = msg.t; S.mon = msg.mon ? fromNet(msg.mon) : null;
     const wasCaught = S.caught.has('me');
     S.caught = new Set((msg.caught || []).map(fromNet)); S.surv = (msg.surv || []).map(fromNet);
@@ -206,7 +214,7 @@ function onNet(msg) {
     if (msg.ph === 'results' && prev !== 'results') roundOver();
 }
 function broadcast() {
-    N.sendLevelMsg({ k: 'st', mp: S.map, sd: S.seed, ph: S.phase, t: S.t, mon: S.mon && S.mon !== 'bot' ? toNet(S.mon) : null, caught: [...S.caught].map(toNet), surv: S.surv.map(toNet) });
+    N.sendLevelMsg({ k: 'st', mp: S.map, sd: S.seed, hd: S.hold ? 1 : 0, ph: S.phase, t: S.t, mon: S.mon && S.mon !== 'bot' ? toNet(S.mon) : null, caught: [...S.caught].map(toNet), surv: S.surv.map(toNet) });
 }
 function startedRound() {
     S.rewarded = false;
@@ -230,6 +238,7 @@ function roundOver() {
 
 // ---------- MÓZG RUNDY (host albo gracz solo) ----------
 function think(dt, p) {
+    if (S.phase === 'wait' && S.hold) { S.holdT -= dt; S.t = WAIT; if (S.holdT <= 0) S.hold = false; return; }   // czekamy na wybór mapy i START
     S.t -= dt;
     if (S.phase === 'wait') {
         if (S.t <= 0) {
@@ -321,7 +330,8 @@ export function update(dt, t, ctx) {
     S.clock += dt;
     const p = ctx.body.position, auth = isAuthority();
     if (S.introSkip === undefined) { S.introSkip = introSeen('monster'); if (S.introSkip) S.introT = Math.min(S.introT, 3); }   // samouczek tylko za pierwszym razem
-    if (S.introT > 0) {
+    if (S.hold) S.intro.mesh.visible = false;
+    if (S.introT > 0 && !S.hold) {
         S.introT -= dt;
         const sec = Math.max(0, Math.ceil(S.introT));
         if (sec !== S.intro.last) { S.intro.last = sec; drawInstructions(S.intro, 'Become the Monster', [
@@ -329,7 +339,7 @@ export function update(dt, t, ctx) {
             'The monster catches you by touching your head or body with a hand.',
             'Not caught after 2 minutes = 200 Bagabucks. The monster wins 200 if it catches everyone.',
             'Playing alone? A fast mannequin hunts you instead. It can jump, so keep moving!',
-            'Pick the map on the board by the door (the host does). The GAMES door takes you back.'], 'This closes in ' + sec + ' s', { bg: 'rgba(16,4,4,0.9)', border: '#ff4a4a', title: '#ffd0c8', text: '#f4e0dc', footer: '#ffb030', size: 30 }); }
+            'The host picks the map on the board and presses START. The GAMES door takes you back.'], 'This closes in ' + sec + ' s', { bg: 'rgba(16,4,4,0.9)', border: '#ff4a4a', title: '#ffd0c8', text: '#f4e0dc', footer: '#ffb030', size: 30 }); }
         S.intro.mesh.visible = S.introT > 0 && !S.introSkip;
     }
     if (auth) {
@@ -355,7 +365,8 @@ export function update(dt, t, ctx) {
     L.moveScale = mon === 'me' ? MONSTER_BOOST : 1;
     if (mpos && mon !== 'me' && !S.caught.has('me')) { _h.copy(mpos); SFX.heartbeat(Math.max(0, 1 - _h.distanceTo(p) / 12)); }
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.15; drawHud(); }
-    const bs = S.phase + ':' + Math.ceil(S.t) + ':' + S.map; if (bs !== S.boardSig) { S.boardSig = bs; mapBoard.dirty = true; }
+    if (S.board) S.board.visible = S.phase === 'wait';
+    const bs = S.phase + ':' + Math.ceil(S.t) + ':' + S.map + ':' + S.hold; if (bs !== S.boardSig) { S.boardSig = bs; mapBoard.dirty = true; }
 }
 // Czerwone, świecące dłonie gdy jesteś potworem
 function setTint(on) {

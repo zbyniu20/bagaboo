@@ -20,7 +20,10 @@ export const PET = {
     SPECIES: [{ id: 'blob', name: 'Blobby' }, { id: 'bunny', name: 'Bunny' }, { id: 'cat', name: 'Cat' }, { id: 'dragon', name: 'Dragon' }, { id: 'ghost', name: 'Ghost' }],
     WEIGHTS: [19, 19, 19, 19, 19, 5],   // szansa na kolor przy wykluciu (złoty 5%)
     NAMES: ['Pip', 'Mochi', 'Boo', 'Nibs', 'Waffle', 'Gus', 'Pixel', 'Bean', 'Toast', 'Fudge', 'Miso', 'Pudding', 'Biscuit', 'Noodle', 'Sprout', 'Button',
-        'Ziggy', 'Cookie', 'Dumpling', 'Pebble', 'Tofu', 'Maple', 'Jelly', 'Bubbles'],
+        'Ziggy', 'Cookie', 'Dumpling', 'Pebble', 'Tofu', 'Maple', 'Jelly', 'Bubbles',
+        // straszne imiona (dopisane na końcu, żeby indeksy zapisanych stworków się nie zmieniły)
+        'Grimm', 'Vex', 'Nox', 'Wraith', 'Fang', 'Gloom', 'Skulk', 'Morbid', 'Hex', 'Crypt', 'Rot', 'Shade', 'Dread', 'Banshee', 'Ghoul', 'Reaper', 'Mortis', 'Cinder', 'Talon', 'Specter', 'Blight', 'Widow', 'Nyx', 'Gore'],
+    CUTE_NAMES: 24,                         // imiona 0..23 są słodkie, reszta straszna (przełącznik w gnieździe i w menu pauzy)
     HATCH_COST: 150, FEED_COST: 25, FEED_GAIN: 0.45, FEED_LIMIT: 6,      // karmienie: do 6 razy na dobę
     SAT_HOURS: 36, MOOD_HOURS: 60,          // po tylu godzinach sytość (humor) spada od pełnej do zera
     MOOD_FLOOR: 0.12, HUNGRY_BELOW: 0.25, FULL_ABOVE: 0.9,
@@ -109,7 +112,14 @@ export function cycleColor(p, dir) {
 // Gatunek: o krok w przód albo w tył po liście (zawija się)
 export const cycleSpecies = (p, dir) => Object.assign({}, p, { sp: (((p.sp + (dir < 0 ? -1 : 1)) % nSp) + nSp) % nSp });
 // Imię: o krok w przód albo w tył po liście (zawija się)
-export const renamePet = (p, dir) => Object.assign({}, p, { n: (((p.n + (dir < 0 ? -1 : 1)) % nNames) + nNames) % nNames });
+// Imię: o krok po liście TEJ SAMEJ grupy (słodkie albo straszne), zawija się w obrębie grupy
+export function renamePet(p, dir) {
+    const lo = p.n < PET.CUTE_NAMES ? 0 : PET.CUTE_NAMES, size = (lo ? nNames : PET.CUTE_NAMES) - lo;
+    return Object.assign({}, p, { n: lo + ((((p.n - lo) + (dir < 0 ? -1 : 1)) % size) + size) % size });
+}
+export const nameStyle = (p) => (p.n < PET.CUTE_NAMES ? 'cute' : 'scary');
+// Przełącznik słodkie/straszne: to samo miejsce na liście w drugiej grupie (imię pozostaje w zakresie)
+export const toggleNameStyle = (p) => Object.assign({}, p, { n: Math.min(nNames - 1, p.n < PET.CUTE_NAMES ? p.n + PET.CUTE_NAMES : p.n - PET.CUTE_NAMES) });
 
 // ---------- poziom ----------
 export function levelOf(p, clears) {
