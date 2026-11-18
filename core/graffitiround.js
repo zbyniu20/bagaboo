@@ -15,11 +15,12 @@ export const ROUND = {
     REWARD: 80, REWARD_REPEAT: 25,
     // Pola głosowania: środki kolumn ściany (ściana jest na x=14.9, wyśrodkowana na z=3.5), 2,5 m przed nią
     PADS: [[12.4, 1.39], [12.4, 2.8], [12.4, 4.2], [12.4, 5.61]], PAD_R: 0.62,
-    GALLERY_MAX: 3,
+    GALLERY_MAX: 9, VOTE_MAX: 9999, VOTERS_MAX: 200,   // publiczna Galeria: do 9 prac, każda z licznikiem głosów
     THEMES: ['A monster in the wardrobe', 'Gooby in a hat', 'The haunted hotel', 'A cursed banana', 'The Well at midnight', 'My dream room', 'Night shift hero', 'A cat that knows too much',
         'Lost in the maze', 'The friendliest ghost', 'A very scary sandwich', 'The last tile', 'Red light, green light', 'A spooky selfie', 'The cemetery party', 'A sleepy zombie'],
 };
 export const POSTER_LEN = ROUND.COLS * WALL.H;
+export const WIDE_LEN = WALL.W * WALL.H;   // plakat z całej ściany (przycisk SAVE poza konkursem); kolumna zwycięzcy ma POSTER_LEN
 const rnd01 = (rnd) => (typeof rnd === 'function' ? rnd() : Math.random());
 
 export const nextContestIn = (first, rnd) => { const r = first ? ROUND.FIRST : ROUND.EVERY; return r[0] + rnd01(rnd) * (r[1] - r[0]); };
@@ -88,19 +89,43 @@ export function extractSlot(wall, slot) {
 export const weekKey = (ms) => Math.floor(dayKey(ms) / 7);
 const cleanText = (s, max) => String(s === undefined || s === null ? '' : s).replace(/[^A-Za-z0-9 ,.'!?-]/g, '').slice(0, max);
 const cleanName = (s) => String(s === undefined || s === null ? '' : s).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 16) || 'Player';
-// Wpis Galerii: { t: temat, n: nick autora (tylko do wyświetlenia), d: plakat jako RLE }
+// Wpis Galerii: { t: temat, n: nick autora (klucz wpisu: jedna praca na autora), d: plakat jako RLE (kolumna 12x24 albo cała ściana 48x24), w: szerokość w komórkach,
+//   v: liczba głosów, s: klucze głosujących (tylko u hosta i w jego zapisie, przez sieć nie idą) }
 export function cleanGallery(raw) {
     if (!Array.isArray(raw)) return [];
     const out = [];
     for (const e of raw.slice(0, ROUND.GALLERY_MAX)) {
         if (!e || typeof e !== 'object') continue;
-        const cells = decodeRle(e.d, POSTER_LEN); if (!cells) continue;
-        out.push({ t: cleanText(e.t, 40), n: cleanName(e.n), d: e.d, cells: cells });
+        let w = ROUND.COLS, cells = decodeRle(e.d, POSTER_LEN);   // wąski (kolumna) albo szeroki (cała ściana): szerokość wynika z długości danych
+        if (!cells) { cells = decodeRle(e.d, WIDE_LEN); w = WALL.W; }
+        if (!cells) continue;
+        const s = Array.isArray(e.s) ? e.s.filter(x => typeof x === 'string' && x.length <= 80).slice(0, ROUND.VOTERS_MAX) : [];
+        out.push({ t: cleanText(e.t, 40), n: cleanName(e.n), d: e.d, cells: cells, w: w, v: Number.isInteger(e.v) && e.v >= 0 && e.v <= ROUND.VOTE_MAX ? e.v : 0, s: s });
     }
     return out;
 }
-// Dodaje nowy plakat na początek i zostawia najwyżej GALLERY_MAX najnowszych
-export const galleryAdd = (list, entry) => [entry].concat(list).slice(0, ROUND.GALLERY_MAX);
+// Zgłoszenie pracy do głosowania: jeden wpis na autora (nowa praca zastępuje starą i zeruje głosy, żeby nie dało się podmienić rysunku po zebraniu głosów).
+// Gdy tablica jest pełna, odpada wpis z najmniejszą liczbą głosów (przy remisie najstarszy). Wpis dostaje v = 0 i pustą listę głosujących.
+export function gallerySubmit(list, entry) {
+    const e = Object.assign({}, entry, { v: 0, s: [] }), rest = list.filter(x => x.n !== e.n), all = [e].concat(rest);
+    if (all.length <= ROUND.GALLERY_MAX) return all;
+    let drop = -1;
+    for (let i = 1; i < all.length; i++) if (drop < 0 || all[i].v <= all[drop].v) drop = i;   // ostatni z najmniejszą liczbą głosów = najstarszy
+    all.splice(drop, 1); return all;
+}
+// Głos: voter = klucz głosującego, ownKeys = jego klucze autora (nick i identyfikator). Zwraca { ok, list, reason } (reason: 'none' | 'own' | 'dup' | 'full')
+export function galleryVote(list, author, voter, ownKeys) {
+    const i = list.findIndex(x => x.n === author); if (i < 0) return { ok: false, list: list, reason: 'none' };
+    const e = list[i];
+    if (typeof voter !== 'string' || !voter) return { ok: false, list: list, reason: 'none' };
+    if (e.n === voter || (Array.isArray(ownKeys) && ownKeys.includes(e.n)) || (e.o !== undefined && e.o === voter)) return { ok: false, list: list, reason: 'own' };
+    if (e.s.includes(voter)) return { ok: false, list: list, reason: 'dup' };
+    if (e.v >= ROUND.VOTE_MAX) return { ok: false, list: list, reason: 'full' };
+    const next = list.slice(); next[i] = Object.assign({}, e, { v: e.v + 1, s: e.s.concat(voter).slice(-ROUND.VOTERS_MAX) });
+    return { ok: true, list: next, reason: '' };
+}
+// Kolejność wyświetlania: najwięcej głosów pierwsze, przy remisie nowsze (wcześniejsze na liście)
+export const galleryRank = (list) => list.map((e, i) => [e, i]).sort((a, b) => b[0].v - a[0].v || a[1] - b[1]).map(x => x[0]);
 
 // ---------- stan konkursu od hosta (goście) ----------
 const PHASES = new Set(['idle', 'draw', 'vote', 'result']);
