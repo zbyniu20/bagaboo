@@ -20,6 +20,7 @@ export const ROUND = {
         'Lost in the maze', 'The friendliest ghost', 'A very scary sandwich', 'The last tile', 'Red light, green light', 'A spooky selfie', 'The cemetery party', 'A sleepy zombie'],
 };
 export const POSTER_LEN = ROUND.COLS * WALL.H;
+export const WIDE_LEN = WALL.W * WALL.H;   // plakat z całej ściany (przycisk SAVE poza konkursem); kolumna zwycięzcy ma POSTER_LEN
 const rnd01 = (rnd) => (typeof rnd === 'function' ? rnd() : Math.random());
 
 export const nextContestIn = (first, rnd) => { const r = first ? ROUND.FIRST : ROUND.EVERY; return r[0] + rnd01(rnd) * (r[1] - r[0]); };
@@ -88,14 +89,16 @@ export function extractSlot(wall, slot) {
 export const weekKey = (ms) => Math.floor(dayKey(ms) / 7);
 const cleanText = (s, max) => String(s === undefined || s === null ? '' : s).replace(/[^A-Za-z0-9 ,.'!?-]/g, '').slice(0, max);
 const cleanName = (s) => String(s === undefined || s === null ? '' : s).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 16) || 'Player';
-// Wpis Galerii: { t: temat, n: nick autora (tylko do wyświetlenia), d: plakat jako RLE }
+// Wpis Galerii: { t: temat, n: nick autora (tylko do wyświetlenia), d: plakat jako RLE (kolumna 12x24 albo cała ściana 48x24), w: szerokość w komórkach }
 export function cleanGallery(raw) {
     if (!Array.isArray(raw)) return [];
     const out = [];
     for (const e of raw.slice(0, ROUND.GALLERY_MAX)) {
         if (!e || typeof e !== 'object') continue;
-        const cells = decodeRle(e.d, POSTER_LEN); if (!cells) continue;
-        out.push({ t: cleanText(e.t, 40), n: cleanName(e.n), d: e.d, cells: cells });
+        let w = ROUND.COLS, cells = decodeRle(e.d, POSTER_LEN);   // wąski (kolumna) albo szeroki (cała ściana): szerokość wynika z długości danych
+        if (!cells) { cells = decodeRle(e.d, WIDE_LEN); w = WALL.W; }
+        if (!cells) continue;
+        out.push({ t: cleanText(e.t, 40), n: cleanName(e.n), d: e.d, cells: cells, w: w });
     }
     return out;
 }
