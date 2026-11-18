@@ -10,7 +10,7 @@ import * as T from './textures.js';
 import { Terminal, terminals, AMBER, AMBER_DIM, GOLD, OK_COL, BAD_COL } from './terminal.js';
 import { SAVE } from './economy.js';
 import { PET } from './petlogic.js';
-import { petStatus, hatchPet, feedPet, patPet, cycleName, cycleWear } from './petstore.js';
+import { petStatus, hatchPet, feedPet, patPet, cycleName, cycleWear, toggleNameStylePet } from './petstore.js';
 import { hatchBegin, hatchPop, reactFeed, reactPat } from './pet.js';
 import * as SFX from './audio.js';
 
@@ -121,6 +121,7 @@ function draw(t) {
         t.btn('pat', 276, 288, 232, 52, 'PET', doPat, { size: 26, disabled: !st.pat });
         t.btn('namel', 524, 288, 56, 52, '<', () => { cycleName(-1); t.dirty = true; }, { size: 28 }); t.btn('namer', 592, 288, 56, 52, '>', () => { cycleName(1); t.dirty = true; }, { size: 28 });
         t.text('name', 586, 276, 16, AMBER_DIM, 'center', true);
+        t.btn('nstyle', 660, 288, 88, 52, st.nameStyle === 'cute' ? 'CUTE' : 'SCARY', () => { toggleNameStylePet(); t.dirty = true; }, { size: 20, tone: st.nameStyle === 'cute' ? 'ok' : 'bad' });
         // Pet Pack: czapka i ubranko z kupionych w sklepie (zakładanie po kolei)
         wearRow(t, 'hat', 'HAT', 28, st); wearRow(t, 'neck', 'WEAR', 390, st);
         t.text(st.feeds + ' snacks left today  |  pet it with your hand too', 28, 424, 18, AMBER_DIM, 'left', true);
