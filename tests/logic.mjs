@@ -95,6 +95,7 @@ check('economy: the shop has a buyable item', !!shopItem);
 if (shopItem) {
     E.SAVE.wallet = E.priceOf(shopItem) - 1; const keep = E.SAVE.wallet;
     check('economy: buying without enough money fails and costs nothing', E.buyItem(shopItem) === 'poor' && E.SAVE.wallet === keep && !E.isOwned(shopItem));
+    for (const q of E.ensureDaily().quests) if (q.id === 'shop') q.done = true;   // dzienne zadanie sklepowe (+40) zależy od daty, a test mierzy samą cenę
     E.SAVE.wallet = E.priceOf(shopItem) + 7;
     check('economy: buying takes exactly the price', E.buyItem(shopItem) === 'ok' && E.SAVE.wallet === 7 && E.isOwned(shopItem));
     check('economy: buying twice is refused and free', E.buyItem(shopItem) === 'owned' && E.SAVE.wallet === 7);
