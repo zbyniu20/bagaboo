@@ -262,6 +262,45 @@ export function extraHat(id) {
             k.add(at(new THREE.BoxGeometry(0.022, 0.12, 0.005), steel, 0, -0.06, 0)); k.add(at(new THREE.BoxGeometry(0.014, 0.05, 0.012), grip, 0, 0.025, 0)); k.add(at(new THREE.BoxGeometry(0.022, 0.03, 0.006), gore, 0, -0.1, 0.003));
         }
     }
+
+    // ---- trzecia paczka bardzo strasznych ----
+    if (id === 'noosehat') {   // pętla szubienicy wisi nad głową
+        const rope = mat({ color: 0x9a7a4a, roughness: 1 }), gore = mat({ color: 0x7a0808, roughness: 0.3 });
+        g.add(at(new THREE.TorusGeometry(0.075, 0.011, 6, 20), rope, 0, 0.3, 0).rotateY(Math.PI / 2));
+        g.add(at(new THREE.CylinderGeometry(0.01, 0.01, 0.22, 6), rope, 0, 0.51, 0));
+        for (let i = 0; i < 6; i++) g.add(at(new THREE.TorusGeometry(0.016, 0.007, 5, 10), rope, 0, 0.375 + i * 0.012, 0).rotateX(Math.PI / 2));
+        g.add(at(new THREE.CylinderGeometry(0.004, 0.006, 0.06, 5), rope, 0.012, 0.35, 0.01).rotateZ(0.3));
+        for (let i = 0; i < 3; i++) g.add(at(new THREE.SphereGeometry(0.006, 5, 4), gore, (i - 1) * 0.03, 0.222 + (i % 2) * 0.01, 0));
+    } else if (id === 'rodhead') {   // zardzewiały pręt przechodzi przez skronie
+        const rust = mat({ color: 0x6a3a1e, metalness: 0.8, roughness: 0.55 }), gore = mat({ color: 0x8a0808, roughness: 0.25, emissive: 0x200000 });
+        g.add(at(new THREE.CylinderGeometry(0.013, 0.013, 0.52, 8), rust, 0, 0.02, -0.01).rotateZ(Math.PI / 2));
+        for (const sd of [-1, 1]) {
+            g.add(at(new THREE.CylinderGeometry(0.02, 0.012, 0.03, 8), gore, sd * 0.14, 0.02, -0.01).rotateZ(Math.PI / 2));
+            for (let i = 0; i < 3; i++) g.add(at(new THREE.CylinderGeometry(0.004, 0.004, 0.05 + i * 0.03, 4), gore, sd * 0.14, 0.0 - i * 0.015, -0.03 + i * 0.03));
+            g.add(at(new THREE.SphereGeometry(0.012, 6, 5), rust, sd * 0.26, 0.02, -0.01));
+        }
+    } else if (id === 'maggothat') {   // robaki pełzają po czaszce
+        const worm = mat({ color: 0xe8e0b0, roughness: 0.5 }), dark = mat({ color: 0x2a1a10, roughness: 0.9 });
+        for (let i = 0; i < 26; i++) {
+            const u = (i * 0.618) % 1, a = i * 2.399, ph = 0.1 + u * 1.2, r = 0.145, w = at(new THREE.CapsuleGeometry(0.0075, 0.022, 3, 5), i % 7 === 0 ? dark : worm, Math.sin(ph) * Math.cos(a) * r, Math.cos(ph) * r * 0.95 + 0.01, Math.sin(ph) * Math.sin(a) * r);
+            w.rotation.set((i * 0.7) % 3, (i * 1.3) % 6, (i * 0.9) % 3); g.add(w);
+        }
+    } else if (id === 'ribcrown') {   // korona z żeber, na czubku kręgosłup
+        const bone = mat({ color: 0xd8cdb0, roughness: 0.7 }), gore = mat({ color: 0x7a0808, roughness: 0.3 });
+        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; const rib = at(new THREE.TorusGeometry(0.12, 0.009, 5, 14, Math.PI * 0.62), bone, Math.cos(a) * 0.04, 0.07, Math.sin(a) * 0.04); rib.rotation.set(0, -a, 0); rib.rotateZ(0.2); g.add(rib); }
+        for (let i = 0; i < 5; i++) g.add(at(new THREE.SphereGeometry(0.02 - i * 0.002, 6, 5), bone, 0, 0.17 + i * 0.03, 0));
+        for (let i = 0; i < 5; i++) g.add(at(new THREE.SphereGeometry(0.007, 5, 4), gore, Math.cos(i * 1.26) * 0.14, 0.1, Math.sin(i * 1.26) * 0.14));
+    } else if (id === 'bleedhalo') {   // aureola z krwi, z której kapie
+        const red = new THREE.MeshBasicMaterial({ color: 0xc01010 }), gore = mat({ color: 0x7a0808, roughness: 0.25, emissive: 0x300000 });
+        g.add(at(new THREE.TorusGeometry(0.15, 0.011, 8, 32), red, 0, 0.3, 0).rotateX(Math.PI / 2));
+        for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, len = 0.08 + (i * 37 % 7) * 0.05; g.add(at(new THREE.CylinderGeometry(0.004, 0.0035, len, 4), gore, Math.cos(a) * 0.15, 0.3 - len / 2, Math.sin(a) * 0.15)); g.add(at(new THREE.SphereGeometry(0.0075, 5, 4), gore, Math.cos(a) * 0.15, 0.3 - len, Math.sin(a) * 0.15)); }
+        const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2010, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.45 })); gl.scale.set(0.55, 0.55, 1); gl.position.set(0, 0.3, 0); g.add(gl);
+    } else if (id === 'reaperhood') {   // czarny kaptur Żniwiarza (twarz odsłonięta)
+        const cloth = new THREE.MeshStandardMaterial({ color: 0x08080a, roughness: 0.95, side: THREE.DoubleSide });
+        const cowl = at(new THREE.SphereGeometry(0.2, 22, 14, Math.PI * 1.5 + 0.95, Math.PI * 2 - 1.9, 0, Math.PI * 0.78), cloth, 0, 0.02, 0.035); cowl.scale.set(1, 1.05, 1.1); g.add(cowl);
+        g.add(at(new THREE.ConeGeometry(0.07, 0.2, 10), cloth, 0, 0.2, 0.15).rotateX(0.9));
+        g.add(at(new THREE.TorusGeometry(0.15, 0.012, 6, 20, Math.PI * 1.4), cloth, 0, 0.04, -0.03).rotateX(Math.PI / 2));
+    }
     return g;
 }
 
@@ -372,6 +411,28 @@ export function extraGlasses(id) {
             g.add(at(new THREE.SphereGeometry(0.036, 14, 12), white, sd * 0.047, 0.03, -0.145)); g.add(at(new THREE.SphereGeometry(0.011, 8, 6), pupil, sd * 0.047, 0.03, -0.178));
             for (let i = 0; i < 7; i++) { const a = i * 0.9, v = at(new THREE.BoxGeometry(0.003, 0.028, 0.003), vein, sd * 0.047 + Math.cos(a) * 0.022, 0.03 + Math.sin(a) * 0.022, -0.168); v.rotation.z = a; g.add(v); }
         }
+    }
+
+    // ---- trzecia paczka ----
+    if (id === 'wormeyes') {   // pustka w oczodołach i wijące się robaki
+        const worm = mat({ color: 0xe8e0b0, roughness: 0.5 });
+        for (const sd of [-1, 1]) {
+            const e = at(new THREE.SphereGeometry(0.026, 10, 8), d, sd * 0.047, 0.03, -0.131); e.scale.set(1.1, 1.2, 0.4); g.add(e);
+            for (let w = 0; w < 3; w++) for (let i = 0; i < 4; i++) g.add(at(new THREE.SphereGeometry(0.006 - i * 0.0008, 5, 4), worm, sd * 0.047 + (w - 1) * 0.012 + Math.sin(i * 1.3 + w) * 0.006, 0.03 - 0.012 - i * 0.012, -0.14 - i * 0.004));
+        }
+    } else if (id === 'nailedeyes') {   // rdzewiejące gwoździe wbite w oczy
+        const rust = mat({ color: 0x6a4a3a, metalness: 0.8, roughness: 0.5 }), gore = mat({ color: 0x7a0606, roughness: 0.25, emissive: 0x200000 });
+        for (const sd of [-1, 1]) {
+            const e = at(new THREE.SphereGeometry(0.026, 10, 8), d, sd * 0.047, 0.03, -0.131); e.scale.set(1.1, 1.2, 0.4); g.add(e);
+            g.add(at(new THREE.CylinderGeometry(0.004, 0.003, 0.09, 5), rust, sd * 0.047, 0.03, -0.17).rotateX(Math.PI / 2)); g.add(at(new THREE.CylinderGeometry(0.011, 0.011, 0.004, 8), rust, sd * 0.047, 0.03, -0.216).rotateX(Math.PI / 2));
+            for (let i = 0; i < 3; i++) g.add(at(new THREE.BoxGeometry(0.005, 0.05 + i * 0.03, 0.004), gore, sd * 0.047 + (i - 1) * 0.012, -0.01 - i * 0.012, -0.136));
+        }
+    } else if (id === 'cyclops') {   // jedno wielkie oko na środku twarzy
+        const white = mat({ color: 0xf2eae0, roughness: 0.2 }), iris = new THREE.MeshBasicMaterial({ color: 0xd8a010 }), pupil = new THREE.MeshBasicMaterial({ color: 0x050505 }), lid = mat({ color: 0x6a5a50, roughness: 0.8 });
+        for (const sd of [-1, 1]) { const cover = at(new THREE.SphereGeometry(0.03, 10, 8), lid, sd * 0.047, 0.03, -0.131); cover.scale.set(1.1, 1.1, 0.4); g.add(cover); }
+        g.add(at(new THREE.SphereGeometry(0.05, 16, 12), white, 0, 0.045, -0.145)); g.add(at(new THREE.SphereGeometry(0.03, 12, 10), iris, 0, 0.045, -0.185));
+        const slit = at(new THREE.SphereGeometry(0.012, 8, 6), pupil, 0, 0.045, -0.2); slit.scale.set(0.4, 1.8, 0.4); g.add(slit);
+        g.add(at(new THREE.TorusGeometry(0.052, 0.008, 6, 20), lid, 0, 0.045, -0.145));
     }
     return g;
 }
@@ -516,6 +577,31 @@ export function extraMask(id) {
         for (let i = 0; i < 9; i++) { const c = at(new THREE.BoxGeometry(0.004, 0.04 + (i % 3) * 0.02, 0.004), ember, (i - 4) * 0.026, -0.01 + (i % 2) * 0.03, -0.163); c.rotation.z = (i - 4) * 0.18; g.add(c); }
         for (let i = 0; i < 8; i++) g.add(at(new THREE.BoxGeometry(0.01, 0.022, 0.008), white, (i - 3.5) * 0.013, -0.062, -0.162));
     }
+
+    // ---- trzecia paczka ----
+    if (id === 'pigmask') {   // zakrwawiona maska świni
+        shell(mat({ color: 0xe8a0a0, roughness: 0.5 }), 0.13, 0.155, 0.065).position.z = -0.1;
+        const dk = mat({ color: 0xc87878, roughness: 0.5 }), gore = mat({ color: 0x7a0808, roughness: 0.3 });
+        g.add(at(new THREE.CylinderGeometry(0.05, 0.055, 0.05, 12), dk, 0, -0.025, -0.172).rotateX(Math.PI / 2));
+        for (const sd of [-1, 1]) { g.add(at(new THREE.SphereGeometry(0.009, 6, 5), d, sd * 0.02, -0.025, -0.2)); g.add(at(new THREE.SphereGeometry(0.014, 8, 6), d, sd * 0.045, 0.04, -0.157)); g.add(at(new THREE.SphereGeometry(0.004, 5, 4), new THREE.MeshBasicMaterial({ color: 0xff2020 }), sd * 0.045, 0.045, -0.17)); g.add(at(new THREE.ConeGeometry(0.04, 0.07, 4), dk, sd * 0.1, 0.13, -0.07).rotateZ(-sd * 0.8)); g.add(at(new THREE.ConeGeometry(0.008, 0.035, 4), new THREE.MeshStandardMaterial({ color: 0xf0e8d0 }), sd * 0.03, -0.07, -0.17).rotateX(Math.PI)); }
+        for (let i = 0; i < 6; i++) g.add(at(new THREE.BoxGeometry(0.01 + (i % 3) * 0.006, 0.05 + (i % 2) * 0.04, 0.004), gore, (i - 2.5) * 0.04, -0.07, -0.16));
+    } else if (id === 'melted') {   // twarz topi się jak wosk
+        shell(mat({ color: 0xd0c8a0, roughness: 0.35 }), 0.13, 0.155, 0.065).position.z = -0.1;
+        const wax = mat({ color: 0xd0c8a0, roughness: 0.35 });
+        for (let i = 0; i < 7; i++) { const len = 0.05 + (i * 29 % 6) * 0.025, dr = at(new THREE.SphereGeometry(0.014, 8, 6), wax, (i - 3) * 0.035, -0.06 - len / 2, -0.15); dr.scale.set(0.8, len / 0.014 / 2, 0.6); g.add(dr); g.add(at(new THREE.SphereGeometry(0.016, 8, 6), wax, (i - 3) * 0.035, -0.06 - len, -0.15)); }
+        const e1 = at(new THREE.SphereGeometry(0.022, 10, 8), d, -0.045, 0.045, -0.158); e1.scale.set(1, 1.4, 0.4); g.add(e1); const e2 = at(new THREE.SphereGeometry(0.022, 10, 8), d, 0.045, -0.01, -0.158); e2.scale.set(1.1, 1.8, 0.4); g.add(e2);
+        const m = at(new THREE.SphereGeometry(0.03, 10, 8), d, 0.01, -0.06, -0.16); m.scale.set(1.4, 0.8, 0.3); m.rotation.z = -0.3; g.add(m);
+    } else if (id === 'crackeddoll') {   // pęknięta porcelanowa lalka: jedno oko puste
+        shell(mat({ color: 0xf4f0ea, roughness: 0.15, metalness: 0.05 }), 0.13, 0.155, 0.065).position.z = -0.1;
+        const gore = mat({ color: 0x8a0a0a, roughness: 0.25 });
+        const e = at(new THREE.SphereGeometry(0.024, 10, 8), d, -0.045, 0.035, -0.157); e.scale.set(1, 1.2, 0.4); g.add(e);
+        g.add(at(new THREE.SphereGeometry(0.022, 12, 10), mat({ color: 0x4a8ad8, roughness: 0.1 }), 0.045, 0.035, -0.155)); g.add(at(new THREE.SphereGeometry(0.009, 6, 5), d, 0.045, 0.035, -0.172));
+        for (const sd of [-1, 1]) { const ch = at(new THREE.SphereGeometry(0.02, 8, 6), mat({ color: 0xf0a0a8, roughness: 0.6 }), sd * 0.07, -0.02, -0.15); ch.scale.set(1.2, 0.7, 0.3); g.add(ch); }
+        const lips = at(new THREE.SphereGeometry(0.02, 10, 8), gore, 0, -0.06, -0.16); lips.scale.set(1.5, 0.5, 0.3); g.add(lips);
+        const crack = [[-0.02, 0.1, 0.5], [0.03, 0.06, -0.4], [-0.05, 0.0, 0.8], [0.06, -0.03, -0.9], [0.0, -0.1, 0.3]];
+        for (const [x, y, r] of crack) { const c = at(new THREE.BoxGeometry(0.004, 0.05, 0.003), d, x, y, -0.16); c.rotation.z = r; g.add(c); }
+        g.add(at(new THREE.BoxGeometry(0.006, 0.07, 0.004), gore, -0.045, -0.02, -0.158));
+    }
     return g;
 }
 
@@ -567,6 +653,12 @@ export function extraSleeveMat(id, base) {
         for (let i = 0; i < 40; i++) { const px = (i * 89) % S, py = (i * 53) % S, r = 6 + (i * 7) % 22; x.fillStyle = i % 3 === 0 ? 'rgba(90,10,10,0.8)' : (i % 3 === 1 ? 'rgba(160,150,60,0.6)' : 'rgba(30,40,20,0.7)'); x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); }
         x.fillStyle = '#e8e4d0'; for (let i = 0; i < 60; i++) x.fillRect((i * 37) % S, (i * 71) % S, 3, 8);
     }) }));
+    if (id === 'barbed') return new THREE.MeshStandardMaterial(Object.assign(base, { color: 0xffffff, metalness: 0.7, roughness: 0.5, map: patternTex('barbed', (x, S) => {
+        x.fillStyle = '#26262a'; x.fillRect(0, 0, S, S); x.strokeStyle = '#8a8e96'; x.lineWidth = 4;
+        for (let i = -S; i < S * 2; i += 48) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + S, S); x.stroke(); }
+        x.lineWidth = 3; for (let i = 0; i < 40; i++) { const px = (i * 61) % S, py = (i * 97) % S; x.beginPath(); x.moveTo(px - 8, py - 8); x.lineTo(px + 8, py + 8); x.moveTo(px + 8, py - 8); x.lineTo(px - 8, py + 8); x.stroke(); }
+        x.fillStyle = 'rgba(110,50,20,0.55)'; for (let i = 0; i < 30; i++) x.fillRect((i * 43) % S, (i * 29) % S, 22, 10); x.fillStyle = 'rgba(120,6,6,0.7)'; for (let i = 0; i < 10; i++) x.fillRect((i * 83) % S, (i * 47) % S, 9, 26);
+    }) }));
     if (id === 'woven') return new THREE.MeshStandardMaterial(Object.assign(base, { roughness: 1, map: patternTex('woven', (x, S) => {
         x.fillStyle = '#c8c0b0'; x.fillRect(0, 0, S, S); x.strokeStyle = 'rgba(70,60,50,0.5)'; x.lineWidth = 2;
         for (let i = 0; i < S; i += 12) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 40, S); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(S, i + 40); x.stroke(); }
@@ -588,6 +680,10 @@ export function extraGloveMat(id) {
     }), envMapIntensity: ENV });
     if (id === 'blooded') return new THREE.MeshStandardMaterial({ color: 0x7a0808, roughness: 0.12, metalness: 0.1, emissive: 0x200000, envMapIntensity: ENV });
     if (id === 'rotten') return new THREE.MeshStandardMaterial({ color: 0x6a7a5a, roughness: 0.9, bumpMap: tex.plaster, bumpScale: 1.5, emissive: 0x101808, envMapIntensity: ENV });
+    if (id === 'veined') return new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, emissive: 0x1a0820, envMapIntensity: ENV, map: patternTex('veined', (x, S) => {
+        x.fillStyle = '#d8d0d8'; x.fillRect(0, 0, S, S); x.strokeStyle = '#1a0a1e'; x.lineCap = 'round';
+        for (let i = 0; i < 22; i++) { let px = (i * 71) % S, py = (i * 53) % S; x.lineWidth = 2 + (i % 3); x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += ((i * 13 + k * 29) % 41) - 20; py += 14 + (i + k * 7) % 14; x.lineTo(px, py); } x.stroke(); }
+    }) });
     if (id === 'candy') return new THREE.MeshStandardMaterial({ color: 0xff7ac8, roughness: 0.22, emissive: 0x401030, envMapIntensity: ENV });
     if (id === 'rainbow') return new THREE.MeshStandardMaterial({ roughness: 0.4, map: patternTex('rainbow', (x, S) => { ['#ff3a3a', '#ff9a2a', '#ffe23a', '#3ad84a', '#3a8aff', '#9a4aff'].forEach((c, i) => { x.fillStyle = c; x.fillRect(0, i * S / 6, S, S / 6 + 1); }); }), envMapIntensity: ENV });
     return null;
@@ -607,6 +703,9 @@ export const EXTRA_SKINS = {
     demonape: { fur: 0x5a0808, face: 0x0e0000, glowEyes: true },
     skeletape: { fur: 0xe6dfc8, face: 0x15110e, glowEyes: true },
     plagueape: { fur: 0x7a8a3a, face: 0x2a3010, glowEyes: true },
+    voidape: { fur: 0x050308, face: 0x000000, glowEyes: true },
+    rustape: { fur: 0x8a4a22, face: 0x3a1a0a, metal: true },
+    frozenape: { fur: 0xa8c8d8, face: 0x30485a, glowEyes: true },
     therian: { fur: 0xc9a47e, face: 0xe8b4a4, bunnyEars: true, bunnyTail: true, carrot: true },   // spikyvr: uszy królika, mały ogonek i marchewka, którą wciąż gryzie (avatar.js)
     furasek: { fur: 0xf8d6b8, face: 0xe89aa8, tail: true, catMask: true },   // słodki kotek: brzoskwiniowe futro, maska kota i puchaty ogon (w sklepie)
     bubblegum: { fur: 0xff9ac8, face: 0xc85a8a },
