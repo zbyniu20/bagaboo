@@ -297,22 +297,13 @@ const modeSim = await run(`
         m._press('row2'); tick(1); m._press('play'); if (went !== 'monster') bad.push('games: PLAY went to ' + went + ', expected monster');
         went = null; m = await load('games'); tick(3); m._press('tab-team'); tick(1); m._press('row0'); tick(1); m._press('play'); if (went !== 'banana') bad.push('games: team tab PLAY went to ' + went + ', expected banana');
     }
-    // Lobby (solo): Brama Wspólna - stanie na polu głosuje i po odliczaniu zabiera do trybu; Nocna Zmiana - zapowiedź, ciemność, naprawa bezpiecznika, zwycięstwo i nagroda
+    // Lobby (solo): Nocna Zmiana - zapowiedź, ciemność, naprawa bezpiecznika, zwycięstwo i nagroda
     {
         let went = null; const lctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
         const putHead = (x, z) => { PL.playerBody.position.set(x, 1.0, z); PL.playerBody.velocity.set(0, 0, 0); ENG.playerRig.position.set(x, 0, z); ENG.camera.position.set(0, 1.6, 0); ENG.playerRig.updateMatrixWorld(true); };
         const lstep = (n, fn) => { for (let i = 0; i < n; i++) { if (fn) fn(i); m.update(0.1, T += 0.1, lctx); } };
         m = await load('lobby'); let d = m.debug();
-        if (!d || d.opts.length !== 3 || new Set(d.opts).size !== 3) bad.push('lobby: expected 3 different vote options, got ' + JSON.stringify(d));
-        else {
-            const pick = d.opts[1];
-            lstep(5, () => putHead(0, 0)); if (m.debug().gate !== 'open') bad.push('lobby: the gate started a vote without anyone on a pad');
-            lstep(5, () => putHead(-9, 7)); d = m.debug();
-            if (d.gate !== 'counting' || d.counts.join() !== '0,1,0') bad.push('lobby: standing on pad 2 did not register a vote ' + JSON.stringify(d));
-            lstep(10, () => putHead(0, 0)); if (m.debug().gate !== 'open') bad.push('lobby: leaving the pad did not cancel the vote');
-            lstep(90, () => putHead(-9, 7));
-            if (went !== pick) bad.push('lobby: the group gate did not take us to the voted mode (went=' + went + ', expected ' + pick + ')');
-        }
+        if (!d) bad.push('lobby: no debug state');   // Brama Wspólna została usunięta: głosowanie na mapę jest w trybie Become the Monster (SMOKE_ONLY=monster)
         // Nocna Zmiana
         went = null; m = await load('lobby'); putHead(0, 0); m.debug('stun');
         const w0 = E.SAVE.nightshiftWins || 0, base = ENG.lighting.hemi.intensity;
