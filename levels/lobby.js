@@ -25,7 +25,7 @@ export function build() {
     fx = { flickers: [], muralMats: [], trampMats: [], lampSprites: [], shaftMats: [], mist: [], mannequins: [], meatSpots: [], bulbSpots: [], cloudTex: null, };
     L.spawn = info.spawn.slice();
     const root = L.root;
-    buildLobbyPlay();   // Brama Wspólna (głosowanie na tryb) i Nocna Zmiana (core/lobbyplay.js)
+    buildLobbyPlay();   // Nocna Zmiana (core/lobbyplay.js)
     buildPetNest(0, -12.6);   // Stworek: podest z jajem przy północnej ścianie
 
     for (const f of LP.flickers) {

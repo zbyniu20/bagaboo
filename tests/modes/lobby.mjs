@@ -1,4 +1,4 @@
-// Test własny lobby (uruchamiany automatycznie przez levelpack.mjs): Brama Wspólna (głosowanie) i Nocna Zmiana z core/lobbylogic.js.
+// Test własny lobby (uruchamiany automatycznie przez levelpack.mjs): pola głosowania (używa ich lobby Become the Monster) i Nocna Zmiana z core/lobbylogic.js.
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -11,9 +11,7 @@ const head = (x, z, y = 1.6) => ({ x, y, z });
 const seq = (vals) => { let i = 0; return () => vals[i++ % vals.length]; };
 const [P0, P1, P2] = L.GATE.PADS;
 
-// ---------- propozycje i pola ----------
-check(T('pickOptions returns n distinct modes and avoids the last played one'), (() => { const o = L.pickOptions(['a', 'b', 'c', 'd', 'e'], 3, Math.random, 'c'); return o.length === 3 && new Set(o).size === 3 && !o.includes('c'); })());
-check(T('pickOptions still works with a tiny pool'), L.pickOptions(['a', 'b'], 3, Math.random, 'a').length === 2 && L.pickOptions([], 3, Math.random).length === 0);
+// ---------- pola głosowania ----------
 check(T('pads: standing on a pad votes for it, between pads or far away does not'), L.padOf(head(P0[0], P0[1])) === 0 && L.padOf(head(P2[0] + 0.5, P2[1])) === 2 && L.padOf(head(0, 0)) === -1 && L.padOf(head(P1[0], P1[1] + 1.5)) === -1);
 check(T('pads: a head high above the floor (stairs) does not vote'), L.padOf(head(P0[0], P0[1], 6)) === -1 && L.padOf(head(P0[0], P0[1], L.GATE.MAX_HEAD_Y)) === 0);
 check(T('pads: broken positions never vote'), [null, undefined, head(NaN, 0), head(P0[0], P0[1], NaN), { x: P0[0] }, 'x'].every(h => L.padOf(h) === -1));
@@ -31,9 +29,6 @@ check(T('gate: shortening never lengthens a countdown'), step({ ph: 'counting', 
 check(T('gate: launching ends with go and returns to open'), step({ ph: 'launching', t: 0.05 }, 0.1, 1, 1).event === 'go' && step({ ph: 'launching', t: 0.05 }, 0.1, 1, 1).ph === 'open' && step({ ph: 'launching', t: 2 }, 0.1, 0, 1).event === null);
 check(T('gate: an unknown phase falls back to open'), step({ ph: 'weird', t: 1 }, 0.1, 1, 1).ph === 'open');
 
-// ---------- tablica wygranych ----------
-check(T('wins board: sorted, limited, numbers cleaned (display only)'), (() => { const t = L.topWins([{ id: 1, name: 'B', w: 2 }, { id: 2, name: 'A', w: 2 }, { id: 3, name: 'C', w: 9 }, { id: 4, name: 'D', w: 1 }], 3); return t.map(e => e.name).join('') === 'CAB'; })());
-check(T('wins board: huge, negative, fractional and non-numeric values are cleaned'), (() => { const t = L.topWins([{ id: 1, name: 'x', w: 1e12 }, { id: 2, name: 'y', w: -5 }, { id: 3, name: 'z', w: '9' }, { id: 4, name: 'w', w: 2.9 }, { id: 5, name: 'v', w: NaN }], 5); return t[0].w === 999 && t.find(e => e.name === 'w').w === 2 && t.find(e => e.name === 'y').w === 0 && t.find(e => e.name === 'z').w === 0 && t.find(e => e.name === 'v').w === 0; })());
 
 // ---------- Nocna Zmiana ----------
 const N = (ph, t, extra) => ({ ph, t, ...extra }), IN = { enabled: true, present: 2, allFuses: false }, rnd = () => 0.5;

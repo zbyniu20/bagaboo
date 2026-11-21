@@ -1,13 +1,13 @@
 // ==========================================
 // LOGIKA LOBBY (czyste funkcje, bez Three.js i sieci, testowane w Node: tests/modes/lobby.mjs):
-//   1) BRAMA WSPÓLNA: gracze głosują na trybie, stając na jednym z trzech pól; host liczy głosy z pozycji głów i zabiera wszystkich do wygranego trybu
-//      (goście idą za hostem przez sendFollow, jak przy zwykłych drzwiach).
+//   1) GŁOSOWANIE NA POLACH: gracze głosują, stając na polach; host liczy głosy z pozycji głów (padOf, countVotes, winnerOf, gateStep). Używa tego lobby trybu Become the Monster
+//      (głosowanie na mapę, levels/monster.js); z lobby usunięto głosowanie na tryb.
 //   2) NOCNA ZMIANA: co kilkanaście minut lobby gaśnie, po sali chodzi potwór (słyszy ruch), a gracze razem naprawiają bezpieczniki.
 // Plik nie ma importów, więc działa i w przeglądarce, i w Node. Wszystko, co host liczy, opiera się na pozycjach graczy z jego własnego stanu.
 // ==========================================
 export const GATE = {
-    PADS: [[-9, 4], [-9, 7], [-9, 10]],   // środki pól głosowania (x, z), zachodnia część lobby, wolna od mebli
-    R: 1.4, OPTIONS: 3, MAX_HEAD_Y: 3.2,  // promień pola (m), liczba propozycji, wyżej niż to (np. na schodach) głos się nie liczy
+    PADS: [[-9, 4], [-9, 7], [-9, 10]],   // domyślne środki pól (x, z); Monster podaje własne pola
+    R: 1.4, MAX_HEAD_Y: 3.2,              // promień pola (m), wyżej niż to (np. na schodach) głos się nie liczy
     VOTE_SEC: 15, QUICK_SEC: 4, SOLO_SEC: 3, LAUNCH_SEC: 3   // czas głosowania, skrócenie gdy wszyscy zagłosowali, solo, odliczanie przed wejściem
 };
 export const NIGHT = {
@@ -23,13 +23,6 @@ export const NIGHT = {
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
 
 // ---------- głosowanie ----------
-// Wybiera n różnych trybów, unikając ostatnio granego (o ile jest z czego wybierać). rand: funkcja 0..1
-export function pickOptions(candidates, n, rand, avoid) {
-    let pool = candidates.filter(c => c !== avoid); if (pool.length < n) pool = candidates.slice();
-    const out = [];
-    while (out.length < n && pool.length) out.push(pool.splice(Math.floor(rand() * pool.length) % pool.length, 1)[0]);
-    return out;
-}
 // Na którym polu stoi gracz: najbliższe w promieniu R (w poziomie), głowa nie wyżej niż MAX_HEAD_Y; -1 gdy na żadnym
 export function padOf(head, pads = GATE.PADS, r = GATE.R, maxY = GATE.MAX_HEAD_Y) {
     if (!head || !num(head.x) || !num(head.y) || !num(head.z) || head.y > maxY) return -1;
@@ -62,12 +55,6 @@ export function gateStep(g, dt, total, present) {
     if (g.ph === 'launching') { const t = g.t - dt; return t <= 0 ? { ph: 'open', t: 0, event: 'go' } : { ph: 'launching', t: t, event: null }; }
     return { ph: 'open', t: 0, event: null };
 }
-// Tablica wygranych w sesji: tylko skończone liczby całkowite 0..999 (zgłaszane przez klienta, służą wyłącznie do wyświetlania), najlepsi pierwsi
-export function topWins(list, n = 3) {
-    const clean = list.map(e => ({ id: e.id, name: String(e.name || 'Player'), w: num(e.w) ? Math.max(0, Math.min(999, Math.floor(e.w))) : 0 }));
-    return clean.sort((a, b) => b.w - a.w || a.name.localeCompare(b.name)).slice(0, n);
-}
-
 // ---------- Nocna Zmiana ----------
 export const nextNightIn = (first, rand) => first ? NIGHT.FIRST_MIN + rand() * (NIGHT.FIRST_MAX - NIGHT.FIRST_MIN) : NIGHT.EVERY_MIN + rand() * (NIGHT.EVERY_MAX - NIGHT.EVERY_MIN);
 // calm -> warn (zapowiedź) -> night -> result -> calm. input: { enabled, present, allFuses }. Zwraca {ph, t, event, outcome}

@@ -138,6 +138,73 @@ export function extraHat(id) {
             g.add(at(new THREE.ConeGeometry(0.02, 0.05, 6), new THREE.MeshBasicMaterial({ color: 0xff2a2a }), s * 0.04, 0.12, -0.12).rotateX(-Math.PI / 2));
         }
     }
+
+    // ---- nowe: słodkie i bardzo straszne ----
+    if (id === 'catears') {   // opaska z kocimi uszami
+        const fur = mat({ color: 0xf6e6d4, roughness: 0.95 }), pink = mat({ color: 0xff8ab8, roughness: 0.7 });
+        g.add(at(new THREE.TorusGeometry(0.14, 0.011, 6, 24, Math.PI), pink, 0, 0.06, 0).rotateY(Math.PI / 2));
+        for (const sd of [-1, 1]) {
+            g.add(at(new THREE.ConeGeometry(0.05, 0.11, 4), fur, sd * 0.085, 0.19, 0).rotateZ(-sd * 0.25));
+            g.add(at(new THREE.ConeGeometry(0.03, 0.075, 4), pink, sd * 0.085, 0.183, -0.014).rotateZ(-sd * 0.25));
+        }
+    } else if (id === 'flowercrown') {
+        const leaf = mat({ color: 0x3a9a3a, roughness: 0.8 }), cols = [0xff8ab8, 0xffe070, 0xffffff, 0xb8a0ff, 0xff9a60], yel = mat({ color: 0xffd020 });
+        g.add(at(new THREE.TorusGeometry(0.14, 0.008, 6, 28), leaf, 0, 0.1, 0).rotateX(Math.PI / 2));
+        for (let i = 0; i < 9; i++) {
+            const a = i / 9 * Math.PI * 2, x = Math.cos(a) * 0.14, z = Math.sin(a) * 0.14;
+            g.add(at(new THREE.SphereGeometry(0.026, 8, 6), mat({ color: cols[i % 5], roughness: 0.7 }), x, 0.115, z));
+            g.add(at(new THREE.SphereGeometry(0.01, 6, 4), yel, x * 1.12, 0.125, z * 1.12));
+            const lf = at(new THREE.SphereGeometry(0.02, 6, 4), leaf, Math.cos(a + 0.35) * 0.14, 0.1, Math.sin(a + 0.35) * 0.14); lf.scale.set(1.6, 0.5, 0.8); g.add(lf);
+        }
+    } else if (id === 'donut') {   // pączek z lukrem i posypką
+        const dough = mat({ color: 0xd8a060, roughness: 0.8 }), glaze = mat({ color: 0xff7ab8, roughness: 0.25 }), cols = [0xffffff, 0xffe030, 0x40c0ff, 0x80ff60, 0xff4040];
+        g.add(at(new THREE.TorusGeometry(0.1, 0.05, 12, 26), dough, 0, 0.17, 0).rotateX(Math.PI / 2));
+        const gl = at(new THREE.TorusGeometry(0.1, 0.05, 12, 26), glaze, 0, 0.19, 0).rotateX(Math.PI / 2); gl.scale.set(1.02, 1.02, 0.7); g.add(gl);
+        for (let i = 0; i < 16; i++) { const a = i * 2.4, r = 0.075 + (i % 3) * 0.025, sp = at(new THREE.BoxGeometry(0.022, 0.006, 0.006), mat({ color: cols[i % 5] }), Math.cos(a) * r, 0.228, Math.sin(a) * r); sp.rotation.y = a * 3; g.add(sp); }
+    } else if (id === 'unicorn') {
+        const cream = mat({ color: 0xfaf0ff, roughness: 0.5 }), gold = mat({ color: 0xe8c860, metalness: 0.8, roughness: 0.3 }), pink = mat({ color: 0xffa0c8, roughness: 0.8 }), manes = [0xff8ab8, 0x8ac8ff, 0x9affc8, 0xffe070];
+        g.add(at(new THREE.ConeGeometry(0.035, 0.24, 14), cream, 0, 0.28, -0.04).rotateX(-0.25));
+        for (let i = 0; i < 5; i++) g.add(at(new THREE.TorusGeometry(0.03 - i * 0.004, 0.004, 5, 14), gold, 0, 0.17 + i * 0.043, -0.04 - i * 0.011).rotateX(Math.PI / 2 - 0.25));
+        for (const sd of [-1, 1]) { g.add(at(new THREE.ConeGeometry(0.03, 0.08, 4), cream, sd * 0.09, 0.17, 0.03).rotateZ(-sd * 0.3)); g.add(at(new THREE.ConeGeometry(0.017, 0.05, 4), pink, sd * 0.09, 0.165, 0.018).rotateZ(-sd * 0.3)); }
+        for (let i = 0; i < 4; i++) g.add(at(new THREE.SphereGeometry(0.035, 8, 6), mat({ color: manes[i], roughness: 0.8 }), (i % 2 ? 0.02 : -0.02), 0.13 - i * 0.04, 0.12 + i * 0.012));
+    } else if (id === 'knifehead') {   // nóż wbity w czubek głowy, krew spływa po czole
+        const steel = mat({ color: 0xc8ccd4, metalness: 0.95, roughness: 0.2, envMapIntensity: Math.max(1, ENV) }), grip = mat({ color: 0x2a1a10, roughness: 0.7 }), gore = mat({ color: 0x8a0808, roughness: 0.25, emissive: 0x200000 });
+        const k = new THREE.Group(); k.position.set(0.035, 0.135, -0.01); k.rotation.z = -0.3; g.add(k);
+        k.add(at(new THREE.BoxGeometry(0.034, 0.16, 0.007), steel, 0, 0, 0)); k.add(at(new THREE.BoxGeometry(0.075, 0.012, 0.018), steel, 0, 0.075, 0));
+        k.add(at(new THREE.BoxGeometry(0.026, 0.12, 0.022), grip, 0, 0.14, 0)); k.add(at(new THREE.SphereGeometry(0.016, 8, 6), steel, 0, 0.205, 0));
+        const pool = at(new THREE.SphereGeometry(0.034, 10, 6), gore, 0.035, 0.137, -0.01); pool.scale.y = 0.35; g.add(pool);
+        for (let i = 0; i < 5; i++) { const phi = 0.45 + i * 0.12, R = 0.143, x = 0.02 + i * 0.012 - 0.025; g.add(at(new THREE.BoxGeometry(0.009, 0.06 + (i % 3) * 0.03, 0.005), gore, x, R * Math.cos(phi), -R * Math.sin(phi)).rotateX(Math.PI / 2 - phi)); }
+    } else if (id === 'axehead') {   // siekiera wbita w czaszkę
+        const steel = mat({ color: 0x9aa0aa, metalness: 0.9, roughness: 0.3, envMapIntensity: Math.max(1, ENV) }), wood = mat({ color: 0x6a4a2a, roughness: 0.8 }), gore = mat({ color: 0x8a0808, roughness: 0.25, emissive: 0x200000 });
+        const a = new THREE.Group(); a.position.set(0, 0.135, -0.02); a.rotation.z = 0.12; g.add(a);
+        a.add(at(new THREE.CylinderGeometry(0.014, 0.016, 0.4, 8), wood, 0, 0.2, 0)); a.add(at(new THREE.BoxGeometry(0.012, 0.075, 0.15), steel, 0, 0.0, -0.03));
+        a.add(at(new THREE.BoxGeometry(0.03, 0.03, 0.03), steel, 0, 0.045, 0));
+        const pool = at(new THREE.SphereGeometry(0.05, 10, 6), gore, 0, 0.135, -0.04); pool.scale.set(1, 0.3, 1.3); g.add(pool);
+        for (const sd of [-1, 1]) for (let i = 0; i < 3; i++) { const phi = 0.5 + i * 0.15, R = 0.143; g.add(at(new THREE.BoxGeometry(0.009, 0.06, 0.005), gore, sd * (0.012 + i * 0.016), R * Math.cos(phi), -R * Math.sin(phi)).rotateX(Math.PI / 2 - phi)); }
+    } else if (id === 'brainhat') {   // odsłonięty mózg w otwartej czaszce
+        const bone = mat({ color: 0xd8cdb0, roughness: 0.7 }), gore = mat({ color: 0x8a0808, roughness: 0.25 }), tones = [0xc87a88, 0xe09aa6, 0xd48898];
+        g.add(at(new THREE.TorusGeometry(0.125, 0.016, 6, 26), bone, 0, 0.085, 0).rotateX(Math.PI / 2));
+        const dome = at(new THREE.SphereGeometry(0.115, 16, 10), mat({ color: 0xd48898, roughness: 0.3, emissive: 0x2a0810 }), 0, 0.085, 0); dome.scale.y = 0.65; g.add(dome);
+        for (let i = 0; i < 16; i++) { const t = i + 0.5, y = 1 - t / 16 * 0.85, r = Math.sqrt(1 - y * y), th = t * 2.399; const b = at(new THREE.SphereGeometry(0.034, 8, 6), mat({ color: tones[i % 3], roughness: 0.3, emissive: 0x2a0810 }), Math.cos(th) * r * 0.105, 0.085 + y * 0.075, Math.sin(th) * r * 0.105); b.scale.set(1, 0.8, 1.2); g.add(b); }
+        for (let i = 0; i < 4; i++) g.add(at(new THREE.CylinderGeometry(0.005, 0.005, 0.05 + (i % 2) * 0.03, 5), gore, (i - 1.5) * 0.05, 0.05, -0.128));
+    } else if (id === 'nailcrown') {   // korona z gwoździ, krew na czole
+        const rust = mat({ color: 0x6a4a3a, metalness: 0.8, roughness: 0.5 }), gore = mat({ color: 0x8a0808, roughness: 0.25, emissive: 0x200000 });
+        g.add(at(new THREE.TorusGeometry(0.135, 0.012, 6, 26), rust, 0, 0.07, 0).rotateX(Math.PI / 2));
+        for (let i = 0; i < 12; i++) {
+            const a = i / 12 * Math.PI * 2, t = 0.35, n = at(new THREE.CylinderGeometry(0.005, 0.0035, 0.12, 5), rust, Math.cos(a) * 0.15, 0.13, Math.sin(a) * 0.15);
+            n.rotation.set(Math.sin(a) * t, 0, -Math.cos(a) * t); g.add(n);
+            g.add(at(new THREE.SphereGeometry(0.01, 6, 4), rust, Math.cos(a) * (0.15 + Math.cos(a) * 0.0225), 0.19, Math.sin(a) * (0.15 + Math.sin(a) * 0.0225)));
+        }
+        for (let i = 0; i < 6; i++) { const h = 0.03 + (i % 3) * 0.025; g.add(at(new THREE.CylinderGeometry(0.004, 0.004, h, 5), gore, (i - 2.5) * 0.035, 0.07 - h / 2, -0.135)); g.add(at(new THREE.SphereGeometry(0.007, 6, 4), gore, (i - 2.5) * 0.035, 0.07 - h, -0.135)); }
+    } else if (id === 'antlers') {   // poroże z zakrwawionymi korzeniami
+        const bone = mat({ color: 0xcfc3a6, roughness: 0.8 }), gore = mat({ color: 0x6a0a0a, roughness: 0.4 });
+        for (const sd of [-1, 1]) {
+            const al = 0.5, L2 = 0.3, bx = sd * 0.07, by = 0.12, ux = sd * Math.sin(al), uy = Math.cos(al);
+            g.add(at(new THREE.CylinderGeometry(0.008, 0.013, L2, 6), bone, bx + ux * L2 / 2, by + uy * L2 / 2, 0).rotateZ(-sd * al));
+            g.add(at(new THREE.SphereGeometry(0.024, 8, 6), gore, bx, by, 0));
+            for (const f of [0.35, 0.6, 0.9]) { const a2 = al + 0.75, tl = 0.1 + (1 - f) * 0.05, px = bx + ux * L2 * f, py = by + uy * L2 * f; g.add(at(new THREE.CylinderGeometry(0.004, 0.008, tl, 5), bone, px + sd * Math.sin(a2) * tl / 2, py + Math.cos(a2) * tl / 2, 0).rotateZ(-sd * a2)); }
+        }
+    }
     return g;
 }
 
@@ -208,6 +275,27 @@ export function extraGlasses(id) {
         const blk = new THREE.MeshBasicMaterial({ color: 0x050505 });
         const rows = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 0, 1, 1, 0, 1, 1, 1], [0, 1, 1, 0, 0, 0, 0, 1, 1, 0]], px = 0.022;
         rows.forEach((row, j) => row.forEach((v, i) => { if (v) g.add(at(new THREE.BoxGeometry(px, px, 0.012), blk, (i - 4.5) * px, 0.04 - j * px, -0.134)); }));
+    }
+
+    // ---- nowe ----
+    if (id === 'starglasses') {
+        const star = (r) => { const sh = new THREE.Shape(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; if (i) sh.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else sh.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); } sh.closePath(); return new THREE.ExtrudeGeometry(sh, { depth: 0.008, bevelEnabled: false }); };
+        const gl = mat({ color: 0xffd23a, roughness: 0.25, emissive: 0x6a4a00, emissiveIntensity: 0.6 });
+        for (const sd of [-1, 1]) { g.add(at(star(0.05), gl, sd * 0.05, 0.025, -0.14)); g.add(at(new THREE.BoxGeometry(0.003, 0.003, 0.1), mat({ color: 0xffd23a }), sd * 0.1, 0.03, -0.09)); }
+        g.add(at(new THREE.BoxGeometry(0.03, 0.006, 0.006), mat({ color: 0xffd23a }), 0, 0.03, -0.136));
+    } else if (id === 'buttoneyes') {   // czarne guziki zamiast oczu
+        const black = mat({ color: 0x0a0a0c, roughness: 0.25, metalness: 0.2 }), hole = mat({ color: 0x4a4a52, roughness: 0.4 }), thread = mat({ color: 0x1a1a1a });
+        for (const sd of [-1, 1]) {
+            g.add(at(new THREE.CylinderGeometry(0.03, 0.03, 0.01, 18), black, sd * 0.047, 0.03, -0.134).rotateX(Math.PI / 2));
+            for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) g.add(at(new THREE.CylinderGeometry(0.0035, 0.0035, 0.012, 6), hole, sd * 0.047 + dx * 0.009, 0.03 + dy * 0.009, -0.1395).rotateX(Math.PI / 2));
+            for (const r of [Math.PI / 4, -Math.PI / 4]) g.add(at(new THREE.BoxGeometry(0.036, 0.003, 0.004), thread, sd * 0.047, 0.03, -0.1405).rotateZ(r));
+        }
+    } else if (id === 'bleedingeyes') {   // świecące czerwone oczy, krew spływa po twarzy
+        const red = new THREE.MeshBasicMaterial({ color: 0xff1010 }), gore = mat({ color: 0x7a0606, roughness: 0.25, emissive: 0x200000 });
+        for (const sd of [-1, 1]) {
+            g.add(at(new THREE.SphereGeometry(0.02, 10, 8), red, sd * 0.047, 0.03, -0.134));
+            for (let k = 0; k < 2; k++) { const len = 0.07 + k * 0.035; g.add(at(new THREE.BoxGeometry(0.007, len, 0.004), gore, sd * 0.047 + (k - 0.5) * 0.016, 0.0 - len / 2, -0.131)); g.add(at(new THREE.SphereGeometry(0.006, 6, 4), gore, sd * 0.047 + (k - 0.5) * 0.016, -len, -0.131)); }
+        }
     }
     return g;
 }
@@ -302,6 +390,29 @@ export function extraMask(id) {
         const m = at(new THREE.TorusGeometry(0.014, 0.0028, 6, 12, Math.PI), d, -0.014, -0.036, -0.162); m.rotation.z = Math.PI; g.add(m);
         const m2 = at(new THREE.TorusGeometry(0.014, 0.0028, 6, 12, Math.PI), d, 0.014, -0.036, -0.162); m2.rotation.z = Math.PI; g.add(m2);   // pyszczek "w"
     }
+
+    // ---- nowe ----
+    if (id === 'flayed') {   // twarz bez skóry: mięśnie, gałki oczne i zęby
+        shell(mat({ color: 0x9a1a24, roughness: 0.3, emissive: 0x200408 }), 0.13, 0.155, 0.065).position.z = -0.1;
+        const white = mat({ color: 0xf0ead8, roughness: 0.4 }), fibre = mat({ color: 0x4a0a10, roughness: 0.5 });
+        for (const sd of [-1, 1]) {
+            g.add(at(new THREE.SphereGeometry(0.026, 12, 10), white, sd * 0.045, 0.035, -0.15)); g.add(at(new THREE.SphereGeometry(0.012, 8, 6), new THREE.MeshBasicMaterial({ color: 0x1a0a08 }), sd * 0.045, 0.035, -0.172));
+            g.add(at(new THREE.SphereGeometry(0.006, 6, 4), d, sd * 0.012, -0.012, -0.166));
+        }
+        for (let i = 0; i < 5; i++) g.add(at(new THREE.BoxGeometry(0.004, 0.12, 0.004), fibre, (i - 2) * 0.04, 0.0, -0.162).rotateZ((i - 2) * 0.12));
+        g.add(at(new THREE.BoxGeometry(0.12, 0.024, 0.01), d, 0, -0.06, -0.158));
+        for (let i = 0; i < 10; i++) g.add(at(new THREE.BoxGeometry(0.01, 0.022, 0.008), white, (i - 4.5) * 0.012, -0.052, -0.163));
+    } else if (id === 'sewn') {   // zaszyte usta i krwawe łzy
+        shell(mat({ color: 0xb8b4aa, roughness: 0.9, bumpMap: tex.plaster, bumpScale: 1.5 }), 0.13, 0.155, 0.065).position.z = -0.1;
+        const gore = mat({ color: 0x7a0606, roughness: 0.3 }), thread = mat({ color: 0x2a1a14 });
+        for (const sd of [-1, 1]) { const e = at(new THREE.SphereGeometry(0.025, 10, 8), d, sd * 0.045, 0.035, -0.157); e.scale.set(1, 1.5, 0.4); g.add(e); g.add(at(new THREE.BoxGeometry(0.006, 0.08, 0.004), gore, sd * 0.045, -0.025, -0.16)); }
+        g.add(at(new THREE.BoxGeometry(0.1, 0.006, 0.004), d, 0, -0.06, -0.161));
+        for (let i = 0; i < 7; i++) { const st = at(new THREE.BoxGeometry(0.004, 0.034, 0.005), thread, (i - 3) * 0.015, -0.06, -0.164); st.rotation.z = (i % 2 ? 0.25 : -0.25); g.add(st); g.add(at(new THREE.SphereGeometry(0.004, 5, 4), gore, (i - 3) * 0.015, -0.082, -0.162)); }
+    } else if (id === 'faceless') {   // gładka biała twarz, puste oczodoły i czarne zacieki
+        shell(mat({ color: 0xf2f0ee, roughness: 0.35 }), 0.13, 0.155, 0.065).position.z = -0.1;
+        for (const sd of [-1, 1]) { const e = at(new THREE.SphereGeometry(0.024, 10, 8), d, sd * 0.045, 0.03, -0.158); e.scale.set(1, 1.9, 0.3); g.add(e); g.add(at(new THREE.BoxGeometry(0.008, 0.12, 0.004), d, sd * 0.045, -0.05, -0.159)); g.add(at(new THREE.BoxGeometry(0.003, 0.15, 0.003), d, sd * 0.045 + sd * 0.012, -0.07, -0.158)); }
+        const m = at(new THREE.SphereGeometry(0.02, 10, 8), d, 0, -0.06, -0.16); m.scale.set(0.7, 1.4, 0.3); g.add(m);
+    }
     return g;
 }
 
@@ -343,6 +454,11 @@ export function extraSleeveMat(id, base) {
         x.fillStyle = '#3a3c42'; x.fillRect(0, 0, S, S); x.strokeStyle = '#b8bcc8'; x.lineWidth = 2;
         for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) { x.beginPath(); x.arc(i * 16 + (j % 2) * 8 + 8, j * 12 + 8, 6.5, 0, 7); x.stroke(); }
     }) }));
+    if (id === 'bloodstained') return new THREE.MeshStandardMaterial(Object.assign(base, { roughness: 0.9, map: patternTex('bloodstained', (x, S) => {
+        x.fillStyle = '#d8d0c0'; x.fillRect(0, 0, S, S);
+        for (let i = 0; i < 26; i++) { const px = (i * 97) % S, py = (i * 61) % S, r = 8 + (i * 13) % 28; x.fillStyle = 'rgba(' + (90 + (i * 7) % 40) + ',4,4,0.85)'; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); x.fillRect(px - 2, py, 4, 20 + (i * 11) % 60); }
+        x.fillStyle = 'rgba(60,0,0,0.7)'; x.fillRect(0, S - 30, S, 30);
+    }) }));
     if (id === 'woven') return new THREE.MeshStandardMaterial(Object.assign(base, { roughness: 1, map: patternTex('woven', (x, S) => {
         x.fillStyle = '#c8c0b0'; x.fillRect(0, 0, S, S); x.strokeStyle = 'rgba(70,60,50,0.5)'; x.lineWidth = 2;
         for (let i = 0; i < S; i += 12) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 40, S); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(S, i + 40); x.stroke(); }
@@ -362,6 +478,7 @@ export function extraGloveMat(id) {
         x.fillStyle = '#200600'; x.fillRect(0, 0, S, S); x.strokeStyle = '#ffb040'; x.lineWidth = 4; x.lineCap = 'round';
         for (let i = 0; i < 20; i++) { let px = (i * 83) % S, py = (i * 47) % S; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 5; k++) { px += ((i * 5 + k * 11) % 41) - 20; py += ((i * 9 + k * 19) % 37) - 8; x.lineTo(px, py); } x.stroke(); }
     }), envMapIntensity: ENV });
+    if (id === 'blooded') return new THREE.MeshStandardMaterial({ color: 0x7a0808, roughness: 0.12, metalness: 0.1, emissive: 0x200000, envMapIntensity: ENV });
     if (id === 'candy') return new THREE.MeshStandardMaterial({ color: 0xff7ac8, roughness: 0.22, emissive: 0x401030, envMapIntensity: ENV });
     if (id === 'rainbow') return new THREE.MeshStandardMaterial({ roughness: 0.4, map: patternTex('rainbow', (x, S) => { ['#ff3a3a', '#ff9a2a', '#ffe23a', '#3ad84a', '#3a8aff', '#9a4aff'].forEach((c, i) => { x.fillStyle = c; x.fillRect(0, i * S / 6, S, S / 6 + 1); }); }), envMapIntensity: ENV });
     return null;
@@ -378,7 +495,14 @@ export const EXTRA_SKINS = {
     lavaape: { fur: 0x1c0a06, face: 0x3a0e04, glowEyes: true },
     panda: { fur: 0xf2f2f0, face: 0x141414 },
     midnight: { fur: 0x14204a, face: 0x070a1a },
-    furas: { fur: 0xf6e2cc, face: 0xc89a88, tail: true }   // ranga FURAS (BoyIsGamer): kremowe futro; maskę kota i puchaty ogon dokłada avatar.js
+    therian: { fur: 0xc9a47e, face: 0xe8b4a4, bunnyEars: true, bunnyTail: true, carrot: true },   // spikyvr: uszy królika, mały ogonek i marchewka, którą wciąż gryzie (avatar.js)
+    furasek: { fur: 0xf8d6b8, face: 0xe89aa8, tail: true, catMask: true },   // słodki kotek: brzoskwiniowe futro, maska kota i puchaty ogon (w sklepie)
+    bubblegum: { fur: 0xff9ac8, face: 0xc85a8a },
+    cottoncandy: { fur: 0xb8e0ff, face: 0xe890c0 },
+    honeyape: { fur: 0xf0b830, face: 0x6a3a10 },
+    mintape: { fur: 0x9ae8c8, face: 0x5a3a2a },
+    cadaver: { fur: 0x8a9088, face: 0x1e221e, glowEyes: true },   // trup: szare, rozkładające się futro i świecące oczy
+    furas: { fur: 0xf6e2cc, face: 0xc89a88, tail: true, catMask: true }   // ranga FURAS (BoyIsGamer): kremowe futro; maskę kota i puchaty ogon dokłada avatar.js
 };
 
 // ---------- ODZNAKI (rysowane na okrągłej przypince; x = kontekst 2D 128x128) ----------

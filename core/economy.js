@@ -8,7 +8,7 @@
 // ==========================================
 import { toast, markAllDirty } from './terminal.js';
 import { RECORD_DEFS, DIFF_LEVEL_IDS } from './registry.js';
-import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isFurasName, isReservedNick, staffBadgesFor, roleTagsFor } from './config.js';
+import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isFurasName, isTherianName, isReservedNick, staffBadgesFor, roleTagsFor } from './config.js';
 
 const SAVE_KEY = 'bagaboo_save_v1';
 export const LOGIN_INTERVAL = 6 * 3600 * 1000;      // nagroda za logowanie co 6 godzin
@@ -59,6 +59,7 @@ export const CATALOG = [
     { slot: 'skin', id: 'shadow', name: 'Shadow (glowing eyes)', price: 3800 },
     { slot: 'skin', id: 'king', name: 'Parkour King', price: 0, locked: true, hint: 'Red route' },   // tylko za czerwoną trasę w lobby
     { slot: 'skin', id: 'bloodmoon', name: 'Bloodmoon', price: 0, locked: true, hint: 'Achievement' },
+    { slot: 'skin', id: 'therian', name: 'Therian (bunny + carrot)', price: 0, locked: true, hint: 'Therian' },   // tylko dla nicków z THERIAN_NAMES: uszy królika, mały ogonek i marchewka, którą postać gryzie
     { slot: 'skin', id: 'furas', name: 'Furas (cat mask + fluffy tail)', price: 0, locked: true, hint: 'Furas' },   // ranga FURAS: maska kota i puchaty ogon
     { slot: 'skin', id: 'cheater', name: 'CHEATER', price: 0, locked: true, hint: 'For hackers' },   // nadawana za włamanie do pokoju szefa, nie da się jej zdjąć
     // Skórki potworów: zakładka "BagaBoo Games", działają tylko w trybie Become the Monster
@@ -199,6 +200,30 @@ export const CATALOG = [
     { slot: 'gloves', id: 'candy', name: 'Candy hands', price: 600, weekly: true },
     { slot: 'gloves', id: 'rainbow', name: 'Rainbow hands', price: 1800 },
     { slot: 'skin', id: 'sakura', name: 'Sakura ape', price: 2200, season: 'spring' },
+    // Nowe kosmetyki: słodkie skórki i dodatki oraz bardzo straszne (nóż i siekiera w głowie, mózg, poroże, zaszyte usta)
+    { slot: 'skin', id: 'furasek', name: 'Furasek (kitty ape)', price: 3200 },
+    { slot: 'skin', id: 'bubblegum', name: 'Bubblegum ape', price: 2000 },
+    { slot: 'skin', id: 'cottoncandy', name: 'Cotton candy ape', price: 2000 },
+    { slot: 'skin', id: 'honeyape', name: 'Honey bear ape', price: 2200 },
+    { slot: 'skin', id: 'mintape', name: 'Mint choc ape', price: 2200 },
+    { slot: 'skin', id: 'cadaver', name: 'Cadaver ape', price: 3000 },
+    { slot: 'hat', id: 'catears', name: 'Kitty ears', price: 1800 },
+    { slot: 'hat', id: 'flowercrown', name: 'Flower crown', price: 1200 },
+    { slot: 'hat', id: 'donut', name: 'Donut hat', price: 1500 },
+    { slot: 'hat', id: 'unicorn', name: 'Unicorn horn', price: 2500 },
+    { slot: 'hat', id: 'knifehead', name: 'Knife in the head', price: 3500 },
+    { slot: 'hat', id: 'axehead', name: 'Axe in the skull', price: 4000 },
+    { slot: 'hat', id: 'brainhat', name: 'Exposed brain', price: 4500 },
+    { slot: 'hat', id: 'nailcrown', name: 'Crown of nails', price: 3800 },
+    { slot: 'hat', id: 'antlers', name: 'Bloody antlers', price: 3500 },
+    { slot: 'glasses', id: 'starglasses', name: 'Star glasses', price: 900 },
+    { slot: 'glasses', id: 'buttoneyes', name: 'Button eyes', price: 2800 },
+    { slot: 'glasses', id: 'bleedingeyes', name: 'Bleeding red eyes', price: 3200 },
+    { slot: 'mask', id: 'flayed', name: 'Flayed face', price: 4200 },
+    { slot: 'mask', id: 'sewn', name: 'Sewn mouth', price: 3600 },
+    { slot: 'mask', id: 'faceless', name: 'Faceless', price: 3000 },
+    { slot: 'sleeve', id: 'bloodstained', name: 'Butcher apron', price: 1500 },
+    { slot: 'gloves', id: 'blooded', name: 'Blood-soaked hands', price: 2000 },
     { slot: 'skin', id: 'lavaape', name: 'Lava ape', price: 3800 },
     { slot: 'skin', id: 'panda', name: 'Panda ape', price: 2400 },
     { slot: 'skin', id: 'midnight', name: 'Midnight ape', price: 1800, weekly: true },
@@ -515,6 +540,10 @@ export function refreshStaffItems() {
     give('badge:furas', furas); give('skin:furas', furas);
     if (furas && !hadFuras && SAVE.equipped.skin === 'none') SAVE.equipped.skin = 'furas';   // przy pierwszym nadaniu skórka od razu się zakłada
     if (!furas && SAVE.equipped.skin === 'furas') SAVE.equipped.skin = 'none';
+    const therian = isTherianName(n), hadTherian = SAVE.owned.includes('skin:therian');   // Therian: skórka na własność dla wybranych nicków; można ją zdjąć i założyć w każdej chwili w Maszynie goryla
+    give('skin:therian', therian);
+    if (therian && !hadTherian && SAVE.equipped.skin === 'none') SAVE.equipped.skin = 'therian';   // przy pierwszym nadaniu zakłada się sama
+    if (!therian && SAVE.equipped.skin === 'therian') SAVE.equipped.skin = 'none';
     give('tool:kick', isStaffName(n));
     give('tool:gooby', isStaffName(n));   // Nothing Hammer (Gooby) dla całej ekipy
     if (['owner', 'ultimate', 'coadmin', 'admin', 'mod', 'furas'].includes(SAVE.equipped.badge) && !rights.includes(SAVE.equipped.badge)) SAVE.equipped.badge = 'none';

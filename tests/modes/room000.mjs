@@ -9,6 +9,7 @@ import { check } from '../lib.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const M = await import(pathToFileURL(path.join(ROOT, 'core/room000map.js')).href);
 const T = (s) => 'room000: ' + s;
+const rng2 = (seed) => M.rng(seed);
 const plan = M.buildPlan(), grid = M.rasterize(plan), G = M.GEO;
 const cellOf = (x, z) => M.toCell(grid, x, z);
 const sp = cellOf(plan.spawn[0], plan.spawn[2]), dist = M.distField(grid, sp[0], sp[1]);
@@ -48,9 +49,48 @@ check(T('every run has exactly 3 books, a pistol and a knife'), SEEDS.every(s =>
 check(T('the five items lie in five different cells on five different sides of the pentagon'), SEEDS.every(s => { const it = M.pickItems(plan, s); return new Set(it.map(x => x.side)).size === 5 && new Set(it.map(x => x.cell)).size === 5; }));
 check(T('every item is on an open cell inside its prison cell and can be reached from the spawn'), SEEDS.every(s => M.pickItems(plan, s).every(x => reach(x.x, x.z) && M.zoneAt(grid, x.x, x.z) === M.ZONE.CELL && grid.room[cellOf(x.x, x.z)[1] * grid.GW + cellOf(x.x, x.z)[0]] === x.cell)));
 check(T('the layout changes with the seed (positions and kinds are shuffled)'), new Set(SEEDS.map(s => JSON.stringify(M.pickItems(plan, s)))).size > 40);
+check(T('items are visible from the corridor: in line with the cell doorway, a clear line from the corridor, and no prop stands within 1 m of any item'), SEEDS.every(s => {
+    const it = M.pickItems(plan, s), keep = it.map(x => ({ x: x.x, z: x.z }));
+    return it.every((x) => {
+        const cell = plan.cells[x.cell], front = M.cellPoint(plan, cell, 0, 0.6), sd = plan.sides[cell.side], dx = x.x - sd.ax, dz = x.z - sd.az, along = dx * sd.u[0] + dz * sd.u[1] - cell.c, out = dx * sd.n[0] + dz * sd.n[1];
+        const props = M.cellProps(plan, cell, 31337, keep).filter(p => !['bed', 'toilet', 'sink', 'shackles', 'trail'].includes(p.type));
+        return Math.abs(along) <= 0.21 && out >= G.CELL_D0 + 1.0 && out <= G.CELL_D0 + 1.5 && M.clearLine(grid, front[0], front[1], x.x, x.z) && props.every(p => keep.every(k => Math.hypot(p.x - k.x, p.z - k.z) >= 1.0));
+    });
+}));
+check(T('the prison is full of details: sinks, shackles, drag trails, many blood pools, corpses and skeletons'), (() => {
+    const all = plan.cells.flatMap(c => M.cellProps(plan, c, 31337)), n = (t) => all.filter(p => p.type === t).length;
+    return n('sink') === 24 && n('shackles') >= 8 && n('trail') >= 5 && n('blood') >= 30 && n('corpse') >= 3 && n('skeleton') >= 5;
+})());
+check(T('hanging bodies hang apart from each other, in corridors, and a decoy apparition is always findable in line of sight 11-17 m away'), (() => {
+    const h = M.hangingSpots(grid, plan, 6, 31337 + 9); if (h.length < 5 || !h.every((a, i) => h.every((b, j) => i === j || Math.hypot(a.x - b.x, a.z - b.z) >= 7))) return false;
+    let found = 0; for (let k = 0; k < 40; k++) { const q = M.decoySpot(grid, 0, -4, rng2(k)); if (q) { const d = Math.hypot(q.x, q.z + 4); if (d >= 11 && d <= 17.01 && M.clearLine(grid, 0, -4, q.x, q.z)) found++; } }
+    return found >= 25;
+})());
+check(T('no corridor decoration or hanging body blocks the view of an item: nothing within 2.2 m of the corridor in front of its cell door'), SEEDS.every(sd => {
+    const fronts = M.itemFronts(plan, M.pickItems(plan, sd)), far = (list) => list.every(p => fronts.every(f => Math.hypot(p.x - f.x, p.z - f.z) >= M.AVOID_R));
+    return far(M.corridorSpots(grid, plan, 110, 31337 + 1, 2.2, fronts)) && far(M.hangingSpots(grid, plan, 6, 31337 + 9, fronts));
+}));
+check(T('decoy apparitions appear in a 60 degree cone in front of the player, in line of sight, 11-17 m away'), (() => {
+    let ok = 0, bad = 0; for (let k = 0; k < 120; k++) {
+        const a = (k * 0.37) % (Math.PI * 2), fx = Math.cos(a), fz = Math.sin(a), q = M.decoySpot(grid, 0, -4, rng2(k + 5), fx, fz); if (!q) continue;
+        let diff = Math.abs(Math.atan2(q.z + 4, q.x) - a); if (diff > Math.PI) diff = Math.PI * 2 - diff; const d = Math.hypot(q.x, q.z + 4);
+        if (d >= 11 && d <= 17.01 && diff <= Math.PI / 3 + 0.01 && M.clearLine(grid, 0, -4, q.x, q.z)) ok++; else bad++;
+    } return bad === 0 && ok >= 15;
+})());
+check(T('wall decals lie fully on flat wall: wall behind the whole width, open space in front, never hanging over a step'), (() => {
+    const R = rng2(77); let tested = 0;
+    for (let n = 0; n < 4000 && tested < 400; n++) {
+        const i = Math.floor(R() * grid.GW), j = Math.floor(R() * grid.GH); if (!M.isOpenCell(grid, i, j)) continue;
+        const dir = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(R() * 4)], f = M.placeOnWall(grid, M.cellX(grid, i), M.cellZ(grid, j), dir[0], dir[1], 1.7); if (!f) continue; tested++;
+        for (let t = -f.w / 2 + 0.03; t <= f.w / 2 - 0.03; t += 0.1) {
+            const ax = f.fx ? 0 : t, az = f.fx ? t : 0, wallPt = [f.x - f.fx * 0.1 + ax, f.z - f.fz * 0.1 + az], openPt = [f.x + f.fx * 0.1 + ax, f.z + f.fz * 0.1 + az], c = cellOf(wallPt[0], wallPt[1]);
+            if (grid.g[c[1] * grid.GW + c[0]] !== 2 || !M.isOpen(grid, openPt[0], openPt[1])) return false;
+        }
+    } return tested >= 300;
+})());
 check(T('cell furniture stands inside open cells and the prison is full of corpses, skeletons and blood'), (() => {
     const all = plan.cells.flatMap(c => M.cellProps(plan, c, 31337));
-    const inOpen = all.filter(p => p.type !== 'blood').every(p => M.isOpen(grid, p.x, p.z));
+    const inOpen = all.filter(p => p.type !== 'blood' && p.type !== 'shackles').every(p => M.isOpen(grid, p.x, p.z));
     const n = (t) => all.filter(p => p.type === t).length;
     return inOpen && n('bed') === 24 && n('toilet') === 24 && n('skeleton') >= 3 && n('corpse') >= 1 && n('blood') >= 5;
 })());
@@ -74,3 +114,8 @@ check(T('it needs all 5 items to open the exit gate and the gate is removed from
 check(T('the ghost is white, floats along the grid and cannot enter walls'), /color: 0xf4f6ff/.test(src) && /M\.isOpen\(GRID, nx, nz\)/.test(src) && /M\.isOpen\(GRID, nx, m\.z\)/.test(src));
 check(T('item names in the toasts match the objects: book, pistol, knife'), /book: 'a book', pistol: 'the pistol', knife: 'the knife'/.test(src));
 check(T('the level is dark, and uses its own light preset and a Nightmare reward hat'), (() => { const cfg = fs.readFileSync(path.join(ROOT, 'core/config.js'), 'utf8'), eco = fs.readFileSync(path.join(ROOT, 'core/economy.js'), 'utf8'); const m = cfg.match(/LIGHT_PRESETS\.room000 = \{[^}]*hemiIntensity: ([\d.]+)/); return !!m && Number(m[1]) <= 0.6 && /id: 'prisoncap'/.test(eco) && /nm_room000/.test(eco); })());
+check(T('items are 2.3x bigger, stand on a crate, glow with a beacon and their own light, and show a hint with the cell number'), /m\.scale\.setScalar\(2\.3\)/.test(src) && /new THREE\.PointLight\(0xaec8ff, 3\.2/.test(src) && /fog: false/.test(src) && /const PICK_R = 0\.8, CUE_DIST = 7/.test(src) && /Something glints in cell/.test(src));
+check(T('scripted beats: blackout after the first item, a whisper behind after the third, a scream and a chase when the gate opens'), /n === 1\) \{ S\.blackout = 5/.test(src) && /n === 3\) \{/.test(src) && /SFX\.scream\(\{ x: S\.mon\.x/.test(src) && /S\.mon\.mode = 'chase'/.test(src));
+check(T('the ghost flickers lights and the flashlight when close, hides beyond 10 m except for flashes, decoys and hanging bodies exist and the flashlight is restored'), /lighting\.headLamp\.intensity = S\.lampBase \*/.test(src) && /m\.g\.visible = chase \|\| dp < GHOST_SHOW/.test(src) && /function updateDecoys/.test(src) && /function buildHangers/.test(src) && /lighting\.headLamp\.intensity = S\.lampBase; S\.ev\.dispose\(\)/.test(src));
+check(T('wall marks are instanced per texture (blood, hands, tallies, writing) and there are many'), /new THREE\.InstancedMesh\(geo, new THREE\.MeshStandardMaterial\(\{ map: map/.test(src) && /placed < 170/.test(src));
+check(T('shackles also fit short wall runs (single pair), the pickup flash keeps the crate, wall marks sit on flat wall pieces, hanging bodies have colliders, the whisper beat uses the player view and the chase speed is capped'), /propShackles\(d, f\.w < 1\.0\)/.test(src) && /u\.m\.scale\.setScalar\(2\.3 \* \(1 \+ q \* 0\.9\)\)/.test(src) && /M\.placeOnWall\(/.test(src) && /addCollider\(sp\.x - 0\.25/.test(src) && /camera\.getWorldDirection\(_fwd\)/.test(src) && /Math\.min\(CHASE \* mul, 7\.0\)/.test(src) && /M\.itemFronts\(PLAN, S\.items\)/.test(src));
