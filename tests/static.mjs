@@ -114,4 +114,13 @@ for (const [id, c] of Object.entries(LC.CARDS)) {
     }
 }
 
+// BagaBoo Games (salon Games i wszystkie tryby kind 'game'): bez nametagów i bez jumpscare'ów dla nikogo (flaga GAMES_CALM)
+{
+    const main = read('main.js'), net = read('core/network.js'), aud = read('core/audio.js'), kit = read('core/levelkit.js');
+    check('games calm: main.js turns the flag on for the Games hall and every game mode on each level load', /GAMES_CALM\.on = id === 'games' \|\| cfgKind\(id\) === 'game'/.test(main));
+    check('games calm: nametags and role tags are hidden by the flag', /tg\.visible = !TAGS\.hidden && !GAMES_CALM\.on/.test(net));
+    check('games calm: pet name tags and the mod menu XRAY tags are hidden by the flag too', /st\.tag !== false && !GAMES_CALM\.on/.test(read('core/petmodel.js')) && /x\.tag\.visible = !GAMES_CALM\.on/.test(read('core/modmenu.js')));
+    check('games calm: both the jumpscare face and its sound are suppressed by the flag', /trigger\(\) \{ if \(t >= 0 \|\| GAMES_CALM\.on\) return false;/.test(kit) && /if \(!ctx \|\| GAMES_CALM\.on\) return;/.test(aud));
+}
+
 done('static');

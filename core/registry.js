@@ -30,6 +30,7 @@ export const LEVEL_DEFS = [
     { id: 'hotel', name: 'The Hotel', kind: 'level', light: 'hotel', rec: 'The Hotel', diff: true, theme: 'dread', room: { sec: 2.2, wet: 0.2 }, ambience: { rand: [{ t: 'creak', e: [5, 12], d: [6, 20], v: 0.22 }, { t: 'thud', e: [10, 24], d: [10, 26], v: 0.3 }, { t: 'whisper', e: [16, 38], d: [3, 10], v: 0.45 }, { t: 'bang', e: [24, 50], d: [14, 30], v: 0.25 }] } },
     { id: 'home', name: 'My Room', kind: 'hub', light: 'staff', theme: 'calm' },
     { id: 'furas', name: 'The Fur Den', kind: 'level', light: 'nursery', rec: 'The Fur Den', diff: true, theme: 'chase', room: { sec: 2.2, wet: 0.2 }, ambience: { rand: [{ t: 'creak', e: [7, 15], d: [8, 22], v: 0.16 }, { t: 'whisper', e: [18, 40], d: [3, 8], v: 0.35 }, { t: 'thud', e: [12, 26], d: [10, 24], v: 0.25 }] } },
+    { id: 'room000', name: 'Room 000', kind: 'level', light: 'room000', rec: 'Room 000', diff: true, theme: 'dread', room: { sec: 3.4, wet: 0.3 }, ambience: { rand: [{ t: 'creak', e: [5, 12], d: [6, 18], v: 0.2 }, { t: 'drip', e: [3, 7], d: [4, 14], v: 0.28 }, { t: 'whisper', e: [14, 34], d: [3, 9], v: 0.5 }, { t: 'thud', e: [10, 24], d: [10, 26], v: 0.32 }, { t: 'bang', e: [26, 55], d: [12, 28], v: 0.28 }] } },
     { id: 'route', kind: 'virtual', rec: 'Red route' },
     { id: 'redlight', name: 'Red Light, Green Light', kind: 'game', light: 'station', rec: 'Red Light, Green Light', theme: 'chase' },
     { id: 'lasttile', name: 'Last Tile', kind: 'game', light: 'arcade', rec: 'Last Tile (seconds)', score: true, theme: 'arcade' },

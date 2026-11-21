@@ -3,7 +3,7 @@
 // Dźwięk przestrzenny 3D (HRTF): przekaż pozycję {x, y, z}, a słychać go z właściwego kierunku i odległości.
 // initAudio() musi zostać wywołane po kliknięciu przycisku (wymóg przeglądarek)
 // ==========================================
-import { SETTINGS } from './settings.js';
+import { SETTINGS, GAMES_CALM } from './settings.js';
 import { buzz } from './haptics.js';
 import { LEVEL_DEFS } from './registry.js';
 let ctx = null, master = null, droneGain = null, scareBus = null, shaper = null;
@@ -201,7 +201,7 @@ function goobyVoice(t0, f0, vol) {
 }
 // Pełny jumpscare: cisza, potem uderzenie basu, przesterowany wrzask i zgrzyt dysonansu; gooby = true dokłada głos "gooby"
 export function scare(gooby) {
-    if (!ctx) return;
+    if (!ctx || GAMES_CALM.on) return;   // w BagaBoo Games nie ma jumpscare'ów (dźwięk też)
     if (hooks.onScare) hooks.onScare();
     const t0 = ctx.currentTime;
     duckDrone(t0); lastLoud = t0 + 1.2; bumpThreat(1, 5);

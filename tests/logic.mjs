@@ -16,6 +16,8 @@ check('rank: ultimate admin', C.rankOf('zbyniu') === 4);
 check('rank: owner', C.rankOf('BoyIsGamer') === 3);
 check('rank: co-admin', C.rankOf('spikyvr') === 2);
 check('rank: moderator', C.rankOf('lincolnvr') === 1);
+check('rank: Luna is a moderator', C.rankOf('Luna') === 1 && C.rankOf('luna') === 1 && C.isReservedNick('Luna'));
+check('rank: victoryboy is a normal player', C.rankOf('victoryboy') === 0 && !C.isModName('victoryboy') && !C.isReservedNick('victoryboy'));
 check('rank: normal player', C.rankOf('RandomPlayer') === 0 && C.rankOf('') === 0 && C.rankOf(undefined) === 0 && C.rankOf(null) === 0);
 check('rank: case and spaces do not matter', C.rankOf('ZBYNIU') === 4 && C.rankOf('  zbyniu ') === 4);
 check('rank: look-alike nick is a normal player', C.rankOf('zbyniu2') === 0 && C.rankOf('zbynlu') === 0 && C.rankOf('xzbyniu') === 0);

@@ -125,6 +125,7 @@ export const CATALOG = [
     { slot: 'hat', id: 'nursecap', name: 'Nurse cap', price: 0, locked: true, hint: 'Hospital on Nightmare' },
     { slot: 'hat', id: 'bellhop', name: 'Bellhop cap', price: 0, locked: true, hint: 'Hotel on Nightmare' },
     { slot: 'hat', id: 'teddyears', name: 'Teddy ears', price: 0, locked: true, hint: 'Nursery on Nightmare' },
+    { slot: 'hat', id: 'prisoncap', name: 'Prisoner cap', price: 0, locked: true, hint: 'Room 000 on Nightmare' },
     { slot: 'hat', id: 'skullcrown', name: 'Skull crown', price: 0, locked: true, hint: 'Catacombs on Nightmare' },
     { slot: 'hat', id: 'lanternhat', name: 'Lantern hat', price: 0, locked: true, hint: 'Cemetery on Nightmare' },
     { slot: 'glasses', id: 'monocle', name: 'Gold monocle', price: 600, weekly: true },
@@ -310,6 +311,7 @@ export const ACHIEVEMENTS = [
     { id: 'nm_hotel', name: 'Checked out', desc: 'Escape The Hotel on Nightmare', reward: ['hat', 'bellhop'], rewardName: 'Bellhop cap' },
     { id: 'nm_nursery', name: 'Lullaby', desc: 'Escape The Nursery on Nightmare', reward: ['hat', 'teddyears'], rewardName: 'Teddy ears' },
     { id: 'nm_catacombs', name: 'Bone collector', desc: 'Escape The Catacombs on Nightmare', reward: ['hat', 'skullcrown'], rewardName: 'Skull crown' },
+    { id: 'nm_room000', name: 'Inmate 000', desc: 'Escape Room 000 on Nightmare', reward: ['hat', 'prisoncap'], rewardName: 'Prisoner cap' },
     { id: 'nm_furas', name: 'Fluffy nightmare', desc: 'Escape The Fur Den on Nightmare', reward: ['badge', 'goldfish'], rewardName: 'Golden fish pin' },
     { id: 'nm_all', name: 'Nightmare master', desc: 'Clear all ' + DIFF_LEVEL_IDS.length + ' levels on Nightmare', reward: ['skin', 'nightmare'], rewardName: 'Nightmare ape', goal: DIFF_LEVEL_IDS.length, val: () => Object.keys(SAVE.nmWins || {}).length },
     // --- Tryby gry ---

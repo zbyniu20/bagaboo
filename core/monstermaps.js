@@ -201,6 +201,26 @@ function temple(seed) {
     return { boxes, lights, entry: [0, 1.0, A - 2], monster: st.monster, survivors: st.survivors, botJump: 4.2, floor: 0x6a6258, wall: 0x4a4540, ceil: 0x100e12 };
 }
 
+// ---------- LOBBY: sala przed rundą, w której gracze głosują na mapę, stając na polach (po jednym polu na mapę z MAPS) ----------
+// Pola są dwoma rzędami po trzy na środku sali, tablica z wynikami wisi na północnej ścianie, wejście (i drzwi GAMES) jest przy południowej.
+// Host liczy głosy z pozycji głów (padOf z lobbylogic.js), przez sieć idą tylko liczniki (cleanVotes).
+export const LOBBY = { A: 14, H: 6.5, R: 1.5, PAD_SIZE: 2.7, BOARD: [0, 3.4, -13.9], MAX_VOTES: 16 };
+const LOBBY_PADS = [[-8, -5], [0, -5], [8, -5], [-8, 3], [0, 3], [8, 3]];
+export function lobbyMap() {
+    const A = LOBBY.A, boxes = [];
+    for (const [x, z] of [[-4, -1], [4, -1], [-4, -9], [4, -9]]) boxes.push(gbox(x, z, 0.9, LOBBY.H, 0.9, 0x4a4036, 'stone'));   // filary między polami
+    for (const [x, z, w, d] of [[-12.4, 8, 2, 1.2], [12.4, 8, 2, 1.2], [-12.4, -2, 1.2, 2.2], [12.4, -2, 1.2, 2.2]]) boxes.push(gbox(x, z, w, 1.1, d, 0x5a4630, 'wood'));   // skrzynie pod ścianami
+    for (let i = 0; i < MAPS.length; i++) boxes.push(box(LOBBY_PADS[i][0], 0.03, LOBBY_PADS[i][1], LOBBY.PAD_SIZE, 0.06, LOBBY.PAD_SIZE, [0xa83a3a, 0x3a7ab8, 0xc89a2a, 0x4a9a4a, 0x8a4a9a, 0x9a8a6a][i % 6], 'step'));   // płyty pól (niskie: da się na nie wejść)
+    return { id: 'lobby', name: 'Lobby', A: A, H: LOBBY.H, boxes: boxes, pads: LOBBY_PADS.map(p => p.slice()), board: LOBBY.BOARD.slice(),
+        lights: [[-8, 5.4, -5], [0, 5.4, -5], [8, 5.4, -5], [-8, 5.4, 3], [0, 5.4, 3], [8, 5.4, 3], [0, 5.4, 10]], lightColor: 0xffc890, lightPower: 11,
+        entry: [0, 1.0, A - 2], monster: [0, 1.0, -A + 2], survivors: [], botJump: 4.2, floor: 0x2a2420, wall: 0x3a2e28, ceil: 0x0a0806 };
+}
+// Liczniki głosów od hosta: dokładnie jedna liczba całkowita 0..MAX_VOTES na mapę, inaczej null
+export function cleanVotes(v) {
+    if (!Array.isArray(v) || v.length !== MAPS.length) return null;
+    return v.every(n => Number.isInteger(n) && n >= 0 && n <= LOBBY.MAX_VOTES) ? v.slice() : null;
+}
+
 const GEN = { hedge, yard, aisles, rooftops, temple };
 // Układ mapy dla (id, ziarno). Stacja jest zbudowana w monster.js, więc dostaje tylko dane startowe.
 export function generateMap(id, seed) {

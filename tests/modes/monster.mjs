@@ -56,8 +56,23 @@ check(T('a fixed pick keeps its map and a random pick never repeats the previous
 // ---------- integracja w levels/monster.js ----------
 const src = fs.readFileSync(path.join(ROOT, 'levels/monster.js'), 'utf8');
 check(T('the host sends the map as numbers only and a guest takes it only through the validator'), /mp: S\.map, sd: S\.seed/.test(src) && /cleanMapPick\(msg\.mp, msg\.sd\)/.test(src));
-check(T('only the host or a solo player changes the map, and only while waiting'), /const canPickMap = \(\) => S && N\.NET\.mode !== 'guest' && S\.phase === 'wait'/.test(src) && /function chooseMap\(sel\) \{\s*if \(!canPickMap\(\)\) return;/.test(src));
+check(T('only the host or a solo player counts the votes, starts the vote early and ends it (guests only display it)'), /const isAuth = \(\) => S && N\.NET\.mode !== 'guest'/.test(src) && /function startNow\(\) \{\s*if \(!isAuth\(\) \|\| !inLobby\(\)/.test(src) && /if \(S\.phase === 'lobby'\) \{ lobbyThink\(dt\); return; \}/.test(src) && /msg\.ph === 'lobby'/.test(src));
 check(T('swapping a map removes its bodies, obstacles and portals from the world'), /world\.removeBody\(b\)/.test(src) && /removeFrom\(L\.obstacles, S\.mapObs\)/.test(src) && /removeFrom\(L\.portals, S\.mapPortals\)/.test(src) && /removeFrom\(L\.bodies, S\.mapBodies\)/.test(src));
 check(T('starts and the bot come from the current map, not from constants'), /md\.monster\[0\]/.test(src) && /md\.survivors\[/.test(src) && !/MONSTER_SPAWN|SURVIVOR_SPAWN/.test(src));
-check(T('the round waits for START on the map board, the host announces the hold and START is host-only'), /hold: N\.NET\.mode !== 'guest'/.test(src) && /S\.phase === 'wait' && S\.hold\) \{ S\.holdT -= dt/.test(src) && /hd: S\.hold \? 1 : 0/.test(src) && /function startRound\(\) \{\s*if \(!canPickMap\(\)\) return;/.test(src));
+check(T('the votes come from the heads the host sees, the winner is drawn on a tie, the map loads for everyone and each round returns to the lobby'), /countVotes\(heads, S\.md\.pads\)/.test(src) && /winnerOf\(v\.counts, Math\.random\)/.test(src) && /pickMap\(S\.win, -1\)/.test(src) && /S\.phase = 'lobby'; S\.gate = \{ ph: 'open', t: 0 \}/.test(src) && /cleanVotes\(msg\.vt\)/.test(src) && /vt: S\.votes/.test(src));
+check(T('no jumpscares or apparitions in BagaBoo Games (nor in the lobby)'), /GAMES_CALM\.on \|\| S\.phase === 'lobby'\) return;/.test(src));
 check(T('the bot follows the maze route when the map has one'), /S\.md\.nav \? S\.md\.nav\.next\(/.test(src));
+
+
+// ---------- lobby z głosowaniem na mapę ----------
+{
+    const lb = M.lobbyMap(), R = M.LOBBY.R;
+    check(T('lobby: one voting pad per map, all inside the walls and far enough apart that nobody stands on two'), lb.pads.length === M.MAPS.length && lb.pads.every(p => Math.abs(p[0]) < lb.A - 2 && Math.abs(p[1]) < lb.A - 2) && lb.pads.every((p, i) => lb.pads.every((q, j) => i === j || Math.hypot(p[0] - q[0], p[1] - q[1]) > 2 * R + 0.5)));
+    check(T('lobby: pads and the entrance are free of tall obstacles and the board hangs on the north wall'), lb.pads.every(p => !lb.boxes.some(b => b.h > 0.4 && inside(b, p[0], p[1], R))) && !lb.boxes.some(b => b.h > 0.4 && inside(b, lb.entry[0], lb.entry[2], 0.4)) && lb.board[2] < -lb.A + 0.5 && lb.board[2] > -lb.A - 0.5);
+    check(T('lobby: pad slabs are low enough to step on, boxes are finite and the room has lights'), lb.boxes.every(b => [b.x, b.y, b.z, b.w, b.h, b.d].every(Number.isFinite)) && lb.boxes.filter(b => b.k === 'step').every(b => b.h <= 0.1) && lb.lights.length >= 4);
+    const LG = await import(pathToFileURL(path.join(ROOT, 'core/lobbylogic.js')).href);
+    const heads = { a: { x: lb.pads[0][0], y: 1.6, z: lb.pads[0][1] }, b: { x: lb.pads[0][0] + 0.5, y: 1.5, z: lb.pads[0][1] }, c: { x: lb.pads[4][0], y: 1.7, z: lb.pads[4][1] }, d: { x: 0, y: 1.6, z: 11 } };
+    const v = LG.countVotes(heads, lb.pads);
+    check(T('lobby: votes are counted from head positions on the pads, nobody else counts, the most votes wins'), v.counts[0] === 2 && v.counts[4] === 1 && v.total === 3 && LG.winnerOf(v.counts, () => 0.5) === 0);
+    check(T('lobby: a vote counter list from the network is range-checked'), JSON.stringify(M.cleanVotes([0, 1, 2, 3, 4, 5])) === '[0,1,2,3,4,5]' && [null, 'x', [], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, -1], [0, 0, 0, 0, 0, 1.5], [0, 0, 0, 0, 0, 99], [0, 0, 0, 0, 0, '3'], [0, 0, 0, 0, 0, NaN]].every(x => M.cleanVotes(x) === null));
+}
