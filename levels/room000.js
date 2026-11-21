@@ -19,7 +19,7 @@ import { ARRIVAL_FROM_ROOM000 } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
 import * as M from '../core/room000map.js';
 
-const PLAN = M.buildPlan(), GRID = M.rasterize(PLAN), H = M.GEO.H, G = M.GEO.CELL;
+const PLAN = M.buildPlan(), GRID = M.rasterize(PLAN), DOORS = M.doorSpots(PLAN, GRID), H = M.GEO.H, G = M.GEO.CELL;
 const SEE_DIST = 17, HEAR_RUN = 13, LOSE_TIME = 9, MEMORY_TIME = 5, CATCH_DIST = 1.0, ITEMS = 5;
 const WALK = 1.9, INVESTIGATE = 3.2, CHASE = 4.6, ITEM_BOOST = 0.06;   // każdy przedmiot przyspiesza Ducha o 6%
 const REWARD_FIRST = 4000, REWARD_REPEAT = 400, INTRO_TIME = 10, DECOR_SEED = 31337;
@@ -40,7 +40,7 @@ export function build() {
     buildItems();
     buildGate();
     buildGhost();
-    buildDoor({ x: PLAN.startDoor.x, z: PLAN.startDoor.z, rotY: PLAN.startDoor.rotY, label: 'LEVELS', color: '#bfe8ff', wood: 0x3a3228, portal: { target: 'levels', spawn: ARRIVAL_FROM_ROOM000, onEnter: () => toast('Back to the levels') } });
+    buildDoor({ x: DOORS.start.x, z: DOORS.start.z, rotY: DOORS.start.rotY, label: 'LEVELS', color: '#bfe8ff', wood: 0x3a3228, portal: { target: 'levels', spawn: ARRIVAL_FROM_ROOM000, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     S.scare = createJumpscare({ head: ghostHead(), scale: 2.1, y: -0.3, restZ: -1.3, fromZ: -4.2, eyes: false, flash: 0xffffff });
@@ -163,14 +163,13 @@ function buildWallMarks() {
         const sz = word ? 1.5 : 1.0 + R() * 1.1, m = new THREE.Mesh(new THREE.PlaneGeometry(sz, word ? sz / 2 : sz), mat);
         m.position.set(x + dr[0] * (G / 2 - 0.01), word ? 1.5 + R() * 0.5 : 1.3 + R() * 0.8, z + dr[1] * (G / 2 - 0.01)); m.rotation.y = Math.atan2(-dr[0], -dr[1]); L.root.add(m); placed++;
     }
-    // numery cel nad wejściami (od strony korytarza)
-    const hw = M.GEO.CORR_W / 2;
+    // numery cel obok wejść (od strony korytarza)
     for (const cell of PLAN.cells) {
-        const sd = PLAN.sides[cell.side], p = M.sidePoint(sd, cell.c, hw + 0.02), c = T.makeCanvas(128, 64), x = c.getContext('2d');
+        const sd = PLAN.sides[cell.side], mid = M.sidePoint(sd, cell.c + 1.5, 0), p = M.wallFace(GRID, mid[0], mid[1], sd.n[0], sd.n[1]), c = T.makeCanvas(128, 64), x = c.getContext('2d');   // z boku od drzwi, na samej ścianie
         x.fillStyle = 'rgba(14,12,10,0.9)'; x.fillRect(0, 0, 128, 64); x.strokeStyle = 'rgba(180,170,150,0.5)'; x.strokeRect(2, 2, 124, 60);
         x.font = 'bold 40px "Courier New", monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = 'rgba(200,190,170,0.85)'; x.fillText(String(cell.id + 1).padStart(3, '0'), 64, 34);
         const m = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.25), new THREE.MeshStandardMaterial({ map: T.toTex(c, false), roughness: 0.7 }));
-        m.position.set(p[0], 2.45, p[1]); m.rotation.y = Math.atan2(-sd.n[0], -sd.n[1]); L.root.add(m);
+        m.position.set(p[0] - sd.n[0] * 0.02, 2.45, p[1] - sd.n[1] * 0.02); m.rotation.y = Math.atan2(-sd.n[0], -sd.n[1]); L.root.add(m);
     }
 }
 
@@ -212,11 +211,11 @@ function buildItems() {
     });
 }
 function buildGate() {
-    const gx = PLAN.exitDoor.x;
+    const gx = DOORS.exit.x;
     S.gate = addCrispBlock(gx, H / 2, PLAN.gateZ, M.GEO.CORR_W - 0.1, H, 0.3, 0x2a2a30, 0xff3030);
     S.gateOb = L.obstacles[L.obstacles.length - 1];
     S.gateLamp = new THREE.PointLight(0xff3030, 6, 9, 1.6); S.gateLamp.position.set(gx, 2.4, PLAN.gateZ + 1.6); L.root.add(S.gateLamp);
-    buildDoor({ x: gx, z: PLAN.exitDoor.z, rotY: PLAN.exitDoor.rotY, label: 'EXIT', color: '#ff9a60', glow: 0xff7030, wood: 0x2a1e18, light: true, portal: { target: 'levels', spawn: ARRIVAL_FROM_ROOM000, onEnter: finish } });
+    buildDoor({ x: gx, z: DOORS.exit.z, rotY: DOORS.exit.rotY, label: 'EXIT', color: '#ff9a60', glow: 0xff7030, wood: 0x2a1e18, light: true, portal: { target: 'levels', spawn: ARRIVAL_FROM_ROOM000, onEnter: finish } });
 }
 
 // ---------- BIAŁY DUCH ----------

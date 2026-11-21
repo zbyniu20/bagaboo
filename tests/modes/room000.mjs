@@ -22,7 +22,14 @@ check(T('there are 24 cells: 5 on each side and 4 on the back side where the exi
 check(T('the cells stand outside the pentagon, next to the sides (not in the middle)'), plan.cells.every(c => { const p = M.cellPoint(plan, c, 0, (G.CELL_D0 + G.CELL_D1) / 2); return Math.hypot(p[0] - G.CENTER[0], p[1] - G.CENTER[1]) > G.R * Math.cos(Math.PI / 5) + 2; }));
 
 // ---------- siatka ----------
-check(T('the spawn, both doors and the exit corridor are in open cells; the spawn is far from the exit'), M.isOpen(grid, plan.spawn[0], plan.spawn[2]) && M.isOpen(grid, plan.startDoor.x, plan.startDoor.z - 0.5) && M.isOpen(grid, plan.exitDoor.x, plan.exitDoor.z + 0.5) && Math.hypot(plan.spawn[0] - plan.exitDoor.x, plan.spawn[2] - plan.exitDoor.z) > 40);
+const doors = M.doorSpots(plan, grid);
+check(T('the spawn is open and far from the exit door'), M.isOpen(grid, plan.spawn[0], plan.spawn[2]) && Math.hypot(plan.spawn[0] - doors.exit.x, plan.spawn[2] - doors.exit.z) > 40);
+check(T('both doors sit exactly on the wall edge: 5 cm behind the door is wall, 5 cm in front of it is open'), (() => {
+    const wall = (x, z) => { const c = cellOf(x, z); return grid.g[c[1] * grid.GW + c[0]] === 2; };
+    const f = (d) => [Math.sin(d.rotY), Math.cos(d.rotY)];   // kierunek do wnętrza, jak w buildDoor
+    return [doors.start, doors.exit].every(d => { const [fx, fz] = f(d); return M.isOpen(grid, d.x + fx * 0.05, d.z + fz * 0.05) && wall(d.x - fx * 0.05, d.z - fz * 0.05) && M.isOpen(grid, d.x + fx * 0.6, d.z + fz * 0.6); });
+})());
+check(T('the doors are wide enough: the whole 1.6 m frame stands in front of wall, with open space in front'), [doors.start, doors.exit].every(d => [-0.8, -0.4, 0, 0.4, 0.8].every(o => { const c = cellOf(d.x + o, d.z + (d.rotY === 0 ? -0.1 : 0.1)); return grid.g[c[1] * grid.GW + c[0]] === 2; }) && [-0.8, 0, 0.8].every(o => M.isOpen(grid, d.x + o, d.z + (d.rotY === 0 ? 0.3 : -0.3)))));
 let open = 0, lost = 0; for (let k = 0; k < grid.g.length; k++) if (grid.g[k] === 1) { open++; if (dist[k] < 0) lost++; }
 check(T('every open cell can be reached from the spawn (no sealed rooms)'), open > 3000 && lost === 0, 'open ' + open + ', unreachable ' + lost);
 check(T('every cell room and doorway is open and reachable'), plan.cells.every(c => [[0, G.CELL_D0 + 1.5], [-1.5, G.CELL_D0 + 0.4], [1.5, G.CELL_D1 - 0.4], [0, G.CELL_D0 - 0.3]].every(([s, d]) => { const p = M.cellPoint(plan, c, s, d); return reach(p[0], p[1]); })));
@@ -52,7 +59,7 @@ check(T('there are enough lights, a few of them in the halls'), (() => { const l
 
 // ---------- ścieżki i widzenie ducha ----------
 check(T('a route field leads from anywhere to the goal: each step lowers the distance and stays on open cells'), (() => {
-    const far = cellOf(plan.exitDoor.x, plan.exitDoor.z + 1), d2 = M.distField(grid, far[0], far[1]); let c = sp, steps = 0;
+    const far = cellOf(doors.exit.x, doors.exit.z + 1), d2 = M.distField(grid, far[0], far[1]); let c = sp, steps = 0;
     while (steps++ < 2000) { const n = M.stepToward(grid, d2, c[0], c[1]); if (!n) break; if (!M.isOpenCell(grid, n[0], n[1]) || d2[n[1] * grid.GW + n[0]] >= d2[c[1] * grid.GW + c[0]]) return false; c = n; }
     return c[0] === far[0] && c[1] === far[1];
 })());

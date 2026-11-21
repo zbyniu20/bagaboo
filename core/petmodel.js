@@ -8,6 +8,7 @@
 import { THREE, tex } from './engine.js';
 import * as T from './textures.js';
 import { PET, scaleOf } from './petlogic.js';
+import { GAMES_CALM } from './settings.js';
 
 // ---------- wspólne geometrie i tekstury ----------
 let GEO = null, HEART = null, ZEE = null;
@@ -206,7 +207,7 @@ export function createPetModel(look, opts) {
         blinkIn -= dt; if (blinkIn <= 0) { blinkT = 0.13; blinkIn = 2 + Math.random() * 3.5; } if (blinkT > 0) blinkT -= dt;
         setExpr(st.sleeping ? 'sleep' : (st.eating > 0 ? 'eat' : (st.petted > 0 ? 'happy' : (blinkT > 0 ? 'blink' : (st.hungry ? 'hungry' : (st.sad ? 'sad' : 'open'))))));
         if (st.sleeping) { zeeIn -= dt; if (zeeIn <= 0) { zeeIn = 1.1; emit('zee', 1); } }
-        tag.visible = born >= 1 && st.tag !== false;
+        tag.visible = born >= 1 && st.tag !== false && !GAMES_CALM.on;   // BagaBoo Games: bez nametagów, także nad stworkami
     }
     function dispose() {
         for (const p of parts) { group.remove(p.sp); p.sp.material.dispose(); } parts.length = 0;

@@ -50,7 +50,7 @@ export function buildPlan() {
     const exitRect = { x0: M[0] - GEO.CORR_W / 2, x1: M[0] + GEO.CORR_W / 2, z0: M[1] - 4.4, z1: M[1] };
     return {
         corners: cs, segs: segs, sides: sides, cells: cells, startRect: startRect, exitRect: exitRect,
-        spawn: [0, 1.0, -2.6], startDoor: { x: 0, z: 2.0, rotY: Math.PI }, exitDoor: { x: M[0], z: exitRect.z0 - 0.2, rotY: 0 }, gateZ: M[1] - 2.8
+        spawn: [0, 1.0, -2.6], gateZ: M[1] - 2.8
     };
 }
 // Punkt w układzie boku (s wzdłuż boku od narożnika k, d na zewnątrz od osi korytarza) na współrzędne świata i z powrotem
@@ -102,6 +102,20 @@ export const isOpen = (grid, x, z) => { const c = toCell(grid, x, z); return isO
 export const zoneAt = (grid, x, z) => { const c = toCell(grid, x, z); return c[0] >= 0 && c[1] >= 0 && c[0] < grid.GW && c[1] < grid.GH ? grid.zone[c[1] * grid.GW + c[0]] : 0; };
 export const openCount = (grid) => { let n = 0; for (let k = 0; k < grid.g.length; k++) if (grid.g[k] === 1) n++; return n; };
 
+// Drzwi stoją dokładnie na krawędzi ściany z siatki (a nie na wymiarze z planu), inaczej skrzydło tonie w ścianie: start (rotY = pi, patrzy na -z) i wyjście (rotY = 0)
+export function doorSpots(plan, grid) {
+    const edge = (x, z, dir) => {   // od pustej komórki w kierunku dir (+1/-1 po z) do pierwszej ściany; zwraca krawędź ściany
+        let c = toCell(grid, x, z); while (isOpenCell(grid, c[0], c[1])) c[1] += dir;
+        return dir > 0 ? grid.Z0 + c[1] * grid.G : grid.Z0 + (c[1] + 1) * grid.G;
+    };
+    const sx = plan.spawn[0], ex = (plan.exitRect.x0 + plan.exitRect.x1) / 2;
+    return { start: { x: sx, z: edge(sx, plan.spawn[2], 1), rotY: Math.PI }, exit: { x: ex, z: edge(ex, plan.exitRect.z0 + 1, -1), rotY: 0 } };
+}
+// Punkt na powierzchni ściany: idzie od (x, z) w kierunku (nx, nz) po pustych komórkach i zwraca ostatni pusty punkt (do przyklejania tabliczek)
+export function wallFace(grid, x, z, nx, nz) {
+    let px = x, pz = z; for (let s = 0; s < 120 && isOpen(grid, px + nx * 0.05, pz + nz * 0.05); s++) { px += nx * 0.05; pz += nz * 0.05; }
+    return [px, pz];
+}
 // Ściany jako prostokąty: wiersze komórek scalane w pionie, gdy mają ten sam zasięg (mało bloków = szybkie kolizje i jedno wywołanie rysowania)
 export function wallBlocks(grid) {
     const out = [], { GW, GH, G } = grid; let active = new Map();

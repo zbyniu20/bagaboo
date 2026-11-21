@@ -174,10 +174,10 @@
     "semantic_hash": "858d84bcf4ef5577c4d1660a75840892"
   },
   "core/modmenu.js": {
-    "mtime": 1795016110.881786,
-    "seen": 1795275190.7332976,
-    "ast_hash": "e864cd07a70883aa41132db6498b27bc",
-    "semantic_hash": "e864cd07a70883aa41132db6498b27bc"
+    "mtime": 1795277701.7847564,
+    "seen": 1795277723.5792885,
+    "ast_hash": "0e04609e68ab2954b254e7f40cb61ba8",
+    "semantic_hash": ""
   },
   "core/modstate.js": {
     "mtime": 1795016110.881786,
@@ -408,9 +408,9 @@
     "semantic_hash": "9b63f5b0c4493d19f7a4abc75c19917a"
   },
   "levels/monster.js": {
-    "mtime": 1795276764.632574,
-    "seen": 1795276814.7572095,
-    "ast_hash": "2f3e2904d06caeaf7c86742a2932a168",
+    "mtime": 1795277692.7202623,
+    "seen": 1795277723.5793626,
+    "ast_hash": "1dca2e447b6830e782d3cda2828ee830",
     "semantic_hash": ""
   },
   "levels/nursery.js": {
@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "tests/static.mjs": {
-    "mtime": 1795276796.5194,
-    "seen": 1795276814.7572634,
-    "ast_hash": "251f915a492e397bad242c266b2658e1",
+    "mtime": 1795277714.4583356,
+    "seen": 1795277723.5793996,
+    "ast_hash": "e507caffba1b85473f78213b72542a3b",
     "semantic_hash": ""
   },
   "tests/changed.mjs": {
@@ -9966,9 +9966,9 @@
     "semantic_hash": ""
   },
   "core/petmodel.js": {
-    "mtime": 1795274239.2153687,
-    "seen": 1795275190.733312,
-    "ast_hash": "ff58d85e72a93311216824efc695d710",
+    "mtime": 1795277701.783479,
+    "seen": 1795277723.579304,
+    "ast_hash": "311e237e18d930a4948b8700965f3e59",
     "semantic_hash": ""
   },
   "core/petnest.js": {
@@ -10002,21 +10002,21 @@
     "semantic_hash": ""
   },
   "core/room000map.js": {
-    "mtime": 1795277069.519548,
-    "seen": 1795277380.38173,
-    "ast_hash": "b00e5eabcf08df33d9a55b31339cd19f",
+    "mtime": 1795277692.71419,
+    "seen": 1795277723.579317,
+    "ast_hash": "f9178886ae1fa119525aa7bbd42e0f60",
     "semantic_hash": ""
   },
   "levels/room000.js": {
-    "mtime": 1795277286.7094288,
-    "seen": 1795277380.3818223,
-    "ast_hash": "6aafc65086510f0f7c9a046cc2b867f8",
+    "mtime": 1795277692.7193847,
+    "seen": 1795277723.5793684,
+    "ast_hash": "24729b49483cc1dca99bb6244d3a5e2b",
     "semantic_hash": ""
   },
   "tests/modes/room000.mjs": {
-    "mtime": 1795277356.266602,
-    "seen": 1795277380.3818555,
-    "ast_hash": "ee6f0a526981128e2c6ab811b756cbc9",
+    "mtime": 1795277704.9594414,
+    "seen": 1795277723.579391,
+    "ast_hash": "54da433616e241087d9f8de60e05da3c",
     "semantic_hash": ""
   },
   "tests/package-lock.json": {

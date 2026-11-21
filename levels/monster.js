@@ -30,7 +30,7 @@ const BOT_GRAVITY = 18, BOT_JUMP_MAX = 4.2;   // BOT_JUMP_MAX: domyślnie, mapa 
 const _unusedJump = 0;    // bot skacze na perony, wagony i schody (do 4,2 m w górę)
 const MONSTER_BOOST = 1.15;                 // potwór jest trochę szybszy
 const SCARE_MIN = 25, SCARE_MAX = 55;       // co ile sekund (losowo) jumpscare
-export const info = { id: 'monster', name: 'Become the Monster', spawn: [0, 1.0, 27.5] };
+export const info = { id: 'monster', name: 'Become the Monster', spawn: [0, 1.0, 12] };
 let S = null;
 const _p = new THREE.Vector3(), _h = new THREE.Vector3();
 

@@ -18,6 +18,7 @@ import { isModMenuUser } from './config.js';
 import { triggerDown } from './player.js';
 import { remoteAvatars, playersState } from './network.js';
 import { buzz } from './haptics.js';
+import { GAMES_CALM } from './settings.js';
 
 const HOLD_S = 2, SIZE_RATE = 0.9;   // sekundy przytrzymania B; tempo zmiany rozmiaru (e-krotnie na sekundę)
 const OPTIONS = [
@@ -127,7 +128,7 @@ function updateXray() {
         const a = remoteAvatars[id], on = MOD.xray && !!a.head;
         if (!on) { if (a.xr) a.xr.glow.visible = a.xr.tag.visible = false; continue; }
         const x = a.xr || buildXray(a), sz = a.sz || 1, st = playersState[id], name = st && st.profile && st.profile.name ? String(st.profile.name).slice(0, 16) : 'Player';
-        x.glow.visible = x.tag.visible = true;
+        x.glow.visible = true; x.tag.visible = !GAMES_CALM.on;   // w BagaBoo Games nie ma nametagów nawet w XRAY
         x.glow.position.copy(a.head.position); x.glow.position.y -= 0.3 * sz; x.glow.scale.set(0.9 * sz, 1.7 * sz, 0.9 * sz);
         x.tag.position.copy(a.head.position); x.tag.position.y += 0.55 * sz; x.tag.scale.set(1.0 * sz, 0.25 * sz, 1);
         if (x.name !== name) { x.name = name; if (x.tag.material.map) x.tag.material.map.dispose(); x.tag.material.map = nameTexture(name); x.tag.material.needsUpdate = true; }
