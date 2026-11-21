@@ -277,7 +277,7 @@ const modeSim = await run(`
     }
     // Levels terminal: picking a row and difficulty works, OPEN THE DOOR sends you to that level, the secret door scares on the 2nd knock
     {
-        const TM = await import('./core/terminal.js'), RG = await import('./core/registry.js'); const NROWS = RG.LEVEL_DEFS.filter(d => d.kind === 'level').length + 1; let went = null;   // wiersze: poziomy z rejestru plus ukryte drzwi room000 na końcu
+        const TM = await import('./core/terminal.js'), RG = await import('./core/registry.js'); const NROWS = RG.LEVEL_DEFS.filter(d => d.kind === 'level').length + 1; let went = null;   // wiersze: poziomy z rejestru plus ukryte drzwi lab na końcu
         const gctx = Object.assign({}, ctx, { goto: (id) => { went = id; } });
         m = await load('levels'); if (ENG.lighting.headLamp.parent !== ENG.camera) bad.push('levels: the flashlight lamp was not returned to the camera after leaving the hotel'); const tick = (n) => { for (let i = 0; i < n; i++) m.update(0.1, T += 0.1, gctx); TM.redrawTerminals(); };
         tick(3); let ld = m.debug(); if (ld.screens !== 5) bad.push('levels: expected 5 terminal screens, got ' + ld.screens); if (!(ld.visitors >= 1)) bad.push('levels: visitor count wrong'); if (!ld || !ld.buttons.includes('enter') || ld.buttons.filter(x => x.startsWith('row')).length !== NROWS) bad.push('levels: terminal buttons missing (' + (ld && ld.buttons.length) + ')');

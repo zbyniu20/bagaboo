@@ -147,7 +147,7 @@ function drawScreen(t) {
 const WALL_W = 1280, WALL_H = 720;
 function drawWall() {
     const w = S && S.wall; if (!w) return;
-    const c = w.ctx, d = LV[TS.sel], secret = !!d.secret, card = CARDS[secret ? 'room000' : d.target];
+    const c = w.ctx, d = LV[TS.sel], secret = !!d.secret, card = CARDS[secret ? 'lab' : d.target];
     const bg = c.createRadialGradient(WALL_W / 2, WALL_H * 0.35, 40, WALL_W / 2, WALL_H * 0.45, WALL_W * 0.75); bg.addColorStop(0, '#1d0d09'); bg.addColorStop(0.62, '#0b0604'); bg.addColorStop(1, '#040302');
     c.fillStyle = bg; c.fillRect(0, 0, WALL_W, WALL_H);
     c.strokeStyle = '#6a1a12'; c.lineWidth = 6; c.strokeRect(10, 10, WALL_W - 20, WALL_H - 20);
