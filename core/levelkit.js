@@ -118,13 +118,21 @@ export function drawInstructions(p, title, lines, footer, theme) {
 // Jumpscare: twarz wyskakuje z ciemności pod sam nos, czerwono-czarny stroboskop, głośny dźwięk.
 // o = { head (własna głowa, domyślnie manekin), scale, y, restZ, fromZ, eyes, gooby }
 // o.gooby = true: zamiast głowy płaski obraz Gooby z głosem "gooby" (tylko Nothing Hammer, main.js); bez niego zawsze stary, straszny jumpscare.
+// Napis NOOB na pół ekranu: czerwone litery z białym obrysem na czarnej tablicy (jumpscare od ultimate admina, main.js)
+function noobTexture() {
+    const c = T.makeCanvas(512, 256), x = c.getContext('2d');
+    x.fillStyle = 'rgba(0,0,0,0.92)'; x.fillRect(0, 0, 512, 256); x.strokeStyle = '#ff2a2a'; x.lineWidth = 10; x.strokeRect(8, 8, 496, 240);
+    x.font = 'bold 190px Impact, "Arial Black", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 14; x.strokeStyle = '#ffffff'; x.strokeText('NOOB', 256, 134);
+    x.fillStyle = '#e01010'; x.shadowColor = '#ff0000'; x.shadowBlur = 30; x.fillText('NOOB', 256, 134);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
 export function createJumpscare(o) {
     o = o || {};
-    const gooby = !!o.gooby;
+    const noob = !!o.noob, gooby = !!o.gooby || noob;   // noob: płaski napis NOOB (jak Gooby, tylko z innym obrazem i głosem)
     let head;
-    if (gooby) {   // płaski obraz (core/gooby.js) centrowany przed oczami
+    if (gooby) {   // płaski obraz (core/gooby.js albo napis NOOB) centrowany przed oczami
         head = new THREE.Group();
-        const face = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), new THREE.MeshBasicMaterial({ map: goobyTexture(), transparent: true, depthTest: false, toneMapped: false }));
+        const face = new THREE.Mesh(new THREE.PlaneGeometry(noob ? 0.6 : 0.4, noob ? 0.3 : 0.4), new THREE.MeshBasicMaterial({ map: noob ? noobTexture() : goobyTexture(), transparent: true, depthTest: false, toneMapped: false }));
         face.renderOrder = 1000; head.add(face);
         head.scale.setScalar(2.3);
     } else {
@@ -144,7 +152,7 @@ export function createJumpscare(o) {
     return {
         active() { return t >= 0; },
         trigger() { if (t >= 0 || GAMES_CALM.on) return false;   // BagaBoo Games: bez jumpscare'ów
-            t = 0; g.visible = true; SFX.scare(gooby); return true; },
+            t = 0; g.visible = true; SFX.scare(noob ? 'noob' : gooby); return true; },
         update(dt) {
             if (t < 0) return;
             t += dt;

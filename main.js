@@ -311,13 +311,15 @@ audioHooks.onScare = () => ECO.bumpStat('scares');
 let uiTimer = 0;
 const goobyScare = createJumpscare({ gooby: true });   // Nothing Hammer (młotek Gooby): jedyny jumpscare z Gooby (obraz i głos), dla trafionego gracza na każdym poziomie
 NETM.onGooby(() => goobyScare.trigger());
+const noobScare = createJumpscare({ noob: true });   // ultimate admin (zbyniu) dotknął cię ręką: napis NOOB i głośny dźwięk "noob" (nie działa w BagaBoo Games)
+NETM.onNoob(() => noobScare.trigger());
 renderer.setAnimationLoop(() => {
     const rawDt = clock.getDelta(), dt = Math.min(rawDt, 0.1), t = clock.elapsedTime;
     if (renderer.xr.isPresenting) updateXrPerf(rawDt);
     for (let i = frameWaiters.length - 1; i >= 0; i--) if (--frameWaiters[i].n <= 0) { frameWaiters[i].r(); frameWaiters.splice(i, 1); }
     pollPauseButtons(); pollEmoteButtons();
     updateModMenu(dt);   // BagaBooModMenu: B przez 2 s (tylko konta z MODMENU_NAMES), opcje admina
-    goobyScare.update(dt);
+    goobyScare.update(dt); noobScare.update(dt);
     // Pauza zatrzymuje świat tylko w grze solo
     const frozen = PAUSE.on && NETM.NET.mode === 'solo';
     if (!frozen) { updatePlayer(dt, t); updateDesktop(dt); updateHammer(dt); }
