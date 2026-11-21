@@ -18,9 +18,9 @@
     "semantic_hash": "7d0b0caf69591d61cf1e070633871556"
   },
   "core/avatar.js": {
-    "mtime": 1795280315.87294,
-    "seen": 1795280346.7509766,
-    "ast_hash": "a1f140f0865355cbe1587580715f74ac",
+    "mtime": 1795281013.2302494,
+    "seen": 1795281033.207669,
+    "ast_hash": "9a267f36c34a809c5df6601a2f3095ae",
     "semantic_hash": ""
   },
   "core/botkit.js": {
@@ -66,9 +66,9 @@
     "semantic_hash": "a5afb8e9bb215279e0fa2227cad1e3ed"
   },
   "core/economy.js": {
-    "mtime": 1795280315.8678443,
-    "seen": 1795280346.7509875,
-    "ast_hash": "d00e0e1bb1c11d1918c308111cdb0007",
+    "mtime": 1795281013.2295,
+    "seen": 1795281033.2076857,
+    "ast_hash": "4d413221a299d899914a4f16ae035faa",
     "semantic_hash": ""
   },
   "core/emotepanel.js": {
@@ -180,10 +180,10 @@
     "semantic_hash": ""
   },
   "core/modstate.js": {
-    "mtime": 1795016110.881786,
-    "seen": 1795275190.7332988,
-    "ast_hash": "4c4617dc88d4468f41596f92e70de5f7",
-    "semantic_hash": "4c4617dc88d4468f41596f92e70de5f7"
+    "mtime": 1795281013.2254639,
+    "seen": 1795281033.2077403,
+    "ast_hash": "a16e6ed29feffd394d7eabcf7a3758c8",
+    "semantic_hash": ""
   },
   "core/monsterskins.js": {
     "mtime": 1795016110.881786,
@@ -204,9 +204,9 @@
     "semantic_hash": ""
   },
   "core/network.js": {
-    "mtime": 1795276636.1831386,
-    "seen": 1795276814.7571068,
-    "ast_hash": "aeb399b7e75191cb1a7e8d61ab81031b",
+    "mtime": 1795281013.2317495,
+    "seen": 1795281033.2077537,
+    "ast_hash": "66f23ebb61dcc2b4ae6968c9a37f135f",
     "semantic_hash": ""
   },
   "core/pause.js": {
@@ -216,9 +216,9 @@
     "semantic_hash": ""
   },
   "core/player.js": {
-    "mtime": 1795274239.2193687,
-    "seen": 1795275190.7333164,
-    "ast_hash": "48b24aad31e8984ae2dd3255a77de876",
+    "mtime": 1795281013.226713,
+    "seen": 1795281033.207828,
+    "ast_hash": "c1662239a43f2d2d8acc4d4b889b5287",
     "semantic_hash": ""
   },
   "core/presence.js": {
@@ -408,9 +408,9 @@
     "semantic_hash": "9b63f5b0c4493d19f7a4abc75c19917a"
   },
   "levels/monster.js": {
-    "mtime": 1795277692.7202623,
-    "seen": 1795277723.5793626,
-    "ast_hash": "1dca2e447b6830e782d3cda2828ee830",
+    "mtime": 1795280985.6107154,
+    "seen": 1795281033.2079475,
+    "ast_hash": "2af138af4a2cb72b2c973cd9d4dc4a74",
     "semantic_hash": ""
   },
   "levels/nursery.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795280336.0975416,
-    "seen": 1795280346.7513328,
-    "ast_hash": "cb4d22c185febcefeab8644a8be6f38e",
+    "mtime": 1795281023.8920941,
+    "seen": 1795281033.2083647,
+    "ast_hash": "0a2521bc2c31359f3ab958dffdba9634",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795280315.8734999,
-    "seen": 1795280346.7511117,
-    "ast_hash": "19a05d501dde97aeae7375979dff24fe",
+    "mtime": 1795281013.2326322,
+    "seen": 1795281033.2079866,
+    "ast_hash": "cb5e1a2800f1268ba84397dfee799a56",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -9984,9 +9984,9 @@
     "semantic_hash": ""
   },
   "core/monstermaps.js": {
-    "mtime": 1795276730.058257,
-    "seen": 1795276814.757095,
-    "ast_hash": "54215c6b7e32bafa18cb82f7a6e74583",
+    "mtime": 1795280985.606887,
+    "seen": 1795281033.2077427,
+    "ast_hash": "de7a77cdb977c87e1ea558a7de1bdb39",
     "semantic_hash": ""
   },
   "tests/modes/generatorlogic.mjs": {
@@ -9996,9 +9996,9 @@
     "semantic_hash": ""
   },
   "tests/modes/monster.mjs": {
-    "mtime": 1795276788.6666207,
-    "seen": 1795276814.7572489,
-    "ast_hash": "b5d15021ff6f9bc536773675f5eacf32",
+    "mtime": 1795280997.649852,
+    "seen": 1795281033.2079964,
+    "ast_hash": "127a7b4b9821c8c70be635817359aab5",
     "semantic_hash": ""
   },
   "core/room000map.js": {
