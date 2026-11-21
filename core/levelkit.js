@@ -9,6 +9,7 @@ import { buildMannequin } from './mannequin.js';
 import { goobyTexture } from './gooby.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as SFX from './audio.js';
+import { GAMES_CALM } from './settings.js';
 import { toast } from './terminal.js';
 
 // Świecący napis na ciemnym tle
@@ -142,7 +143,8 @@ export function createJumpscare(o) {
     let t = -1;
     return {
         active() { return t >= 0; },
-        trigger() { if (t >= 0) return false; t = 0; g.visible = true; SFX.scare(gooby); return true; },
+        trigger() { if (t >= 0 || GAMES_CALM.on) return false;   // BagaBoo Games: bez jumpscare'ów
+            t = 0; g.visible = true; SFX.scare(gooby); return true; },
         update(dt) {
             if (t < 0) return;
             t += dt;

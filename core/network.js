@@ -13,6 +13,7 @@ import { markAllDirty, toast } from './terminal.js';
 import { rankOf, setLocalMod, isStaffName, isOwnerName, isUltimateName, isReservedNick, canPunish, BANS_CLEARED, isModMenuUser } from './config.js';
 import { MOD } from './modstate.js';
 import { getAudioContext } from './audio.js';
+import { GAMES_CALM } from './settings.js';
 import { account as myAccount, vouch, verifyProof, randomNonce } from './auth.js';
 
 /* global Peer */
@@ -342,7 +343,7 @@ function updateRemote(id, st) {
         p.torso.position.copy(p.head.position).add(new THREE.Vector3(bx * drop * Math.sin(lean), -drop * Math.cos(lean), bz * drop * Math.sin(lean)));
         p.torso.rotation.set(-lean, e.y, 0);
     } else { p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -drop, 0)); p.torso.rotation.set(0, e.y, 0); }
-    if (p.head.userData.tags) for (const tg of p.head.userData.tags) tg.visible = !TAGS.hidden;   // Hide and Seek: bez nazw nad głowami
+    if (p.head.userData.tags) for (const tg of p.head.userData.tags) tg.visible = !TAGS.hidden && !GAMES_CALM.on;   // Hide and Seek i cały BagaBoo Games: bez nazw nad głowami
     p.group.visible = (st.lvl || 'lobby') === L.levelId && !(NET.mode === 'host' && isHiddenFrom(id, st, myPeerId));   // widać tylko graczy na tym samym poziomie, bez niewidzialnych adminów (goście dostają stan już przefiltrowany przez hosta)
 }
 function removeRemote(id) { if (remoteAvatars[id]) { scene.remove(remoteAvatars[id].group); delete remoteAvatars[id]; } }

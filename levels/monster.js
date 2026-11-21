@@ -4,7 +4,8 @@
 // Kto nie zostanie złapany, dostaje 200 Bagabucks. Potwór dostaje 200, jeśli złapie wszystkich.
 // Gdy grasz sam, goni cię manekin-bot.
 // MAPY: stacja kolejowa i pięć generowanych map (core/monstermaps.js: Hedge Maze, Container Yard, Night Supermarket, City Rooftops, Ruined Temple).
-// Mapę wybiera host (albo gracz solo) na tablicy przed sobą zaraz po wejściu: runda czeka na przycisk START (do HOLD_MAX s), potem co rundę losuje się inna albo zostaje wybrana. Przez sieć idzie tylko numer mapy i ziarno (cleanMapPick).
+// LOBBY: po wejściu (i po każdej rundzie) wszyscy trafiają do sali z sześcioma polami, po jednym na mapę. Gracz głosuje, stając na polu; host (albo gracz solo) liczy głosy z pozycji głów (lobbylogic.js: padOf, countVotes, gateStep),
+// a wygrana mapa (remis losuje) ładuje się dla wszystkich. Przycisk START NOW na tablicy (tylko host) kończy głosowanie od razu. Przez sieć idą liczniki głosów (cleanVotes), numer mapy i ziarno (cleanMapPick).
 // ==========================================
 import { THREE, L, tex, camera, addCrispBlock, world } from '../core/engine.js';
 import * as T from '../core/textures.js';
@@ -18,10 +19,11 @@ import { buzz } from '../core/haptics.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare , introSeen } from '../core/levelkit.js';
 import { buildMonsterSkin } from '../core/monsterskins.js';
 import { ARRIVAL_FROM_MONSTER } from './games.js';
-import { MAPS, generateMap, pickMap, cleanMapPick } from '../core/monstermaps.js';
+import { MAPS, generateMap, pickMap, cleanMapPick, lobbyMap, cleanVotes, LOBBY } from '../core/monstermaps.js';
+import { GATE, countVotes, winnerOf, gateStep } from '../core/lobbylogic.js';
+import { GAMES_CALM } from '../core/settings.js';
 
-const HOLD_MAX = 120;   // tyle sekund czeka start rundy na wybór mapy (potem rusza sam)
-const WAIT = 10, ROUND = 120, RESULTS = 8, REWARD = 200;
+const WAIT = 10, WAIT_AFTER_VOTE = 6, ROUND = 120, RESULTS = 8, REWARD = 200;
 const CATCH_DIST = 0.5;                     // dłoń potwora tak blisko głowy lub tułowia = złapany
 const BOT_SPEED = 4.2, BOT_SPEED_MAX = 5.4;   // trochę wolniej od szybkiego biegu gracza: da się uciec, ale z wysiłkiem   // bot jest trochę szybszy od gracza i przyspiesza w trakcie rundy
 const BOT_GRAVITY = 18, BOT_JUMP_MAX = 4.2;   // BOT_JUMP_MAX: domyślnie, mapa może dać własny (md.botJump)
@@ -33,12 +35,11 @@ let S = null;
 const _p = new THREE.Vector3(), _h = new THREE.Vector3();
 
 export function build() {
-    S = { clock: 0, phase: 'wait', t: WAIT, mon: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, tinted: false, bot: null, hold: N.NET.mode !== 'guest', holdT: HOLD_MAX, map: -1, seed: 0, sel: -1, md: null, mapGroup: null, mapObs: [], mapBodies: [], mapPortals: [] };
-    // Gość zaczyna na stacji i przechodzi na mapę hosta po pierwszej wiadomości; host i solo losują mapę od razu
-    const first = N.NET.mode === 'guest' ? { i: 0, seed: 1 } : pickMap(-1, -1);
-    applyMap(first.i, first.seed, false);
-    S.board = mapBoard.createMesh(3.0, 1.875); L.root.add(S.board); placeBoard();
-    if (S.hold) toast('Choose a map on the board, then press START', GOLD);
+    S = { clock: 0, phase: 'lobby', t: 0, gate: { ph: 'open', t: 0 }, votes: MAPS.map(() => 0), win: -1, mon: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, tinted: false, bot: null, map: -1, seed: 0, md: null, mapGroup: null, mapObs: [], mapBodies: [], mapPortals: [] };
+    // Wszyscy zaczynają w lobby; mapa ładuje się po głosowaniu (gość: po wiadomości od hosta)
+    applyLobby(false);
+    S.board = mapBoard.createMesh(6, 3.75); L.root.add(S.board); placeBoard();
+    toast('Stand on a pad to vote for a map', GOLD);
     // Znacznik potwora (czerwona poświata i napis nad głową)
     const mc = T.makeCanvas(256, 64), mx = mc.getContext('2d');
     mx.font = 'bold 48px sans-serif'; mx.textAlign = 'center'; mx.textBaseline = 'middle'; mx.fillStyle = '#ff3a2a'; mx.shadowColor = '#ff0000'; mx.shadowBlur = 16; mx.fillText('MONSTER', 128, 34);
@@ -70,7 +71,7 @@ function buildGenerated(md) {
     addCrispBlock(0, H + 0.5, 0, A * 2 + 2, 1, A * 2 + 2, md.ceil, 0x101018);
     for (const [x, z, w, d] of [[0, -A - 0.5, A * 2 + 2, 1], [0, A + 0.5, A * 2 + 2, 1], [-A - 0.5, 0, 1, A * 2], [A + 0.5, 0, 1, A * 2]]) addCrispBlock(x, H / 2, z, w, H, d, md.wall, 0x2a2a20, tex.wall);
     for (const b of md.boxes) addCrispBlock(b.x, b.y, b.z, b.w, b.h, b.d, b.c, 0x101018, (TEX[b.k] || TEX.wall)());
-    for (const l of md.lights) { const pl = new THREE.PointLight(0xe8f0ff, 20, 26, 1.6); pl.position.set(l[0], l[1], l[2]); L.root.add(pl); }
+    for (const l of md.lights) { const pl = new THREE.PointLight(md.lightColor || 0xe8f0ff, md.lightPower || 20, 26, 1.6); pl.position.set(l[0], l[1], l[2]); L.root.add(pl); }
 }
 function removeFrom(arr, items) { const set = new Set(items); for (let i = arr.length - 1; i >= 0; i--) if (set.has(arr[i])) arr.splice(i, 1); }
 function clearMap() {
@@ -86,48 +87,72 @@ function clearMap() {
     L.root.remove(S.mapGroup); S.mapGroup = null; S.mapObs = []; S.mapBodies = []; S.mapPortals = [];
 }
 // Buduje mapę idx (numer z MAPS) z ziarnem seed; teleport = przenieś gracza do wejścia nowej mapy
-function applyMap(idx, seed, teleport) {
+function applyMap(idx, seed, teleport) { applyLayout(generateMap(MAPS[idx].id, seed), idx, seed, teleport); }
+function applyLobby(teleport) { applyLayout(lobbyMap(), -1, 0, teleport); }
+function applyLayout(md, idx, seed, teleport) {
     clearMap();
-    const md = generateMap(MAPS[idx].id, seed), g = new THREE.Group(), root0 = L.root, n = { o: L.obstacles.length, b: L.bodies.length, p: L.portals.length };
+    const g = new THREE.Group(), root0 = L.root, n = { o: L.obstacles.length, b: L.bodies.length, p: L.portals.length };
     L.root = g;   // wszystko, co buduje mapa, trafia do jednej grupy: da się ją potem usunąć
     try {
         if (md.fixed) buildStation(); else buildGenerated(md);
+        if (md.pads) buildPads(md);
         buildDoor({ x: 0, z: md.A - 0.03, rotY: Math.PI, label: 'GAMES', color: '#d080ff', wood: 0x3a3048, portal: { target: 'games', spawn: ARRIVAL_FROM_MONSTER, onEnter: () => toast('Back to BagaBoo Games') } });
     } finally { L.root = root0; }
     root0.add(g);
     S.mapGroup = g; S.mapObs = L.obstacles.slice(n.o); S.mapBodies = L.bodies.slice(n.b); S.mapPortals = L.portals.slice(n.p);
-    S.md = md; S.map = idx; S.seed = seed;
+    S.md = md; S.map = idx; S.seed = seed; if (!md.pads) S.padLabels = null;
     L.spawn = md.entry.slice();
     L.bounds = { minX: -md.A + 0.4, maxX: md.A - 0.4, minZ: -md.A + 0.4, maxZ: md.A - 0.4, maxY: md.H - 0.4 };
     if (S.board) placeBoard();
     mapBoard.dirty = true;
-    if (teleport) { setPlayerPosition(md.entry[0], md.entry[1], md.entry[2]); toast('Map: ' + md.name, GOLD); }
+    if (teleport) { setPlayerPosition(md.entry[0], md.entry[1], md.entry[2]); toast(md.pads ? 'Vote: stand on a pad' : 'Map: ' + md.name, GOLD); }
 }
-// Tablica wyboru mapy tuż przed graczem po wejściu (widoczna tylko w fazie oczekiwania)
-function placeBoard() { S.board.position.set(S.md.entry[0], 1.75, S.md.entry[2] - 2.6); S.board.rotation.y = 0; }   // 2,6 m przed wejściem, zwrócona do gracza (patrzy na północ)
-const canPickMap = () => S && N.NET.mode !== 'guest' && S.phase === 'wait';
-function chooseMap(sel) {
-    if (!canPickMap()) return;
-    S.sel = sel;
-    const pk = pickMap(sel, S.map);
-    if (!(MAPS[pk.i].fixed && pk.i === S.map)) applyMap(pk.i, pk.seed, true);
-    S.t = Math.max(S.t, 8); S.netT = 0; mapBoard.dirty = true;
+// Pola głosowania: nazwa mapy i liczba głosów nad każdym polem (napisy przerysowują się przy zmianie liczników)
+const PAD_COL = ['#ff8a7a', '#8ac4ff', '#ffd860', '#9aff90', '#e0a0ff', '#e8d8b0'];
+function buildPads(md) {
+    S.padLabels = md.pads.map((pd, i) => {
+        const c = T.makeCanvas(512, 160), x = c.getContext('2d'), tx = T.toTex(c, false);
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false })); sp.scale.set(3.0, 0.94, 1); sp.position.set(pd[0], 2.5, pd[1]); L.root.add(sp);
+        return { ctx: x, tex: tx, drawn: '' };
+    });
 }
-function startRound() {
-    if (!canPickMap()) return;
-    S.hold = false; S.t = Math.min(S.t, 4); S.netT = 0; mapBoard.dirty = true;
+function drawPadLabels() {
+    if (!S.padLabels) return;
+    S.padLabels.forEach((pl, i) => {
+        const key = S.votes[i] + ':' + (S.win === i && S.gate.ph === 'launching' ? 1 : 0); if (pl.drawn === key) return; pl.drawn = key;
+        const x = pl.ctx, win = S.win === i && S.gate.ph === 'launching'; x.clearRect(0, 0, 512, 160);
+        x.fillStyle = 'rgba(8,4,4,0.72)'; x.beginPath(); x.roundRect(6, 6, 500, 148, 22); x.fill();
+        x.textAlign = 'center'; x.textBaseline = 'middle'; x.shadowColor = win ? '#ffffff' : PAD_COL[i % 6]; x.shadowBlur = win ? 26 : 12;
+        x.fillStyle = win ? '#ffffff' : PAD_COL[i % 6]; x.font = 'bold 50px sans-serif'; x.fillText(MAPS[i].name, 256, 54);
+        x.fillStyle = '#ffd8d0'; x.font = 'bold 44px sans-serif'; x.fillText(S.votes[i] + (S.votes[i] === 1 ? ' vote' : ' votes'), 256, 112);
+        pl.tex.needsUpdate = true;
+    });
+}
+// Tablica z wynikami na północnej ścianie lobby (wisi w miejscu md.board, zwrócona do wejścia)
+function placeBoard() { const b = S.md.board || LOBBY.BOARD; S.board.position.set(b[0], b[1], b[2]); S.board.rotation.y = 0; }
+const isAuth = () => S && N.NET.mode !== 'guest';   // głosowanie kończy host albo gracz solo
+const inLobby = () => S && S.phase === 'lobby';
+// Host kończy głosowanie od razu: wygrywa mapa z największą liczbą głosów (brak głosów = losowa)
+function startNow() {
+    if (!isAuth() || !inLobby() || S.gate.ph === 'launching') return;
+    S.win = winnerOf(S.votes, Math.random); S.gate = { ph: 'launching', t: GATE.LAUNCH_SEC }; S.t = S.gate.t; S.netT = 0; mapBoard.dirty = true;
 }
 const mapBoard = new Terminal((t) => {
     t.background();
     if (!S) return;
-    t.header('Choose the map', S.phase !== 'wait' ? 'Round in progress' : (S.hold ? 'Choose a map, then START' : 'Round starts in ' + Math.max(0, Math.ceil(S.t)) + ' s'), AMBER_DIM);
-    const mine = canPickMap(), cur = S.map;
-    t.btn('mp-1', 40, 90, 620, 52, 'Random map every round' + (S.sel < 0 ? '   (selected)' : ''), () => chooseMap(-1), { size: 26, active: S.sel < 0, disabled: !mine });
-    MAPS.forEach((m, i) => t.btn('mp' + i, 40, 154 + i * 64, 620, 54, m.name + (cur === i ? '   (now)' : ''), () => chooseMap(i), { size: 26, active: cur === i, tone: cur === i ? 'ok' : undefined, disabled: !mine }));
-    t.btn('start', 690, 154, 294, 130, S.hold || mine ? 'START' : 'WAIT', startRound, { tone: 'ok', size: 44, disabled: !mine });
-    t.text(mine ? 'You are the host: press START' : (N.NET.mode === 'guest' ? 'The host is choosing...' : ''), 837, 316, 20, AMBER_DIM, 'center');
-    t.text(MAPS[cur].blurb, 40, 574, 22, GOLD, 'left');
-    t.text(mine ? 'Pick a map before the round starts. Walls and layouts are generated each time.' : (N.NET.mode === 'guest' ? 'The host picks the map.' : 'The map can be changed between rounds.'), 40, 610, 20, AMBER_DIM, 'left');
+    const g = S.gate, lobby = S.phase === 'lobby';
+    const sub = !lobby ? 'Round in progress' : g.ph === 'launching' ? 'Loading ' + (S.win >= 0 ? MAPS[S.win].name : 'a random map') + ' in ' + Math.max(0, Math.ceil(g.t)) + ' s' : g.ph === 'counting' ? 'Voting ends in ' + Math.max(0, Math.ceil(g.t)) + ' s' : 'Stand on a pad to vote';
+    t.header('Vote for the map', sub, AMBER_DIM);
+    const lead = Math.max(0, ...S.votes);
+    MAPS.forEach((m, i) => {
+        const y = 118 + i * 68, top = lead > 0 && S.votes[i] === lead;
+        t.text((i + 1) + '. ' + m.name, 40, y, 32, top ? OK_COL : AMBER, 'left');
+        t.text(S.votes[i] + (S.votes[i] === 1 ? ' vote' : ' votes'), 640, y, 32, top ? OK_COL : AMBER_DIM, 'right');
+    });
+    t.btn('start', 690, 154, 294, 130, 'START NOW', startNow, { tone: 'ok', size: 34, disabled: !isAuth() || !lobby || g.ph === 'launching' });
+    t.text(isAuth() ? 'Host: ends the vote' : 'The host can end the vote', 837, 316, 20, AMBER_DIM, 'center');
+    t.text(S.win >= 0 && g.ph === 'launching' ? MAPS[S.win].blurb : 'Most votes wins. A tie is drawn at random. No votes = a random map.', 40, 574, 22, GOLD, 'left');
+    t.text('The votes are counted from where you stand. The GAMES door takes you back.', 40, 610, 20, AMBER_DIM, 'left');
     t.scanlines();
 });
 
@@ -204,8 +229,16 @@ function onNet(msg) {
     if (!S || !msg || N.NET.mode === 'host' || msg.k !== 'st') return;
     S.lastHostMsg = S.clock;
     const pk = cleanMapPick(msg.mp, msg.sd);   // mapa od hosta: tylko liczby z zakresów
+    if (msg.ph === 'lobby') {
+        if (S.map !== -1) applyLobby(true);
+        const vt = cleanVotes(msg.vt); if (vt) S.votes = vt;
+        S.gate = { ph: msg.gp === 'counting' || msg.gp === 'launching' ? msg.gp : 'open', t: Number.isFinite(msg.t) ? Math.max(0, Math.min(60, msg.t)) : 0 };
+        S.win = Number.isInteger(msg.wn) && msg.wn >= 0 && msg.wn < MAPS.length ? msg.wn : -1;
+        S.phase = 'lobby'; S.t = S.gate.t; S.mon = null; S.caught = new Set(); S.surv = [];
+        return;
+    }
     if (pk && (pk.i !== S.map || pk.seed !== S.seed)) applyMap(pk.i, pk.seed, true);
-    const prev = S.phase; S.hold = msg.hd === 1 && msg.ph === 'wait';
+    const prev = S.phase;
     S.phase = msg.ph; S.t = msg.t; S.mon = msg.mon ? fromNet(msg.mon) : null;
     const wasCaught = S.caught.has('me');
     S.caught = new Set((msg.caught || []).map(fromNet)); S.surv = (msg.surv || []).map(fromNet);
@@ -214,7 +247,7 @@ function onNet(msg) {
     if (msg.ph === 'results' && prev !== 'results') roundOver();
 }
 function broadcast() {
-    N.sendLevelMsg({ k: 'st', mp: S.map, sd: S.seed, hd: S.hold ? 1 : 0, ph: S.phase, t: S.t, mon: S.mon && S.mon !== 'bot' ? toNet(S.mon) : null, caught: [...S.caught].map(toNet), surv: S.surv.map(toNet) });
+    N.sendLevelMsg({ k: 'st', mp: S.map, sd: S.seed, vt: S.votes, gp: S.gate.ph, wn: S.win, ph: S.phase, t: S.t, mon: S.mon && S.mon !== 'bot' ? toNet(S.mon) : null, caught: [...S.caught].map(toNet), surv: S.surv.map(toNet) });
 }
 function startedRound() {
     S.rewarded = false;
@@ -236,9 +269,27 @@ function roundOver() {
     else toast('You were caught. No reward this round.', '#e0533f');
 }
 
+// ---------- LOBBY: liczenie głosów (host albo gracz solo, z własnego widoku pozycji głów) ----------
+function lobbyThink(dt) {
+    const heads = {};
+    for (const id of participants()) { const h = headOf(id); if (h) heads[id] = { x: h.x, y: h.y, z: h.z }; }
+    const v = countVotes(heads, S.md.pads);
+    S.votes = v.counts;
+    if (S.gate.ph === 'launching') { const r = gateStep(S.gate, dt, v.total, Object.keys(heads).length); S.gate = { ph: r.ph, t: r.t }; S.t = S.gate.t; if (r.event === 'go') launchVoted(); return; }
+    const r = gateStep(S.gate, dt, v.total, Object.keys(heads).length);
+    S.gate = { ph: r.ph, t: r.t }; S.t = S.gate.t;
+    if (r.event === 'lock') S.win = winnerOf(v.counts, Math.random);   // remis rozstrzyga losowanie, brak głosów = -1 (losowa mapa)
+    mapBoard.dirty = true;
+}
+function launchVoted() {
+    const pk = pickMap(S.win, -1);
+    S.phase = 'wait'; S.t = WAIT_AFTER_VOTE; S.gate = { ph: 'open', t: 0 }; S.win = -1; S.mon = null;
+    applyMap(pk.i, pk.seed, true); S.netT = 0; mapBoard.dirty = true;
+}
+
 // ---------- MÓZG RUNDY (host albo gracz solo) ----------
 function think(dt, p) {
-    if (S.phase === 'wait' && S.hold) { S.holdT -= dt; S.t = WAIT; if (S.holdT <= 0) S.hold = false; return; }   // czekamy na wybór mapy i START
+    if (S.phase === 'lobby') { lobbyThink(dt); return; }   // głosowanie na mapę
     S.t -= dt;
     if (S.phase === 'wait') {
         if (S.t <= 0) {
@@ -256,9 +307,8 @@ function think(dt, p) {
             S.surv = parts.filter(id => !S.caught.has(id)); S.phase = 'results'; S.t = RESULTS; roundOver();
         }
     } else if (S.phase === 'results' && S.t <= 0) {
-        S.phase = 'wait'; S.t = WAIT; S.mon = null; S.bot = null;
-        const pk = pickMap(S.sel, S.map);   // wybrana mapa albo losowa inna; nowe ziarno przebudowuje też wygenerowaną mapę
-        if (!(MAPS[pk.i].fixed && pk.i === S.map)) applyMap(pk.i, pk.seed, true);
+        S.phase = 'lobby'; S.gate = { ph: 'open', t: 0 }; S.votes = MAPS.map(() => 0); S.win = -1; S.t = 0; S.mon = null; S.bot = null;   // po rundzie wszyscy wracają do lobby na nowe głosowanie
+        applyLobby(true);
         S.netT = 0; mapBoard.dirty = true;
     }
 }
@@ -330,8 +380,8 @@ export function update(dt, t, ctx) {
     S.clock += dt;
     const p = ctx.body.position, auth = isAuthority();
     if (S.introSkip === undefined) { S.introSkip = introSeen('monster'); if (S.introSkip) S.introT = Math.min(S.introT, 3); }   // samouczek tylko za pierwszym razem
-    if (S.hold) S.intro.mesh.visible = false;
-    if (S.introT > 0 && !S.hold) {
+    if (S.phase === 'lobby') S.intro.mesh.visible = false;
+    if (S.introT > 0 && S.phase !== 'lobby') {
         S.introT -= dt;
         const sec = Math.max(0, Math.ceil(S.introT));
         if (sec !== S.intro.last) { S.intro.last = sec; drawInstructions(S.intro, 'Become the Monster', [
@@ -339,7 +389,7 @@ export function update(dt, t, ctx) {
             'The monster catches you by touching your head or body with a hand.',
             'Not caught after 2 minutes = 200 Bagabucks. The monster wins 200 if it catches everyone.',
             'Playing alone? A fast mannequin hunts you instead. It can jump, so keep moving!',
-            'The host picks the map on the board and presses START. The GAMES door takes you back.'], 'This closes in ' + sec + ' s', { bg: 'rgba(16,4,4,0.9)', border: '#ff4a4a', title: '#ffd0c8', text: '#f4e0dc', footer: '#ffb030', size: 30 }); }
+            'Before every round you vote for the map by standing on a pad in the lobby. The GAMES door takes you back.'], 'This closes in ' + sec + ' s', { bg: 'rgba(16,4,4,0.9)', border: '#ff4a4a', title: '#ffd0c8', text: '#f4e0dc', footer: '#ffb030', size: 30 }); }
         S.intro.mesh.visible = S.introT > 0 && !S.introSkip;
     }
     if (auth) {
@@ -365,8 +415,9 @@ export function update(dt, t, ctx) {
     L.moveScale = mon === 'me' ? MONSTER_BOOST : 1;
     if (mpos && mon !== 'me' && !S.caught.has('me')) { _h.copy(mpos); SFX.heartbeat(Math.max(0, 1 - _h.distanceTo(p) / 12)); }
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.15; drawHud(); }
-    if (S.board) S.board.visible = S.phase === 'wait';
-    const bs = S.phase + ':' + Math.ceil(S.t) + ':' + S.map + ':' + S.hold; if (bs !== S.boardSig) { S.boardSig = bs; mapBoard.dirty = true; }
+    if (S.board) S.board.visible = S.phase === 'lobby';
+    drawPadLabels();
+    const bs = S.phase + ':' + Math.ceil(S.t) + ':' + S.map + ':' + S.gate.ph + ':' + S.votes.join(',') + ':' + S.win; if (bs !== S.boardSig) { S.boardSig = bs; mapBoard.dirty = true; }
 }
 // Czerwone, świecące dłonie gdy jesteś potworem
 function setTint(on) {
@@ -381,7 +432,8 @@ function drawHud() {
     x.font = 'bold 80px "Courier New", monospace'; x.fillStyle = '#ffd8d0'; x.fillText(fmt(S.t), 30, 74);
     x.font = 'bold 32px "Courier New", monospace';
     let role = '', col = '#ffd8d0';
-    if (S.phase === 'wait') { role = 'Next round starts soon'; col = '#ffb030'; }
+    if (S.phase === 'lobby') { role = S.gate.ph === 'open' ? 'Vote: stand on a pad' : 'Voting...'; col = '#ffb030'; }
+    else if (S.phase === 'wait') { role = 'Next round starts soon'; col = '#ffb030'; }
     else if (S.phase === 'results') { role = S.surv.includes('me') ? 'You survived! +200' : 'Round over'; col = '#9aff60'; }
     else if (S.mon === 'me') { role = 'You are the MONSTER'; col = '#ff4a2a'; }
     else if (S.caught.has('me')) { role = 'Caught. Watch the others.'; col = '#ff8a6a'; }
@@ -410,6 +462,7 @@ function updateSkins(mon, mpos, t) {
 // Losowe jumpscare'y w losowym czasie i miejscu (u każdego gracza osobno)
 function randomScares(dt, t, p) {
     S.scare.update(dt);
+    if (GAMES_CALM.on || S.phase === 'lobby') return;   // BagaBoo Games: bez jumpscare'ów i zjaw
     const a = S.appar;
     if (a.t >= 0) {
         a.t += dt;

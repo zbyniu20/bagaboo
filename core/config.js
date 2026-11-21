@@ -131,7 +131,7 @@ export const ADMIN_NAMES = ['BoyIsGamer'];
 export const COADMIN_NAMES = ['spikyvr'];   // co-admin: uprawnienia admina, własny napis CO-ADMIN i odznaka
 export const OWNER_NAMES = ['BoyIsGamer'];   // właściciel gry: napis OWNER nad głową i odznaka Owner
 export const FURAS_NAMES = ['BoyIsGamer'];   // ranga FURAS: napis FURAS nad głową, odznaka z kotkiem i skórka Furas (maska kota + puchaty ogon); sama ranga nie daje żadnych uprawnień
-export const MOD_NAMES = ['lincolnvr', 'victoryboy', 'BoyIsGamer'];   // BoyIsGamer: właściciel + admin + moderator (wszystkie trzy napisy nad głową i odznaki)
+export const MOD_NAMES = ['lincolnvr', 'Luna', 'BoyIsGamer'];   // BoyIsGamer: właściciel + admin + moderator (wszystkie trzy napisy nad głową i odznaki)
 const low = (n) => String(n || '').trim().toLowerCase();
 // BagaBooModMenu (core/modmenu.js): sekretne menu admina, otwierane przytrzymaniem B przez 5 s. Mają je tylko te konta (po nicku zweryfikowanym przez serwer kont).
 export const MODMENU_NAMES = ['zbyniu', 'BoyIsGamer', 'spikyvr'];

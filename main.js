@@ -22,7 +22,7 @@ import { PAUSE, pauseMenu, pollPauseButtons, closePause } from './core/pause.js'
 import { LEVEL_DATA, payload as levelPayload, accept as levelAccept } from './core/leveldata.js';
 import './core/workshopstore.js';   // rejestruje dane mapy dla gości (Własna mapa)
 import './core/homestore.js';       // rejestruje układ pokoju dla gości (odwiedziny)
-import { SETTINGS, saveSettings } from './core/settings.js';
+import { SETTINGS, saveSettings, GAMES_CALM } from './core/settings.js';
 import { enableDesktop, updateDesktop, setDesktopFacing } from './core/desktop.js';
 import { startPresence } from './core/presence.js';
 import { updateHammer } from './core/hammer.js';
@@ -41,6 +41,7 @@ import { buildPet, updatePet, disposePet } from './core/pet.js';   // Stworek: t
 const LEVELS = Object.fromEntries(LEVEL_DEFS.filter(d => d.kind !== 'virtual').map(d => [d.id, { path: levelPath(d), light: d.light === '@mode' ? LIGHT_MODE : d.light, extras: d.extras || [] }]));
 let level = null, extras = [], levelId = null, started = false, switching = false;
 
+const cfgKind = (id) => (LEVEL_DEFS.find(d => d.id === id) || {}).kind;
 export async function loadLevel(id, spawn) {
     const cfg = LEVELS[id];
     releaseAll();
@@ -64,6 +65,7 @@ export async function loadLevel(id, spawn) {
     { const sp = L.spawn || [0, 1, 0], lampOn = lighting.headLamp.visible; updateLightPool(1, new THREE.Vector3(sp[0], sp[1], sp[2])); lighting.headLamp.visible = false;
       const env = captureEnvironment(LIGHT_PRESETS[cfg.light]); lighting.headLamp.visible = lampOn; if (env) scene.environment = env.texture; }
     levelId = id; PAUSE.inLobby = id === 'lobby';
+    GAMES_CALM.on = id === 'games' || cfgKind(id) === 'game';   // BagaBoo Games: bez nametagów i bez jumpscare'ów
     setLevelMusic(id); setAmbience(id);   // dynamiczna muzyka i ambient 3D dla tego poziomu
     const sp = spawn || L.spawn;
     // W multiplayerze każdy gracz pojawia się w trochę innym miejscu (na okręgu 1,2 m wokół punktu startu),
