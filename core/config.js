@@ -137,6 +137,7 @@ export const ADMIN_NAMES = ['BoyIsGamer'];
 export const COADMIN_NAMES = ['spikyvr'];   // co-admin: uprawnienia admina, własny napis CO-ADMIN i odznaka
 export const OWNER_NAMES = ['BoyIsGamer'];   // właściciel gry: napis OWNER nad głową i odznaka Owner
 export const FURAS_NAMES = ['BoyIsGamer'];   // ranga FURAS: napis FURAS nad głową, odznaka z kotkiem i skórka Furas (maska kota + puchaty ogon); sama ranga nie daje żadnych uprawnień
+export const THERIAN_NAMES = ['spikyvr'];   // skórka Therian (uszy królika, kitka i marchewka): odblokowana tylko dla tych nicków; zwykła skórka, bez uprawnień
 export const MOD_NAMES = ['lincolnvr', 'Luna', 'BoyIsGamer'];   // BoyIsGamer: właściciel + admin + moderator (wszystkie trzy napisy nad głową i odznaki)
 const low = (n) => String(n || '').trim().toLowerCase();
 // BagaBooModMenu (core/modmenu.js): sekretne menu admina, otwierane przytrzymaniem B przez 5 s. Mają je tylko te konta (po nicku zweryfikowanym przez serwer kont).
@@ -164,6 +165,7 @@ export function staffBadgesFor(name) {
     if (isFurasName(name)) out.push('furas');
     return out;
 }
+export function isTherianName(name) { return THERIAN_NAMES.some(n => low(n) === low(name)); }
 export function isFurasName(name) { return FURAS_NAMES.some(n => low(n) === low(name)); }
 export function isOwnerName(name) { return OWNER_NAMES.some(n => low(n) === low(name)); }
 export function isUltimateName(name) { return ULTIMATE_NAMES.some(n => low(n) === low(name)); }

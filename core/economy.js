@@ -8,7 +8,7 @@
 // ==========================================
 import { toast, markAllDirty } from './terminal.js';
 import { RECORD_DEFS, DIFF_LEVEL_IDS } from './registry.js';
-import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isFurasName, isReservedNick, staffBadgesFor, roleTagsFor } from './config.js';
+import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isFurasName, isTherianName, isReservedNick, staffBadgesFor, roleTagsFor } from './config.js';
 
 const SAVE_KEY = 'bagaboo_save_v1';
 export const LOGIN_INTERVAL = 6 * 3600 * 1000;      // nagroda za logowanie co 6 godzin
@@ -59,6 +59,7 @@ export const CATALOG = [
     { slot: 'skin', id: 'shadow', name: 'Shadow (glowing eyes)', price: 3800 },
     { slot: 'skin', id: 'king', name: 'Parkour King', price: 0, locked: true, hint: 'Red route' },   // tylko za czerwoną trasę w lobby
     { slot: 'skin', id: 'bloodmoon', name: 'Bloodmoon', price: 0, locked: true, hint: 'Achievement' },
+    { slot: 'skin', id: 'therian', name: 'Therian (bunny + carrot)', price: 0, locked: true, hint: 'Therian' },   // tylko dla nicków z THERIAN_NAMES: uszy królika, mały ogonek i marchewka, którą postać gryzie
     { slot: 'skin', id: 'furas', name: 'Furas (cat mask + fluffy tail)', price: 0, locked: true, hint: 'Furas' },   // ranga FURAS: maska kota i puchaty ogon
     { slot: 'skin', id: 'cheater', name: 'CHEATER', price: 0, locked: true, hint: 'For hackers' },   // nadawana za włamanie do pokoju szefa, nie da się jej zdjąć
     // Skórki potworów: zakładka "BagaBoo Games", działają tylko w trybie Become the Monster
@@ -539,6 +540,10 @@ export function refreshStaffItems() {
     give('badge:furas', furas); give('skin:furas', furas);
     if (furas && !hadFuras && SAVE.equipped.skin === 'none') SAVE.equipped.skin = 'furas';   // przy pierwszym nadaniu skórka od razu się zakłada
     if (!furas && SAVE.equipped.skin === 'furas') SAVE.equipped.skin = 'none';
+    const therian = isTherianName(n), hadTherian = SAVE.owned.includes('skin:therian');   // Therian: skórka na własność dla wybranych nicków; można ją zdjąć i założyć w każdej chwili w Maszynie goryla
+    give('skin:therian', therian);
+    if (therian && !hadTherian && SAVE.equipped.skin === 'none') SAVE.equipped.skin = 'therian';   // przy pierwszym nadaniu zakłada się sama
+    if (!therian && SAVE.equipped.skin === 'therian') SAVE.equipped.skin = 'none';
     give('tool:kick', isStaffName(n));
     give('tool:gooby', isStaffName(n));   // Nothing Hammer (Gooby) dla całej ekipy
     if (['owner', 'ultimate', 'coadmin', 'admin', 'mod', 'furas'].includes(SAVE.equipped.badge) && !rights.includes(SAVE.equipped.badge)) SAVE.equipped.badge = 'none';

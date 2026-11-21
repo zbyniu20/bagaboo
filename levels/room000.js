@@ -94,13 +94,14 @@ function propSink(d) {
     d.add(GEOS.box, 0.02, 0.935, 0, 0.34, 0.01, 0.26, 0, 0, 0, BLOOD);   // zakrwawiona woda w misce
     d.add(GEOS.cyl, 0, 1.0, -0.14, 0.02, 0.14, 0.02, 0, 0, 0, 0x5a5a60);
 }
-function propShackles(d) {   // kajdany z łańcuchami przy ścianie (płaska kompozycja, w płaszczyźnie ściany)
-    for (const sx of [-1, 1]) {
-        d.add(GEOS.box, sx * 0.45, 1.6, 0, 0.14, 0.14, 0.05, 0, 0, 0, IRON);
-        for (let k = 0; k < 6; k++) d.add(GEOS.box, sx * (0.45 - k * 0.012), 1.5 - k * 0.1, 0.01, 0.035, 0.09, 0.03, 0, 0, k % 2 ? 0.6 : -0.6, 0x3a3632);
-        d.add(GEOS.cyl, sx * 0.4, 0.88, 0.01, 0.055, 0.05, 0.055, Math.PI / 2, 0, 0, IRON);
+function propShackles(d, single) {   // kajdany z łańcuchami przy ścianie (płaska kompozycja, w płaszczyźnie ściany); single: jedna para na krótkim odcinku ściany
+    for (const sx of single ? [1] : [-1, 1]) {
+        const px = single ? 0 : sx * 0.45;
+        d.add(GEOS.box, px, 1.6, 0, 0.14, 0.14, 0.05, 0, 0, 0, IRON);
+        for (let k = 0; k < 6; k++) d.add(GEOS.box, px - sx * k * 0.012, 1.5 - k * 0.1, 0.01, 0.035, 0.09, 0.03, 0, 0, k % 2 ? 0.6 : -0.6, 0x3a3632);
+        d.add(GEOS.cyl, px - sx * 0.05, 0.88, 0.01, 0.055, 0.05, 0.055, Math.PI / 2, 0, 0, IRON);
     }
-    d.add(GEOS.box, 0, 0.7, 0.06, 0.9, 0.07, 0.05, 0, 0, 0.1, BLOOD);   // smuga krwi pod kajdanami
+    d.add(GEOS.box, 0, 0.7, 0.06, single ? 0.4 : 0.9, 0.07, 0.05, 0, 0, 0.1, BLOOD);   // smuga krwi pod kajdanami
 }
 function propToilet(d) { d.add(GEOS.cyl, 0, 0.18, 0, 0.19, 0.36, 0.19, 0, 0, 0, 0x8a8780); d.add(GEOS.box, 0, 0.5, -0.2, 0.42, 0.34, 0.14, 0, 0, 0, 0x7a7770); d.add(GEOS.cyl, 0, 0.37, 0, 0.17, 0.03, 0.17, 0, 0, 0, 0x2a2018); }
 function propTable(d, broken) {
@@ -137,7 +138,7 @@ function buildDecor() {
             if (p.type === 'trail') { drag(p.x, p.z, p.tx, p.tz); continue; }
             if (p.type === 'shackles') {   // na płaskim odcinku tylnej ściany celi, z normalną do wnętrza
                 const n = PLAN.sides[cell.side].n, f = M.placeOnWall(GRID, p.x - n[0] * 0.4, p.z - n[1] * 0.4, n[0], n[1], 1.2);
-                if (f && f.w >= 1.0) { d.at(f.x + f.fx * 0.04, 0, f.z + f.fz * 0.04, f.rotY, 0, 0); propShackles(d); }
+                if (f && f.w >= 0.5) { d.at(f.x + f.fx * 0.04, 0, f.z + f.fz * 0.04, f.rotY, 0, 0); propShackles(d, f.w < 1.0); }   // na krótkim odcinku (boki pod skosem) jedna para
                 continue;
             }
             d.at(p.x, 0, p.z, p.rotY, 0, p.type === 'bed' && p.tipped ? 0.8 : (p.type === 'table' || p.type === 'chair') && p.broken ? (R() - 0.5) * 0.6 : 0);
@@ -434,8 +435,8 @@ function updateItems(t, dt, p) {
     S.cue = cue;
     for (let k = S.pick.length - 1; k >= 0; k--) {   // błysk po zebraniu (0,5 s), potem znika
         const a = S.pick[k], q = Math.min(1, (a.t += dt) / 0.5), u = a.g.userData;
-        a.g.scale.setScalar(1 + q * 0.9); u.glow.material.opacity = 0.6 + 0.4 * q; u.light.intensity = 3.2 + 14 * q;
-        if (q >= 1) { a.g.visible = false; S.pick.splice(k, 1); }
+        u.m.scale.setScalar(2.3 * (1 + q * 0.9)); u.glow.material.opacity = 0.6 + 0.4 * q; u.light.intensity = 3.2 + 14 * q;   // błyska sam przedmiot; podstawka zostaje
+        if (q >= 1) { u.m.visible = false; u.glow.visible = false; u.light.visible = false; S.pick.splice(k, 1); }
     }
 }
 // Żarówki mrugają, a w pobliżu ducha gasną i szaleją; po pierwszym przedmiocie wszystko gaśnie na kilka sekund; latarka też drga, gdy duch jest blisko

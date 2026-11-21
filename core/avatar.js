@@ -374,6 +374,35 @@ function tuftGeo(px, py, pz, nx, ny, nz, len, r) {
 // Elipsoida jako geometria (do scalania w jedną siatkę): promienie rx,ry,rz, środek x,y,z
 const ellGeo = (rx, ry, rz, x, y, z, rotX) => { const g = new THREE.SphereGeometry(1, 20, 14); g.scale(rx, ry, rz); if (rotX) g.rotateX(rotX); g.translate(x, y, z); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 3).fill(1), 3)); return g; };
 const ellMesh = (geos, mat) => { const m = new THREE.Mesh(mergeGeometries(geos), mat); m.castShadow = true; m.receiveShadow = true; return m; };
+// Therian: uszy królika (futro w kolorze skórki, różowe wnętrze), kołyszą się i drgają
+function buildBunnyEars(look) {
+    const g = new THREE.Group(), fur = new THREE.MeshStandardMaterial({ color: furColor(look), roughness: 0.95 }), pink = new THREE.MeshStandardMaterial({ color: 0xf0a0b8, roughness: 0.9 });
+    g.userData.ears = [];
+    for (const s of [-1, 1]) {
+        const pivot = new THREE.Group(); pivot.position.set(s * 0.06, 0.15, 0.02); pivot.rotation.z = -s * 0.2;
+        const ear = meshAt(new THREE.CapsuleGeometry(0.03, 0.2, 4, 8), fur, 0, 0.13, 0); ear.scale.z = 0.6; pivot.add(ear);
+        const inner = meshAt(new THREE.CapsuleGeometry(0.016, 0.16, 4, 8), pink, 0, 0.13, -0.012); inner.scale.z = 0.5; pivot.add(inner);
+        g.add(pivot); g.userData.ears.push({ p: pivot, s: s });
+    }
+    return g;
+}
+// Marchewka w pysku: czubek w ustach, natka na zewnątrz. Co ~8 s ukąszenia skracają ją o połowę, potem pojawia się nowa; przy gryzieniu drga, uszy też
+function buildCarrot(earsGroup) {
+    const g = new THREE.Group(); g.position.set(0.03, -0.06, -0.12);
+    const orange = new THREE.MeshStandardMaterial({ color: 0xe8761a, roughness: 0.55 }), green = new THREE.MeshStandardMaterial({ color: 0x3a9a2a, roughness: 0.8 });
+    const geo = new THREE.CylinderGeometry(0.003, 0.018, 1, 8); geo.rotateX(Math.PI / 2); geo.translate(0, 0, -0.5);   // oś wzdłuż -z, czubek w początku układu
+    const body = new THREE.Mesh(geo, orange); body.scale.z = 0.13; body.castShadow = true; g.add(body);
+    const leaves = new THREE.Group(); leaves.position.z = -0.13; g.add(leaves);
+    for (let i = 0; i < 3; i++) { const lg = new THREE.ConeGeometry(0.008, 0.07, 5); lg.rotateX(-Math.PI / 2); const lf = new THREE.Mesh(lg, green); lf.position.set((i - 1) * 0.006, (i % 2) * 0.006, -0.03); lf.rotation.set((i - 1) * 0.18, (i - 1) * 0.22, 0); leaves.add(lf); }
+    const ph = Math.random() * 8;
+    body.onBeforeRender = () => {
+        const t = performance.now() / 1000 + ph, u = (t % 8) / 8, bites = Math.floor(u * 7), len = u > 0.94 ? 1 : 1 - bites * 0.075, chewing = bites > 0 && (u * 7 - bites) < 0.6 && u <= 0.94 ? 1 : 0.15;
+        body.scale.z = 0.13 * len; leaves.position.z = -0.13 * len;
+        const chew = (Math.sin(t * 16) * 0.5 + 0.5) * chewing; g.rotation.x = chew * 0.08; g.position.y = -0.06 - chew * 0.004;
+        if (earsGroup) for (const e of earsGroup.userData.ears) e.p.rotation.z = -e.s * 0.2 + Math.sin(t * 1.7 + e.s) * 0.04 + (Math.sin(t * 0.5) > 0.9 ? Math.sin(t * 30) * 0.08 : 0);
+    };
+    return g;
+}
 export function createHead(look, withName) {
     const head = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
     const maskId = (k.catMask && (!look.mask || look.mask === 'none')) ? 'furascat' : look.mask;   // skórki z catMask (Furas, Furasek) mają własną maskę kota (inna założona maska ma pierwszeństwo)
@@ -409,6 +438,10 @@ export function createHead(look, withName) {
         }
     }
     head.add(buildMask(maskId)); head.add(buildHat(look.hat)); head.add(buildGlasses(look.glasses));
+    if (k.bunnyEars || k.carrot) {   // Therian: uszy królika (znikają pod czapką) i marchewka w pysku, którą postać gryzie
+        const ears = k.bunnyEars && (!look.hat || look.hat === 'none') ? buildBunnyEars(look) : null; if (ears) head.add(ears);
+        if (k.carrot) head.add(buildCarrot(ears));
+    }
     if (withName) {
         const tag = createNameSprite(String(look.name || 'Player').slice(0, 16)); tag.position.set(0, 0.5, 0); tag.scale.set(0.72, 0.18, 1); head.add(tag);
         head.userData.tags = [tag];   // napisy nad głową: tryby ukrywania (Hide and Seek) wyłączają je przez TAGS.hidden
@@ -498,6 +531,12 @@ export function createGorillaTorso(look) {
         geos.forEach((gm, i) => bakeShade(gm, (x, y, z) => 0.85 + 0.25 * smooth(0, 0.3, y)));
         tg.add(ellMesh(geos, fur));
         const tip = meshAt(new THREE.SphereGeometry(0.058, 14, 10), new THREE.MeshStandardMaterial({ map: furTexture(), color: 0xfff6ec, roughness: 0.95 }), 0, 0.0075 * 49 + 0.012, 0.04 + 7 * 0.046); tip.scale.set(1, 1.15, 1.05); tg.add(tip);
+        g.add(tg); g.userData.tail = tg;
+    }
+    if (k.bunnyTail) {   // Therian: mały, okrągły, puszysty ogonek królika (merda jak ogon Furasa)
+        const tg = new THREE.Group(), white = new THREE.MeshStandardMaterial({ map: furTexture(), color: 0xfff6f0, roughness: 0.98 });
+        tg.position.set(0, -0.2, 0.16); tg.add(meshAt(new THREE.SphereGeometry(0.06, 14, 10), white, 0, 0, 0.02));
+        for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; tg.add(meshAt(new THREE.SphereGeometry(0.025, 8, 6), white, Math.cos(a) * 0.05, Math.sin(a) * 0.05, 0.03)); }
         g.add(tg); g.userData.tail = tg;
     }
     return g;

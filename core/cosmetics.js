@@ -495,6 +495,7 @@ export const EXTRA_SKINS = {
     lavaape: { fur: 0x1c0a06, face: 0x3a0e04, glowEyes: true },
     panda: { fur: 0xf2f2f0, face: 0x141414 },
     midnight: { fur: 0x14204a, face: 0x070a1a },
+    therian: { fur: 0xc9a47e, face: 0xe8b4a4, bunnyEars: true, bunnyTail: true, carrot: true },   // spikyvr: uszy królika, mały ogonek i marchewka, którą wciąż gryzie (avatar.js)
     furasek: { fur: 0xf8d6b8, face: 0xe89aa8, tail: true, catMask: true },   // słodki kotek: brzoskwiniowe futro, maska kota i puchaty ogon (w sklepie)
     bubblegum: { fur: 0xff9ac8, face: 0xc85a8a },
     cottoncandy: { fur: 0xb8e0ff, face: 0xe890c0 },
