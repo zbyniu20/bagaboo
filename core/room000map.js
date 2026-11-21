@@ -169,7 +169,8 @@ export function clearLine(grid, x0, z0, x1, z1) {
 }
 
 // ---------- PRZEDMIOTY, DEKORACJE, ŚWIATŁA ----------
-// Pięć przedmiotów (3 książki, pistolet, nóż) w pięciu celach na pięciu RÓŻNYCH bokach pięciokąta; kolejność i miejsce losuje seed
+// Pięć przedmiotów (3 książki, pistolet, nóż) w pięciu celach na pięciu RÓŻNYCH bokach pięciokąta; kolejność i cele losuje seed.
+// Przedmiot stoi na podstawce w osi drzwi celi (s około 0, d 3,5-4,0 m), żeby było go widać z korytarza i żeby żaden rekwizyt go nie zasłaniał (patrz cellProps: keep)
 export function pickItems(plan, seed) {
     const R = rng(seed), kinds = ITEM_KINDS.slice();
     for (let i = kinds.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [kinds[i], kinds[j]] = [kinds[j], kinds[i]]; }
@@ -177,13 +178,13 @@ export function pickItems(plan, seed) {
     for (let i = sides.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [sides[i], sides[j]] = [sides[j], sides[i]]; }
     sides.forEach((k, n) => {
         const list = plan.cells.filter(c => c.side === k), cell = list[Math.floor(R() * list.length) % list.length];
-        const p = cellPoint(plan, cell, (R() - 0.5) * 1.6, GEO.CELL_D0 + 0.9 + R() * 1.1);
+        const p = cellPoint(plan, cell, (R() - 0.5) * 0.4, GEO.CELL_D0 + 1.0 + R() * 0.5);   // w linii drzwi celi: widać go z korytarza
         items.push({ kind: kinds[n], x: p[0], z: p[1], cell: cell.id, side: k });
     });
     return items;
 }
 // Wyposażenie celi: łóżko pod ścianą, sedes, przewrócony stolik i krzesło, czasem szkielet, zwłoki albo kałuża krwi (lokalne s, d -> świat)
-export function cellProps(plan, cell, seed) {
+export function cellProps(plan, cell, seed, keep) {
     const R = rng(seed * 7919 + cell.id * 104729 + 13), yaw = cellYaw(plan, cell), out = [];
     const at = (type, s, d, extra) => { const p = cellPoint(plan, cell, s, d); out.push(Object.assign({ type: type, x: p[0], z: p[1], rotY: yaw }, extra || {})); };
     const flip = R() < 0.5 ? -1 : 1;
@@ -191,10 +192,27 @@ export function cellProps(plan, cell, seed) {
     at('toilet', 1.55 * flip, GEO.CELL_D1 - 0.4);
     if (R() < 0.7) at('table', 1.2 * flip, GEO.CELL_D0 + 1.4 + R() * 0.5, { rotY: yaw + (R() - 0.5) * 2.4, broken: true });
     if (R() < 0.6) at('chair', -0.4 * flip + (R() - 0.5), GEO.CELL_D0 + 1.1 + R() * 1.2, { rotY: R() * 6.28, broken: true });
-    if (R() < 0.38) at('skeleton', (R() - 0.5) * 2.2, GEO.CELL_D0 + 0.9 + R() * 1.4, { rotY: R() * 6.28 });
-    if (R() < 0.2) at('corpse', (R() - 0.5) * 2.0, GEO.CELL_D0 + 1.0 + R() * 1.2, { rotY: R() * 6.28 });
+    const skel = R() < 0.38; if (skel) at('skeleton', (R() - 0.5) * 2.2, GEO.CELL_D0 + 0.9 + R() * 1.4, { rotY: R() * 6.28 });
+    const corpse = R() < 0.3; if (corpse) at('corpse', (R() - 0.5) * 2.0, GEO.CELL_D0 + 1.0 + R() * 1.2, { rotY: R() * 6.28 });
     if (R() < 0.55) at('blood', (R() - 0.5) * 2.4, GEO.CELL_D0 + 0.6 + R() * 2.0, { r: 0.4 + R() * 0.7 });
-    return out;
+    // dodatkowe: umywalka przy sedesie, kajdany z łańcuchami na tylnej ścianie, bunk bed, ślad wleczenia ciała do drzwi, więcej krwi
+    at('sink', 1.55 * flip, GEO.CELL_D1 - 1.25, { rotY: yaw + Math.PI / 2 });
+    if (R() < 0.55) at('shackles', (R() - 0.5) * 2.6, GEO.CELL_D1 - 0.12);
+    const last = out.find(p => p.type === 'bed'); if (last) last.bunk = R() < 0.4;
+    if (skel || corpse) { const from = out.find(p => p.type === 'corpse' || p.type === 'skeleton'), t = cellPoint(plan, cell, (R() - 0.5) * 0.6, GEO.CELL_D0 - 0.3); out.push({ type: 'trail', x: from.x, z: from.z, tx: t[0], tz: t[1], rotY: 0 }); }
+    for (let k = 0, n = 1 + Math.floor(R() * 3); k < n; k++) at('blood', (R() - 0.5) * 3.2, GEO.CELL_D0 + 0.3 + R() * 3.0, { r: 0.25 + R() * 0.55 });
+    if (!keep || !keep.length) return out;
+    return out.filter(p => ['bed', 'toilet', 'sink', 'shackles'].includes(p.type) || !keep.some(k => Math.hypot(p.x - k.x, p.z - k.z) < 1.3));   // nic nie zasłania przedmiotu
+}
+// Wiszące ciała na łańcuchach: rzadkie miejsca w korytarzach i salach (daleko od siebie i od startu)
+export const hangingSpots = (grid, plan, count, seed) => corridorSpots(grid, plan, count, seed, 7);
+// Zjawa-wabik: losowa pusta komórka 11-17 m od gracza, widoczna w linii prostej (null, gdy się nie udało)
+export function decoySpot(grid, px, pz, rnd) {
+    for (let t = 0; t < 40; t++) {
+        const a = rnd() * Math.PI * 2, r = 11 + rnd() * 6, x = px + Math.cos(a) * r, z = pz + Math.sin(a) * r;
+        if (isOpen(grid, x, z) && clearLine(grid, px, pz, x, z)) return { x: x, z: z };
+    }
+    return null;
 }
 // Losowe miejsca w korytarzach i salach narożnych (puste komórki strefy korytarza, z dala od startu); mindist: odstęp od siebie
 export function corridorSpots(grid, plan, count, seed, mindist) {
