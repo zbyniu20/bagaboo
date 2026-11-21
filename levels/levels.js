@@ -22,7 +22,7 @@ export const info = { id: 'levels', name: 'Levels', spawn: [0, 1.0, 5.2] };
 // Po powrocie z poziomu stajesz przed terminalem (wszystkie poziomy wracają w to samo miejsce)
 const AR = [0, 1.2, -3.3];
 export const ARRIVAL_FROM_MAZE = AR, ARRIVAL_FROM_SILENCE = AR, ARRIVAL_FROM_WELL = AR, ARRIVAL_FROM_LAUNDRY = AR, ARRIVAL_FROM_MEMORY = AR, ARRIVAL_FROM_HOSPITAL = AR,
-    ARRIVAL_FROM_CEMETERY = AR, ARRIVAL_FROM_CATACOMBS = AR, ARRIVAL_FROM_NURSERY = AR, ARRIVAL_FROM_HOTEL = AR, ARRIVAL_FROM_FURAS = AR;
+    ARRIVAL_FROM_CEMETERY = AR, ARRIVAL_FROM_CATACOMBS = AR, ARRIVAL_FROM_NURSERY = AR, ARRIVAL_FROM_HOTEL = AR, ARRIVAL_FROM_FURAS = AR, ARRIVAL_FROM_ROOM000 = AR;
 
 // Poziomy na liście (kolejność = numery na terminalu). rec: klucz rekordu w zapisie, threat 1-5, daily: ma Daily Run
 const LV = [
@@ -37,6 +37,7 @@ const LV = [
     { target: 'nursery', rec: 'nursery', label: 'THE NURSERY', type: 'SURVIVAL', threat: 5, msg: 'Keep the music playing...', desc: ['Find 4 teddy bears.', 'A doll sleeps while your', 'music box plays. Wind it!'] },
     { target: 'hotel', rec: 'hotel', label: 'THE HOTEL', type: 'SURVIVAL', threat: 5, msg: 'Do not stop. Hide when the lights flicker...', desc: ['Open 100 doors. Find 3 keys in', 'the key halls, hide in wardrobes.', 'Door 50: a blind monster hears you.'] },
     { target: 'furas', rec: 'furas', label: 'THE FUR DEN', type: 'CHASE', threat: 5, msg: 'Something soft is purring in the dark...', desc: ['Find 4 golden fish.', 'FURAS hunts you: fluffy tail,', 'a mouth full of teeth. Dodge the pounce!'] },
+    { target: 'room000', rec: 'room000', label: 'ROOM 000', type: 'HORROR', threat: 5, msg: 'Do not open the cell doors...', desc: ['Find 3 books, a pistol and a knife.', 'An abandoned prison, almost no light.', 'A white ghost hunts you.'] },
     { secret: true, label: 'LAB', type: 'UNKNOWN', threat: 5, msg: 'It was never on the list.', desc: ['No one has opened this door.', 'It opens from the other side.', 'Do not knock twice.'] }
 ];
 // Stanowiska terminala: x, z, obrót ekranu (rotY=0: patrzy na +z, czyli z północnej ściany do wnętrza; pi/2: z zachodniej ściany; -pi/2: ze wschodniej)
@@ -83,7 +84,7 @@ function drawScreen(t) {
     tx(c, 'BAGABOO', 30, 24, 28, BLOOD, 'left', MONO, 8); tx(c, 'VISITOR TERMINAL // LEVEL ACCESS // 03:07', 168, 24, 22, AMBD);
     tx(c, 'PRESENCE BEHIND TERMINAL', W2 - 150, 24, 20, AMBD, 'right'); tx(c, PROX[dread], W2 - 30, 24, 24, BLOOD, 'right', MONO, 8);
     // lista poziomów na CAŁY ekran terminala: duże nazwy; opis poziomu jest tylko na ekranie nad terminalami (drawWall)
-    const RH = 40, LY = 68;   // 12 wierszy (z ukrytym LAB) mieści się nad paskiem trudności
+    const RH = 38, LY = 68;   // 13 wierszy (z ukrytym LAB) mieści się nad paskiem trudności
     tx(c, '> SELECT A DOOR' + (Math.floor(now * 2) % 2 ? '_' : ' '), 30, 58, 20, AMBD);
     const gl = Math.floor(now * 10) % 61 === 0 || nm;   // kopie chromatyczne wybranej nazwy w Nightmare i krótkie zakłócenia co kilka sekund
     LV.forEach((l, i) => {

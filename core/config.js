@@ -117,6 +117,12 @@ LIGHT_PRESETS.catacombs = {   // katakumby: prawie całkowita ciemność, gęsta
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.15,
     flashlight: { color: 0xfff0d0, intensity: 80, distance: 20, angle: 0.5, penumbra: 0.7, decay: 2 }
 };
+LIGHT_PRESETS.room000 = {   // Room 000: opuszczone więzienie, prawie zupełna ciemność, zimna mgła i bardzo słaba latarka
+    background: 0x010101, fogColor: 0x030304, fogDensity: 0.07, exposure: 1.15,
+    hemiSky: 0x504860, hemiGround: 0x141218, hemiIntensity: 0.45,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.1,
+    flashlight: { color: 0xe8ecff, intensity: 65, distance: 15, angle: 0.45, penumbra: 0.75, decay: 2 }
+};
 LIGHT_PRESETS.cemetery = {   // cmentarz nocą: błękitny księżyc, mgła i latarka
     background: 0x0c1218, fogColor: 0x1c2630, fogDensity: 0.022, exposure: 1.45,
     hemiSky: 0x90a8d0, hemiGround: 0x30403a, hemiIntensity: 2.8,
