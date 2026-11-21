@@ -363,6 +363,9 @@ check('therian: only spikyvr owns the Therian skin and it is equipped once, but 
     return sp && none && swap && other && C.isTherianName('SpikyVR') && !C.isTherianName('lincolnvr') && !C.isTherianName('');
 })());
 check('therian: the skin has bunny ears, a small bunny tail and the carrot, and the avatar builds them', /therian: \{[^}]*bunnyEars: true, bunnyTail: true, carrot: true/.test(fs.readFileSync(path.join(ROOT, 'core/cosmetics.js'), 'utf8')) && /function buildBunnyEars/.test(fs.readFileSync(path.join(ROOT, 'core/avatar.js'), 'utf8')) && /function buildCarrot/.test(fs.readFileSync(path.join(ROOT, 'core/avatar.js'), 'utf8')) && /k\.bunnyTail/.test(fs.readFileSync(path.join(ROOT, 'core/avatar.js'), 'utf8')));
+const NEW2 = { skin: ['demonape', 'skeletape', 'plagueape'], hat: ['bolts', 'spiderhat', 'crowhat', 'wormhead', 'candlecrown', 'eyestalks', 'knifehalo'], mask: ['screamer', 'zipperface', 'grin', 'burned'], glasses: ['stitchedeyes', 'manyeyes', 'bloodshot'], sleeve: ['rotting'], gloves: ['rotten'] };
+check('cosmetics: the second pack of very scary items is in the shop, buyable and priced sanely', Object.entries(NEW2).every(([slot, ids]) => ids.every(id => { const it = E.CATALOG.find(i => i.slot === slot && i.id === id); return it && !it.locked && !it.season && it.price >= 2000 && it.price <= 5500 && it.name.length <= 24; })));
+check('cosmetics: no hat, mask or glasses model scales the whole group (g.add(...).scale bug)', !/g\.add\([^;]*\)\)\.scale\./.test(fs.readFileSync(path.join(ROOT, 'core/cosmetics.js'), 'utf8')));
 check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail) and no other sold skin does', /furasek: \{[^}]*tail: true, catMask: true/.test(src) && !/(bubblegum|cottoncandy|honeyape|mintape|cadaver): \{[^}]*catMask/.test(src) && /k\.catMask && \(!look\.mask/.test(src));
 }
 

@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795281680.1529737,
-    "seen": 1795281878.9617803,
-    "ast_hash": "0a2521bc2c31359f3ab958dffdba9634",
+    "mtime": 1795281897.353747,
+    "seen": 1795281903.0999742,
+    "ast_hash": "0e1fa6ea7e24b66a644de0bbb6de4d3f",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795281791.0785592,
-    "seen": 1795281878.9615211,
-    "ast_hash": "3c46d2e84a80de53a0ab4b8005a32c69",
+    "mtime": 1795281897.3530214,
+    "seen": 1795281903.0995889,
+    "ast_hash": "b06067ad92478ea01f04868db39a0aba",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
