@@ -1,6 +1,6 @@
 // ==========================================
 // POKÓJ "LEVELS": jeden terminal zamiast drzwi
-// Na północnej ścianie stoi duży, nawiedzony terminal: lista poziomów (The Maze ... The Hotel i ukryte ROOM 000), opis, zagrożenie,
+// Na północnej ścianie stoi duży, nawiedzony terminal: lista poziomów (The Maze ... The Hotel i ukryte LAB), opis, zagrożenie,
 // wybór trudności (Easy / Normal / Nightmare), Daily Run, prawdziwe rekordy i duch #1, przycisk OPEN THE DOOR.
 // Wybór klikasz celownikiem / laserem. Drzwi LOBBY z tyłu wracają do lobby. Po wyjściu z poziomu lądujesz przed terminalem.
 // Dodatki grozy: oko śledzi celownik, monitor tętna reaguje na zagrożenie, w szkle stoi postać, która z czasem podchodzi bliżej.
@@ -37,7 +37,7 @@ const LV = [
     { target: 'nursery', rec: 'nursery', label: 'THE NURSERY', type: 'SURVIVAL', threat: 5, msg: 'Keep the music playing...', desc: ['Find 4 teddy bears.', 'A doll sleeps while your', 'music box plays. Wind it!'] },
     { target: 'hotel', rec: 'hotel', label: 'THE HOTEL', type: 'SURVIVAL', threat: 5, msg: 'Do not stop. Hide when the lights flicker...', desc: ['Open 100 doors. Find 3 keys in', 'the key halls, hide in wardrobes.', 'Door 50: a blind monster hears you.'] },
     { target: 'furas', rec: 'furas', label: 'THE FUR DEN', type: 'CHASE', threat: 5, msg: 'Something soft is purring in the dark...', desc: ['Find 4 golden fish.', 'FURAS hunts you: fluffy tail,', 'a mouth full of teeth. Dodge the pounce!'] },
-    { secret: true, label: 'ROOM 000', type: 'UNKNOWN', threat: 5, msg: 'It was never on the list.', desc: ['No one has opened this door.', 'It opens from the other side.', 'Do not knock twice.'] }
+    { secret: true, label: 'LAB', type: 'UNKNOWN', threat: 5, msg: 'It was never on the list.', desc: ['No one has opened this door.', 'It opens from the other side.', 'Do not knock twice.'] }
 ];
 // Stanowiska terminala: x, z, obrót ekranu (rotY=0: patrzy na +z, czyli z północnej ściany do wnętrza; pi/2: z zachodniej ściany; -pi/2: ze wschodniej)
 const STATIONS = [-8, -4, 0, 4, 8].map(x => ({ x: x, z: -5.0, rotY: 0 }));   // pięć komputerów w rzędzie (jak w lobby), gracze stoją od strony południowej
@@ -83,7 +83,7 @@ function drawScreen(t) {
     tx(c, 'BAGABOO', 30, 24, 28, BLOOD, 'left', MONO, 8); tx(c, 'VISITOR TERMINAL // LEVEL ACCESS // 03:07', 168, 24, 22, AMBD);
     tx(c, 'PRESENCE BEHIND TERMINAL', W2 - 150, 24, 20, AMBD, 'right'); tx(c, PROX[dread], W2 - 30, 24, 24, BLOOD, 'right', MONO, 8);
     // lista poziomów na CAŁY ekran terminala: duże nazwy; opis poziomu jest tylko na ekranie nad terminalami (drawWall)
-    const RH = 40, LY = 68;   // 12 wierszy (z ukrytym ROOM 000) mieści się nad paskiem trudności
+    const RH = 40, LY = 68;   // 12 wierszy (z ukrytym LAB) mieści się nad paskiem trudności
     tx(c, '> SELECT A DOOR' + (Math.floor(now * 2) % 2 ? '_' : ' '), 30, 58, 20, AMBD);
     const gl = Math.floor(now * 10) % 61 === 0 || nm;   // kopie chromatyczne wybranej nazwy w Nightmare i krótkie zakłócenia co kilka sekund
     LV.forEach((l, i) => {
