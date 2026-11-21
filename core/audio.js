@@ -199,8 +199,31 @@ function goobyVoice(t0, f0, vol) {
     const ng = ctx.createGain(); env(ng, t0 + 0.5, 0.6, 0.004, 0.05);
     n.connect(nf); nf.connect(ng); ng.connect(out); n.start(t0 + 0.5);
 }
+// Głos "noob" (syntezowany): nosowe "n", długie "uu", zwarcie "b" i wybrzmienie; formanty jak w goobyVoice
+function noobVoice(t0, f0, vol) {
+    const dur = 1.0, g = ctx.createGain(), out = ctx.createGain(), dirt = ctx.createGain();
+    out.gain.value = vol; dirt.gain.value = 0.35; out.connect(scareBus); out.connect(dirt); dirt.connect(shaper);
+    g.gain.setValueAtTime(0.0001, t0);
+    for (const [dt, v] of [[0.04, 0.5], [0.14, 1], [0.56, 0.95], [0.63, 0.08], [0.72, 0.08], [0.8, 0.9], [0.95, 0.5], [dur, 0.0001]]) g.gain.linearRampToValueAtTime(v, t0 + dt);
+    const src = [ctx.createOscillator(), ctx.createOscillator()];
+    src.forEach((o, i) => {
+        o.type = 'sawtooth'; o.detune.value = i ? 12 : 0; o.frequency.setValueAtTime(f0 * 1.15, t0);
+        for (const [dt, m] of [[0.2, 1.0], [0.55, 0.9], [0.8, 1.05], [dur, 0.8]]) o.frequency.linearRampToValueAtTime(f0 * m, t0 + dt);
+        o.connect(g); o.start(t0); o.stop(t0 + dur + 0.05);
+    });
+    const path = [[0, 250, 1100, 2200], [0.14, 300, 870, 2240], [0.56, 300, 870, 2240], [0.64, 280, 800, 2200], [0.8, 520, 1200, 2500], [dur, 400, 1100, 2400]];
+    [[1, 9, 1.0], [2, 11, 0.75], [3, 13, 0.45]].forEach(([k, q, gain]) => {
+        const bp = ctx.createBiquadFilter(), fg = ctx.createGain(); bp.type = 'bandpass'; bp.Q.value = q; fg.gain.value = gain * 3;
+        bp.frequency.setValueAtTime(path[0][k], t0); for (const row of path) bp.frequency.linearRampToValueAtTime(row[k], t0 + row[0]);
+        g.connect(bp); bp.connect(fg); fg.connect(out);
+    });
+    const n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.1);   // "b": krótki wybuch szumu przy otwarciu warg
+    const nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 700; nf.Q.value = 1.2;
+    const ng = ctx.createGain(); env(ng, t0 + 0.72, 0.8, 0.004, 0.06);
+    n.connect(nf); nf.connect(ng); ng.connect(out); n.start(t0 + 0.72);
+}
 // Pełny jumpscare: cisza, potem uderzenie basu, przesterowany wrzask i zgrzyt dysonansu; gooby = true dokłada głos "gooby"
-export function scare(gooby) {
+export function scare(gooby) {   // gooby: true = głos "gooby", 'noob' = głos "noob" (ultimate admin dotknął ręką)
     if (!ctx || GAMES_CALM.on) return;   // w BagaBoo Games nie ma jumpscare'ów (dźwięk też)
     if (hooks.onScare) hooks.onScare();
     const t0 = ctx.currentTime;
@@ -215,7 +238,8 @@ export function scare(gooby) {
     const ng = ctx.createGain(); env(ng, t0, 1.0, 0.006, 1.45);
     n.connect(bp); bp.connect(ng); ng.connect(shaper); n.start(t0);
     for (const f of [740, 784, 1046, 1480, 1568]) saw(t0, f, f * 0.42, 1.35, 0.22, shaper);
-    if (gooby) { goobyVoice(t0 + 0.08, 150, 2.4); goobyVoice(t0 + 0.08, 75, 1.8); }   // "gooby" (tylko jumpscare od Nothing Hammer): wysoki głos i demoniczna warstwa o oktawę niżej
+    if (gooby === 'noob') { noobVoice(t0 + 0.05, 130, 3.2); noobVoice(t0 + 0.05, 65, 2.4); }   // głośne "noob": męski głos i warstwa o oktawę niżej
+    else if (gooby) { goobyVoice(t0 + 0.08, 150, 2.4); goobyVoice(t0 + 0.08, 75, 1.8); }   // "gooby" (tylko jumpscare od Nothing Hammer): wysoki głos i demoniczna warstwa o oktawę niżej
 }
 // Krótki, ostry zgrzyt, gdy znika zjawa
 export function stinger(pos) {

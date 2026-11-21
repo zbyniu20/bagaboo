@@ -341,15 +341,31 @@ const PL = await import(url('core/petlogic.js'));
     check('cosmetics: every hat, glasses, mask, sleeve, glove, skin, hammer and badge in the catalog has a model or palette', missing.length === 0, missing.join(', '));
     const NEW = { skin: ['furasek', 'bubblegum', 'cottoncandy', 'honeyape', 'mintape', 'cadaver'], hat: ['catears', 'flowercrown', 'donut', 'unicorn', 'knifehead', 'axehead', 'brainhat', 'nailcrown', 'antlers'], glasses: ['starglasses', 'buttoneyes', 'bleedingeyes'], mask: ['flayed', 'sewn', 'faceless'], sleeve: ['bloodstained'], gloves: ['blooded'] };
     check('cosmetics: the new sweet and scary items are in the shop, buyable and priced sanely', Object.entries(NEW).every(([slot, ids]) => ids.every(id => { const it = E.CATALOG.find(i => i.slot === slot && i.id === id); return it && !it.locked && !it.season && it.price >= 900 && it.price <= 5000 && it.name.length <= 24; })));
-    check('therian: only spikyvr owns the Therian skin and it is equipped once, but can be changed and put back at any time', (() => {
+    check('ultimate: zbyniu runs 2x faster, but only on the verified account, and the avatar is half of the previous size (4)', await (async () => {
+    const MS = await import(url('core/modstate.js')), AV = fs.readFileSync(path.join(ROOT, 'core/avatar.js'), 'utf8'), PL = fs.readFileSync(path.join(ROOT, 'core/player.js'), 'utf8');
+    const spd = (name, verified) => { E.markNickVerified(verified ? name : ''); E.setProfile({ name: name }); return [MS.PERSONAL.speed, MS.capMul()]; };
+    const z = spd('zbyniu', true), un = spd('zbyniu', false), other = spd('RandomPlayer', true), adm = spd('BoyIsGamer', true), back = spd('zbyniu', true);
+    E.markNickVerified(''); E.setProfile({ name: 'RandomPlayer' });
+    return z[0] === 2 && z[1] === 2 && un[0] === 1 && other[0] === 1 && adm[0] === 1 && back[0] === 2 && MS.PERSONAL.speed === 1 && /ULTIMATE_SCALE = 4;/.test(AV) && /\* PERSONAL\.speed;/.test(PL);
+})());
+check('noob: the host (not a client) decides when the ultimate admin touched someone, from the verified nick, with a cooldown, and the victim gets the NOOB jumpscare', (() => {
+    const AUD = fs.readFileSync(path.join(ROOT, 'core/audio.js'), 'utf8'), KIT = fs.readFileSync(path.join(ROOT, 'core/levelkit.js'), 'utf8'), MAIN = fs.readFileSync(path.join(ROOT, 'main.js'), 'utf8');
+    return /function noobCheck\(\)/.test(net) && /uid === myPeerId \? \(me && me\.nick\) : verifiedNickOf\(uid\)/.test(net) && /isUltimateName\(nick\)/.test(net) && /noobCd\[vid\] = now \+ NOOB_COOLDOWN/.test(net) && /gc\.send\(\{ type: 'noob' \}\)/.test(net) && /data\.type === 'noob'/.test(net) && /noobCheck\(\);/.test(net)
+        && /createJumpscare\(\{ noob: true \}\)/.test(MAIN) && /NETM\.onNoob\(/.test(MAIN) && /function noobVoice/.test(AUD) && /gooby === 'noob'/.test(AUD) && /fillText\('NOOB'/.test(KIT) && /SFX\.scare\(noob \? 'noob' : gooby\)/.test(KIT);
+})());
+check('therian: only spikyvr owns the Therian skin and it is equipped once, but can be changed and put back at any time', (() => {
     const run = (name, fn) => { E.markNickVerified(''); E.setProfile({ name: name }); return fn(); };
-    const sp = run('spikyvr', () => { E.SAVE.owned = E.SAVE.owned.filter(x => x !== 'skin:therian'); E.SAVE.equipped.skin = 'none'; E.refreshStaffItems(); return E.SAVE.owned.includes('skin:therian') && E.SAVE.equipped.skin === 'therian'; });
+    const sp = run('spikyvr', () => { E.SAVE.owned = E.SAVE.owned.filter(x => x !== 'skin:therian'); E.SAVE.equipped.skin = 'albino'; delete E.SAVE.therianSet; E.refreshStaffItems(); return E.SAVE.owned.includes('skin:therian') && E.SAVE.equipped.skin === 'therian'; });   // stary zapis z inną skórką: Therian zakłada się od razu
+    const none = run('spikyvr', () => { E.SAVE.equipped.skin = 'none'; E.refreshStaffItems(); const keeps = E.SAVE.equipped.skin === 'none'; E.SAVE.equipped.skin = 'therian'; return keeps; });   // wybór innej skórki (nawet własnego koloru) zostaje
     const swap = (() => { E.SAVE.equipped.skin = 'albino'; E.refreshStaffItems(); const kept = E.SAVE.equipped.skin === 'albino'; E.SAVE.equipped.skin = 'therian'; E.refreshStaffItems(); return kept && E.SAVE.equipped.skin === 'therian'; })();
     const other = run('RandomPlayer', () => { E.SAVE.owned.push('skin:therian'); E.SAVE.equipped.skin = 'therian'; E.refreshStaffItems(); return !E.SAVE.owned.includes('skin:therian') && E.SAVE.equipped.skin === 'none'; });
     run('spikyvr', () => { E.SAVE.owned = E.SAVE.owned.filter(x => x !== 'skin:therian'); E.SAVE.equipped.skin = 'none'; });
-    return sp && swap && other && C.isTherianName('SpikyVR') && !C.isTherianName('lincolnvr') && !C.isTherianName('');
+    return sp && none && swap && other && C.isTherianName('SpikyVR') && !C.isTherianName('lincolnvr') && !C.isTherianName('');
 })());
 check('therian: the skin has bunny ears, a small bunny tail and the carrot, and the avatar builds them', /therian: \{[^}]*bunnyEars: true, bunnyTail: true, carrot: true/.test(fs.readFileSync(path.join(ROOT, 'core/cosmetics.js'), 'utf8')) && /function buildBunnyEars/.test(fs.readFileSync(path.join(ROOT, 'core/avatar.js'), 'utf8')) && /function buildCarrot/.test(fs.readFileSync(path.join(ROOT, 'core/avatar.js'), 'utf8')) && /k\.bunnyTail/.test(fs.readFileSync(path.join(ROOT, 'core/avatar.js'), 'utf8')));
+const NEW2 = { skin: ['demonape', 'skeletape', 'plagueape'], hat: ['bolts', 'spiderhat', 'crowhat', 'wormhead', 'candlecrown', 'eyestalks', 'knifehalo'], mask: ['screamer', 'zipperface', 'grin', 'burned'], glasses: ['stitchedeyes', 'manyeyes', 'bloodshot'], sleeve: ['rotting'], gloves: ['rotten'] };
+check('cosmetics: the second pack of very scary items is in the shop, buyable and priced sanely', Object.entries(NEW2).every(([slot, ids]) => ids.every(id => { const it = E.CATALOG.find(i => i.slot === slot && i.id === id); return it && !it.locked && !it.season && it.price >= 2000 && it.price <= 5500 && it.name.length <= 24; })));
+check('cosmetics: no hat, mask or glasses model scales the whole group (g.add(...).scale bug)', !/g\.add\([^;]*\)\)\.scale\./.test(fs.readFileSync(path.join(ROOT, 'core/cosmetics.js'), 'utf8')));
 check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail) and no other sold skin does', /furasek: \{[^}]*tail: true, catMask: true/.test(src) && !/(bubblegum|cottoncandy|honeyape|mintape|cadaver): \{[^}]*catMask/.test(src) && /k\.catMask && \(!look\.mask/.test(src));
 }
 

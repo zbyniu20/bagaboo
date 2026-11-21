@@ -48,8 +48,31 @@ export function sendRouted(to, msg) {
 }
 const cleanRouted = (m) => (m && typeof m === 'object' && typeof m.k === 'string' && m.k.length < 16) ? { k: m.k, item: String(m.item || '').slice(0, 40), ok: !!m.ok } : null;
 // Drużyna idzie za hostem: host wysyła poziom (i ziarno układu), goście wchodzą tam za nim
-let followHandler = null, lastFollow = null, inviteHandler = null, goobyHandler = null;
+let followHandler = null, lastFollow = null, inviteHandler = null, goobyHandler = null, noobHandler = null;
 export function onGooby(fn) { goobyHandler = fn; }
+export function onNoob(fn) { noobHandler = fn; }   // main.js: jumpscare "NOOB" dla gracza dotkniętego ręką przez ultimate admina
+// ---------- NOOB: gdy ultimate admin (zbyniu) dotknie dłonią innego gracza, dotknięty dostaje jumpscare z napisem NOOB i głośnym dźwiękiem ----------
+// Liczy tylko host z własnego widoku graczy (pozycje dłoni i głów), a ultimate admina rozpoznaje po nicku potwierdzonym przez serwer kont (conn.vNick albo własne konto hosta).
+// Dotknięty może dostać go najwyżej raz na NOOB_COOLDOWN ms. W BagaBoo Games jumpscare'ów nie ma (GAMES_CALM zatrzymuje go po stronie dotkniętego).
+const NOOB_DIST = 0.45, NOOB_COOLDOWN = 8000, noobCd = Object.create(null);
+const pt3 = (a) => Array.isArray(a) && a.length >= 3 && a.every(Number.isFinite) ? a : null;
+function noobCheck() {
+    const now = Date.now(), me = myAccount();
+    for (const uid in playersState) {
+        const nick = uid === myPeerId ? (me && me.nick) : verifiedNickOf(uid);
+        if (!nick || !isUltimateName(nick)) continue;
+        const u = playersState[uid], hands = u && u.h1 && u.h2 ? [pt3(u.h1.p), pt3(u.h2.p)].filter(Boolean) : []; if (!hands.length) continue;
+        for (const vid in playersState) {
+            if (vid === uid || (noobCd[vid] || 0) > now) continue;
+            const v = playersState[vid], hd = v && v.head ? pt3(v.head.p) : null; if (!hd || v.lvl !== u.lvl) continue;
+            if (hands.some(h => Math.hypot(h[0] - hd[0], h[1] - hd[1], h[2] - hd[2]) < NOOB_DIST || Math.hypot(h[0] - hd[0], h[1] - (hd[1] - 0.45), h[2] - hd[2]) < NOOB_DIST + 0.05)) {   // głowa albo tułów
+                noobCd[vid] = now + NOOB_COOLDOWN;
+                if (vid === myPeerId) { if (noobHandler) noobHandler(); }
+                else { const gc = connById(vid); if (gc) { try { gc.send({ type: 'noob' }); } catch (e) {} } }
+            }
+        }
+    }
+}
 export function triggerGooby() { if (goobyHandler) goobyHandler(); }   // lokalny podgląd jumpscare'a Gooby (manekin treningowy w lobby)   // main.js: pokazuje jumpscare Gooby, gdy ktoś trafi nas Nothing Hammerem
 
 // ---------- MODERACJA: wyrzucenie (można wrócić), ban na dobę, role ----------
@@ -325,7 +348,7 @@ function updateRemote(id, st) {
     if (!remoteAvatars[id]) { const a = createAvatar(st.profile); scene.add(a.group); remoteAvatars[id] = a; }
     const p = remoteAvatars[id];
     const sz = Math.max(0.25, Math.min(8, +st.sz || 1));   // rozmiar goryla z BagaBooModMenu (host zeruje go u graczy spoza listy menu)
-    if ((p.sz || 1) !== sz) {   // skala bazowa (ultimate admin = 2) razy rozmiar; ramiona grubieją razem z gorylem, a nie tylko wydłużają się do dłoni
+    if ((p.sz || 1) !== sz) {   // skala bazowa (ultimate admin = 4) razy rozmiar; ramiona grubieją razem z gorylem, a nie tylko wydłużają się do dłoni
         p.sz = sz; for (const o of [p.head, p.torso, p.handL, p.handR]) o.scale.setScalar((p.base || 1) * sz);
         for (const a of [p.armL, p.armR]) if (a) a.userData.thick = sz;
     }
@@ -336,7 +359,7 @@ function updateRemote(id, st) {
     if (st.h2.g !== undefined) p.handR.userData.rig.target = st.h2.g;
     if (st.em && typeof st.em.id === 'string' && typeof st.em.t === 'number') emotePose(p, st.em.id, st.em.t);   // emotka nadpisuje pozę dłoni i głowy
     const e = new THREE.Euler().setFromQuaternion(p.head.quaternion, 'YXZ');
-    const drop = (p.torsoDrop || 0.35) * sz;
+    const drop = Math.min((p.torsoDrop || 0.35) * sz, 0.7 * sz);   // olbrzym (ultimate admin x4): tułów nie zapada się pod podłogę, zostaje blisko głowy
     p.torso.rotation.order = 'YXZ';
     if (st.sl) {   // ślizg na brzuchu: tułów leży poziomo za głową
         const lean = 1.35, bx = Math.sin(e.y), bz = Math.cos(e.y);
@@ -542,6 +565,7 @@ export function startJoin(code, cb) {
             if (data.type === 'cheater') { if (cheaterHandler) cheaterHandler(data.until); return; }
             if (data.type === 'invite' && data.level === 'staff') myInvited = true;
             if (data.type === 'gooby') { if (goobyHandler) goobyHandler(); return; }
+            if (data.type === 'noob') { if (noobHandler) noobHandler(); return; }
             if (data.type === 'role') { setLocalMod(data.name, data.mod); toast(data.mod ? 'You are now a moderator!' : 'You are no longer a moderator', '#ffd27a'); markAllDirty(); return; }
             if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, 'host'); return; }
             if (data.type === 'routed') { const m = cleanRouted(data.msg); if (m && routedHandler) routedHandler(m, data.from); return; }
@@ -655,6 +679,7 @@ export function networkTick(handL, handR) {
     if (NET.mode === 'host') {
         for (const ball of L.throwables) sharedObjectsState[ball.userData.id] = bodyState(ball.userData.body);
         playersState[myPeerId] = myState;
+        noobCheck();   // ultimate admin dotknął kogoś ręką: jumpscare NOOB
         // Niewidzialni admini (BagaBooModMenu) są pomijani w stanie wysyłanym graczom spoza listy menu; admini z menu widzą wszystkich
         // UWAGA: playersState i sharedObjectsState nie mają prototypu (Object.create(null)), a serializator PeerJS (BinaryPack) czyta value.constructor i na takim obiekcie rzuca
         // "Cannot read properties of undefined (reading 'toString')": wysyłamy więc zwykłe kopie. Bez tego goście nie dostawali żadnego stanu i nikogo nie widzieli.

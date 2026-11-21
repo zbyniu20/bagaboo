@@ -9,6 +9,7 @@ import { check } from '../lib.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const M = await import(pathToFileURL(path.join(ROOT, 'core/monstermaps.js')).href);
 const T = (s) => 'monster: ' + s;
+const rng2 = (seed) => M.rng(seed);
 const GEN = M.MAPS.filter(m => !m.fixed);
 const SEEDS = Array.from({ length: 40 }, (_, i) => i * 24593 + 7);
 const inside = (b, x, z, m) => Math.abs(x - b.x) < b.w / 2 + m && Math.abs(z - b.z) < b.d / 2 + m;
@@ -59,7 +60,7 @@ check(T('the host sends the map as numbers only and a guest takes it only throug
 check(T('only the host or a solo player counts the votes, starts the vote early and ends it (guests only display it)'), /const isAuth = \(\) => S && N\.NET\.mode !== 'guest'/.test(src) && /function startNow\(\) \{\s*if \(!isAuth\(\) \|\| !inLobby\(\)/.test(src) && /if \(S\.phase === 'lobby'\) \{ lobbyThink\(dt\); return; \}/.test(src) && /msg\.ph === 'lobby'/.test(src));
 check(T('swapping a map removes its bodies, obstacles and portals from the world'), /world\.removeBody\(b\)/.test(src) && /removeFrom\(L\.obstacles, S\.mapObs\)/.test(src) && /removeFrom\(L\.portals, S\.mapPortals\)/.test(src) && /removeFrom\(L\.bodies, S\.mapBodies\)/.test(src));
 check(T('starts and the bot come from the current map, not from constants'), /md\.monster\[0\]/.test(src) && /md\.survivors\[/.test(src) && !/MONSTER_SPAWN|SURVIVOR_SPAWN/.test(src));
-check(T('the votes come from the heads the host sees, the winner is drawn on a tie, the map loads for everyone and each round returns to the lobby'), /countVotes\(heads, S\.md\.pads\)/.test(src) && /winnerOf\(v\.counts, Math\.random\)/.test(src) && /pickMap\(S\.win, -1\)/.test(src) && /S\.phase = 'lobby'; S\.gate = \{ ph: 'open', t: 0 \}/.test(src) && /cleanVotes\(msg\.vt\)/.test(src) && /vt: S\.votes/.test(src));
+check(T('the votes come from the heads the host sees, the winner is drawn on a tie, the map loads for everyone and each round returns to the lobby'), /countVotes\(heads, S\.md\.pads\)/.test(src) && /winnerOf\(v\.counts, Math\.random\)/.test(src) && /pickMap\(idx, -1\)/.test(src) && /S\.opts\[S\.win\]/.test(src) && /pickOptions\(S\.lastMap, Math\.random\)/.test(src) && /S\.phase = 'lobby'; S\.gate = \{ ph: 'open', t: 0 \}/.test(src) && /cleanVotes\(msg\.vt\)/.test(src) && /vt: S\.votes/.test(src));
 check(T('no jumpscares or apparitions in BagaBoo Games (nor in the lobby)'), /GAMES_CALM\.on \|\| S\.phase === 'lobby'\) return;/.test(src));
 check(T('the bot follows the maze route when the map has one'), /S\.md\.nav \? S\.md\.nav\.next\(/.test(src));
 
@@ -67,12 +68,18 @@ check(T('the bot follows the maze route when the map has one'), /S\.md\.nav \? S
 // ---------- lobby z głosowaniem na mapę ----------
 {
     const lb = M.lobbyMap(), R = M.LOBBY.R;
-    check(T('lobby: one voting pad per map, all inside the walls and far enough apart that nobody stands on two'), lb.pads.length === M.MAPS.length && lb.pads.every(p => Math.abs(p[0]) < lb.A - 2 && Math.abs(p[1]) < lb.A - 2) && lb.pads.every((p, i) => lb.pads.every((q, j) => i === j || Math.hypot(p[0] - q[0], p[1] - q[1]) > 2 * R + 0.5)));
+    check(T('lobby: three voting pads (one per random option), all inside the walls and far enough apart that nobody stands on two'), lb.pads.length === M.LOBBY.OPTIONS && M.LOBBY.OPTIONS === 3 && lb.pads.every(p => Math.abs(p[0]) < lb.A - 2 && Math.abs(p[1]) < lb.A - 2) && lb.pads.every((p, i) => lb.pads.every((q, j) => i === j || Math.hypot(p[0] - q[0], p[1] - q[1]) > 2 * R + 0.5)));
     check(T('lobby: pads and the entrance are free of tall obstacles and the board hangs on the north wall'), lb.pads.every(p => !lb.boxes.some(b => b.h > 0.4 && inside(b, p[0], p[1], R))) && !lb.boxes.some(b => b.h > 0.4 && inside(b, lb.entry[0], lb.entry[2], 0.4)) && lb.board[2] < -lb.A + 0.5 && lb.board[2] > -lb.A - 0.5);
     check(T('lobby: pad slabs are low enough to step on, boxes are finite and the room has lights'), lb.boxes.every(b => [b.x, b.y, b.z, b.w, b.h, b.d].every(Number.isFinite)) && lb.boxes.filter(b => b.k === 'step').every(b => b.h <= 0.1) && lb.lights.length >= 4);
     const LG = await import(pathToFileURL(path.join(ROOT, 'core/lobbylogic.js')).href);
-    const heads = { a: { x: lb.pads[0][0], y: 1.6, z: lb.pads[0][1] }, b: { x: lb.pads[0][0] + 0.5, y: 1.5, z: lb.pads[0][1] }, c: { x: lb.pads[4][0], y: 1.7, z: lb.pads[4][1] }, d: { x: 0, y: 1.6, z: 11 } };
+    const heads = { a: { x: lb.pads[0][0], y: 1.6, z: lb.pads[0][1] }, b: { x: lb.pads[0][0] + 0.5, y: 1.5, z: lb.pads[0][1] }, c: { x: lb.pads[2][0], y: 1.7, z: lb.pads[2][1] }, d: { x: 0, y: 1.6, z: 11 } };
     const v = LG.countVotes(heads, lb.pads);
-    check(T('lobby: votes are counted from head positions on the pads, nobody else counts, the most votes wins'), v.counts[0] === 2 && v.counts[4] === 1 && v.total === 3 && LG.winnerOf(v.counts, () => 0.5) === 0);
-    check(T('lobby: a vote counter list from the network is range-checked'), JSON.stringify(M.cleanVotes([0, 1, 2, 3, 4, 5])) === '[0,1,2,3,4,5]' && [null, 'x', [], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, -1], [0, 0, 0, 0, 0, 1.5], [0, 0, 0, 0, 0, 99], [0, 0, 0, 0, 0, '3'], [0, 0, 0, 0, 0, NaN]].every(x => M.cleanVotes(x) === null));
+    check(T('lobby: votes are counted from head positions on the pads, nobody else counts, the most votes wins'), v.counts[0] === 2 && v.counts[2] === 1 && v.total === 3 && LG.winnerOf(v.counts, () => 0.5) === 0);
+    check(T('lobby: a vote counter list from the network is range-checked'), JSON.stringify(M.cleanVotes([0, 1, 2])) === '[0,1,2]' && [null, 'x', [], [0, 0], [0, 0, 0, 0], [0, 0, -1], [0, 0, 1.5], [0, 0, 99], [0, 0, '3'], [0, 0, NaN]].every(x => M.cleanVotes(x) === null));
 }
+check(T('lobby: every vote offers 3 different random maps, never the last played one when others are free, and the list changes between draws'), (() => {
+    const draws = Array.from({ length: 300 }, (_, i) => M.pickOptions(i % M.MAPS.length, rng2(i * 7 + 1)));
+    return draws.every((o, i) => o.length === 3 && new Set(o).size === 3 && o.every(k => Number.isInteger(k) && k >= 0 && k < M.MAPS.length) && !o.includes(i % M.MAPS.length)) && new Set(draws.map(o => o.join())).size > 20 && M.pickOptions(-1, () => 0.5).length === 3;
+})());
+check(T('lobby: all six maps do show up as options over many draws'), new Set(Array.from({ length: 200 }, (_, i) => M.pickOptions(-1, rng2(i + 99))).flat()).size === M.MAPS.length);
+check(T('lobby: options from the network are range-checked (3 different map numbers)'), JSON.stringify(M.cleanOptions([0, 3, 5])) === '[0,3,5]' && [null, 'x', [], [0, 1], [0, 1, 2, 3], [0, 0, 1], [0, 1, 6], [0, 1, -1], [0, 1, 1.5], [0, 1, '2'], [0, 1, NaN]].every(x => M.cleanOptions(x) === null));

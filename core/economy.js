@@ -8,6 +8,7 @@
 // ==========================================
 import { toast, markAllDirty } from './terminal.js';
 import { RECORD_DEFS, DIFF_LEVEL_IDS } from './registry.js';
+import { PERSONAL } from './modstate.js';
 import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isFurasName, isTherianName, isReservedNick, staffBadgesFor, roleTagsFor } from './config.js';
 
 const SAVE_KEY = 'bagaboo_save_v1';
@@ -201,6 +202,26 @@ export const CATALOG = [
     { slot: 'gloves', id: 'rainbow', name: 'Rainbow hands', price: 1800 },
     { slot: 'skin', id: 'sakura', name: 'Sakura ape', price: 2200, season: 'spring' },
     // Nowe kosmetyki: słodkie skórki i dodatki oraz bardzo straszne (nóż i siekiera w głowie, mózg, poroże, zaszyte usta)
+    // Druga paczka bardzo strasznych kosmetyków
+    { slot: 'skin', id: 'demonape', name: 'Demon ape', price: 4200 },
+    { slot: 'skin', id: 'skeletape', name: 'Skeleton ape', price: 3800 },
+    { slot: 'skin', id: 'plagueape', name: 'Plague ape', price: 3400 },
+    { slot: 'hat', id: 'bolts', name: 'Frankenstein bolts', price: 3600 },
+    { slot: 'hat', id: 'spiderhat', name: 'Spider on head', price: 4200 },
+    { slot: 'hat', id: 'crowhat', name: 'Crow on head', price: 3800 },
+    { slot: 'hat', id: 'wormhead', name: 'Tentacle head', price: 4800 },
+    { slot: 'hat', id: 'candlecrown', name: 'Candle crown', price: 3900 },
+    { slot: 'hat', id: 'eyestalks', name: 'Eyes on stalks', price: 5000 },
+    { slot: 'hat', id: 'knifehalo', name: 'Ring of knives', price: 5200 },
+    { slot: 'mask', id: 'screamer', name: 'Screaming ghost', price: 4000 },
+    { slot: 'mask', id: 'zipperface', name: 'Zipper mouth', price: 3800 },
+    { slot: 'mask', id: 'grin', name: 'Endless grin', price: 4500 },
+    { slot: 'mask', id: 'burned', name: 'Burned face', price: 4200 },
+    { slot: 'glasses', id: 'stitchedeyes', name: 'Sewn-shut eyes', price: 3000 },
+    { slot: 'glasses', id: 'manyeyes', name: 'Many red eyes', price: 3600 },
+    { slot: 'glasses', id: 'bloodshot', name: 'Bulging eyes', price: 3400 },
+    { slot: 'sleeve', id: 'rotting', name: 'Rotting flesh sleeve', price: 2400 },
+    { slot: 'gloves', id: 'rotten', name: 'Rotting hands', price: 2600 },
     { slot: 'skin', id: 'furasek', name: 'Furasek (kitty ape)', price: 3200 },
     { slot: 'skin', id: 'bubblegum', name: 'Bubblegum ape', price: 2000 },
     { slot: 'skin', id: 'cottoncandy', name: 'Cotton candy ape', price: 2000 },
@@ -515,7 +536,10 @@ export function setProfile(p) { Object.assign(SAVE.profile, p); refreshStaffItem
 // Odznaki Admin / Moderator i młotek Kick należą się tylko ekipie (wg nicku); reszcie są zabierane
 // Nick potwierdzony przez serwer kont w tej sesji (ustawia main.js po zalogowaniu); nie jest zapisywany
 let verifiedNick = '';
-export function markNickVerified(name) { verifiedNick = String(name || '').trim().toLowerCase(); }
+export const ULTIMATE_SPEED = 2;   // ultimate admin biega 2 razy szybciej niż każdy inny gracz
+// Prędkość ultimate admina liczy się tylko dla konta potwierdzonego przez serwer kont (sam wpisany nick nic nie daje)
+function syncPersonal() { const k = String(SAVE.profile.name || '').trim().toLowerCase(); PERSONAL.speed = isUltimateName(SAVE.profile.name) && verifiedNick === k ? ULTIMATE_SPEED : 1; }
+export function markNickVerified(name) { verifiedNick = String(name || '').trim().toLowerCase(); syncPersonal(); }
 const BONUS_KEY = 'bagaboo_staff_bonus_';
 function grantStaffBonus() {
     const n = SAVE.profile.name, k = String(n || '').trim().toLowerCase();
@@ -526,6 +550,7 @@ function grantStaffBonus() {
     addBones(STAFF_BONUS, 'staff bonus');
 }
 export function refreshStaffItems() {
+    syncPersonal();
     // Ekipa (admin, moderator) nigdy nie jest CHEATEREM: skórka z błędnego włamania jest zdejmowana
     if (SAVE.cheater && isStaffName(SAVE.profile.name)) { SAVE.cheater = false; const i = SAVE.owned.indexOf('skin:cheater'); if (i >= 0) SAVE.owned.splice(i, 1); if (SAVE.equipped.skin === 'cheater') SAVE.equipped.skin = 'none'; }
     // Premia dla ekipy: jednorazowo 10000 Bagabucks, ale TYLKO dla stałej ekipy (nicki z hasłem w config.js), po poprawnym haśle w tej sesji.
@@ -542,7 +567,7 @@ export function refreshStaffItems() {
     if (!furas && SAVE.equipped.skin === 'furas') SAVE.equipped.skin = 'none';
     const therian = isTherianName(n), hadTherian = SAVE.owned.includes('skin:therian');   // Therian: skórka na własność dla wybranych nicków; można ją zdjąć i założyć w każdej chwili w Maszynie goryla
     give('skin:therian', therian);
-    if (therian && !hadTherian && SAVE.equipped.skin === 'none') SAVE.equipped.skin = 'therian';   // przy pierwszym nadaniu zakłada się sama
+    if (therian && !SAVE.therianSet) { SAVE.therianSet = true; SAVE.equipped.skin = 'therian'; }   // domyślna skórka spikyvr: zakłada się raz, od razu (też na starym zapisie); potem może ją zmienić na dowolną inną i z powrotem
     if (!therian && SAVE.equipped.skin === 'therian') SAVE.equipped.skin = 'none';
     give('tool:kick', isStaffName(n));
     give('tool:gooby', isStaffName(n));   // Nothing Hammer (Gooby) dla całej ekipy

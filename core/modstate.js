@@ -14,9 +14,11 @@ export const MOD = {
     xray: false,        // inni gracze jako zielone poświaty z nametagami, widoczne przez ściany
     invisible: false    // inni gracze (poza adminami) cię nie widzą
 };
+// Osobisty mnożnik prędkości konta (ultimate admin zbyniu = 2; ustawia go economy.js tylko dla konta potwierdzonego przez serwer). To nie opcja menu: resetMods go nie zeruje.
+export const PERSONAL = { speed: 1 };
 export const BOOST_MULT = 3, FLY_SPEED = 7, SIZE_MIN = 0.25, SIZE_MAX = 8;
 // Mnożnik twardych limitów prędkości w player.js (maxV, maxUp, maxSpeedXZ, wyrzut): bez niego boost 3 x i duży goryl rozbijałyby się o limity
-export const capMul = () => (MOD.boost ? BOOST_MULT : 1) * Math.max(1, MOD.size);
+export const capMul = () => (MOD.boost ? BOOST_MULT : 1) * Math.max(1, MOD.size) * PERSONAL.speed;
 export function resetMods() {
     MOD.open = MOD.boost = MOD.fly = MOD.noclip = MOD.sizeOn = MOD.xray = MOD.invisible = false;
     MOD.size = 1;

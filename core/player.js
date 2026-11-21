@@ -8,7 +8,7 @@ import { track } from './economy.js';
 import { initPointers, clickPointer } from './terminal.js';
 import { sendObjectMove } from './network.js';
 import { buzz } from './haptics.js';
-import { MOD, BOOST_MULT, FLY_SPEED, capMul } from './modstate.js';   // BagaBooModMenu: boost, fly, noclip i size (domyślnie wyłączone)
+import { MOD, BOOST_MULT, FLY_SPEED, PERSONAL, capMul } from './modstate.js';   // BagaBooModMenu: boost, fly, noclip i size (domyślnie wyłączone)
 
 const radius = 0.35, gorillaStanceOffset = 0.35;   // widok wyżej, bo długie ręce goryla i tak sięgają podłogi
 const POWER = 1.0;            // siła trampolin i limit prędkości (1.0 = normalnie)
@@ -254,7 +254,7 @@ function handleMovement(i, dt) {
             const dw = delta.applyQuaternion(playerRig.quaternion);
             const cap = 0.32 * MOD.size; if (dw.length() > cap) dw.normalize().multiplyScalar(cap);   // ochrona przed skokiem śledzenia
             // Dłoń "przyklejona" do powierzchni: ciało porusza się przeciwnie do ruchu dłoni (śliska powierzchnia oddaje mniej)
-            const k = grip * (L.moveScale || 1) * (MOD.boost ? BOOST_MULT : 1);
+            const k = grip * (L.moveScale || 1) * (MOD.boost ? BOOST_MULT : 1) * PERSONAL.speed;   // PERSONAL.speed: 2 dla ultimate admina (limity prędkości rosną razem z nim przez capMul)
             anchorVel[i] = new THREE.Vector3(-dw.x, -dw.y, -dw.z).multiplyScalar(k / Math.max(dt, 1 / 120));
             if (ground && grounded && anchorVel[i].y < 0) anchorVel[i].y = 0;   // dłoń na podłodze nie wciska ciała w podłogę
             if (wall && grip < 1) anchorVel[i].y -= (1 - grip) * SLIDE_SPEED;   // zjeżdżanie po śliskiej ścianie
