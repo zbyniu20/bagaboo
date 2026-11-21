@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "core/cosmetics.js": {
-    "mtime": 1795281850.384682,
-    "seen": 1795281878.9613633,
-    "ast_hash": "5fc2d62bb256c38f81752a0527a5a364",
+    "mtime": 1795287562.6461937,
+    "seen": 1795287587.959489,
+    "ast_hash": "28c773451e3cce52012c0da80372665d",
     "semantic_hash": ""
   },
   "core/debug.js": {
@@ -66,9 +66,9 @@
     "semantic_hash": "a5afb8e9bb215279e0fa2227cad1e3ed"
   },
   "core/economy.js": {
-    "mtime": 1795281842.947298,
-    "seen": 1795281878.9613676,
-    "ast_hash": "6853ff01df494ae994873b0a9a420715",
+    "mtime": 1795287562.6470702,
+    "seen": 1795287587.959494,
+    "ast_hash": "c4501d1267395eae71d73fa20448a0ff",
     "semantic_hash": ""
   },
   "core/emotepanel.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795281897.353747,
-    "seen": 1795281903.0999742,
-    "ast_hash": "0e1fa6ea7e24b66a644de0bbb6de4d3f",
+    "mtime": 1795287573.5723855,
+    "seen": 1795287587.9598174,
+    "ast_hash": "a94929351373ef3dff7bbf4af98b7e02",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795281897.3530214,
-    "seen": 1795281903.0995889,
-    "ast_hash": "b06067ad92478ea01f04868db39a0aba",
+    "mtime": 1795287562.647882,
+    "seen": 1795287587.959625,
+    "ast_hash": "991b6e58215a6ffba807d74ddc42df96",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {

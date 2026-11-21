@@ -1,7 +1,7 @@
 # Graph Report - bagaboo  (2026-11-21)
 
 ## Corpus Check
-- 434 files · ~1,237,157 words
+- 434 files · ~1,239,343 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 87 file(s) not represented in the graph (top: .css 84, (none) 3)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `51731a8b`
+- Built from commit: `7af5e7b9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -214,8 +214,8 @@
 5. `buildDoor()` - 73 edges
 6. `makeCanvas()` - 69 edges
 7. `mkRng()` - 69 edges
-8. `toTex()` - 60 edges
-9. `levelReward()` - 60 edges
+8. `levelReward()` - 60 edges
+9. `toTex()` - 60 edges
 10. `shader()` - 60 edges
 
 ## Surprising Connections (you probably didn't know these)
@@ -985,7 +985,7 @@ Nodes (3): EFFECT_LABEL, PAPERS, EFFECTS
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `f()` connect `build.js` to `ref_url`, `logic.mjs`, `copy-lint.mjs`, `static.mjs`, `custom.js`, `gate.mjs`, `changed.mjs`, `ref_node_fs`?**
-  _High betweenness centrality (0.478) - this node is a cross-community bridge._
+  _High betweenness centrality (0.461) - this node is a cross-community bridge._
 - **Are the 51 inferred relationships involving `lib()` (e.g. with `arrive()` and `audit()`) actually correct?**
   _`lib()` has 51 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `./core/audio.js`, `./core/avatar.js`, `./core/economy.js` to the rest of the system?**
@@ -993,8 +993,8 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `network.js` be split into smaller, more focused modules?**
   _Cohesion score 0.044848484848484846 - nodes in this community are weakly interconnected._
 - **Why does `mode` connect `custom.js` to `build.js`?**
-  _High betweenness centrality (0.432) - this node is a cross-community bridge._
+  _High betweenness centrality (0.431) - this node is a cross-community bridge._
 - **Should `toast` be split into smaller, more focused modules?**
   _Cohesion score 0.04972972972972973 - nodes in this community are weakly interconnected._
 - **Why does `lib()` connect `lib` to `consistency.mjs`?**
-  _High betweenness centrality (0.063) - this node is a cross-community bridge._
+  _High betweenness centrality (0.072) - this node is a cross-community bridge._
