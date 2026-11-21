@@ -333,6 +333,17 @@ const PL = await import(url('core/petlogic.js'));
     check('pet.js: the companion lives only in hubs (never in record levels or stealth modes)', /kind === 'hub'/.test(pet));
 }
 
+// ---------- kosmetyki: każdy przedmiot ze sklepu ma model albo paletę (inaczej po założeniu byłby niewidoczny) ----------
+{
+    const src = ['core/cosmetics.js', 'core/avatar.js', 'core/gorillamachine.js'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+    const has = (id) => new RegExp("['\"]" + id + "['\"]|\\b" + id + "\\s*:").test(src);
+    const missing = E.CATALOG.filter(i => ['hat', 'glasses', 'mask', 'sleeve', 'gloves', 'skin', 'tool', 'badge'].includes(i.slot) && i.id !== 'none' && !(i.slot === 'sleeve' && i.id === 'cloth') && !has(i.id)).map(i => i.slot + ':' + i.id);
+    check('cosmetics: every hat, glasses, mask, sleeve, glove, skin, hammer and badge in the catalog has a model or palette', missing.length === 0, missing.join(', '));
+    const NEW = { skin: ['furasek', 'bubblegum', 'cottoncandy', 'honeyape', 'mintape', 'cadaver'], hat: ['catears', 'flowercrown', 'donut', 'unicorn', 'knifehead', 'axehead', 'brainhat', 'nailcrown', 'antlers'], glasses: ['starglasses', 'buttoneyes', 'bleedingeyes'], mask: ['flayed', 'sewn', 'faceless'], sleeve: ['bloodstained'], gloves: ['blooded'] };
+    check('cosmetics: the new sweet and scary items are in the shop, buyable and priced sanely', Object.entries(NEW).every(([slot, ids]) => ids.every(id => { const it = E.CATALOG.find(i => i.slot === slot && i.id === id); return it && !it.locked && !it.season && it.price >= 900 && it.price <= 5000 && it.name.length <= 24; })));
+    check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail) and no other sold skin does', /furasek: \{[^}]*tail: true, catMask: true/.test(src) && !/(bubblegum|cottoncandy|honeyape|mintape|cadaver): \{[^}]*catMask/.test(src) && /k\.catMask && \(!look\.mask/.test(src));
+}
+
 // ---------- Pet Pack: kosmetyki Stworka w sklepie (CATALOG, SLOTS, petstore) ----------
 {
     const PS = await import(url('core/petstore.js')), P = PL.PET, snap = JSON.stringify(E.SAVE), pk = { pethat: P.HATS, petneck: P.NECKS };

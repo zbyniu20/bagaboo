@@ -376,7 +376,7 @@ const ellGeo = (rx, ry, rz, x, y, z, rotX) => { const g = new THREE.SphereGeomet
 const ellMesh = (geos, mat) => { const m = new THREE.Mesh(mergeGeometries(geos), mat); m.castShadow = true; m.receiveShadow = true; return m; };
 export function createHead(look, withName) {
     const head = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
-    const maskId = (look.skin === 'furas' && (!look.mask || look.mask === 'none')) ? 'furascat' : look.mask;   // skórka Furas ma własną maskę kota (inna założona maska ma pierwszeństwo)
+    const maskId = (k.catMask && (!look.mask || look.mask === 'none')) ? 'furascat' : look.mask;   // skórki z catMask (Furas, Furasek) mają własną maskę kota (inna założona maska ma pierwszeństwo)
     const masked = maskId && maskId !== 'none';
     // Czaszka goryla: owalna z kopułą (grzebieniem) na czubku, wydatnymi policzkami i uszami: jedna siatka futra
     const skullGeos = [ellGeo(0.135, 0.138, 0.13, 0, 0.005, 0), ellGeo(0.05, 0.04, 0.095, 0, 0.097, 0.03), ellGeo(0.045, 0.055, 0.055, -0.095, -0.045, -0.055), ellGeo(0.045, 0.055, 0.055, 0.095, -0.045, -0.055),

@@ -10002,21 +10002,21 @@
     "semantic_hash": ""
   },
   "core/room000map.js": {
-    "mtime": 1795277692.71419,
-    "seen": 1795277723.579317,
-    "ast_hash": "f9178886ae1fa119525aa7bbd42e0f60",
+    "mtime": 1795279288.3134904,
+    "seen": 1795279495.686827,
+    "ast_hash": "60f8abcacd5eb910d2b601c77da38440",
     "semantic_hash": ""
   },
   "levels/room000.js": {
-    "mtime": 1795277692.7193847,
-    "seen": 1795277723.5793684,
-    "ast_hash": "24729b49483cc1dca99bb6244d3a5e2b",
+    "mtime": 1795279469.8025248,
+    "seen": 1795279495.6869721,
+    "ast_hash": "855e58b3662279abbfbcf8affed79705",
     "semantic_hash": ""
   },
   "tests/modes/room000.mjs": {
-    "mtime": 1795277704.9594414,
-    "seen": 1795277723.579391,
-    "ast_hash": "54da433616e241087d9f8de60e05da3c",
+    "mtime": 1795279475.6933136,
+    "seen": 1795279495.6870039,
+    "ast_hash": "edfdbf18dad695ddc7d1b8fb370f4862",
     "semantic_hash": ""
   },
   "tests/package-lock.json": {
