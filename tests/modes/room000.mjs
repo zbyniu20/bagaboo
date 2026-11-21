@@ -66,6 +66,28 @@ check(T('hanging bodies hang apart from each other, in corridors, and a decoy ap
     let found = 0; for (let k = 0; k < 40; k++) { const q = M.decoySpot(grid, 0, -4, rng2(k)); if (q) { const d = Math.hypot(q.x, q.z + 4); if (d >= 11 && d <= 17.01 && M.clearLine(grid, 0, -4, q.x, q.z)) found++; } }
     return found >= 25;
 })());
+check(T('no corridor decoration or hanging body blocks the view of an item: nothing within 2.2 m of the corridor in front of its cell door'), SEEDS.every(sd => {
+    const fronts = M.itemFronts(plan, M.pickItems(plan, sd)), far = (list) => list.every(p => fronts.every(f => Math.hypot(p.x - f.x, p.z - f.z) >= M.AVOID_R));
+    return far(M.corridorSpots(grid, plan, 110, 31337 + 1, 2.2, fronts)) && far(M.hangingSpots(grid, plan, 6, 31337 + 9, fronts));
+}));
+check(T('decoy apparitions appear in a 60 degree cone in front of the player, in line of sight, 11-17 m away'), (() => {
+    let ok = 0, bad = 0; for (let k = 0; k < 120; k++) {
+        const a = (k * 0.37) % (Math.PI * 2), fx = Math.cos(a), fz = Math.sin(a), q = M.decoySpot(grid, 0, -4, rng2(k + 5), fx, fz); if (!q) continue;
+        let diff = Math.abs(Math.atan2(q.z + 4, q.x) - a); if (diff > Math.PI) diff = Math.PI * 2 - diff; const d = Math.hypot(q.x, q.z + 4);
+        if (d >= 11 && d <= 17.01 && diff <= Math.PI / 3 + 0.01 && M.clearLine(grid, 0, -4, q.x, q.z)) ok++; else bad++;
+    } return bad === 0 && ok >= 15;
+})());
+check(T('wall decals lie fully on flat wall: wall behind the whole width, open space in front, never hanging over a step'), (() => {
+    const R = rng2(77); let tested = 0;
+    for (let n = 0; n < 4000 && tested < 400; n++) {
+        const i = Math.floor(R() * grid.GW), j = Math.floor(R() * grid.GH); if (!M.isOpenCell(grid, i, j)) continue;
+        const dir = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(R() * 4)], f = M.placeOnWall(grid, M.cellX(grid, i), M.cellZ(grid, j), dir[0], dir[1], 1.7); if (!f) continue; tested++;
+        for (let t = -f.w / 2 + 0.03; t <= f.w / 2 - 0.03; t += 0.1) {
+            const ax = f.fx ? 0 : t, az = f.fx ? t : 0, wallPt = [f.x - f.fx * 0.1 + ax, f.z - f.fz * 0.1 + az], openPt = [f.x + f.fx * 0.1 + ax, f.z + f.fz * 0.1 + az], c = cellOf(wallPt[0], wallPt[1]);
+            if (grid.g[c[1] * grid.GW + c[0]] !== 2 || !M.isOpen(grid, openPt[0], openPt[1])) return false;
+        }
+    } return tested >= 300;
+})());
 check(T('cell furniture stands inside open cells and the prison is full of corpses, skeletons and blood'), (() => {
     const all = plan.cells.flatMap(c => M.cellProps(plan, c, 31337));
     const inOpen = all.filter(p => p.type !== 'blood' && p.type !== 'shackles').every(p => M.isOpen(grid, p.x, p.z));
@@ -96,3 +118,4 @@ check(T('items are 2.3x bigger, stand on a crate, glow with a beacon and their o
 check(T('scripted beats: blackout after the first item, a whisper behind after the third, a scream and a chase when the gate opens'), /n === 1\) \{ S\.blackout = 5/.test(src) && /n === 3\) \{/.test(src) && /SFX\.scream\(\{ x: S\.mon\.x/.test(src) && /S\.mon\.mode = 'chase'/.test(src));
 check(T('the ghost flickers lights and the flashlight when close, hides beyond 10 m except for flashes, decoys and hanging bodies exist and the flashlight is restored'), /lighting\.headLamp\.intensity = S\.lampBase \*/.test(src) && /m\.g\.visible = chase \|\| dp < GHOST_SHOW/.test(src) && /function updateDecoys/.test(src) && /function buildHangers/.test(src) && /lighting\.headLamp\.intensity = S\.lampBase; S\.ev\.dispose\(\)/.test(src));
 check(T('wall marks are instanced per texture (blood, hands, tallies, writing) and there are many'), /new THREE\.InstancedMesh\(geo, new THREE\.MeshStandardMaterial\(\{ map: map/.test(src) && /placed < 170/.test(src));
+check(T('wall marks sit on flat wall pieces, hanging bodies have colliders, the whisper beat uses the player view and the chase speed is capped'), /M\.placeOnWall\(/.test(src) && /addCollider\(sp\.x - 0\.25/.test(src) && /camera\.getWorldDirection\(_fwd\)/.test(src) && /Math\.min\(CHASE \* mul, 7\.0\)/.test(src) && /M\.itemFronts\(PLAN, S\.items\)/.test(src));

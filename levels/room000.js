@@ -5,7 +5,7 @@
 // Zbierz wszystkie, a krata przy wyjściu na tylnym boku się otworzy. Biały Duch widzi daleko, słyszy bieg i każdy zabrany przedmiot, a po zniknięciu gracza
 // jeszcze długo szuka. Latarka jest słaba, światła mrugają, wszędzie krew, szkielety, zwłoki i połamane meble. Po przedmiocie zapisuje się punkt kontrolny (Easy i Normal).
 // ==========================================
-import { THREE, L, tex, addCrispBlock, addInstancedBlocks, lighting } from '../core/engine.js';
+import { THREE, L, tex, addCrispBlock, addInstancedBlocks, addCollider, camera, lighting } from '../core/engine.js';
 import * as T from '../core/textures.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { levelReward, recordTime, diffOf } from '../core/economy.js';
@@ -27,6 +27,7 @@ const REWARD_FIRST = 4000, REWARD_REPEAT = 400, INTRO_TIME = 10, DECOR_SEED = 31
 const NAMES = { book: 'a book', pistol: 'the pistol', knife: 'the knife' };
 export const info = { id: 'room000', name: 'Room 000', spawn: [0, 1.0, -2.6] };
 let S = null;
+const _fwd = new THREE.Vector3();
 
 export function build() {
     L.spawn = info.spawn.slice();
@@ -126,7 +127,7 @@ function propBars(d) {   // wyłamane drzwi celi: skrzydło z prętami, uchylone
     for (const y of [0.1, 1.1, 2.15]) d.add(GEOS.box, 0.42, y, 0, 0.9, 0.04, 0.04, 0, 0, 0, IRON);
 }
 function buildDecor() {
-    const d = makeDecor(), R = T.mkRng(DECOR_SEED), keep = S.items.map(it => ({ x: it.x, z: it.z }));
+    const d = makeDecor(), R = T.mkRng(DECOR_SEED), keep = S.items.map(it => ({ x: it.x, z: it.z })), fronts = M.itemFronts(PLAN, S.items);   // fronts: widok z korytarza na przedmiot zostaje wolny
     // kałuża z rozbryzgami; ślad wleczenia to łańcuch takich kałuż
     const pool = (x, z, r, k) => { d.at(x, 0.008, z, 0); d.add(GEOS.cyl, 0, 0, 0, r, 0.006, r * 0.75, 0, R() * 6, 0, BLOOD); for (let n = 0; n < (k || 0); n++) d.add(GEOS.cyl, (R() - 0.5) * r * 3.2, 0, (R() - 0.5) * r * 3.2, 0.05 + R() * 0.12, 0.006, 0.05 + R() * 0.1, 0, 0, 0, BLOOD); };
     const drag = (x0, z0, x1, z1) => { const n = 10; for (let k = 0; k < n; k++) { const t = k / (n - 1); pool(x0 + (x1 - x0) * t + (R() - 0.5) * 0.25, z0 + (z1 - z0) * t + (R() - 0.5) * 0.25, 0.16 + R() * 0.16, 0); } };
@@ -134,9 +135,14 @@ function buildDecor() {
     for (const cell of PLAN.cells) {
         for (const p of M.cellProps(PLAN, cell, DECOR_SEED, keep)) {
             if (p.type === 'trail') { drag(p.x, p.z, p.tx, p.tz); continue; }
+            if (p.type === 'shackles') {   // na płaskim odcinku tylnej ściany celi, z normalną do wnętrza
+                const n = PLAN.sides[cell.side].n, f = M.placeOnWall(GRID, p.x - n[0] * 0.4, p.z - n[1] * 0.4, n[0], n[1], 1.2);
+                if (f && f.w >= 1.0) { d.at(f.x + f.fx * 0.04, 0, f.z + f.fz * 0.04, f.rotY, 0, 0); propShackles(d); }
+                continue;
+            }
             d.at(p.x, 0, p.z, p.rotY, 0, p.type === 'bed' && p.tipped ? 0.8 : (p.type === 'table' || p.type === 'chair') && p.broken ? (R() - 0.5) * 0.6 : 0);
             if (p.type === 'bed') propBed(d, p.tipped, p.bunk); else if (p.type === 'toilet') propToilet(d); else if (p.type === 'table') propTable(d, p.broken);
-            else if (p.type === 'chair') propChair(d); else if (p.type === 'skeleton') propSkeleton(d); else if (p.type === 'sink') propSink(d); else if (p.type === 'shackles') propShackles(d);
+            else if (p.type === 'chair') propChair(d); else if (p.type === 'skeleton') propSkeleton(d); else if (p.type === 'sink') propSink(d);
             else if (p.type === 'corpse') { propCorpse(d); pool(p.x, p.z, 0.8, 4); }
             else if (p.type === 'blood') pool(p.x, p.z, p.r, 3);
         }
@@ -144,7 +150,7 @@ function buildDecor() {
         d.at(hinge[0], 0, hinge[1], M.cellYaw(PLAN, cell) + swing, 0, 0); propBars(d);
     }
     // korytarze i sale narożne: szkielety, zwłoki, kałuże, ślady wleczenia, połamane meble, kości
-    const spots = M.corridorSpots(GRID, PLAN, 110, DECOR_SEED + 1, 2.2);
+    const spots = M.corridorSpots(GRID, PLAN, 110, DECOR_SEED + 1, 2.2, fronts);
     spots.forEach((sp, i) => {
         const k = i % 9;
         if (k === 0 || k === 5) { d.at(sp.x, 0, sp.z, sp.rotY); propSkeleton(d); }
@@ -155,7 +161,7 @@ function buildDecor() {
         else { d.at(sp.x, 0, sp.z, sp.rotY); for (let n = 0; n < 7; n++) d.add(GEOS.box, (R() - 0.5) * 1.0, 0.03, (R() - 0.5) * 1.0, 0.35, 0.04, 0.04, 0, R() * 6, 0, BONE); d.add(GEOS.sph, 0.1, 0.1, 0.1, 0.11, 0.13, 0.1, 0, 0, 0, BONE); }
     });
     // kałuże pod wiszącymi ciałami
-    S.hangSpots = M.hangingSpots(GRID, PLAN, 6, DECOR_SEED + 9);
+    S.hangSpots = M.hangingSpots(GRID, PLAN, 6, DECOR_SEED + 9, fronts);
     for (const h of S.hangSpots) pool(h.x, h.z, 0.7, 6);
     d.flush();
     buildHangers();
@@ -172,6 +178,7 @@ function buildHangers() {
         part(GEOS.sph, skin, 0, -0.08, 0.02, 0.12, 0.14, 0.12, 0, 0.35);
         part(GEOS.box, cloth, 0, -0.45, 0, 0.34, 0.55, 0.2); part(GEOS.box, gore, 0.04, -0.42, 0.005, 0.2, 0.34, 0.205);
         for (const sx of [-1, 1]) { part(GEOS.box, skin, sx * 0.23, -0.5, 0, 0.09, 0.6, 0.09, 0, sx * 0.08); part(GEOS.box, cloth, sx * 0.09, -1.1, 0, 0.13, 0.72, 0.13); part(GEOS.box, gore, sx * 0.09, -1.35, 0.01, 0.09, 0.2, 0.135); }
+        addCollider(sp.x - 0.25, 0, sp.z - 0.25, sp.x + 0.25, H, sp.z + 0.25);   // nie da się przejść przez wiszące ciało
         return { root: root, body: body, ph: R() * 9, x: sp.x, z: sp.z };
     });
 }
@@ -216,38 +223,40 @@ function buildWallMarks() {
     const R = T.mkRng(DECOR_SEED + 5), list = [], dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     const blots = [1, 2, 3, 4].map(i => blotTexture(900 + i)), hands = [1, 2, 3].map(i => handTexture(950 + i)), tallies = [1, 2].map(i => tallyTexture(970 + i));
     const words = ['HE IS WHITE', 'DO NOT RUN', 'LET ME OUT', 'IT SEES YOU', 'CELL 000', 'HELP', '5 THINGS', 'ROOM 000', 'HE WATCHES', 'NO EXIT', 'I WAS HERE', 'DONT LOOK', 'IT IS BEHIND'].map(w => scrawlTexture(w));
-    const pickT = (a) => a[(R() * a.length) | 0], rot = (dr) => Math.atan2(-dr[0], -dr[1]);
+    const pickT = (a) => a[(R() * a.length) | 0];
+    // znak na ścianie od punktu (x, z) w stronę (nx, nz): leży w całości na płaskim odcinku ściany (zawężony, gdy odcinek jest krótki)
+    const mark = (map, x, z, nx, nz, w, aspect, y) => { const f = M.placeOnWall(GRID, x, z, nx, nz, w); if (f && f.w >= 0.5) list.push({ map: map, x: f.x + f.fx * 0.02, y: y, z: f.z + f.fz * 0.02, w: f.w, h: f.w * aspect, rotY: f.rotY }); };
     let placed = 0, tries = 0;
     while (placed < 170 && tries++ < 12000) {
         const i = (R() * GRID.GW) | 0, j = (R() * GRID.GH) | 0; if (!M.isOpenCell(GRID, i, j)) continue;
         const x = M.cellX(GRID, i), z = M.cellZ(GRID, j);
         if (Math.hypot(x - PLAN.spawn[0], z - PLAN.spawn[2]) < 3) continue;
-        const dr = dirs[(R() * 4) | 0], wi = i + dr[0], wj = j + dr[1]; if (GRID.g[wj * GRID.GW + wi] !== 2) continue;
-        const k = R(), px = x + dr[0] * (G / 2 - 0.01), pz = z + dr[1] * (G / 2 - 0.01);
-        if (k < 0.5) { const sz = 1.0 + R() * 1.4; list.push({ map: pickT(blots), x: px, y: 1.2 + R() * 0.8, z: pz, w: sz, h: sz, rotY: rot(dr) }); }
-        else if (k < 0.7) list.push({ map: pickT(hands), x: px, y: 1.1 + R() * 0.7, z: pz, w: 0.9, h: 0.9, rotY: rot(dr) });
-        else if (k < 0.85) list.push({ map: pickT(words), x: px, y: 1.5 + R() * 0.6, z: pz, w: 1.5, h: 0.75, rotY: rot(dr) });
-        else list.push({ map: pickT(tallies), x: px, y: 1.3 + R() * 0.5, z: pz, w: 0.9, h: 0.9, rotY: rot(dr) });
-        placed++;
+        const dr = dirs[(R() * 4) | 0]; if (GRID.g[(j + dr[1]) * GRID.GW + i + dr[0]] !== 2) continue;
+        const k = list.length;
+        const kind = R();
+        if (kind < 0.5) mark(pickT(blots), x, z, dr[0], dr[1], 1.0 + R() * 1.4, 1, 1.2 + R() * 0.8);
+        else if (kind < 0.7) mark(pickT(hands), x, z, dr[0], dr[1], 0.9, 1, 1.1 + R() * 0.7);
+        else if (kind < 0.85) mark(pickT(words), x, z, dr[0], dr[1], 1.5, 0.5, 1.5 + R() * 0.6);
+        else mark(pickT(tallies), x, z, dr[0], dr[1], 0.9, 1, 1.3 + R() * 0.5);
+        if (list.length > k) placed++;
     }
-    // przy każdej celi: dłonie na ścianie przy wejściu, na tylnej ścianie kreski i wielka plama; tabliczka z numerem obok drzwi
+    // przy każdej celi: dłonie na ścianie przy wejściu, na tylnej ścianie kreski i wielka plama
     for (const cell of PLAN.cells) {
-        const sd = PLAN.sides[cell.side], n = sd.n, ry = Math.atan2(-n[0], -n[1]), off = (p) => [p[0] - n[0] * 0.02, p[1] - n[1] * 0.02];
-        for (const side of [-1, 1]) { if (R() < 0.4) continue; const mid = M.sidePoint(sd, cell.c + side * 1.3, 0), f = off(M.wallFace(GRID, mid[0], mid[1], n[0], n[1])); list.push({ map: pickT(hands), x: f[0], y: 1.0 + R() * 0.5, z: f[1], w: 0.8, h: 0.8, rotY: ry }); }
-        const back = M.cellPoint(PLAN, cell, (R() - 0.5) * 2.0, M.GEO.CELL_D0 + 0.5), bf = off(M.wallFace(GRID, back[0], back[1], n[0], n[1]));
-        list.push({ map: pickT(tallies), x: bf[0], y: 1.5, z: bf[1], w: 1.0, h: 1.0, rotY: ry });
-        const back2 = M.cellPoint(PLAN, cell, (R() - 0.5) * 3.0, M.GEO.CELL_D0 + 0.5), bf2 = off(M.wallFace(GRID, back2[0], back2[1], n[0], n[1]));
-        list.push({ map: pickT(blots), x: bf2[0], y: 1.2, z: bf2[1], w: 1.7, h: 1.7, rotY: ry });
+        const sd = PLAN.sides[cell.side], n = sd.n;
+        for (const side of [-1, 1]) { if (R() < 0.4) continue; const mid = M.sidePoint(sd, cell.c + side * 1.3, 0); mark(pickT(hands), mid[0], mid[1], n[0], n[1], 0.8, 1, 1.0 + R() * 0.5); }
+        const back = M.cellPoint(PLAN, cell, (R() - 0.5) * 2.0, M.GEO.CELL_D0 + 0.5); mark(pickT(tallies), back[0], back[1], n[0], n[1], 1.0, 1, 1.5);
+        const back2 = M.cellPoint(PLAN, cell, (R() - 0.5) * 3.0, M.GEO.CELL_D0 + 0.5); mark(pickT(blots), back2[0], back2[1], n[0], n[1], 1.7, 1, 1.2);
     }
     addMarks(list);
-    // numery cel obok wejść (od strony korytarza)
+    // numery cel obok wejść (od strony korytarza), na płaskim odcinku ściany
     for (const cell of PLAN.cells) {
-        const sd = PLAN.sides[cell.side], mid = M.sidePoint(sd, cell.c + 1.5, 0), p = M.wallFace(GRID, mid[0], mid[1], sd.n[0], sd.n[1]), c = T.makeCanvas(128, 64), x = c.getContext('2d');   // z boku od drzwi, na samej ścianie
+        const sd = PLAN.sides[cell.side], mid = M.sidePoint(sd, cell.c + 1.5, 0), f = M.placeOnWall(GRID, mid[0], mid[1], sd.n[0], sd.n[1], 0.5); if (!f || f.w < 0.4) continue;
+        const c = T.makeCanvas(128, 64), x = c.getContext('2d');
         x.fillStyle = 'rgba(14,12,10,0.9)'; x.fillRect(0, 0, 128, 64); x.strokeStyle = 'rgba(180,170,150,0.5)'; x.strokeRect(2, 2, 124, 60);
         x.font = 'bold 40px "Courier New", monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = 'rgba(200,190,170,0.85)'; x.fillText(String(cell.id + 1).padStart(3, '0'), 64, 34);
         x.fillStyle = 'rgba(90,6,6,0.7)'; x.fillRect(0, 50, 40, 14);   // zakrwawiony róg
-        const m = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.25), new THREE.MeshStandardMaterial({ map: T.toTex(c, false), roughness: 0.7 }));
-        m.position.set(p[0] - sd.n[0] * 0.02, 2.45, p[1] - sd.n[1] * 0.02); m.rotation.y = Math.atan2(-sd.n[0], -sd.n[1]); L.root.add(m);
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(f.w, f.w / 2), new THREE.MeshStandardMaterial({ map: T.toTex(c, false), roughness: 0.7 }));
+        m.position.set(f.x + f.fx * 0.02, 2.45, f.z + f.fz * 0.02); m.rotation.y = f.rotY; L.root.add(m);
     }
 }
 
@@ -361,7 +370,7 @@ function takeItem(i, p) {
     if (S.df.checkpoints) { S.cp = i; toast('Checkpoint saved', '#7fc47f'); }
     // scenki: po pierwszym przedmiocie gasną światła, po trzecim ktoś szepcze za plecami, po ostatnim ryk i pościg
     if (n === 1) { S.blackout = 5; SFX.bang({ x: p.x + 6, y: 1.5, z: p.z }); toast('The lights died...', '#9a9aa8'); }
-    if (n === 3) { const a = (S.mon ? S.mon.dir : 0) + Math.PI; SFX.whisper({ x: p.x + Math.sin(a) * 1.2, y: 1.6, z: p.z + Math.cos(a) * 1.2 }); SFX.creak(0.9, { x: p.x - Math.sin(a), y: 1.2, z: p.z - Math.cos(a) }); toast('Something breathed right behind you...', '#9a9aa8'); }
+    if (n === 3) { camera.getWorldDirection(_fwd); _fwd.y = 0; _fwd.normalize(); SFX.whisper({ x: p.x - _fwd.x * 1.2, y: 1.6, z: p.z - _fwd.z * 1.2 }); SFX.creak(0.9, { x: p.x - _fwd.x * 2, y: 1.2, z: p.z - _fwd.z * 2 }); toast('Something breathed right behind you...', '#9a9aa8'); }   // dokładnie za plecami gracza
     if (n === ITEMS) {
         const k = L.obstacles.indexOf(S.gateOb); if (k >= 0) L.obstacles.splice(k, 1);
         if (S.gateOb.body) S.gateOb.body.position.y = -50;
@@ -449,7 +458,8 @@ function updateDecoys(dt, p) {
     }
     S.decoyT -= dt; if (S.decoyT > 0) return;
     S.decoyT = (22 + Math.random() * 22) * (S.df.id === 'easy' ? 1.6 : 1);
-    const dc = S.decoys.find(x => !x.on), sp = M.decoySpot(GRID, p.x, p.z, Math.random);
+    camera.getWorldDirection(_fwd);
+    const dc = S.decoys.find(x => !x.on), sp = M.decoySpot(GRID, p.x, p.z, Math.random, _fwd.x, _fwd.z);
     if (dc && sp && Math.hypot(sp.x - S.mon.x, sp.z - S.mon.z) > 5) { dc.on = true; dc.ttl = 6; dc.x = sp.x; dc.z = sp.z; dc.g.position.set(sp.x, 0.12, sp.z); dc.g.visible = true; SFX.creak(0.7, { x: sp.x, y: 1.5, z: sp.z }); }
 }
 // Wiszące ciała kołyszą się, a gdy jesteś blisko, łańcuch skrzypi
@@ -481,7 +491,8 @@ function think(dt, ctx) {
     else if (speedXZ > 3.4 && d < HEAR_RUN * (S.df.id === 'nightmare' ? 1.3 : 1) && M.isOpenCell(GRID, pc[0], pc[1])) setGoal(m, pc, 'investigate');
     let speed = WALK * mul;
     if (m.mode === 'chase') {
-        speed = CHASE * mul; m.repath -= dt;
+        speed = Math.min(CHASE * mul, 7.0); m.repath -= dt;   // nawet na Nightmare nie szybciej niż najszybszy bieg gracza
+        
         const tgt = seesMe || !m.last ? [p.x, p.z] : m.last, tc = M.toCell(GRID, tgt[0], tgt[1]);
         if ((m.repath <= 0 || !m.dist) && M.isOpenCell(GRID, tc[0], tc[1])) { m.goal = tc; m.dist = M.distField(GRID, tc[0], tc[1]); m.repath = 0.3; }
     } else if (m.mode === 'investigate') {

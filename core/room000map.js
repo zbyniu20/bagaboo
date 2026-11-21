@@ -116,6 +116,27 @@ export function wallFace(grid, x, z, nx, nz) {
     let px = x, pz = z; for (let s = 0; s < 120 && isOpen(grid, px + nx * 0.05, pz + nz * 0.05); s++) { px += nx * 0.05; pz += nz * 0.05; }
     return [px, pz];
 }
+// Osiowa powierzchnia ściany przy punkcie (x, z) w stronę (nx, nz): ściany z siatki są schodkami, więc znaki kładziemy na płaskim odcinku jednej osi.
+// Zwraca { x, z (punkt na powierzchni), fx, fz (normalna do wnętrza), a (współrzędna wzdłuż ściany), lo, hi (zakres wzdłuż ściany, na którym ściana jest płaska) } albo null.
+export function wallFaceAxis(grid, x, z, nx, nz) {
+    const ax = Math.abs(nx) >= Math.abs(nz), sx = ax ? Math.sign(nx) : 0, sz = ax ? 0 : Math.sign(nz), G = grid.G;
+    let [i, j] = toCell(grid, x, z); if (!isOpenCell(grid, i, j)) return null;
+    for (let k = 0; k < 80 && isOpenCell(grid, i + sx, j + sz); k++) { i += sx; j += sz; }
+    if (grid.g[(j + sz) * grid.GW + i + sx] !== 2) return null;
+    const behind = (a, b) => isOpenCell(grid, a, b) && grid.g[(b + sz) * grid.GW + a + sx] === 2;
+    let lo = 0, hi = 0;   // ile komórek wzdłuż ściany (w obie strony) ma ścianę za sobą i pustą przestrzeń przed sobą
+    for (let k = 1; k < 24; k++) { if (!(ax ? behind(i, j - k) : behind(i - k, j))) break; lo++; }
+    for (let k = 1; k < 24; k++) { if (!(ax ? behind(i, j + k) : behind(i + k, j))) break; hi++; }
+    const face = ax ? (sx > 0 ? grid.X0 + (i + 1) * G : grid.X0 + i * G) : (sz > 0 ? grid.Z0 + (j + 1) * G : grid.Z0 + j * G);
+    const a0 = ax ? grid.Z0 + (j - lo) * G : grid.X0 + (i - lo) * G, a1 = ax ? grid.Z0 + (j + hi + 1) * G : grid.X0 + (i + hi + 1) * G;
+    return ax ? { x: face, z: z, fx: -sx, fz: 0, a: z, lo: a0, hi: a1 } : { x: x, z: face, fx: 0, fz: -sz, a: x, lo: a0, hi: a1 };
+}
+// Znak o szerokości w na ścianie: zawęża go do płaskiego odcinka i przesuwa tak, żeby w całości leżał na ścianie. Zwraca { x, z, rotY, w } albo null
+export function placeOnWall(grid, x, z, nx, nz, w) {
+    const f = wallFaceAxis(grid, x, z, nx, nz); if (!f) return null;
+    const run = f.hi - f.lo, ww = Math.min(w, run), c = Math.max(f.lo + ww / 2, Math.min(f.hi - ww / 2, f.a));
+    return { x: f.fx ? f.x : c, z: f.fx ? c : f.z, fx: f.fx, fz: f.fz, rotY: Math.atan2(f.fx, f.fz), w: ww };
+}
 // Ściany jako prostokąty: wiersze komórek scalane w pionie, gdy mają ten sam zasięg (mało bloków = szybkie kolizje i jedno wywołanie rysowania)
 export function wallBlocks(grid) {
     const out = [], { GW, GH, G } = grid; let active = new Map();
@@ -205,23 +226,27 @@ export function cellProps(plan, cell, seed, keep) {
     return out.filter(p => ['bed', 'toilet', 'sink', 'shackles'].includes(p.type) || !keep.some(k => Math.hypot(p.x - k.x, p.z - k.z) < 1.3));   // nic nie zasłania przedmiotu
 }
 // Wiszące ciała na łańcuchach: rzadkie miejsca w korytarzach i salach (daleko od siebie i od startu)
-export const hangingSpots = (grid, plan, count, seed) => corridorSpots(grid, plan, count, seed, 7);
+export const hangingSpots = (grid, plan, count, seed, avoid) => corridorSpots(grid, plan, count, seed, 7, avoid);
 // Zjawa-wabik: losowa pusta komórka 11-17 m od gracza, widoczna w linii prostej (null, gdy się nie udało)
-export function decoySpot(grid, px, pz, rnd) {
+export function decoySpot(grid, px, pz, rnd, fx, fz) {   // fx, fz: kierunek patrzenia gracza; zjawa pojawia się w stożku +-60 stopni przed nim (inaczej nikt jej nie zobaczy)
+    const base = Number.isFinite(fx) && Number.isFinite(fz) && (fx || fz) ? Math.atan2(fz, fx) : null;
     for (let t = 0; t < 40; t++) {
-        const a = rnd() * Math.PI * 2, r = 11 + rnd() * 6, x = px + Math.cos(a) * r, z = pz + Math.sin(a) * r;
+        const a = base === null ? rnd() * Math.PI * 2 : base + (rnd() - 0.5) * (Math.PI * 2 / 3), r = 11 + rnd() * 6, x = px + Math.cos(a) * r, z = pz + Math.sin(a) * r;
         if (isOpen(grid, x, z) && clearLine(grid, px, pz, x, z)) return { x: x, z: z };
     }
     return null;
 }
+// Punkt w korytarzu przed drzwiami celi z przedmiotem: tego widoku nic nie może zasłaniać (dekoracje korytarzy omijają go w promieniu AVOID_R)
+export const AVOID_R = 2.2;
+export const itemFronts = (plan, items) => items.map(it => { const p = cellPoint(plan, plan.cells[it.cell], 0, 0.6); return { x: p[0], z: p[1] }; });
 // Losowe miejsca w korytarzach i salach narożnych (puste komórki strefy korytarza, z dala od startu); mindist: odstęp od siebie
-export function corridorSpots(grid, plan, count, seed, mindist) {
+export function corridorSpots(grid, plan, count, seed, mindist, avoid) {
     const R = rng(seed), out = [], spawn = plan.spawn, tries = count * 60;
     for (let t = 0; t < tries && out.length < count; t++) {
         const i = Math.floor(R() * grid.GW), j = Math.floor(R() * grid.GH);
         if (!isOpenCell(grid, i, j) || grid.zone[j * grid.GW + i] !== ZONE.CORRIDOR) continue;
         const x = cellX(grid, i), z = cellZ(grid, j);
-        if (Math.hypot(x - spawn[0], z - spawn[2]) < 5 || out.some(o => Math.hypot(o.x - x, o.z - z) < (mindist || 2))) continue;
+        if (Math.hypot(x - spawn[0], z - spawn[2]) < 5 || out.some(o => Math.hypot(o.x - x, o.z - z) < (mindist || 2)) || (avoid || []).some(a => Math.hypot(a.x - x, a.z - z) < AVOID_R)) continue;
         out.push({ x: x, z: z, rotY: R() * 6.28, seed: Math.floor(R() * 1e6) });
     }
     return out;
