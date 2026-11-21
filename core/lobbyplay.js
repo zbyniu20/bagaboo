@@ -25,6 +25,7 @@ import { participants, isAuthority, headOf, toNet, fromNet } from './roundkit.js
 import { cameraPanel, panelBg } from './levelkit.js';
 import { MON, REPAIR, pickTarget, canCatch, moveNoise, noiseAt, repairStep, helpersAt, gateOpen } from './generatorlogic.js';
 import { buildGraffiti, disposeGraffiti, updateGraffiti, onGraffitiMsg } from './graffiti.js';
+import { buildLobbyGames, disposeLobbyGames, updateLobbyGames, lobbyGamesNet, acceptLobbyGames } from './lobbygames.js';   // kącik gier: kosz i tarcza
 import { NIGHT, nextNightIn, nightStep, winners, nightDim } from './lobbylogic.js';
 
 let S = null, dimNow = 1;
@@ -37,13 +38,13 @@ export function buildLobbyPlay() {
         win: null, bot: createBot(NIGHT.MONSTER_START[0], NIGHT.MONSTER_START[1]), botTarget: null, botSeen: false, myHits: 0, waypoints: null, step: -1, hud: null, light: false
     };
     S.bot.stun = 0; S.bot.mode = 'patrol';
-    buildNight(); buildGraffiti();
+    buildNight(); buildGraffiti(); buildLobbyGames();
     N.onLevelMsg(onMsg);
 }
 export function disposeLobbyPlay() {
     if (S && S.hud) S.hud.dispose();
     if (S && S.light) applyLighting(LP);
-    disposeGraffiti(); dimNow = 1; N.onLevelMsg(null); S = null;
+    disposeGraffiti(); disposeLobbyGames(); dimNow = 1; N.onLevelMsg(null); S = null;
 }
 
 // ---------- NOC: budowa ----------
@@ -73,7 +74,7 @@ function onMsg(msg, from) {
     if (onGraffitiMsg(msg, from)) return;   // Ściana Graffiti ma własne wiadomości (gp, gd, gs)
     if (N.NET.mode === 'host' || msg.k !== 'lb') return;
     S.lastHostMsg = S.clock;
-    const n = msg.n || {};
+    const n = msg.n || {}; if (msg.mg) acceptLobbyGames(msg.mg);   // liczniki kącika gier od hosta
     const prev = S.night.ph; S.night = { ph: n.ph || 'calm', t: +n.t || 0 }; S.outcome = n.oc || null; S.fuse = n.f || S.fuse; S.win = n.w ? n.w.map(fromNet) : null;
     if (n.m) { S.botTarget = n.m; if (!S.botSeen) { S.bot.x = n.m[0]; S.bot.y = n.m[1]; S.bot.z = n.m[2]; S.botSeen = true; } S.bot.mode = n.m[4] ? 'hunt' : 'patrol'; S.bot.stun = n.m[5]; }
     const mine = n.h ? (n.h[N.myId()] || 0) : 0; if (mine > S.myHits) { S.myHits = mine; knockMe(); }
@@ -81,7 +82,7 @@ function onMsg(msg, from) {
 }
 function broadcast() {
     const b = S.bot, h = {}; for (const id in S.hits) h[toNet(id)] = S.hits[id];
-    N.sendLevelMsg({ k: 'lb',
+    N.sendLevelMsg({ k: 'lb', mg: lobbyGamesNet(),
         n: { ph: S.night.ph, t: Math.round(S.night.t * 10) / 10, oc: S.outcome, f: S.fuse.map(v => Math.round(v * 100) / 100), w: S.win ? S.win.map(toNet) : null, h: h,
             m: [Math.round(b.x * 10) / 10, Math.round(b.y * 10) / 10, Math.round(b.z * 10) / 10, Math.round(b.dir * 100) / 100, b.mode === 'hunt' ? 1 : 0, Math.round(b.stun * 10) / 10] } });
 }
@@ -178,6 +179,7 @@ export function updateLobbyPlay(dt, t, ctx) {
         const b = S.bot, m = S.botTarget, k = Math.min(1, dt * 8); b.x += (m[0] - b.x) * k; b.y += (m[1] - b.y) * k; b.z += (m[2] - b.z) * k;
         let dd = m[3] - b.dir; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); b.dir += dd * k;
     }
+    updateLobbyGames(dt, auth);   // kącik gier: host (albo solo) liczy punkty z pozycji piłek
     // Ściemnienie lobby i stan obiektów
     dimNow = nightDim(S.night.ph, S.night.t);
     updateGraffiti(dt, auth, { dim: dimNow, night: S.night.ph, enabled: SETTINGS.lobbyEvents !== false });   // Ściana Graffiti: ciemnieje w nocy, konkurs czeka na koniec Nocnej Zmiany

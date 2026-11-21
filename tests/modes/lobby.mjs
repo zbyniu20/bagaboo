@@ -51,3 +51,31 @@ check(T('lobby.js builds the play module at the start of build() (not inside a h
 check(T('lobbyplay.js unregisters its network handler on exit'), /onLevelMsg\(null\)/.test(play) && /onLevelMsg\(onMsg\)/.test(play));
 check(T('lobbyplay.js restores the normal lighting after the night'), /applyLighting\(LP\)/.test(play));
 check(T('lobbyplay.js uses the host-side view of players (no client-reported positions) and the shared logic'), /headOf\(/.test(play) && /from '\.\/lobbylogic\.js'/.test(play) && !/msg\.(pos|head|x|z)\b/.test(play));
+
+// ---------- kącik gier: kosz i tarcza (core/minigames.js, core/lobbygames.js) ----------
+const MG = await import(pathToFileURL(path.join(ROOT, 'core/minigames.js')).href);
+const H = MG.HOOP, TG = MG.TARGET, p3 = (x, y, z) => ({ x, y, z });
+check(T('hoop: a ball falling through the middle of the ring scores, also a fast one that skips over the plane between frames'), MG.hoopScored(p3(H.X, H.Y + 0.1, H.Z), p3(H.X, H.Y - 0.1, H.Z)) && MG.hoopScored(p3(H.X + 0.05, H.Y + 0.8, H.Z), p3(H.X + 0.05, H.Y - 0.8, H.Z)));
+check(T('hoop: a miss, a ball going up, a ball below the ring and a ball on the rim do not score'), !MG.hoopScored(p3(H.X + 0.6, H.Y + 0.1, H.Z), p3(H.X + 0.6, H.Y - 0.1, H.Z)) && !MG.hoopScored(p3(H.X, H.Y - 0.1, H.Z), p3(H.X, H.Y + 0.1, H.Z)) && !MG.hoopScored(p3(H.X, H.Y - 0.5, H.Z), p3(H.X, H.Y - 0.9, H.Z)) && !MG.hoopScored(p3(H.X + H.R, H.Y + 0.1, H.Z), p3(H.X + H.R, H.Y - 0.1, H.Z)));
+check(T('hoop: a slanted shot counts by where it crosses the ring plane, not by where it ends'), MG.hoopScored(p3(H.X + 0.5, H.Y + 0.5, H.Z), p3(H.X - 0.5, H.Y - 0.5, H.Z)) && !MG.hoopScored(p3(H.X + 0.2, H.Y + 0.1, H.Z), p3(H.X + 1.6, H.Y - 0.1, H.Z)));
+check(T('hoop: broken positions never score'), [null, undefined, p3(NaN, 1, 1), { x: 1, y: 2 }, 'x'].every(b => !MG.hoopScored(b, p3(H.X, H.Y - 1, H.Z)) && !MG.hoopScored(p3(H.X, H.Y + 1, H.Z), b)));
+const wallBall = (dy, dz, x = TG.WALL_HIT - 0.04) => [p3(x + 0.05, TG.Y + dy, TG.Z + dz), p3(x, TG.Y + dy, TG.Z + dz)];
+check(T('target: rings give 50, 20, 10 and 5, a miss gives nothing'), MG.targetPoints(...wallBall(0, 0)) === 50 && MG.targetPoints(...wallBall(0.15, 0)) === 20 && MG.targetPoints(...wallBall(0, 0.3)) === 10 && MG.targetPoints(...wallBall(-0.5, 0)) === 5 && MG.targetPoints(...wallBall(0.9, 0)) === 0);
+check(T('target: a ball far from the wall, flying away from it or standing still does not score'), MG.targetPoints(p3(-10, TG.Y, TG.Z), p3(-10.05, TG.Y, TG.Z)) === 0 && MG.targetPoints(p3(TG.WALL_HIT - 0.1, TG.Y, TG.Z), p3(TG.WALL_HIT - 0.05, TG.Y, TG.Z)) === 0 && MG.targetPoints(p3(TG.WALL_HIT - 0.1, TG.Y, TG.Z), p3(TG.WALL_HIT - 0.1, TG.Y, TG.Z)) === 0 && MG.targetPoints(null, p3(0, 0, 0)) === 0 && MG.targetPoints(p3(NaN, 0, 0), p3(0, 0, 0)) === 0);
+check(T('streak: baskets within the window build a streak, a pause resets it, the first basket starts at 1'), MG.nextStreak(2, 10, 20) === 3 && MG.nextStreak(2, 10, 10 + MG.STREAK_WINDOW + 1) === 1 && MG.nextStreak(0, -1, 5) === 1 && MG.nextStreak(5, NaN, 5) === 1);
+check(T('state: scoring returns a new state, remembers the best streak and the best target, ignores zero points and is capped'), (() => {
+    const a = MG.newMinigames(), b = MG.addHoop(a, 1), c = MG.addHoop(b, 5), d = MG.addHoop(c, 60), e = MG.addTarget(d, 20), f = MG.addTarget(e, 0), g = MG.addTarget(MG.addTarget(f, 50), 5);
+    const huge = MG.addTarget({ ...a, target: MG.MAX_SCORE - 1 }, 50);
+    return a.hoops === 0 && b.hoops === 1 && c.streak === 2 && d.streak === 1 && d.bestStreak === 2 && d.hoops === 3 && e.target === 20 && f === e && g.bestTarget === 50 && g.lastTarget === 5 && huge.target === MG.MAX_SCORE;
+})());
+check(T('network: counters survive the round trip and bad data from a guest or a host is rejected'), (() => {
+    const s = MG.addTarget(MG.addHoop(MG.newMinigames(), 3), 50), r = MG.cleanMinigames(MG.netMinigames(s));
+    return r && r.hoops === 1 && r.target === 50 && r.bestTarget === 50 && [null, 'x', [], [1, 2, 3], [1, 2, 3, 4, 5, 6, 7], [1, 2, 3, 4, 5, -1], [1, 2, 3, 4, 5, 1.5], [1, 2, 3, 4, 5, MG.MAX_SCORE + 1], [1, 2, 3, 4, 5, '6'], [1, 2, 3, 4, 5, NaN]].every(x => MG.cleanMinigames(x) === null);
+})());
+check(T('layout: the hoop and the target sit on the west wall inside the lobby, do not overlap the daily board (z 3.75-7.25) or the shop, and the ring is high enough to shoot at'), H.X > -14.93 && H.X < -13.5 && H.Z - 0.9 > 7.25 && TG.Z - TG.R > 7.25 && TG.Z + TG.R < H.Z - 0.9 && H.Z + 0.9 < 12 && H.Y >= 2.5 && H.Y <= 3.6 && TG.Y - TG.R > 0.5 && TG.R <= 0.7 && TG.RINGS.every((r, i) => i === 0 || r[0] > TG.RINGS[i - 1][0]) && TG.RINGS[TG.RINGS.length - 1][0] === TG.R);
+{
+    const lg = fs.readFileSync(path.join(ROOT, 'core/lobbygames.js'), 'utf8'), lp = fs.readFileSync(path.join(ROOT, 'core/lobbyplay.js'), 'utf8');
+    check(T('arcade: only the host (or solo) counts points, guests take counters only through cleanMinigames, and it never pays out'), /if \(auth\) for \(const ball of L\.throwables\)/.test(lg) && /cleanMinigames\(a\)/.test(lg) && !/levelReward|addBones|spendBones|SAVE\./.test(lg) && /updateLobbyGames\(dt, auth\)/.test(lp) && /mg: lobbyGamesNet\(\)/.test(lp) && /acceptLobbyGames\(msg\.mg\)/.test(lp) && /disposeLobbyGames\(\)/.test(lp));
+    check(T('arcade: the extra balls have fixed ids, so guests build the same objects as the host'), (lg.match(/mgball' \+ \(i \+ 1\)/g) || []).length === 1 && /\[-9, 1, 8\.4\], \[-9, 1, 9\.6\], \[-9, 1, 10\.8\]/.test(lg));
+}
+
