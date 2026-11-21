@@ -144,9 +144,9 @@
     "semantic_hash": "b470eeb0c98db5e45c6b7a74131fd80a"
   },
   "core/levelcards.js": {
-    "mtime": 1795274239.2116299,
-    "seen": 1795275190.7332873,
-    "ast_hash": "4595c40d3025f3ff129edf5aeed95b28",
+    "mtime": 1795275251.3324578,
+    "seen": 1795275255.8929915,
+    "ast_hash": "0cf9d55126b6588549910ed02085d755",
     "semantic_hash": ""
   },
   "core/levelkit.js": {
@@ -378,9 +378,9 @@
     "semantic_hash": "3b7c5d5c60e34cdbe76b3e0e363a4bb6"
   },
   "levels/levels.js": {
-    "mtime": 1795275179.3537862,
-    "seen": 1795275190.7333612,
-    "ast_hash": "0df17fb447a74c837c652717a92e8a86",
+    "mtime": 1795275251.330048,
+    "seen": 1795275255.8930805,
+    "ast_hash": "7cd4196b9a9ced31b7f65a77d4dfd915",
     "semantic_hash": ""
   },
   "levels/lobby-door.js": {
@@ -468,15 +468,15 @@
     "semantic_hash": ""
   },
   "tests/smoke.mjs": {
-    "mtime": 1795274239.275369,
-    "seen": 1795275190.733394,
-    "ast_hash": "dbfd02aa4a14902b5e0e56c3ef9a8d76",
+    "mtime": 1795275251.3314571,
+    "seen": 1795275255.8931215,
+    "ast_hash": "ac1e480d59ca2176230ffc19d05b9cca",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795274239.2116299,
-    "seen": 1795275190.7335825,
-    "ast_hash": "c553332c52c40f986ea59ede500c0c57",
+    "mtime": 1795275251.3309643,
+    "seen": 1795275255.8933287,
+    "ast_hash": "c31d2420a3a073707c461fd4325ae959",
     "semantic_hash": ""
   },
   "README.md": {
@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "tests/static.mjs": {
-    "mtime": 1795016110.9240873,
-    "seen": 1795275190.7333949,
-    "ast_hash": "2e5a665a1e9131621402be63b05a7fd4",
+    "mtime": 1795275251.332051,
+    "seen": 1795275255.8931227,
+    "ast_hash": "2bff0560a0e9381d45c85291da664384",
     "semantic_hash": ""
   },
   "tests/changed.mjs": {

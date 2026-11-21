@@ -99,13 +99,13 @@ for (const m of modes) {
 const lvSrc = read('levels/levels.js'), lvBlock = (lvSrc.match(/const LV = \[([\s\S]*?)\n\];/) || ['', ''])[1];
 const lvTargets = [...lvBlock.matchAll(/target:\s*'(\w+)'/g)].map(m => m[1]), levelIds = R.LEVEL_DEFS.filter(d => d.kind === 'level').map(d => d.id);
 check('levels.js: LV parsed', lvTargets.length > 0);
-check('levels: every level in the registry is on the LV list and vice versa', levelIds.every(i => lvTargets.includes(i)) && lvTargets.every(t => levelIds.includes(t) || t === 'room000'),
-    'missing in LV: ' + levelIds.filter(i => !lvTargets.includes(i)) + '; unknown in LV: ' + lvTargets.filter(t => !levelIds.includes(t) && t !== 'room000'));
+check('levels: every level in the registry is on the LV list and vice versa', levelIds.every(i => lvTargets.includes(i)) && lvTargets.every(t => levelIds.includes(t) || t === 'lab'),
+    'missing in LV: ' + levelIds.filter(i => !lvTargets.includes(i)) + '; unknown in LV: ' + lvTargets.filter(t => !levelIds.includes(t) && t !== 'lab'));
 
 // ---------- karty ----------
 const isGame = new Set(gameIds), isLevel = new Set(levelIds);
 for (const [id, c] of Object.entries(LC.CARDS)) {
-    check('card ' + id + ': belongs to a level, a mode or is room000', isGame.has(id) || isLevel.has(id) || id === 'room000');
+    check('card ' + id + ': belongs to a level, a mode or is lab', isGame.has(id) || isLevel.has(id) || id === 'lab');
     for (const k of ['place', 'goal', 'watch']) check('card ' + id + ': ' + k + ' is a non-empty text', typeof c[k] === 'string' && c[k].trim().length > 0);
     check('card ' + id + ': how has 1-3 non-empty points', Array.isArray(c.how) && c.how.length >= 1 && c.how.length <= 3 && c.how.every(h => typeof h === 'string' && h.trim()));
     if (isGame.has(id)) {   // limity z nagłówka core/levelcards.js (karty poziomów mają dłuższe opisy zagrożeń, więc ich nie sprawdzamy)
