@@ -325,7 +325,7 @@ function updateRemote(id, st) {
     if (!remoteAvatars[id]) { const a = createAvatar(st.profile); scene.add(a.group); remoteAvatars[id] = a; }
     const p = remoteAvatars[id];
     const sz = Math.max(0.25, Math.min(8, +st.sz || 1));   // rozmiar goryla z BagaBooModMenu (host zeruje go u graczy spoza listy menu)
-    if ((p.sz || 1) !== sz) {   // skala bazowa (ultimate admin = 2) razy rozmiar; ramiona grubieją razem z gorylem, a nie tylko wydłużają się do dłoni
+    if ((p.sz || 1) !== sz) {   // skala bazowa (ultimate admin = 8) razy rozmiar; ramiona grubieją razem z gorylem, a nie tylko wydłużają się do dłoni
         p.sz = sz; for (const o of [p.head, p.torso, p.handL, p.handR]) o.scale.setScalar((p.base || 1) * sz);
         for (const a of [p.armL, p.armR]) if (a) a.userData.thick = sz;
     }
@@ -336,7 +336,7 @@ function updateRemote(id, st) {
     if (st.h2.g !== undefined) p.handR.userData.rig.target = st.h2.g;
     if (st.em && typeof st.em.id === 'string' && typeof st.em.t === 'number') emotePose(p, st.em.id, st.em.t);   // emotka nadpisuje pozę dłoni i głowy
     const e = new THREE.Euler().setFromQuaternion(p.head.quaternion, 'YXZ');
-    const drop = (p.torsoDrop || 0.35) * sz;
+    const drop = Math.min((p.torsoDrop || 0.35) * sz, 0.7 * sz);   // olbrzym (ultimate admin x8): tułów nie zapada się pod podłogę, zostaje blisko głowy
     p.torso.rotation.order = 'YXZ';
     if (st.sl) {   // ślizg na brzuchu: tułów leży poziomo za głową
         const lean = 1.35, bx = Math.sin(e.y), bz = Math.cos(e.y);

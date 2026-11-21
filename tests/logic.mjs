@@ -341,7 +341,14 @@ const PL = await import(url('core/petlogic.js'));
     check('cosmetics: every hat, glasses, mask, sleeve, glove, skin, hammer and badge in the catalog has a model or palette', missing.length === 0, missing.join(', '));
     const NEW = { skin: ['furasek', 'bubblegum', 'cottoncandy', 'honeyape', 'mintape', 'cadaver'], hat: ['catears', 'flowercrown', 'donut', 'unicorn', 'knifehead', 'axehead', 'brainhat', 'nailcrown', 'antlers'], glasses: ['starglasses', 'buttoneyes', 'bleedingeyes'], mask: ['flayed', 'sewn', 'faceless'], sleeve: ['bloodstained'], gloves: ['blooded'] };
     check('cosmetics: the new sweet and scary items are in the shop, buyable and priced sanely', Object.entries(NEW).every(([slot, ids]) => ids.every(id => { const it = E.CATALOG.find(i => i.slot === slot && i.id === id); return it && !it.locked && !it.season && it.price >= 900 && it.price <= 5000 && it.name.length <= 24; })));
-    check('therian: only spikyvr owns the Therian skin and it is equipped once, but can be changed and put back at any time', (() => {
+    check('ultimate: zbyniu runs 2x faster, but only on the verified account, and the avatar is 4x bigger than before (8)', await (async () => {
+    const MS = await import(url('core/modstate.js')), AV = fs.readFileSync(path.join(ROOT, 'core/avatar.js'), 'utf8'), PL = fs.readFileSync(path.join(ROOT, 'core/player.js'), 'utf8');
+    const spd = (name, verified) => { E.markNickVerified(verified ? name : ''); E.setProfile({ name: name }); return [MS.PERSONAL.speed, MS.capMul()]; };
+    const z = spd('zbyniu', true), un = spd('zbyniu', false), other = spd('RandomPlayer', true), adm = spd('BoyIsGamer', true), back = spd('zbyniu', true);
+    E.markNickVerified(''); E.setProfile({ name: 'RandomPlayer' });
+    return z[0] === 2 && z[1] === 2 && un[0] === 1 && other[0] === 1 && adm[0] === 1 && back[0] === 2 && MS.PERSONAL.speed === 1 && /ULTIMATE_SCALE = 8;/.test(AV) && /\* PERSONAL\.speed;/.test(PL);
+})());
+check('therian: only spikyvr owns the Therian skin and it is equipped once, but can be changed and put back at any time', (() => {
     const run = (name, fn) => { E.markNickVerified(''); E.setProfile({ name: name }); return fn(); };
     const sp = run('spikyvr', () => { E.SAVE.owned = E.SAVE.owned.filter(x => x !== 'skin:therian'); E.SAVE.equipped.skin = 'none'; E.refreshStaffItems(); return E.SAVE.owned.includes('skin:therian') && E.SAVE.equipped.skin === 'therian'; });
     const swap = (() => { E.SAVE.equipped.skin = 'albino'; E.refreshStaffItems(); const kept = E.SAVE.equipped.skin === 'albino'; E.SAVE.equipped.skin = 'therian'; E.refreshStaffItems(); return kept && E.SAVE.equipped.skin === 'therian'; })();

@@ -665,7 +665,7 @@ export function addRoleTag(head, look) {
     });
     return first;
 }
-export const ULTIMATE_SCALE = 2;
+export const ULTIMATE_SCALE = 8;   // ultimate admin: 4 razy większy niż wcześniej (było 2)
 export function createAvatar(look) {
     const group = new THREE.Group(), ult = look.skin === 'ultimate', sc = ult ? ULTIMATE_SCALE : 1;
     const torso = createGorillaTorso(look); torso.scale.setScalar(sc); group.add(torso);

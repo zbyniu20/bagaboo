@@ -8,6 +8,7 @@
 // ==========================================
 import { toast, markAllDirty } from './terminal.js';
 import { RECORD_DEFS, DIFF_LEVEL_IDS } from './registry.js';
+import { PERSONAL } from './modstate.js';
 import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isFurasName, isTherianName, isReservedNick, staffBadgesFor, roleTagsFor } from './config.js';
 
 const SAVE_KEY = 'bagaboo_save_v1';
@@ -515,7 +516,10 @@ export function setProfile(p) { Object.assign(SAVE.profile, p); refreshStaffItem
 // Odznaki Admin / Moderator i młotek Kick należą się tylko ekipie (wg nicku); reszcie są zabierane
 // Nick potwierdzony przez serwer kont w tej sesji (ustawia main.js po zalogowaniu); nie jest zapisywany
 let verifiedNick = '';
-export function markNickVerified(name) { verifiedNick = String(name || '').trim().toLowerCase(); }
+export const ULTIMATE_SPEED = 2;   // ultimate admin biega 2 razy szybciej niż każdy inny gracz
+// Prędkość ultimate admina liczy się tylko dla konta potwierdzonego przez serwer kont (sam wpisany nick nic nie daje)
+function syncPersonal() { const k = String(SAVE.profile.name || '').trim().toLowerCase(); PERSONAL.speed = isUltimateName(SAVE.profile.name) && verifiedNick === k ? ULTIMATE_SPEED : 1; }
+export function markNickVerified(name) { verifiedNick = String(name || '').trim().toLowerCase(); syncPersonal(); }
 const BONUS_KEY = 'bagaboo_staff_bonus_';
 function grantStaffBonus() {
     const n = SAVE.profile.name, k = String(n || '').trim().toLowerCase();
@@ -526,6 +530,7 @@ function grantStaffBonus() {
     addBones(STAFF_BONUS, 'staff bonus');
 }
 export function refreshStaffItems() {
+    syncPersonal();
     // Ekipa (admin, moderator) nigdy nie jest CHEATEREM: skórka z błędnego włamania jest zdejmowana
     if (SAVE.cheater && isStaffName(SAVE.profile.name)) { SAVE.cheater = false; const i = SAVE.owned.indexOf('skin:cheater'); if (i >= 0) SAVE.owned.splice(i, 1); if (SAVE.equipped.skin === 'cheater') SAVE.equipped.skin = 'none'; }
     // Premia dla ekipy: jednorazowo 10000 Bagabucks, ale TYLKO dla stałej ekipy (nicki z hasłem w config.js), po poprawnym haśle w tej sesji.
