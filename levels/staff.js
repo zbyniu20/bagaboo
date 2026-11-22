@@ -291,8 +291,8 @@ function portrait(px, py, pz, rotY, seed) {
 function buildHaunt() {
     const h = S.h = { elapsed: 0, evT: 12, last: -1, done: false, bo: { t: -1, base: [], eyes: null, hemi: 0 }, portraits: [], jars: [], hang: null, mans: [], tvG: null, writes: [], flick: 0, steps: [], drops: [], creakT: 6, hangT: 0 };
     // atmosfera: przyćmione, chorobliwe światło i gęstsza mgła
-    for (const c of S.ceil) { c.base = 6; c.l.intensity = 6; c.l.color.setHex(0xc8a070); }
-    lighting.hemi.intensity *= 0.6; DREAD.fogMul = 1.5; setDread(() => [], {});   // pusta lista: reżyser grozy daje tylko zjawy
+    for (const c of S.ceil) { c.base = STAFF.CEIL; c.l.intensity = STAFF.CEIL; c.l.color.setHex(0xc8a070); }
+    lighting.hemi.intensity *= STAFF.HEMI; DREAD.fogMul = STAFF.FOG; setDread(() => [], {});   // pusta lista: reżyser grozy daje tylko zjawy
     addStoryProps({ seed: 777, count: 46, corpses: 2 });
     // portrety (oczy śledzą gracza)
     portrait(-4.2, 2.0, -D + 0.05, 0, 31); portrait(4.2, 2.0, -D + 0.05, 0, 32); portrait(-W + 0.05, 2.0, 3.4, Math.PI / 2, 33); portrait(W - 0.05, 2.2, 3.8, -Math.PI / 2, 34);

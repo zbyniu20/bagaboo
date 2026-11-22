@@ -14,6 +14,7 @@ import { toast } from '../core/terminal.js';
 import { hands, releaseAll } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
+import { nextIn } from '../core/hauntlogic.js';
 import { DESKTOP } from '../core/desktop.js';
 import { ARRIVAL_FROM_LAUNDRY as ARRIVAL_LAUNDRY } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare , introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
@@ -93,6 +94,7 @@ export function build() {
         if (S.done === 4) openGate();
     }
     carry = null;
+    { const fr = T.mkRng(4411); S.fakeUsed = new Set(); S.fake = []; S.safe.forEach((b, i) => { if (b.max.y < 3 && fr() < FAKE.chance) S.fake.push({ i: i, done: false, t: 3 }); }); }   // które bębny są fałszywymi kryjówkami (ziarno stałe)
     addStoryProps({ seed: 105, count: 30, corpses: 3 });   // krew, ślady, napisy i ciała (core/levelkit.js)
 }
 
@@ -347,7 +349,23 @@ function findPath(fx, fz, tx, tz) {
 }
 
 // ---------- ZDARZENIA ----------
-function inSafe(p) { return S.safe.some(b => b.containsPoint(p)); }
+function inSafe(p) { return S.safe.some((b, i) => b.containsPoint(p) && !S.fakeUsed.has(i)); }   // fałszywa kryjówka po wykryciu przestaje być bezpieczna
+// Fałszywe kryjówki: część otwartych bębnów ma już kogoś w środku (cichy oddech z bliska); wejście = jumpscare, Szmaciarz rusza w to miejsce, a bęben przestaje chronić
+const FAKE = { chance: 0.3, breathEvery: [7, 12], near: 4.5 };
+function checkFake(dt, p) {
+    if (S.phase !== 'play' || S.caughtT >= 0) return;
+    for (const f of S.fake) {
+        if (f.done) continue; const b = S.safe[f.i];
+        if (b.containsPoint(p)) {
+            f.done = true; S.fakeUsed.add(f.i); S.scare.trigger(); SFX.stinger({ x: (b.min.x + b.max.x) / 2, y: 1.2, z: (b.min.z + b.max.z) / 2 }); buzz('both', 1, 400); toast('Something was already in there!', '#ff3a2a');
+            if (S.tm.mode !== 'chase') { S.tm.mode = 'investigate'; S.tm.investigate = p.clone(); S.tm.waitT = 0; S.tm.pathT = 0; }
+        } else if (Math.hypot(p.x - (b.min.x + b.max.x) / 2, p.z - (b.min.z + b.max.z) / 2) < FAKE.near) { f.t -= dt; if (f.t <= 0) { f.t = nextIn(FAKE.breathEvery, Math.random); SFX.breath({ x: (b.min.x + b.max.x) / 2, y: 1.2, z: (b.min.z + b.max.z) / 2 }, 0.22); } }
+    }
+}
+export function debugFake(force) {   // hak dla testu w przeglądarce (tests/hide.mjs)
+    if (!S) return null; if (force) { S.phase = 'play'; S.introT = 0; S.fake = S.safe.map((b, i) => ({ i: i, done: false, t: 3 })).filter(f => S.safe[f.i].max.y < 3); }
+    return { fake: S.fake.map(f => ({ i: f.i, done: f.done, cx: (S.safe[f.i].min.x + S.safe[f.i].max.x) / 2, cz: (S.safe[f.i].min.z + S.safe[f.i].max.z) / 2 })), used: [...S.fakeUsed], mode: S.tm.mode, scare: S.scare.active(), safeNow: false };
+}
 function onNoise(speed, pos) {
     if (!S || S.phase !== 'play') return;
     if (S.soap.containsPoint(pos) && speed > 1.0) { SFX.squeak(pos); if (S.tm.mode !== 'chase') heardAt(pos, 30); }   // mydliny: głośny pisk, słychać w całej hali
@@ -483,6 +501,7 @@ export function update(dt, t, ctx) {
 }
 
 function thinkMonster(dt, t, p) {
+    checkFake(dt, p);
     const WALK = WALK0 * S.df.speed, INVESTIGATE = INVESTIGATE0 * S.df.speed, SPRINT = SPRINT0 * S.df.speed, RAGE = RAGE0 * S.df.speed;
     const tm = S.tm, safe = inSafe(p) || p.y - 0.35 > SAFE_HEIGHT;
     const sees = !safe && canSee(p);

@@ -22,7 +22,8 @@ import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_HOTEL } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
-import { setDread } from '../core/ambience.js';
+import { setDread, heardVoice, DREAD } from '../core/ambience.js';
+import { VOICE, nextIn } from '../core/hauntlogic.js';
 
 const RW = 12, H = 3.4, HALF = RW / 2, DOOR_W = 1.7, DOOR_H = 2.6, WALL_T = 0.4;   // szerokość zwykłego pokoju 12 m, wysokość 3,4 m
 const N_ROOMS = 100, LEN_NORMAL = 12, LEN_HUB = 20, LEN_BIG = 40;                  // liczba pokoi (drzwi 100 = wyjście) i długości: zwykły, hol z kluczem, wielki pokój 50
@@ -30,6 +31,7 @@ const HUBS = [24, 66, 85];                                                      
 const BIG = 50, BIG_HALF = 12;                                                        // indeks wielkiego pokoju (drzwi 50 prowadzą do niego) i jego połowa szerokości (24 m)
 const SIDE_W = 9, DOORWAY = 2.6, KEYS_NEEDED = 3;                                     // szerokość pokoju pobocznego, szerokość przejścia z holu, tyle kluczy otwiera drzwi 100
 const CHECKPOINT_EVERY = 10;                                                          // co tyle drzwi punkt kontrolny
+const FAKE = { chance: 0.2, breathEvery: [7, 12], near: 4.5 };   // fałszywa kryjówka: co piąta szafa ma już kogoś w środku (cichy oddech zdradza to z bliska)
 const RUSH = { wait: [18, 35], warn: 5, speed: 26 }, SCREECH = { chance: 0.35, window: 1.8 }, WEEPER = { walk: 2.0, chase: 4.8, hear: 10 };   // warn: 5 s migania świateł przed Łomotem
 const FIGURE = { quiet: 1.3, walk: 1.6, investigate: 3.2, chase: 5.5, loud: 3.2 };   // Ślepy w pokoju 50: cisza poniżej quiet (m/s ciała), każdy szybszy ruch go przyciąga, od loud goni
 const REWARD_FIRST = 6000, REWARD_REPEAT = 600, INTRO_TIME = 10, MAX_HP = { easy: 3, normal: 2, nightmare: 2 };   // serca zależą od trudności; punkt kontrolny leczy o 1 serce (na Easy wszystkie)
@@ -200,7 +202,7 @@ function buildRoom(i) {
     const wardrobeIn = (s, edge, zlo, zhi) => {
         for (let tr = 0; tr < 12; tr++) {
             const wz = zlo - R() * (zlo - zhi), cxw = s * (edge - 0.65), ax = s * (edge - 2.3);
-            if (free(cxw, wz, 1.3, 1.6) && free(ax, wz, 2.0, 2.4)) { rects.push([cxw, wz, 1.3, 1.6], [ax, wz, 2.0, 2.4]); room.wardrobes.push(buildWardrobe(room, cxw, wz, s, edge)); return true; }
+            if (free(cxw, wz, 1.3, 1.6) && free(ax, wz, 2.0, 2.4)) { rects.push([cxw, wz, 1.3, 1.6], [ax, wz, 2.0, 2.4]); room.wardrobes.push(buildWardrobe(room, cxw, wz, s, edge)); { const nw = room.wardrobes[room.wardrobes.length - 1]; nw.fake = T.mkRng(9100 + i * 31 + room.wardrobes.length)() < FAKE.chance; } return true; }
         }
         return false;
     };
@@ -288,6 +290,16 @@ function setWardrobe(w, open, p) {
 }
 const isSqueezing = (h) => !!(h && h.userData && h.userData.rig && h.userData.rig.target === 1.0);
 // Naciśnięcie = dłoń blisko punktu + świeże zaciśnięcie chwytu (jak dźwignie w Studni). Animacja drzwi i poświata gałek.
+function revealFake(w, p) {
+    w.fakeDone = true; S.fakeSeen = (S.fakeSeen || 0) + 1; setWardrobe(w, true, p);   // drzwi otwierają się same
+    S.scare.trigger(); SFX.stinger({ x: w.x, y: 1.5, z: w.z }); buzz('both', 1, 400); toast('Something was already in there!', '#ff3a2a');
+}
+// Hak dla testu w przeglądarce (tests/hide.mjs): force = wszystkie szafy w zbudowanych pokojach są fałszywe, faza gry włączona; zwraca listę szaf
+export function debugFake(force) {
+    if (!S) return null; if (force) { S.phase = 'play'; S.introT = 0; for (const r of S.rooms.values()) for (const w of r.wardrobes) w.fake = true; }
+    const out = []; for (const r of S.rooms.values()) for (const w of r.wardrobes) out.push({ room: r.i, x: w.x, z: w.z, fake: !!w.fake, done: !!w.fakeDone, open: w.open });
+    return { wardrobes: out, seen: S.fakeSeen || 0, scare: S.scare.active(), rush: S.rush.state };
+}
 function updateWardrobes(dt, t, p) {
     const edge = [false, false];
     [hands.L, hands.R].forEach((h, i) => { const now = isSqueezing(h); edge[i] = now && !S.sq[i]; S.sq[i] = now; });
@@ -296,6 +308,10 @@ function updateWardrobes(dt, t, p) {
     S.inWardrobe = false; S.hint = '';
     for (const r of S.rooms.values()) for (const w of r.wardrobes) {
         const inside = inZone(p, w);
+        if (w.fake && !w.fakeDone) {   // fałszywa kryjówka: ktoś już tam jest (nie w czasie Łomotu, żeby było uczciwie)
+            if (inside && S.rush.state === 'wait' && S.phase === 'play' && S.caughtT < 0) revealFake(w, p);
+            else if (!inside && r.i === S.cur && Math.hypot(p.x - w.x, p.z - w.z) < FAKE.near) { w.breathT = (w.breathT === undefined ? 3 : w.breathT) - dt; if (w.breathT <= 0) { w.breathT = nextIn(FAKE.breathEvery, Math.random); SFX.breath({ x: w.x, y: 1.3, z: w.z }, 0.22); } }
+        }
         if (!w.open && !inside && pressAt(w.knob)) setWardrobe(w, true, p);
         else if (inside && pressAt(w.latch)) setWardrobe(w, !w.open, p);
         const target = w.open ? 1 : 0; w.t += Math.sign(target - w.t) * Math.min(Math.abs(target - w.t), dt * 1.8);
@@ -491,7 +507,7 @@ function unstickBlind(w, st) {
 function weeper(r, dt, ctx, p) {
     const w = r.weeper, st = w.st, d = Math.hypot(p.x - st.x, p.z - st.z), run = Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), inRoom = roomOf(p.z) === r.i;
     const pSide = Math.abs(p.x) > HALF + WALL_T ? Math.sign(p.x) : 0, wSide = Math.abs(st.x) > HALF + WALL_T ? Math.sign(st.x) : 0;   // -1 / +1: pokój poboczny, 0: hol
-    const hear = (inRoom && run > 3.4 && d < WEEPER.hear) || (inRoom && d < 2.6 && !S.hidden);
+    const hear = (inRoom && run > 3.4 && d < WEEPER.hear) || (inRoom && d < 2.6 && !S.hidden) || (inRoom && heardVoice(d, S.hidden ? VOICE.HIDDEN_MUL : 1));   // także głos z mikrofonu (ukryty słabiej)
     if (hear) { if (st.mode !== 'chase') SFX.stinger({ x: st.x, y: 1.5, z: st.z }); st.mode = 'chase'; st.lost = 0; }
     else if (st.mode === 'chase') { st.lost = (st.lost || 0) + dt; if (S.hidden || !inRoom || st.lost > 7) st.mode = 'patrol'; }
     let tx, tz, speed;
@@ -511,7 +527,7 @@ function weeper(r, dt, ctx, p) {
 // (od FIGURE.loud m/s goni). Szafa go zwodzi. Zasięg słuchu: od 4 m w ciszy do 24 m przy sprincie.
 function figure(r, dt, ctx, p) {
     const f = r.figure, st = f.st, d = Math.hypot(p.x - st.x, p.z - st.z), sp = Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), inRoom = roomOf(p.z) === r.i;
-    const noise = inRoom && !S.hidden ? Math.max(0, Math.min(1, (sp - FIGURE.quiet) / 3)) : 0;
+    const noise = inRoom && !S.hidden ? Math.max(DREAD.voice, Math.max(0, Math.min(1, (sp - FIGURE.quiet) / 3))) : 0;   // do ruchu dochodzi głos z mikrofonu
     S.noise = inRoom ? noise : 0;
     const heard = noise > 0 && d < 4 + 20 * noise;
     if (heard) {

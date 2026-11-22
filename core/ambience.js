@@ -6,18 +6,20 @@
 // ==========================================
 import { THREE, camera, scene, lighting, L, tex } from './engine.js';
 import { buildMannequin, addMonsterFace } from './mannequin.js';
+import { voiceLevel, voiceSmooth, voiceHeard } from './hauntlogic.js';
+import { toast } from './terminal.js';
 import { LEVEL_DEFS } from './registry.js';
-import { audioBus, spatial, noiseBuf, creak, bang, whisper, setRoom, breath, growl, step, stinger, pa, childLaugh } from './audio.js';
+import { audioBus, spatial, noiseBuf, creak, bang, whisper, setRoom, breath, growl, step, stinger, pa, childLaugh, micLevel } from './audio.js';
 import { GAMES_CALM, SETTINGS } from './settings.js';
 
 // loops: stałe źródła [typ, [[x,y,z], ...]], rand: losowe odgłosy { t: typ, e: [min,max] s między, d: [min,max] m od gracza, v: głośność }
 const DEFS = Object.fromEntries(LEVEL_DEFS.filter(d => d.ambience).map(d => [d.id, d.ambience]));   // z core/registry.js
-export const DREAD = { hush: false, near: 99, tension: 0, apps: 0, scared: 0, fogMul: 1 };   // fogMul: mnożnik gęstości mgły ustawiany przez tryb (np. Final Hunt w Become the Monster)   // stan reżysera grozy (dreadUpdate): odległość do najbliższego potwora i napięcie 0..1
+export const DREAD = { hush: false, near: 99, tension: 0, apps: 0, scared: 0, fogMul: 1, voice: 0 };   // voice: wygładzony poziom głosu z mikrofonu 0..1 (poziomy z potworami: heardVoice)   // fogMul: mnożnik gęstości mgły ustawiany przez tryb (np. Final Hunt w Become the Monster)   // stan reżysera grozy (dreadUpdate): odległość do najbliższego potwora i napięcie 0..1
 let cur = null, loops = [], timers = [], pending = true;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const _p = { x: 0, y: 0, z: 0 };
 
-export function setAmbience(levelId) { setRoom(levelId); stopLoops(); cur = DEFS[levelId] || null; pending = true; timers = []; }
+export function setAmbience(levelId) { voiceToast = false; DREAD.voice = 0; setRoom(levelId); stopLoops(); cur = DEFS[levelId] || null; pending = true; timers = []; }
 function stopLoops() { for (const l of loops) { try { l.stop(); } catch (e) {} } loops = []; }
 
 // ---------- SYNTEZA ----------
@@ -117,8 +119,16 @@ export function dreadAppear(kind) {   // też dla testów: wymusza zjawę
     }
     return false;
 }
+// Głos z mikrofonu gracza: potwór w poziomie z reżyserem grozy może go usłyszeć. mult: mnożnik zasięgu (np. 1,3 na Nightmare, HIDDEN_MUL dla ukrytego). Pierwszy raz w poziomie ostrzega napisem.
+let voiceToast = false;
+export function heardVoice(dist, mult) {
+    const h = voiceHeard(DREAD.voice, dist, mult);
+    if (h && !voiceToast) { voiceToast = true; toast('Your voice carries: monsters hear your microphone!', '#ff8a6a'); }
+    return h;
+}
 export function dreadUpdate(dt) {
     dt = Math.min(0.1, dt);
+    DREAD.voice = voiceSmooth(DREAD.voice, voiceLevel(micLevel()), dt);
     let list = null;
     if (dread && dread.id === L.levelId && (!GAMES_CALM.on || dread.calm)) { try { list = dread.fn(); } catch (e) { dread = null; } }
     camera.getWorldPosition(_dp);

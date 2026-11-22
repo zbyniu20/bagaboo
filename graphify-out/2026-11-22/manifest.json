@@ -234,9 +234,9 @@
     "semantic_hash": ""
   },
   "core/registry.js": {
-    "mtime": 1795371741.835022,
-    "seen": 1795373079.347598,
-    "ast_hash": "5510cdd2a241aa7891919430372fff19",
+    "mtime": 1795373277.5296912,
+    "seen": 1795374015.1921299,
+    "ast_hash": "76bcf937e890e6004d887341111fd10c",
     "semantic_hash": ""
   },
   "core/roundkit.js": {
@@ -438,9 +438,9 @@
     "semantic_hash": ""
   },
   "levels/staff.js": {
-    "mtime": 1795274239.275369,
-    "seen": 1795275190.7333734,
-    "ast_hash": "e506bfb5388a5d260a411207d603658d",
+    "mtime": 1795373277.5292983,
+    "seen": 1795374015.1921782,
+    "ast_hash": "90d11a8f9be530bfdd55b2e6b4bd2469",
     "semantic_hash": ""
   },
   "levels/wardrobe.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795373015.060171,
-    "seen": 1795373079.3481345,
-    "ast_hash": "7d54fbaa344a1f8c28ad14d899823b4c",
+    "mtime": 1795374007.5871775,
+    "seen": 1795374015.192426,
+    "ast_hash": "5529a02a756527405ab5ded60df3138a",
     "semantic_hash": ""
   },
   "README.md": {
@@ -582,9 +582,9 @@
     "semantic_hash": ""
   },
   "tests/modes/lobby.mjs": {
-    "mtime": 1795371813.8622918,
-    "seen": 1795373079.347746,
-    "ast_hash": "0acfcb20cbbac9428810d186678a425b",
+    "mtime": 1795373305.344529,
+    "seen": 1795374015.1922069,
+    "ast_hash": "7c667a42527fd5ac330da415223a2dcc",
     "semantic_hash": ""
   },
   "core/leveldata.js": {
@@ -10182,15 +10182,21 @@
     "semantic_hash": ""
   },
   "core/hauntlogic.js": {
-    "mtime": 1795371637.471654,
-    "seen": 1795373079.3475306,
-    "ast_hash": "02015acbdd807d5b880e3e31ae934dc5",
+    "mtime": 1795373187.3365219,
+    "seen": 1795374015.192011,
+    "ast_hash": "7042c70dc548d1479d7caacab419a2c5",
     "semantic_hash": ""
   },
   "tests/haunt.mjs": {
     "mtime": 1795372107.2050223,
     "seen": 1795373079.3477323,
     "ast_hash": "54c914196ec71a682ddeafcdc87d213c",
+    "semantic_hash": ""
+  },
+  "tests/staffhaunt.mjs": {
+    "mtime": 1795373441.201205,
+    "seen": 1795374015.1922252,
+    "ast_hash": "6a43ec09cbc13372bd3308a7637a466d",
     "semantic_hash": ""
   },
   "package-lock.json": {

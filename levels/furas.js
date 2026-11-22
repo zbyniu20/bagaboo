@@ -19,7 +19,7 @@ import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_FURAS } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
-import { setDread } from '../core/ambience.js';
+import { setDread, heardVoice } from '../core/ambience.js';
 
 const X = 20, Z0 = 4, Z1 = -64, WALL_H = 4.6;                         // legowisko 40 x 68 m
 const DIV_H = 4.0, DIV_T = 0.7;                                       // ścianki z kartonów: za wysokie, by Furas je przeskoczył (skacze do 3,6 m)
@@ -412,7 +412,7 @@ function think(dt, ctx) {
             if (b.smellT < SMELL_TIME) { b.smellR = (b.smellR || 0) - dt; if (b.smellR <= 0) { b.smellR = 1.2; b.last = [p.x + (Math.random() - 0.5) * 6, p.z + (Math.random() - 0.5) * 6]; } }   // węch: przez kilka sekund wie mniej więcej, gdzie jesteś
             if (b.lostT > LOSE_TIME) { st.mode = 'patrol'; b.goal = null; b.prevNode = -1; b.node = nearestNode(st.x, st.z, [st.x, st.z]); }
         }
-        else if (speedXZ > 3.4 && d < HEAR_DIST * (df.id === 'nightmare' ? 1.3 : 1)) { st.mode = 'investigate'; b.goal = [p.x, p.z]; b.invT = 0; }
+        else if ((speedXZ > 3.4 && d < HEAR_DIST * (df.id === 'nightmare' ? 1.3 : 1)) || heardVoice(d, df.id === 'nightmare' ? 1.3 : 1)) { st.mode = 'investigate'; b.goal = [p.x, p.z]; b.invT = 0; }
         let tx, tz, speed = WALK * mul;
         if (st.mode === 'chase') {
             const tgt = seesMe || !b.last ? [p.x, p.z] : b.last; speed = CHASE * mul;
