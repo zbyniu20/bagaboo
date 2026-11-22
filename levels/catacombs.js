@@ -18,7 +18,8 @@ import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_CATACOMBS } from './levels.js';
 import { createGridMaze } from '../core/gridmaze.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
+import { setDread } from '../core/ambience.js';
 
 const N = 8, P = 5.5, WT = 0.8, H = 3.4, X = N * P / 2;              // siatka 8 x 8 komórek po 5,5 m (44 x 44 m), ściany 0,8 m
 const SEE_DIST = 14, HEAR_RUN = 10, HEAR_BONE = 22, LOSE_TIME = 8, SMELL_TIME = 4, CATCH_DIST = 1.0, KEYS = 4;   // SMELL_TIME: kilka sekund po utracie wzroku wciąż czuje, mniej więcej gdzie jesteś
@@ -58,11 +59,13 @@ export function build() {
     buildKeys();
     buildGate();
     buildWardens();
+    setDread(() => S.bots.map(b => b.m.group.position), { hide: (on) => S.bots.forEach(b => { b.m.group.visible = !on; }) });
     buildDoor({ x: cx(0), z: -WT / 2 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#bfe8ff', wood: 0x3a3228, portal: { target: 'levels', spawn: ARRIVAL_FROM_CATACOMBS, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
-    S.scare = createJumpscare({ seed: 8181 });
+    S.scare = createJumpscare({ seed: 8181, variant: 'warden' });
     if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints, 2 wardens, a 3rd after 3 keys)'), df.color);
+    addStoryProps({ seed: 102, count: 30, corpses: 3 });   // krew, ślady, napisy i ciała (core/levelkit.js)
 }
 
 // ---------- BUDOWA ----------
@@ -126,7 +129,7 @@ function addWarden(start, i) {
     m.group.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: 0x14100e, roughness: 1 }); });
     addMonsterFace(m.head, { width: 0.058, open: 0.045, teeth: 11, toothColor: 0xd8d0b8, long: 1.5, horns: 0xcfc6a8 });
     for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1808, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.13, 0.13, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
-    const st = createBot(cx(start[0]), cz(start[1])); st.mode = 'patrol'; st.path = []; st.goalCell = null;
+    const st = createBot(cx(start[0]), cz(start[1])); st.mode = 'patrol'; st.path = []; st.goalCell = null; st.listen = true;   // czasem staje i nasłuchuje
     m.group.position.set(st.x, 0, st.z);
     S.bots.push({ m: m, st: st, lostT: 0, smellT: 0, last: null, stepT: 0, repath: 0, startCell: start });
 }

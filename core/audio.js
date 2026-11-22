@@ -223,7 +223,7 @@ function noobVoice(t0, f0, vol) {
     n.connect(nf); nf.connect(ng); ng.connect(out); n.start(t0 + 0.72);
 }
 // Pełny jumpscare: cisza, potem uderzenie basu, przesterowany wrzask i zgrzyt dysonansu; gooby = true dokłada głos "gooby"
-export function scare(gooby) {   // gooby: true = głos "gooby", 'noob' = głos "noob" (ultimate admin dotknął ręką)
+export function scare(gooby, variant, big) {   // gooby: true = głos "gooby", 'noob' = głos "noob" (ultimate admin dotknął ręką)
     if (!ctx || GAMES_CALM.on) return;   // w BagaBoo Games nie ma jumpscare'ów (dźwięk też)
     if (hooks.onScare) hooks.onScare();
     const t0 = ctx.currentTime;
@@ -243,6 +243,13 @@ export function scare(gooby) {   // gooby: true = głos "gooby", 'noob' = głos 
     const gg = ctx.createGain(); env(gg, t0, 0.8, 0.02, 1.5); const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 19; lg.gain.value = 0.45; lfo.connect(lg); lg.connect(gg.gain);
     gr.connect(lp); lp.connect(gg); gg.connect(shaper); gr.start(t0); lfo.start(t0); lfo.stop(t0 + 1.6);
     for (const f of [210, 333, 497]) saw(t0 + 0.03, f, f * 0.33, 1.3, 0.26, shaper);
+    // warianty potworów: dodatkowa warstwa dźwięku charakterystyczna dla postaci
+    if (variant === 'doll') for (let i = 0; i < 6; i++) { const f = [880, 988, 1175, 1318, 1175, 988][i] * (i % 2 ? 1.012 : 1); saw(t0 + i * 0.11, f, f * 0.995, 0.5, 0.18, shaper); }   // pozytywka z fałszywymi dźwiękami
+    else if (variant === 'statue') { const gn = ctx.createBufferSource(); gn.buffer = noiseBuffer(1.4); const gl = ctx.createBiquadFilter(); gl.type = 'lowpass'; gl.frequency.value = 260; const gg2 = ctx.createGain(); env(gg2, t0, 0.9, 0.01, 1.2); gn.connect(gl); gl.connect(gg2); gg2.connect(shaper); gn.start(t0); }   // zgrzyt kamienia
+    else if (variant === 'warden') for (let i = 0; i < 7; i++) { const nb = ctx.createBufferSource(); nb.buffer = noiseBuffer(0.12); const hp2 = ctx.createBiquadFilter(); hp2.type = 'highpass'; hp2.frequency.value = 3000 + Math.random() * 3000; const gb = ctx.createGain(); env(gb, t0 + i * 0.09, 0.6, 0.002, 0.1); nb.connect(hp2); hp2.connect(gb); gb.connect(shaper); nb.start(t0 + i * 0.09); }   // trzask kości
+    else if (variant === 'grave') for (const [m, a] of [[1, 1], [2.76, 0.5], [5.4, 0.25]]) saw(t0, 98 * m, 96 * m, 2.4, 0.25 * a, shaper);   // niski, żałobny dzwon
+    else if (variant === 'butler') { saw(t0, 520, 910, 1.2, 0.3, shaper); saw(t0 + 0.05, 540, 880, 1.2, 0.25, shaper); saw(t0, 1040, 1700, 1.0, 0.18, shaper); }   // wrzask rozstrojonych skrzypiec
+    if (big) { saw(t0 + 1.3, 1600, 500, 1.2, 0.3, shaper); saw(t0 + 1.3, 1480, 420, 1.2, 0.3, shaper); const bs = ctx.createOscillator(), bg = ctx.createGain(); bs.type = 'sine'; bs.frequency.setValueAtTime(90, t0 + 1.3); bs.frequency.exponentialRampToValueAtTime(24, t0 + 2.2); env(bg, t0 + 1.3, 1.0, 0.004, 0.9); bs.connect(bg); bg.connect(scareBus); bs.start(t0 + 1.3); bs.stop(t0 + 2.3); }   // drugi, mocniejszy skok: wrzask i uderzenie basu
     if (gooby === 'noob') { noobVoice(t0 + 0.05, 130, 3.2); noobVoice(t0 + 0.05, 65, 2.4); }   // głośne "noob": męski głos i warstwa o oktawę niżej
     else if (gooby) { goobyVoice(t0 + 0.08, 150, 2.4); goobyVoice(t0 + 0.08, 75, 1.8); }   // "gooby" (tylko jumpscare od Nothing Hammer): wysoki głos i demoniczna warstwa o oktawę niżej
 }
@@ -295,6 +302,17 @@ function thump(t0, vol) {
     env(g, t0, Math.max(0.001, vol), 0.012, 0.22); o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + 0.3);
 }
 // Bicie serca: intensywność 0..1 (im bliżej potwór, tym szybciej i głośniej). Wołać co klatkę.
+// Oddech potwora (głęboki wdech i wydech szumu przez filtr; vol 0..1, pos = {x,y,z}): słychać go przestrzennie, gdy potwór jest blisko
+export function breath(pos, vol) {
+    if (!ctx || GAMES_CALM.on) return;
+    const t0 = ctx.currentTime, dst = pos ? outAt(pos) : shaper, v = Math.max(0.02, Math.min(1, vol || 0.4));
+    const n = ctx.createBufferSource(); n.buffer = noiseBuffer(2.2);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(380, t0); bp.frequency.linearRampToValueAtTime(620, t0 + 0.7); bp.frequency.linearRampToValueAtTime(300, t0 + 1.7); bp.Q.value = 1.2;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(v * 0.5, t0 + 0.55); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.85);   // wdech
+    g.gain.exponentialRampToValueAtTime(v * 0.42, t0 + 1.25); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.0);   // wydech, niżej i dłużej
+    n.connect(bp); bp.connect(g); g.connect(dst); n.start(t0); n.stop(t0 + 2.1);
+}
 export function heartbeat(intensity) {
     if (!ctx || intensity <= 0.02) return;
     const now = ctx.currentTime;

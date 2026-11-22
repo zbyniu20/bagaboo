@@ -18,6 +18,7 @@ import { createEvents } from '../core/events.js';
 import { ARRIVAL_FROM_ROOM000 } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
 import * as M from '../core/room000map.js';
+import { setDread } from '../core/ambience.js';
 
 const PLAN = M.buildPlan(), GRID = M.rasterize(PLAN), DOORS = M.doorSpots(PLAN, GRID), H = M.GEO.H, G = M.GEO.CELL;
 const SEE_DIST = 17, HEAR_RUN = 13, LOSE_TIME = 9, MEMORY_TIME = 5, CATCH_DIST = 1.0, ITEMS = 5;
@@ -42,6 +43,7 @@ export function build() {
     buildItems();
     buildGate();
     buildGhost();
+    setDread(() => S.mon ? [S.mon.g.position] : [], { apparitions: false });   // Room 000 ma już zjawy-wabiki
     buildDecoys();
     buildDoor({ x: DOORS.start.x, z: DOORS.start.z, rotY: DOORS.start.rotY, label: 'LEVELS', color: '#bfe8ff', wood: 0x3a3228, portal: { target: 'levels', spawn: ARRIVAL_FROM_ROOM000, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);

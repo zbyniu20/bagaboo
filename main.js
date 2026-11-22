@@ -14,7 +14,7 @@ import { redrawTerminals, updatePointers, updateToast, markAllDirty, toast, term
 import { initAudio, updateListener, hooks as audioHooks } from './core/audio.js';
 import { setLevelMusic } from './core/music.js';
 import { pollEmoteButtons } from './core/emotepanel.js';
-import { setAmbience } from './core/ambience.js';
+import { setAmbience, dreadUpdate } from './core/ambience.js';
 import { updateHighFive } from './core/highfive.js';
 import { startXrPerf, stopXrPerf, updateXrPerf } from './core/xrperf.js';
 import { updateDesktopPerf, resetDesktopPerf } from './core/desktopperf.js';   // automatyczna rozdzielczość poza VR
@@ -341,7 +341,7 @@ renderer.setAnimationLoop(() => {
             }
         }
     }
-    NETM.poseRemoteHands(dt); NETM.tickDismember(dt);
+    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); dreadUpdate(dt);
     NETM.animateFaces(dt);
     if (started && !frozen) {
         ECO.tick(dt, NETM.otherPlayers().length);

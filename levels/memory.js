@@ -21,6 +21,7 @@ import { buzz } from '../core/haptics.js';
 import { lavaBeast } from '../core/monsterskins.js';
 import { ARRIVAL_FROM_MEMORY } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
+import { setDread } from '../core/ambience.js';
 
 // ---------- USTAWIENIA ----------
 // 6 ścieżek po 20 kamieni wypełnia prawie cały basen. Kamienie 1,5 x 1,5 m, między nimi 1,1 m lawy
@@ -71,6 +72,7 @@ export function build() {
     buildDoor({ x: 0, y: TOP, z: BACK_Z + 0.03, rotY: 0, label: 'EXIT', color: '#70ff90', glow: 0x60ff90, wood: 0x2a3a2a, light: true,
         portal: { target: 'levels', spawn: ARRIVAL_FROM_MEMORY, onEnter: finish } });
     buildBeast();
+    setDread(() => S.beast ? [S.beast.m.group.position] : [], { apparitions: false });   // jaskinia z lawą: nie ma gdzie postawić zjawy
     buildBurnFx();
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name, S.df.color);

@@ -18,7 +18,8 @@ import { createGhost } from '../core/runkit.js';
 import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_FURAS } from './levels.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
+import { setDread } from '../core/ambience.js';
 
 const X = 20, Z0 = 4, Z1 = -64, WALL_H = 4.6;                         // legowisko 40 x 68 m
 const DIV_H = 4.0, DIV_T = 0.7;                                       // ścianki z kartonów: za wysokie, by Furas je przeskoczył (skacze do 3,6 m)
@@ -156,11 +157,13 @@ export function build() {
     buildFish();
     buildGate();
     buildFurasBots();
+    setDread(() => S.bots.filter(b => b.active).map(b => b.f.root.position), { hide: (on) => S.bots.forEach(b => { if (b.active) b.f.root.visible = !on; }) });
     buildDoor({ x: 0, z: Z0 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#ffd0e8', wood: 0x5a3a46, portal: { target: 'levels', spawn: ARRIVAL_FROM_FURAS, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     S.scare = createJumpscare({ head: buildFurasHead(false), scale: 1.0, y: 0.02, restZ: -1.15, fromZ: -4.0, eyes: false, flash: 0x30ff60 });   // pochylone, zielone błyski: jumpscare Furasa
     if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints, 2 Furases)'), df.color);
+    addStoryProps({ seed: 107, count: 30, corpses: 3 });   // krew, ślady, napisy i ciała (core/levelkit.js)
 }
 function buildRoom() {
     const mid = (Z0 + Z1) / 2, len = Z0 - Z1;
@@ -252,7 +255,7 @@ function addBot(idx, on) {
     const n = STARTS[idx], f = buildFuras(true); if (idx) f.root.scale.setScalar(1.1);
     L.root.add(f.root);
     const x = on ? NODES[n][0] : DORMANT[0], z = on ? NODES[n][1] : DORMANT[1];
-    const st = createBot(x, z); st.mode = 'patrol';
+    const st = createBot(x, z); st.mode = 'patrol'; st.listen = true;   // czasem staje i nasłuchuje
     f.root.position.set(st.x, 0, st.z);
     const b = { f: f, st: st, active: on, home: n, node: n, prevNode: -1, goal: null, lostT: 0, last: null, t: 0, cd: 2.5, dirx: 0, dirz: 1, ph: 0, px: st.x, pz: st.z, crouch: 0, purr: Math.random(), wT: 0, wx: st.x, wz: st.z, smellT: 0 };
     shown(b, on); S.bots.push(b); return b;
