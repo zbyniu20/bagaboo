@@ -6,9 +6,9 @@
     "semantic_hash": ""
   },
   "core/audio.js": {
-    "mtime": 1795371741.831842,
-    "seen": 1795373079.3474734,
-    "ast_hash": "9412b9e9ea1ffe55294bec35445260e2",
+    "mtime": 1795381898.1587358,
+    "seen": 1795382682.4989407,
+    "ast_hash": "634b3cbe8c3e683d344f6bccc99b0d5f",
     "semantic_hash": ""
   },
   "core/auth.js": {
@@ -204,9 +204,9 @@
     "semantic_hash": ""
   },
   "core/network.js": {
-    "mtime": 1795380911.5834312,
-    "seen": 1795381185.1500232,
-    "ast_hash": "8334d263d7da658dd6e0344af1d461f7",
+    "mtime": 1795382021.0618117,
+    "seen": 1795382682.4990244,
+    "ast_hash": "edd1404e1f8e637fc80bd85f280f37ed",
     "semantic_hash": ""
   },
   "core/pause.js": {
@@ -216,9 +216,9 @@
     "semantic_hash": ""
   },
   "core/player.js": {
-    "mtime": 1795281680.1569736,
-    "seen": 1795281878.9614453,
-    "ast_hash": "c1662239a43f2d2d8acc4d4b889b5287",
+    "mtime": 1795382021.0605524,
+    "seen": 1795382682.499046,
+    "ast_hash": "58874e230a20c00422e4a9b563625b13",
     "semantic_hash": ""
   },
   "core/presence.js": {
@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "levels/monster.js": {
-    "mtime": 1795370548.80569,
-    "seen": 1795370688.8426065,
-    "ast_hash": "d4dfd9c826885e0ba27224fae5ef867c",
+    "mtime": 1795382053.0507984,
+    "seen": 1795382682.499144,
+    "ast_hash": "ea05b7b1f5c0d33aa2eb6ed0b0c2b790",
     "semantic_hash": ""
   },
   "levels/nursery.js": {
@@ -456,9 +456,9 @@
     "semantic_hash": ""
   },
   "main.js": {
-    "mtime": 1795368536.1936092,
-    "seen": 1795369188.6989179,
-    "ast_hash": "2344e5f2ab1880ee096b49a7022b2a4a",
+    "mtime": 1795382021.0623755,
+    "seen": 1795382682.4991562,
+    "ast_hash": "70a6cca0cd3ff546946cf5f3671908a5",
     "semantic_hash": ""
   },
   "tests/package.json": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795381126.998413,
-    "seen": 1795381185.1504517,
-    "ast_hash": "9bb25bcee3127044c48f75d2a0afd0fb",
+    "mtime": 1795382621.7549431,
+    "seen": 1795382682.4994016,
+    "ast_hash": "423cc5ba750922385854e4868a213883",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795380862.721299,
-    "seen": 1795381185.1504564,
-    "ast_hash": "8cabda8537e0f622a412293034bb8b74",
+    "mtime": 1795382021.0629425,
+    "seen": 1795382682.4994054,
+    "ast_hash": "cf5f63e76225594b3227c03abe5b18f9",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795380926.56556,
-    "seen": 1795381185.1501312,
-    "ast_hash": "5881ace06303a750de1d43b139954657",
+    "mtime": 1795382053.0519981,
+    "seen": 1795382682.4991815,
+    "ast_hash": "11965d6c8092e88e272fdfe383ebc68d",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795380862.7206516,
-    "seen": 1795381185.1501706,
-    "ast_hash": "f8c62ee7ea100185f6f2391e78e774c7",
+    "mtime": 1795382021.0633643,
+    "seen": 1795382682.4992073,
+    "ast_hash": "65ea0e9d2f362596172b60896feb2c37",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10227,6 +10227,36 @@
     "mtime": 1795381046.6238458,
     "seen": 1795381185.1501071,
     "ast_hash": "2d2431ee472d798a5e6fc28ad0177ab3",
+    "semantic_hash": ""
+  },
+  "core/acousticlogic.js": {
+    "mtime": 1795381892.8132424,
+    "seen": 1795382682.4989336,
+    "ast_hash": "61b2ff31e332597516a851a68bcad89d",
+    "semantic_hash": ""
+  },
+  "core/acoustics.js": {
+    "mtime": 1795381898.15905,
+    "seen": 1795382682.4989357,
+    "ast_hash": "c91e1568c2eab315e16f5dc625e40899",
+    "semantic_hash": ""
+  },
+  "core/spectate.js": {
+    "mtime": 1795382021.061123,
+    "seen": 1795382682.4990597,
+    "ast_hash": "2063496d8bbde555bce502dd038a8da1",
+    "semantic_hash": ""
+  },
+  "core/spectatelogic.js": {
+    "mtime": 1795382021.0606961,
+    "seen": 1795382682.4990613,
+    "ast_hash": "82ab26b031c7184e2ca34faac8e711e0",
+    "semantic_hash": ""
+  },
+  "tests/audio3d.mjs": {
+    "mtime": 1795382377.3932712,
+    "seen": 1795382682.4991596,
+    "ast_hash": "91e1c3db65f763c28b07c60a36eeeb59",
     "semantic_hash": ""
   },
   "package-lock.json": {

@@ -15,6 +15,8 @@ import { initAudio, updateListener, hooks as audioHooks } from './core/audio.js'
 import { setLevelMusic } from './core/music.js';
 import { pollEmoteButtons } from './core/emotepanel.js';
 import { setAmbience, dreadUpdate } from './core/ambience.js';
+import { updateAcoustics } from './core/acoustics.js';
+import { updateSpectate } from './core/spectate.js';
 import { updateHighFive } from './core/highfive.js';
 import { startXrPerf, stopXrPerf, updateXrPerf } from './core/xrperf.js';
 import { updateDesktopPerf, resetDesktopPerf } from './core/desktopperf.js';   // automatyczna rozdzielczość poza VR
@@ -327,7 +329,7 @@ renderer.setAnimationLoop(() => {
     goobyScare.update(dt); noobScare.update(dt);
     // Pauza zatrzymuje świat tylko w grze solo
     const frozen = PAUSE.on && NETM.NET.mode === 'solo';
-    if (!frozen) { updatePlayer(dt, t); updateDesktop(dt); updateHammer(dt); }
+    if (!frozen) { updateSpectate(dt); updatePlayer(dt, t); updateDesktop(dt); updateHammer(dt); }
     if (level && !switching && !frozen) {
         const ctx = { pos: playerBody.position, body: playerBody, goto: (id, sp, o) => goToLevel(id, sp, o) };
         level.update(dt, t, ctx);
@@ -341,7 +343,7 @@ renderer.setAnimationLoop(() => {
             }
         }
     }
-    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); dreadUpdate(dt);
+    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); dreadUpdate(dt); updateAcoustics(dt);
     NETM.animateFaces(dt);
     if (started && !frozen) {
         ECO.tick(dt, NETM.otherPlayers().length);

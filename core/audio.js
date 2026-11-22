@@ -6,6 +6,7 @@
 import { SETTINGS, GAMES_CALM } from './settings.js';
 import { buzz } from './haptics.js';
 import { LEVEL_DEFS } from './registry.js';
+import { occludedFilter, occludedGain } from './acousticlogic.js';
 let ctx = null, master = null, droneGain = null, scareBus = null, shaper = null;
 const DRONE = 0.07;
 const hb = { next: 0 };
@@ -91,6 +92,14 @@ function ensureReverb() {
     rv.conv.connect(rv.ret); rv.ret.connect(master);
     setRoom(rv.pendingRoom);
 }
+// Pogłos na żywo (core/acoustics.js): wet od razu, długość odpowiedzi rzadko (generowanie bufora kosztuje)
+export function tuneRoom(sec, wet) {
+    if (!ctx) return; rv.wet = wet;
+    if (!rv.conv) { ensureReverb(); return; }
+    if (Math.abs(rv.sec - sec) > 0.3 && ctx.currentTime - (rv.lastGen || 0) > 3) { rv.conv.buffer = impulse(sec); rv.sec = sec; rv.lastGen = ctx.currentTime; }
+}
+let occFn = null;
+export function setOcclusion(fn) { occFn = fn; }   // fn(pos) -> 0..1: ile dźwięk traci za ścianami
 export function setRoom(id) {
     const r = ROOMS[id] || ROOM_DEFAULT; rv.pendingRoom = id; rv.wet = r.wet;
     if (!ctx) return;
@@ -110,9 +119,11 @@ function outAt(pos, dest, raw) {
         ensureReverb();
         const dist = Math.hypot(pos.x - lis.x, pos.y - lis.y, pos.z - lis.z);
         const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.5;
-        lp.frequency.value = Math.max(1800, 18000 / (1 + dist * 0.14));
-        p.connect(lp); lp.connect(dest);
-        if (rv.conv) { const send = ctx.createGain(); send.gain.value = rv.wet * Math.min(2.2, 0.35 + dist / 14); lp.connect(send); send.connect(rv.conv); }
+        const occ = occFn ? occFn(pos) : 0;   // za ścianą: ciemniejszy i cichszy, a z pogłosu zostaje więcej niż z dźwięku bezpośredniego
+        lp.frequency.value = occludedFilter(Math.max(1800, 18000 / (1 + dist * 0.14)), occ);
+        p.connect(lp);
+        if (occ > 0.01) { const og = ctx.createGain(); og.gain.value = occludedGain(occ); lp.connect(og); og.connect(dest); } else lp.connect(dest);
+        if (rv.conv) { const send = ctx.createGain(); send.gain.value = rv.wet * Math.min(2.2, 0.35 + dist / 14) * (1 + occ * 0.6); lp.connect(send); send.connect(rv.conv); }
         return p;
     }
     if (typeof pos === 'number' && ctx.createStereoPanner) { const sp = ctx.createStereoPanner(); sp.pan.value = Math.max(-1, Math.min(1, pos)); sp.connect(dest); return sp; }

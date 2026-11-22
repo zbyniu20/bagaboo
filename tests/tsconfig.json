@@ -20,6 +20,8 @@
     "../core/gfxlogic.js",
     "../core/hauntlogic.js",
     "../core/avatarfxlogic.js",
+    "../core/acousticlogic.js",
+    "../core/spectatelogic.js",
     "../core/huntlogic.js",
     "../core/minigames.js",
     "../core/monstermaps.js",
