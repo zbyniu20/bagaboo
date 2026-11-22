@@ -6,11 +6,11 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP } from './config.js';
 import { normalFor } from './textures.js';
 
-const ENV = LP.envIntensity;
+const ENV = LP.envIntensity, UNIT_CONE = new THREE.ConeGeometry(1, 1, 5);
 // Gips jak porcelana: normalna z tekstury (pęknięcia, ziarno), lekko lakierowana powierzchnia łapie odbicia latarki i lamp
 const plasterMat = new THREE.MeshPhysicalMaterial({ map: tex.plaster, normalMap: normalFor(tex.plaster, 3), normalScale: new THREE.Vector2(0.9, 0.9), color: 0xd8d0c2, roughness: 0.42, clearcoat: 0.55, clearcoatRoughness: 0.4, envMapIntensity: Math.max(0.5, ENV) });
 const darkJoint = new THREE.MeshStandardMaterial({ color: 0x101012, roughness: 0.4, metalness: 0.6, envMapIntensity: ENV });
-const voidMat = new THREE.MeshBasicMaterial({ color: 0x000000 }), eyeGlowMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
+const bloodMat = new THREE.MeshStandardMaterial({ color: 0x6a0808, roughness: 0.4 }), voidMat = new THREE.MeshBasicMaterial({ color: 0x000000 }), eyeGlowMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
 const ARM_POSES = [
     (s) => [V3(s * 0.03, -0.30, 0.02), V3(0, -0.28, 0.05)], (s) => [V3(s * 0.06, -0.08, 0.26), V3(0, 0.02, 0.26)],
     (s) => [V3(s * 0.14, 0.25, 0.04), V3(s * 0.04, 0.27, 0.05)], (s) => [V3(s * 0.25, -0.10, -0.05), V3(-s * 0.15, -0.22, 0.12)],
@@ -54,7 +54,12 @@ export function buildMannequin(R) {
     for (const s of [-1, 1]) hv.push(place(UNIT_SPHERE, s * 0.04, 0.15, 0.07, 0, 0, 0, 0.027, 0.034, 0.03));
     const wide = R() < 0.25;
     hv.push(place(UNIT_BOX, 0, 0.055, 0.098, 0, 0, 0, wide ? 0.075 : 0.045, wide ? 0.02 : 0.005, 0.02));
-    if (R() < 0.4) for (const s of [-1, 1]) hg.push(place(UNIT_SPHERE, s * 0.04, 0.152, 0.1, 0, 0, 0, 0.011, 0.011, 0.011));
+    R();   // wywołanie zostaje, żeby ułożenia z ziarna się nie zmieniły (kiedyś decydowało o świecących oczach; teraz świecą zawsze)
+    for (const s of [-1, 1]) hg.push(place(UNIT_SPHERE, s * 0.04, 0.152, 0.1, 0, 0, 0, 0.0135, 0.0135, 0.0135));
+    const hb = [];   // zęby (gips) i krwawe łzy
+    for (let i = -3; i <= 3; i++) { const big = Math.abs(i) === 2; hb.push(place(UNIT_CONE, i * 0.011, 0.052 - (big ? 0.012 : 0.007), 0.099, Math.PI, 0, 0, 0.0045, big ? 0.03 : 0.018, 0.0045)); }
+    const bl = [];
+    for (const s of [-1, 1]) bl.push(place(UNIT_BOX, s * 0.04, 0.115, 0.1, 0, 0, 0, 0.0035, 0.04, 0.003));
     const g = new THREE.Group(), lean = new THREE.Group(); g.add(lean);
     const bm = new THREE.Mesh(mergeGeometries(body), plasterMat); bm.castShadow = true; bm.receiveShadow = true; lean.add(bm);
     const jm = new THREE.Mesh(mergeGeometries(joints), darkJoint); jm.castShadow = true; lean.add(jm);
@@ -62,6 +67,7 @@ export function buildMannequin(R) {
     const hm = new THREE.Mesh(mergeGeometries(hp), plasterMat); hm.castShadow = true; hm.receiveShadow = true; head.add(hm);
     head.add(new THREE.Mesh(mergeGeometries(hv), voidMat));
     if (hg.length) head.add(new THREE.Mesh(mergeGeometries(hg), eyeGlowMat));
+    head.add(new THREE.Mesh(mergeGeometries(hb), plasterMat)); head.add(new THREE.Mesh(mergeGeometries(bl), bloodMat));
     const extreme = R() < 0.25;
     head.rotation.z = extreme ? (R() < 0.5 ? -1 : 1) * (1.0 + R() * 0.6) : (R() - 0.5) * 0.9;
     head.rotation.x = (R() - 0.3) * 0.7;
