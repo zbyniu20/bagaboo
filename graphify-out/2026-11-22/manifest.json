@@ -168,9 +168,9 @@
     "semantic_hash": "afa9211bf3987525436ce6ca2c449474"
   },
   "core/mannequin.js": {
-    "mtime": 1795379800.226247,
-    "seen": 1795379823.927916,
-    "ast_hash": "c45a72dd9f0cb779eb6f9125ace0e87c",
+    "mtime": 1795380116.0118074,
+    "seen": 1795380133.4884083,
+    "ast_hash": "e3e67e9df1ce6eae4be6999a03009349",
     "semantic_hash": ""
   },
   "core/modmenu.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795379815.513148,
-    "seen": 1795379823.928262,
-    "ast_hash": "ad1f6af13667169ee9b46c927c12cc42",
+    "mtime": 1795380126.4657044,
+    "seen": 1795380133.4887805,
+    "ast_hash": "73bca3d7ecf998170a204da126b86c9b",
     "semantic_hash": ""
   },
   "README.md": {

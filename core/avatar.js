@@ -144,7 +144,7 @@ export function createRealHand(isLeft, look) {
             if (k > 0) { j.position.z = -f.len[k - 1]; parent.add(j); joints.push(j); }
             add(fingerSeg(r, f.len[k]), skin, j);
             if (k === 2 && nailMat) { const n = add(NAIL_GEO, nailMat, j); n.position.set(0, r * 0.62, -f.len[2] * 0.6); n.scale.set(r * 0.8, r * 0.25, f.len[2] * 0.33); }
-            if (k === 2 && SCARY) claw(j, r, f.len[2], 0.03);
+            if (k === 2 && SCARY) claw(j, r, f.len[2], 0.044);
             parent = j; r *= 0.88;
         }
         fingers.push(joints);
@@ -156,7 +156,7 @@ export function createRealHand(isLeft, look) {
         if (k > 0) { j.position.z = -tl[k - 1]; tp.add(j); thumb.push(j); }
         add(fingerSeg(tr, tl[k]), skin, j);
         if (k === 2 && nailMat) { const n = add(NAIL_GEO, nailMat, j); n.position.set(0, tr * 0.62, -tl[2] * 0.6); n.scale.set(tr * 0.8, tr * 0.25, tl[2] * 0.33); }
-        if (k === 2 && SCARY) claw(j, tr, tl[2], 0.022);
+        if (k === 2 && SCARY) claw(j, tr, tl[2], 0.032);
         tp = j; tr *= 0.88;
     }
     outer.userData.rig = { fingers: fingers, thumb: thumb, grip: 0.22, target: 0.22 };
@@ -441,6 +441,12 @@ function addScaryFace(head, mouth, k) {
         const c = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.07 + i * 0.008, 0.004 - i * 0.004, zAt(-0.06) + 0.012), new THREE.Vector3(-0.056 + i * 0.008, -0.018 - i * 0.006, zAt(-0.05) + 0.008), new THREE.Vector3(-0.036 + i * 0.008, -0.04 - i * 0.008, zAt(-0.036) + 0.012));
         head.add(new THREE.Mesh(new THREE.TubeGeometry(c, 8, 0.0017, 5), red));
     }
+    const gum = new THREE.MeshStandardMaterial({ color: 0x5a0c18, roughness: 0.4 });   // dziąsła, nozdrza i fałdy policzków
+    head.add(ellMesh([ellGeo(0.046, 0.0028, 0.008, 0, -0.0795, zAt(0) + 0.003)], gum));
+    for (const s of [-1, 1]) {
+        const fold = meshAt(new THREE.SphereGeometry(1, 10, 6), dark, s * 0.056, -0.062, -0.143); fold.scale.set(0.0035, 0.015, 0.006); fold.rotation.z = s * 0.45; head.add(fold);
+        const flare = meshAt(new THREE.SphereGeometry(1, 10, 8), dark, s * 0.02, -0.052, -0.168); flare.scale.set(0.011, 0.007, 0.006); flare.rotation.z = -s * 0.5; head.add(flare);
+    }
     for (const s of [-1, 1]) { const ridge = meshAt(new THREE.SphereGeometry(1, 12, 8), dark, s * 0.045, 0.036, -0.14); ridge.scale.set(0.04, 0.008, 0.016); ridge.rotation.z = s * 0.35; head.add(ridge); }   // mocniejszy łuk brwiowy   // trzy ślady pazurów na policzku
     for (let i = 0; i < 5; i++) slash(0.05 + (i % 2) * 0.004, 0.058 - i * 0.012, 1.57, 0.012, pale);   // szwy na czole: poprzeczne ściegi
     slash(0.052, 0.03, 1.57, 0.07, pale);
@@ -550,6 +556,8 @@ export function createGorillaTorso(look) {
     // Grzywa: kępki sierści na karku, barkach i plecach (sylwetka nie jest gładką bryłą)
     for (let i = 0; i < 7; i++) { const a = (i / 6 - 0.5) * 2.2; bodyGeos.push(tuftGeo(Math.sin(a) * 0.17, 0.235 + Math.cos(a) * 0.02, 0.03, Math.sin(a) * 0.6, 1, 0.5, 0.024, 0.016)); }
     for (const sx of [-1, 1]) for (let i = 0; i < 5; i++) { const a = 0.4 + i * 0.5; bodyGeos.push(tuftGeo(sx * (0.215 + Math.sin(a) * 0.08), 0.14 + Math.cos(a) * 0.08, 0, sx * Math.sin(a), Math.cos(a), 0.2, 0.022, 0.016)); }
+    for (let i = 0; i < 12; i++) { const a = (i / 11 - 0.5) * 2.4; for (const dy of [0.2, 0.12]) bodyGeos.push(tuftGeo(Math.sin(a) * 0.2, dy, 0.1 + Math.cos(a) * 0.03, Math.sin(a) * 0.5, 0.9, 0.7, 0.04, 0.018)); }   // grzywa na barkach i łopatkach
+    for (let i = 0; i < 6; i++) bodyGeos.push(tuftGeo(0, 0.26 - i * 0.07, 0.14, 0, 0.5, 1, 0.045 - i * 0.003, 0.018));   // grzbiet
     for (let i = 0; i < 8; i++) { const a = (i / 7 - 0.5) * 2.0; bodyGeos.push(tuftGeo(Math.sin(a) * 0.19, -0.08 - (i % 3) * 0.06, 0.12, Math.sin(a) * 0.5, -0.2, 1, 0.022, 0.016)); }   // plecy
     // Cieniowanie: pachy i dół brzucha ciemniejsze, barki i kark jaśniejsze (głębia futra)
     bodyGeos.forEach(gm => bakeShade(gm, (x, y, z) => 0.78 + 0.32 * smooth(-0.3, 0.22, y) - 0.18 * smooth(0.12, 0.2, Math.abs(x)) * (1 - smooth(0.05, 0.18, y)) + 0.05 * (z < 0 ? 1 : 0)));
@@ -558,6 +566,7 @@ export function createGorillaTorso(look) {
     g.add(g.userData.chest);
     // Łysy placek na piersi (dwa mięśnie piersiowe) i brzuchu
     g.add(ellMesh([ellGeo(0.08, 0.075, 0.026, -0.064, -0.02, -0.123), ellGeo(0.08, 0.075, 0.026, 0.064, -0.02, -0.123), ellGeo(0.05, 0.03, 0.02, -0.04, -0.125, -0.126), ellGeo(0.05, 0.03, 0.02, 0.04, -0.125, -0.126), ellGeo(0.06, 0.03, 0.02, -0.04, -0.19, -0.126), ellGeo(0.06, 0.03, 0.02, 0.04, -0.19, -0.126), ellGeo(0.06, 0.03, 0.018, -0.04, -0.25, -0.12), ellGeo(0.06, 0.03, 0.018, 0.04, -0.25, -0.12)], face));   // piersiowe, kratka brzucha
+    for (const sx of [-1, 1]) { const cb = meshAt(new THREE.SphereGeometry(1, 10, 6), new THREE.MeshStandardMaterial({ color: 0x120a08, roughness: 1 }), sx * 0.07, 0.1, -0.13); cb.scale.set(0.07, 0.007, 0.012); cb.rotation.z = -sx * 0.18; g.add(cb); }   // obojczyki
     g.add(meshAt(new THREE.BoxGeometry(0.006, 0.2, 0.006), new THREE.MeshStandardMaterial({ color: 0x120a08, roughness: 1 }), 0, -0.1, -0.15));   // rowek mostka
     g.add(ellMesh([ellGeo(0.1, 0.045, 0.05, -0.1, 0.17, -0.05), ellGeo(0.1, 0.045, 0.05, 0.1, 0.17, -0.05)], fur));   // mięśnie czworoboczne
     if (k.back) g.add(meshAt(ellGeo(0.17, 0.17, 0.02, 0, -0.02, 0.138), new THREE.MeshStandardMaterial({ map: furTexture(), color: k.back, roughness: 0.9 }), 0, 0, 0));
