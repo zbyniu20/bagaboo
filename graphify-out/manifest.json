@@ -10091,6 +10091,30 @@
     "ast_hash": "7dbda80e91f3328a6bea950334459afa",
     "semantic_hash": ""
   },
+  "tools/blender/common.py": {
+    "mtime": 1795364240.1743731,
+    "seen": 1795364392.1470919,
+    "ast_hash": "a90608938a6a45bd664f045fc6a692ca",
+    "semantic_hash": ""
+  },
+  "tools/blender/gorilla_head.py": {
+    "mtime": 1795364240.173859,
+    "seen": 1795364392.147095,
+    "ast_hash": "c10c142d3a00a45eab449628762d461a",
+    "semantic_hash": ""
+  },
+  "tools/blender/sdf.py": {
+    "mtime": 1795364074.800591,
+    "seen": 1795364392.1470964,
+    "ast_hash": "014b04d6778177ef9657731c4a66646b",
+    "semantic_hash": ""
+  },
+  "tools/blender/README.md": {
+    "mtime": 1795364384.9139538,
+    "seen": 1795364392.1473265,
+    "ast_hash": "b007a5c078c51bab926fa71ac88d226c",
+    "semantic_hash": ""
+  },
   "package-lock.json": {
     "mtime": 1795355664.6839745,
     "seen": 1795358418.377209,
