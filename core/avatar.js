@@ -10,7 +10,7 @@ import { makeCanvas, toTex, mkRng, normalFor } from './textures.js';
 import { roleTagsFor } from './config.js';
 import { goobyTexture } from './gooby.js';
 import { rimify } from './visuals.js';
-import { extraHat, extraGlasses, extraMask, extraSleeveMat, extraGloveMat, EXTRA_SKINS, EXTRA_BADGES } from './cosmetics.js';
+import { extraHat, extraGlasses, extraMask, extraSleeveMat, extraGloveMat, EXTRA_SKINS, EXTRA_BADGES, scaryify, grim } from './cosmetics.js';
 
 const ENV = LP.envIntensity;
 const NAIL_GEO = new THREE.SphereGeometry(1, 12, 8);
@@ -82,7 +82,8 @@ function faceMat(look) {
     if (k && k.metal && k.face) return new THREE.MeshStandardMaterial({ color: k.face, metalness: 0.9, roughness: 0.3, envMapIntensity: Math.max(0.8, ENV) });
     return new THREE.MeshPhysicalMaterial({ color: k && k.face ? k.face : 0x2a2422, roughness: 0.62, normalMap: normalFor(tex.skin, 2), normalScale: new THREE.Vector2(0.8, 0.8), clearcoat: 0.12, clearcoatRoughness: 0.5, envMapIntensity: Math.max(0.6, ENV) });
 }
-function skinMaterial(look) {
+function skinMaterial(look) { const m = skinMaterialRaw(look); return SCARY && look.gloves && look.gloves !== 'none' ? grim(m, false) : m; }
+function skinMaterialRaw(look) {
     const eg = extraGloveMat(look.gloves); if (eg) return eg;
     if (look.gloves === 'neon') return new THREE.MeshStandardMaterial({ color: 0x20ff70, emissive: 0x10ff60, emissiveIntensity: 1.3, roughness: 0.3 });
     if (look.gloves === 'mannequin') return new THREE.MeshStandardMaterial({ map: tex.plaster, bumpMap: tex.plaster, bumpScale: 0.7, color: 0xd8d0c2, roughness: 0.55, envMapIntensity: ENV });
@@ -99,7 +100,8 @@ function nailMaterial(look) {
     if (look.gloves && look.gloves !== 'none') return null;
     return new THREE.MeshPhysicalMaterial({ color: 0xe8ccc0, roughness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.2, envMapIntensity: ENV });
 }
-function sleeveMaterial(look) {
+function sleeveMaterial(look) { const m = sleeveMaterialRaw(look); return SCARY && look.sleeve && look.sleeve !== 'cloth' ? grim(m, false) : m; }
+function sleeveMaterialRaw(look) {
     const base = { side: THREE.DoubleSide, envMapIntensity: ENV };
     const ex = extraSleeveMat(look.sleeve, base); if (ex) return ex;
     if (look.sleeve === 'leather') return new THREE.MeshStandardMaterial(Object.assign(base, { color: 0x3a2214, roughness: 0.35, metalness: 0.1 }));
@@ -176,7 +178,8 @@ export function poseHand(rig, dt) {
 // --- Czapki i okulary (układ: głowa patrzy w -Z, środek głowy w 0,0,0) ---
 const mat = (o) => new THREE.MeshStandardMaterial(Object.assign({ envMapIntensity: ENV, roughness: 0.6 }, o));
 const meshAt = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o; };
-export function buildHat(id) {
+export function buildHat(id) { return SCARY ? scaryify(buildHatRaw(id), 'hat', id) : buildHatRaw(id); }
+function buildHatRaw(id) {
     { const e = extraHat(id); if (e.children.length) return e; }
     const g = new THREE.Group();
     if (id === 'cap') {
@@ -240,7 +243,8 @@ export function buildHat(id) {
     }
     return g;
 }
-export function buildGlasses(id) {
+export function buildGlasses(id) { return SCARY ? scaryify(buildGlassesRaw(id), 'glasses', id) : buildGlassesRaw(id); }
+function buildGlassesRaw(id) {
     { const e = extraGlasses(id); if (e.children.length) return e; }
     const g = new THREE.Group();
     if (id === 'goldshades') g.add(meshAt(new THREE.BoxGeometry(0.2, 0.045, 0.02), mat({ color: 0xd4a640, metalness: 1, roughness: 0.15, envMapIntensity: Math.max(0.8, ENV) }), 0, 0.02, -0.132));
@@ -268,7 +272,8 @@ export function buildGlasses(id) {
     return g;
 }
 // Maski zakładane na twarz (nowy dział sklepu)
-export function buildMask(id) {
+export function buildMask(id) { return SCARY ? scaryify(buildMaskRaw(id), 'mask', id) : buildMaskRaw(id); }
+function buildMaskRaw(id) {
     { const e = extraMask(id); if (e.children.length) return e; }
     const g = new THREE.Group();
     const shell = (m, sx, sy, sz) => { const o = meshAt(new THREE.SphereGeometry(1, 24, 16, 0, Math.PI * 2, 0, Math.PI), m, 0, 0, -0.1); o.scale.set(sx, sy, sz); g.add(o); return o; };

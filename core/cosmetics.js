@@ -743,3 +743,47 @@ export const EXTRA_BADGES = {
         x.strokeStyle = '#ffffff'; x.lineWidth = 2; for (const s of [-1, 1]) for (let i = 0; i < 2; i++) { x.beginPath(); x.moveTo(64 + s * 26, 82 + i * 6); x.lineTo(64 + s * 46, 78 + i * 12); x.stroke(); } } },
     paw: { bg: '#2a1a0a', draw: (x) => { x.fillStyle = '#e8c890'; x.beginPath(); x.ellipse(64, 78, 24, 20, 0, 0, 7); x.fill(); for (const [cx, cy] of [[34, 56], [52, 38], [76, 38], [94, 56]]) { x.beginPath(); x.ellipse(cx, cy, 9, 12, 0, 0, 7); x.fill(); } } }
 };
+
+// ---------- WARSTWA GROZY NA WSZYSTKICH KOSMETYKACH ----------
+// Każda czapka, okulary i maska dostaje zabrudzone, przyciemnione materiały oraz krew i pęknięcia; słodkie przedmioty (CUTE) przechodzą w paletę zaschniętej krwi.
+// Rękawy i rękawice dostają tylko przyciemnienie (grim). Świecące (emissive), przezroczyste i bezcieniowe (MeshBasic) materiały zostają bez zmian, żeby aureole, neony i duchy nadal świeciły.
+const CUTE = new Set(['hat:party', 'hat:bunny', 'hat:teddyears', 'hat:sprout', 'hat:catears', 'hat:flowercrown', 'hat:donut', 'hat:unicorn', 'hat:santa', 'hat:chef', 'hat:beanie', 'hat:propeller',
+    'glasses:heart', 'glasses:starglasses', 'glasses:hippie', 'glasses:round', 'glasses:3d', 'mask:cat', 'mask:snowman', 'mask:luchador', 'mask:clown', 'sleeve:sweater', 'sleeve:hawaii', 'sleeve:plaid', 'sleeve:woven',
+    'gloves:mittens', 'gloves:candy', 'gloves:rainbow', 'gloves:boxing', 'gloves:rubber']);
+const grimCache = new WeakMap(), BLOOD_DARK = new THREE.Color(0x3a0b0b), GRIME = new THREE.Color(0x1e1612);
+export function grim(m, strong) {
+    if (!m || !m.color) return m;
+    const glow = m.emissive ? m.emissiveIntensity * Math.max(m.emissive.r, m.emissive.g, m.emissive.b) : 0;
+    if (!strong && (m.isMeshBasicMaterial || m.transparent || glow > 0.3)) return m;   // aureole, neony i duchy świecą dalej; słodkie przedmioty (strong) tracą też nieoświetlone, przezroczyste i różowe świecące barwy
+    const k = strong ? 1 : 0; let c = grimCache.get(m); if (!c) grimCache.set(m, c = [null, null]);
+    if (c[k]) return c[k];
+    const n = m.clone(); n.color.multiplyScalar(strong ? 0.55 : 0.62).lerp(strong ? BLOOD_DARK : GRIME, strong ? 0.6 : 0.36);
+    if (strong && n.emissive) n.emissive.multiplyScalar(0.25);
+    if (n.roughness !== undefined) n.roughness = Math.min(1, n.roughness + 0.15);
+    if (n.metalness > 0.5) n.metalness *= 0.8;
+    c[k] = n; return n;
+}
+export const isCute = (slot, id) => CUTE.has(slot + ':' + id);
+const BLOOD = () => new THREE.MeshStandardMaterial({ color: 0x7a0a0a, roughness: 0.35, emissive: 0x2a0000, envMapIntensity: ENV });
+function seedOf(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0) / 4294967296); }
+export function scaryify(g, slot, id) {
+    if (!g || !g.children.length) return g;
+    const strong = isCute(slot, id), R = seedOf(slot + id);
+    g.traverse(o => { if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map(m => grim(m, strong)) : grim(o.material, strong); });
+    g.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(g), w = b.max.x - b.min.x, red = BLOOD(), dropN = strong ? 4 : 3;
+    const drip = (x, y, z, len) => g.add(at(new THREE.CylinderGeometry(0.0032, 0.0016, len, 5), red, x, y - len / 2, z));
+    if (slot === 'hat') {   // krew skapuje z dolnej krawędzi czapki
+        for (let i = 0; i < dropN; i++) { const x = b.min.x + w * (0.12 + 0.76 * R()), z = b.min.z + (b.max.z - b.min.z) * (0.1 + 0.5 * R()); drip(x, b.min.y + 0.004, z, 0.025 + R() * 0.045); }
+    } else if (slot === 'glasses') {   // pęknięte szkło i kropla krwi pod szkłem
+        const crackMat = new THREE.MeshBasicMaterial({ color: 0xe8e0d0 }), cy = (b.min.y + b.max.y) / 2, z = b.min.z - 0.001;
+        for (const [dx, rot, l] of [[-0.35, 0.8, 0.05], [-0.3, -0.5, 0.035], [0.3, 0.6, 0.03]]) { const c = at(new THREE.BoxGeometry(l, 0.0015, 0.0015), crackMat, (b.min.x + b.max.x) / 2 + w * dx * 0.5, cy, z); c.rotation.z = rot; g.add(c); }
+        drip(b.min.x + w * 0.7, b.min.y + 0.003, z, 0.03 + R() * 0.02);
+    } else if (slot === 'mask') {   // krwawe łzy z oczu, pęknięcie
+        const z = b.min.z - 0.001;
+        for (const x of [-0.045, 0.045]) { drip(x, 0.008, z, 0.05 + R() * 0.03); g.add(at(new THREE.SphereGeometry(0.004, 6, 5), red, x, 0.008, z)); }
+        const c = at(new THREE.BoxGeometry(0.06, 0.0015, 0.0015), new THREE.MeshBasicMaterial({ color: 0x1a0a0a }), 0.03, 0.07, z); c.rotation.z = -0.7; g.add(c);
+        if (strong) { const c2 = at(new THREE.BoxGeometry(0.04, 0.0015, 0.0015), new THREE.MeshBasicMaterial({ color: 0x1a0a0a }), -0.035, 0.05, z); c2.rotation.z = 0.5; g.add(c2); }
+    }
+    return g;
+}
