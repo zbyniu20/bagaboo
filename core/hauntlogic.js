@@ -61,6 +61,7 @@ export function grafAlpha(t, len) {
 // Im dłużej gracz tam jest, tym większe napięcie (staffDread 0..1) i tym częstsze zdarzenia; przy szczycie raz zgasną wszystkie światła, a czerwone oczy zbliżą się z ciemności.
 // Wszystko lokalne i wizualne (drzwi, telewizor, komputer i młotki działają bez zmian), wyłączane przyciskiem Haunt (SETTINGS.lobbyEvents).
 export const STAFF = {
+    CEIL: 9, HEMI: 0.8, FOG: 1.35,   // jasność świateł sufitowych (dawniej 6; pierwotnie 10), mnożnik światła rozproszonego i mgły
     RAMP: 240, EVERY: [14, 26], MIN_FACTOR: 0.4, BLACKOUT_AT: 0.85, BLACKOUT_LEN: 6, AFTER_BLACKOUT: 0.4,
     EVENTS: ['whisper', 'flicker', 'tv', 'writing', 'drip', 'slam', 'step'],
     CREEP: { EVERY: [3, 6], STEP: 0.35, DRIFT: 6, MIN_DIST: 1.8, MAX_DIST: 12, SEP: 1.4, BOUND: 5.2, STEP_CHANCE: 1 },
@@ -74,3 +75,13 @@ export const staffBlackoutDue = (dread, done) => !done && num(dread) && dread >=
 export function eyesDistance(t) { if (!num(t) || t <= 0) return STAFF.EYES.START; if (t >= STAFF.BLACKOUT_LEN) return STAFF.EYES.END; return STAFF.EYES.START + (STAFF.EYES.END - STAFF.EYES.START) * (t / STAFF.BLACKOUT_LEN); }
 // Przesunięcie źrenicy portretu (-1..1 w obu osiach) w stronę gracza: dir = wektor do gracza w układzie obrazu (x w prawo, y w górę, z przed obraz); zero, gdy gracz jest za obrazem
 export function pupilOffset(dir) { if (!dir || !num(dir.x) || !num(dir.y) || !num(dir.z) || dir.z <= 0.05) return { x: 0, y: 0 }; return { x: Math.max(-1, Math.min(1, dir.x / dir.z)), y: Math.max(-1, Math.min(1, dir.y / dir.z)) }; }
+
+// ---------- GŁOS GRACZA PRZYCIĄGA POTWORY (core/ambience.js: DREAD.voice, heardVoice; poziomy: cmentarz, katakumby, Furas, hotel) ----------
+// Mikrofon lokalnego gracza (RMS): cisza poniżej QUIET nic nie robi, od LOUD w górę potwór słyszy głos z MAX_RANGE m, pomiędzy zasięg rośnie liniowo od MIN_RANGE.
+// Każdy klient liczy to z własnego mikrofonu (nic nie idzie przez sieć). Ukryty gracz (szafa, bęben) jest słyszany słabiej (HIDDEN_MUL).
+export const VOICE = { QUIET: 0.06, LOUD: 0.25, MIN_RANGE: 6, MAX_RANGE: 20, HIDDEN_MUL: 0.4, ATTACK: 0.05, RELEASE: 0.6 };
+export function voiceLevel(rms) { if (!num(rms) || rms <= VOICE.QUIET) return 0; return Math.min(1, (rms - VOICE.QUIET) / (VOICE.LOUD - VOICE.QUIET)); }
+export function voiceRange(level) { if (!num(level) || level <= 0) return 0; return VOICE.MIN_RANGE + (VOICE.MAX_RANGE - VOICE.MIN_RANGE) * Math.min(1, level); }
+// Wygładzanie poziomu: szybko rośnie (ATTACK s), wolno opada (RELEASE s), żeby pauzy w mowie nie gasiły głosu natychmiast
+export function voiceSmooth(prev, now, dt) { const p = num(prev) ? prev : 0, n = num(now) ? now : 0, k = Math.min(1, dt / (n > p ? VOICE.ATTACK : VOICE.RELEASE)); return p + (n - p) * (num(dt) && dt > 0 ? k : 0); }
+export function voiceHeard(level, dist, mult) { return num(dist) && voiceRange(level) > 0 && dist < voiceRange(level) * (num(mult) ? mult : 1); }

@@ -31,7 +31,7 @@ const wait = (ms) => page.waitForTimeout(ms), OUT = process.argv[2] || '';
 await page.evaluate(async () => { (await import('./core/economy.js')).SAVE.profile.name = 'Luna'; const M = await import('./main.js'); await M.loadLevel('staff'); }); await wait(2500);   // nick moderatora: wejście do pokoju jest dozwolone
 const st = (cmd, arg) => page.evaluate(async ([c, a]) => (await import('./levels/staff.js')).debugStaff(c, a), [cmd, arg]);
 let s = await st();
-ok('staff: portraits, jars, the hanging figure and three mannequins are there and the fog is thicker', s.portraits === 4 && s.jars === 5 && s.hang === true && s.mans.length === 3 && s.fogMul === 1.5, s);
+ok('staff: portraits, jars, the hanging figure and three mannequins are there and the fog is thicker', s.portraits === 4 && s.jars === 5 && s.hang === true && s.mans.length === 3 && s.fogMul === 1.35, s);
 const parts = await page.evaluate(async () => { const E = await import('./core/engine.js'); return { story: !!E.L.root.getObjectByName('storyProps'), door: E.L.portals.some(p => p.target === 'lobby'), terminals: (await import('./core/terminal.js')).terminals.length }; });
 ok('staff: blood and writing on the walls exist, the exit door still leads to the lobby and the screens are still there', parts.story && parts.door && parts.terminals >= 3, parts);
 if (OUT) { await wait(500); await page.screenshot({ path: OUT + '/staff-start.png' }); }
@@ -39,13 +39,13 @@ s = await page.evaluate(async () => { const M = await import('./levels/staff.js'
 ok('staff: the events leave their marks (steps queued, a drop falling, the lights flickering, the TV ghost, a message)', s.steps > 0 && s.drops > 0 && s.flick > 0 && s.tv === true && s.writes.some(a => a >= 0), s);
 if (OUT) { await wait(200); await page.screenshot({ path: OUT + '/staff-events.png' }); }
 for (let i = 0; i < 40 && (await st()).flick > 0; i++) await wait(300); s = await st();
-ok('staff: after the flicker the lights are back at their normal level', s.flick <= 0 && s.lights.every(v => Math.abs(v - 6) < 1e-9), s);
+ok('staff: after the flicker the lights are back at their normal level', s.flick <= 0 && s.lights.every(v => Math.abs(v - 9) < 1e-9), s);
 s = await st('elapsed', 100); ok('staff: after a while in the room the tension grows', s.dread > 0.4 && s.dread < 0.45 && s.done === false, s);
 s = await st('elapsed', 205); await wait(700); s = await st();
 ok('staff: at the peak the blackout starts once: every light goes out and red eyes appear', s.done === true && s.blackout >= 0 && s.lights.every(v => v === 0) && s.eyes && s.eyes.every(v => v === true), s);
 if (OUT) { await page.screenshot({ path: OUT + '/staff-blackout.png' }); }
 for (let i = 0; i < 60 && (await st()).blackout >= 0; i++) await wait(400); s = await st();
-ok('staff: the blackout ends by itself: lights return, eyes vanish, a message appears and the tension drops to 40%', s.blackout === -1 && s.lights.every(v => Math.abs(v - 6) < 1e-9) && s.eyes.every(v => v === false) && s.writes[0] >= 0 && Math.abs(s.dread - 0.4) < 0.05, s);
+ok('staff: the blackout ends by itself: lights return, eyes vanish, a message appears and the tension drops to 40%', s.blackout === -1 && s.lights.every(v => Math.abs(v - 9) < 1e-9) && s.eyes.every(v => v === false) && s.writes[0] >= 0 && Math.abs(s.dread - 0.4) < 0.05, s);
 s = await st('elapsed', 235); await wait(1500); s = await st(); ok('staff: the blackout never repeats in the same visit', s.blackout === -1 && s.done === true, s);
 const inB = s.mans.every(m => Math.abs(m.x) <= 7 && Math.abs(m.z) <= 5.5 && Math.hypot(m.x - m.home.x, m.z - m.home.z) <= 9.5); ok('staff: the mannequins stay inside the room and near their place', inB, s.mans);
 await page.evaluate(async () => { const M = await import('./main.js'); await M.loadLevel('lobby'); }); await wait(2000);

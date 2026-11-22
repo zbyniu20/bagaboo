@@ -19,7 +19,7 @@ import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_CATACOMBS } from './levels.js';
 import { createGridMaze } from '../core/gridmaze.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
-import { setDread } from '../core/ambience.js';
+import { setDread, heardVoice } from '../core/ambience.js';
 
 const N = 8, P = 5.5, WT = 0.8, H = 3.4, X = N * P / 2;              // siatka 8 x 8 komórek po 5,5 m (44 x 44 m), ściany 0,8 m
 const SEE_DIST = 14, HEAR_RUN = 10, HEAR_BONE = 22, LOSE_TIME = 8, SMELL_TIME = 4, CATCH_DIST = 1.0, KEYS = 4;   // SMELL_TIME: kilka sekund po utracie wzroku wciąż czuje, mniej więcej gdzie jesteś
@@ -260,7 +260,7 @@ function think(dt, ctx) {
             if (b.smellT < SMELL_TIME) { b.smellR = (b.smellR || 0) - dt; if (b.smellR <= 0) { b.smellR = 1.2; b.last = [p.x + (Math.random() - 0.5) * 8, p.z + (Math.random() - 0.5) * 8]; } }   // węch: kilka sekund wie mniej więcej, gdzie jesteś
             if (b.lostT > LOSE_TIME) { st.mode = 'patrol'; st.goalCell = null; st.path = []; }
         }
-        else if (speedXZ > 3.4 && d < HEAR_RUN * (S.df.id === 'nightmare' ? 1.3 : 1)) { st.mode = 'investigate'; st.goalCell = pc; st.path = []; b.repath = 0; }
+        else if ((speedXZ > 3.4 && d < HEAR_RUN * (S.df.id === 'nightmare' ? 1.3 : 1)) || heardVoice(d, S.df.id === 'nightmare' ? 1.3 : 1)) { st.mode = 'investigate'; st.goalCell = pc; st.path = []; b.repath = 0; }
         let goal, gx, gz, speed = WALK * mul;
         if (st.mode === 'chase') {
             const tgt = seesMe || !b.last ? [p.x, p.z] : b.last; gx = tgt[0]; gz = tgt[1]; goal = cellOf(gx, gz); speed = CHASE * mul;
