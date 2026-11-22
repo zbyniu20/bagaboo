@@ -83,3 +83,19 @@ check(T('lobby: every vote offers 3 different random maps, never the last played
 })());
 check(T('lobby: all six maps do show up as options over many draws'), new Set(Array.from({ length: 200 }, (_, i) => M.pickOptions(-1, rng2(i + 99))).flat()).size === M.MAPS.length);
 check(T('lobby: options from the network are range-checked (3 different map numbers)'), JSON.stringify(M.cleanOptions([0, 3, 5])) === '[0,3,5]' && [null, 'x', [], [0, 1], [0, 1, 2, 3], [0, 0, 1], [0, 1, 6], [0, 1, -1], [0, 1, 1.5], [0, 1, '2'], [0, 1, NaN]].every(x => M.cleanOptions(x) === null));
+
+// ---------- urwane kończyny (core/dismemberlogic.js, levels/monster.js, core/network.js) ----------
+const D = await import(pathToFileURL(path.join(ROOT, 'core/dismemberlogic.js')).href);
+check(T('gore: the draw gives only the four allowed codes and every one of them shows up'), (() => { const seen = new Set(Array.from({ length: 400 }, (_, i) => D.pickDismember(rng2(i + 3)))); return seen.size === 4 && [...seen].every(c => D.DM_CODES.includes(c)); })());
+check(T('gore: the draw is safe at the edges of the random range'), D.pickDismember(() => 0) === 1 && D.pickDismember(() => 0.999999) === 4 && D.pickDismember(() => 1) === 4);
+check(T('gore: codes mean left hand, right hand, both hands and head'), D.lostLeft(1) && !D.lostRight(1) && D.lostRight(2) && !D.lostLeft(2) && D.lostLeft(3) && D.lostRight(3) && !D.lostHead(3) && D.lostHead(4) && !D.lostLeft(4) && D.dismemberText(4) === 'your head' && D.dismemberText(0) === '');
+check(T('gore: the map from the network keeps only valid codes and sane keys'), (() => {
+    const ok = D.cleanDismember({ a: 1, b: 2, c: 3, d: 4 });
+    const bad = D.cleanDismember({ a: 0, b: 5, c: -1, d: 1.5, e: '1', f: null, '': 1, ['x'.repeat(65)]: 2, g: 4 });
+    const many = D.cleanDismember(Object.fromEntries(Array.from({ length: 40 }, (_, i) => ['p' + i, 1])));
+    return Object.keys(ok).length === 4 && Object.keys(bad).join() === 'g' && Object.keys(many).length === D.MAX_ENTRIES && [null, undefined, 'x', 7, [], [1, 2]].every(v => Object.keys(D.cleanDismember(v)).length === 0) && Object.getPrototypeOf(ok) === null;
+})());
+check(T('gore: a __proto__ key from the network does not pollute anything'), (() => { const o = D.cleanDismember(JSON.parse('{"__proto__": 1, "a": 2}')); return Object.keys(o).join() === 'a' && ({}).a === undefined; })());
+const monSrc = fs.readFileSync(path.join(ROOT, 'levels/monster.js'), 'utf8'), netSrc = fs.readFileSync(path.join(ROOT, 'core/network.js'), 'utf8');
+check(T('gore: the host draws on a catch, the guest takes the map only through cleanDismember, and the option is off by default'), /S\.dm\[toNet\(id\)\] = pickDismember/.test(monSrc) && /S\.dm = cleanDismember\(msg\.dm\)/.test(monSrc) && /gore: false/.test(fs.readFileSync(path.join(ROOT, 'core/settings.js'), 'utf8')));
+check(T('gore: it is shown only with the option on, and the body is restored when the level ends'), /const on = !!SETTINGS\.gore/.test(monSrc) && /N\.clearDismember\(\)/.test(monSrc) && /export function setDismember/.test(netSrc) && /export function tickDismember/.test(netSrc));
