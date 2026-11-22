@@ -1,17 +1,17 @@
 # Graph Report - bagaboo  (2026-11-22)
 
 ## Corpus Check
-- 465 files · ~1,281,418 words
+- 465 files · ~1,281,643 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 87 file(s) not represented in the graph (top: .css 84, (none) 3)
 
 ## Summary
-- 5694 nodes · 14831 edges · 230 communities (207 shown, 23 thin omitted)
+- 5694 nodes · 14832 edges · 230 communities (207 shown, 23 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 455 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c4692fa3`
+- Built from commit: `86f079cc`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -252,8 +252,8 @@
   .claude/skills/taste-skill/references/layout-v4.md → .claude/skills/taste-skill/assets/layout/layout.js
 - `Gooby: photo of a fluffy white rabbit-like creature` --conceptually_related_to--> `bagaboo (gtag fangame)`  [INFERRED]
   core/gooby.webp → README.md
-- `Colour` --references--> `accentPalette()`  [INFERRED]
-  .claude/skills/taste-skill/references/effects-creative.md → .claude/skills/taste-skill/assets/components/shared.js
+- `build()` --calls--> `isInvitedToStaff()`  [EXTRACTED]
+  levels/staff.js → core/network.js
 
 ## Import Cycles
 - None detected.
@@ -275,7 +275,7 @@ Nodes (81): activeRoleTags(), ACTIVITY, bumpStat(), buyItem(), capped(), checkSt
 
 ### Community 2 - "textures.js"
 Cohesion: 0.09
-Nodes (59): burntTexture(), faceTexture(), jacketTexture(), roleLabel(), rustDoorTexture(), storyTextures(), vignetteTexture(), crackTex() (+51 more)
+Nodes (58): burntTexture(), faceTexture(), jacketTexture(), rustDoorTexture(), storyTextures(), vignetteTexture(), crackTex(), createMural() (+50 more)
 
 ### Community 3 - "silence.js"
 Cohesion: 0.08
@@ -379,7 +379,7 @@ Nodes (11): args, files, gameFiles, info, lines, ROOT, stat, strict (+3 more)
 
 ### Community 28 - "avatar.js"
 Cohesion: 0.07
-Nodes (57): addRoleTag(), addScaryFace(), ARM_GEO, BADGES, badgeTex, bakeShade(), BONE(), buildBadge() (+49 more)
+Nodes (58): addRoleTag(), addScaryFace(), ARM_GEO, BADGES, badgeTex, bakeShade(), BONE(), buildBadge() (+50 more)
 
 ### Community 29 - "photos.mjs"
 Cohesion: 0.06
@@ -1102,7 +1102,7 @@ Nodes (4): glslIn(), isGLSL(), lintGLSL(), shaderLint()
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `f()` connect `build.js` to `ref_path`, `logic.mjs`, `copy-lint.mjs`, `static.mjs`, `gate.mjs`, `changed.mjs`, `workshop.js`, `ref_node_fs`?**
-  _High betweenness centrality (0.457) - this node is a cross-community bridge._
+  _High betweenness centrality (0.469) - this node is a cross-community bridge._
 - **Are the 51 inferred relationships involving `lib()` (e.g. with `arrive()` and `audit()`) actually correct?**
   _`lib()` has 51 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `./core/emotes.js`, `./core/gorillamachine.js`, `./core/highfive.js` to the rest of the system?**
@@ -1110,8 +1110,8 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `network.js` be split into smaller, more focused modules?**
   _Cohesion score 0.03973013493253373 - nodes in this community are weakly interconnected._
 - **Why does `mode` connect `workshop.js` to `build.js`?**
-  _High betweenness centrality (0.382) - this node is a cross-community bridge._
+  _High betweenness centrality (0.391) - this node is a cross-community bridge._
 - **Should `toast` be split into smaller, more focused modules?**
   _Cohesion score 0.04675846242111302 - nodes in this community are weakly interconnected._
-- **Why does `lib()` connect `lib` to `consistency.mjs`?**
+- **Why does `sub()` connect `build.js` to `init`?**
   _High betweenness centrality (0.060) - this node is a cross-community bridge._

@@ -19,6 +19,7 @@
     "../core/dismemberlogic.js",
     "../core/gfxlogic.js",
     "../core/hauntlogic.js",
+    "../core/avatarfxlogic.js",
     "../core/huntlogic.js",
     "../core/minigames.js",
     "../core/monstermaps.js",
