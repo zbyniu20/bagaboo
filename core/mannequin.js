@@ -74,3 +74,29 @@ export function buildMannequin(R) {
     lean.rotation.z = (R() - 0.5) * 0.22; lean.rotation.x = (R() - 0.5) * 0.2;
     return { group: g, head: head };
 }
+
+// Straszna twarz dla potworów zbudowanych z manekina (Grabarz, Strażnik, Lalka, posągi, fantom): paszcza z kłami, opcjonalnie rogi i krwawe łzy.
+// Wołaj PO podmianie materiałów w poziomie (własne materiały nie są wtedy nadpisane). head to m.head z buildMannequin; twarz patrzy w +Z głowy.
+// o = { width, open, teeth, toothColor, cavity, horns: kolor kości albo 0, tears: kolor krwi albo 0, long: dodatkowa długość kłów }
+export function addMonsterFace(head, o) {
+    o = o || {};
+    const W = o.width || 0.055, open = o.open === undefined ? 0.03 : o.open, n = o.teeth || 9, long = o.long || 1, y0 = 0.055, g = new THREE.Group();
+    const tooth = new THREE.MeshStandardMaterial({ color: o.toothColor || 0xe0d6b8, roughness: 0.4 }), cav = new THREE.MeshBasicMaterial({ color: o.cavity === undefined ? 0x1a0000 : o.cavity });
+    const mouth = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), cav); mouth.scale.set(W * 1.05, open + 0.014, 0.02); mouth.position.set(0, y0 - open * 0.45, 0.101); g.add(mouth);
+    const up = [], lo = [];
+    for (let i = 0; i < n; i++) {
+        const t = n === 1 ? 0 : i / (n - 1) * 2 - 1, x = t * W, big = i === 1 || i === n - 2, len = (big ? 0.034 : 0.017) * long;
+        const a = new THREE.ConeGeometry(0.0055, len, 5); a.rotateX(Math.PI); a.translate(x, y0 + 0.006 - len / 2 + 0.014, 0.106); up.push(a);
+        if (i % 2 === 0 || big) { const l = (big ? 0.026 : 0.014) * long, b = new THREE.ConeGeometry(0.005, l, 5); b.translate(x * 0.92, y0 - open * 0.9 - 0.012 + l / 2, 0.106); lo.push(b); }
+    }
+    g.add(new THREE.Mesh(mergeGeometries(up), tooth), new THREE.Mesh(mergeGeometries(lo), tooth));
+    if (o.horns) {
+        const horn = new THREE.MeshStandardMaterial({ color: o.horns, roughness: 0.5 });
+        for (const s of [-1, 1]) { const h = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2, 6), horn); h.position.set(s * 0.075, 0.27, 0); h.rotation.z = -s * 0.5; g.add(h); const h2 = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.1, 5), horn); h2.position.set(s * 0.135, 0.3, 0); h2.rotation.z = -s * 1.0; g.add(h2); }
+    }
+    if (o.tears) {
+        const blood = new THREE.MeshStandardMaterial({ color: o.tears, roughness: 0.4 });
+        for (const s of [-1, 1]) { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.002, 0.07, 5), blood); d.position.set(s * 0.04, 0.11, 0.103); g.add(d); }
+    }
+    head.add(g); return g;
+}

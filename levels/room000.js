@@ -317,6 +317,9 @@ function ghostHead() {
     const skull = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 10), white); skull.scale.set(0.85, 1.3, 0.92); g.add(skull);
     for (const sx of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), black); eye.scale.set(1, 1.7, 0.5); eye.position.set(sx * 0.075, 0.05, 0.17); eye.rotation.z = sx * 0.25; g.add(eye); }
     const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), black); mouth.scale.set(0.9, 2.1, 0.4); mouth.position.set(0, -0.14, 0.17); g.add(mouth);
+    const redEye = new THREE.MeshBasicMaterial({ color: 0xff2010 }), fang = new THREE.MeshBasicMaterial({ color: 0xf4f6ff });
+    for (const sx of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), redEye); e.position.set(sx * 0.075, 0.05, 0.19); g.add(e); }   // czerwone ślepia w czarnych oczodołach
+    for (let i = 0; i < 7; i++) { const big = i === 1 || i === 5, t = new THREE.Mesh(new THREE.ConeGeometry(0.008, big ? 0.075 : 0.045, 5), fang); t.rotation.x = Math.PI; t.position.set((i - 3) * 0.016, -0.1 - (big ? 0.02 : 0), 0.2); g.add(t); }   // kły w otwartej paszczy
     for (let i = 0; i < 9; i++) { const a = (i / 9 - 0.5) * 2.2, h = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.7 + (i % 3) * 0.15, 5), white); h.position.set(Math.sin(a) * 0.17, -0.3, -0.12 - Math.cos(a) * 0.04); h.rotation.x = Math.PI + (i % 2) * 0.05; g.add(h); }
     return g;
 }

@@ -241,7 +241,8 @@ function monsterMats() {
         membrane: new THREE.MeshStandardMaterial({ color: 0x9a5a5a, roughness: 0.5, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }),
         tooth: new THREE.MeshStandardMaterial({ color: 0xd8ccb0, roughness: 0.35 }),
         claw: new THREE.MeshStandardMaterial({ color: 0x1a1412, roughness: 0.3, metalness: 0.2 }),
-        mouth: new THREE.MeshBasicMaterial({ color: 0x120202 })
+        mouth: new THREE.MeshBasicMaterial({ color: 0x120202 }),
+        blood: new THREE.MeshStandardMaterial({ color: 0x6a0808, roughness: 0.4 })
     };
 }
 // Głowa bez oczu: wydłużona czaszka, ogromne uszy i paszcza pełna zębów
@@ -262,6 +263,7 @@ function buildHead(M) {
     jaw.add(meshOf(lower, M.flesh));
     for (let k = 0; k < 9; k++) { const a = (k / 8 - 0.5) * 2.2; lteeth.push(place(new THREE.ConeGeometry(0.022, 0.12, 6), Math.sin(a) * 0.17, 0.0, 0.36 + Math.cos(a) * 0.26, 0, 0, 0, 1, 1, 1)); }
     jaw.add(meshOf(lteeth, M.tooth));
+    for (let k = 0; k < 7; k++) { const len = 0.12 + (k % 3) * 0.1, d = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.003, len, 5), M.blood); d.position.set((k - 3) * 0.05, -0.12 - len / 2, 0.38 + (k % 2) * 0.12); jaw.add(d); }   // krew i ślina spływają z dolnej szczęki
     head.userData.jaw = jaw;
     return head;
 }

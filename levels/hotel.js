@@ -11,7 +11,7 @@
 import { THREE, L, tex, camera, addCollider, renderer, lighting } from '../core/engine.js';
 import { setFlashHolder } from '../core/visuals.js';
 import * as T from '../core/textures.js';
-import { buildMannequin } from '../core/mannequin.js';
+import { buildMannequin, addMonsterFace } from '../core/mannequin.js';
 import { levelReward, recordTime, diffOf } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import { setPlayerPosition, releaseAll, hands } from '../core/player.js';
@@ -155,6 +155,7 @@ function makeBlind(room, seed, scale, path, x, z, big) {   // Ślepy Lokaj (hol)
     const m = buildMannequin(T.mkRng(seed)); m.group.scale.set(scale[0], scale[1], scale[2]); L.root.add(m.group);
     m.group.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: big ? 0x0c0a0a : 0x14100e, roughness: 1 }); });
     m.head.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: big ? 0xeee8dc : 0xd8d0c0, roughness: 0.6 }); });
+    addMonsterFace(m.head, big ? { width: 0.06, open: 0.05, teeth: 11, long: 1.8, horns: 0xcfc6a8, tears: 0x7a0a0a } : { width: 0.052, open: 0.03, long: 1.3, tears: 0x7a0a0a });
     const st = createBot(x, z); st.mode = 'patrol'; st.wp = 0; m.group.position.set(st.x, 0, st.z);
     return { m: m, st: st, path: path, wT: 0, wx: st.x, wz: st.z, stuckN: 0, lost: 0 };
 }

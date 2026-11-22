@@ -5,7 +5,7 @@
 // ==========================================
 import { THREE, tex } from './engine.js';
 import * as T from './textures.js';
-import { buildMannequin } from './mannequin.js';
+import { buildMannequin, addMonsterFace } from './mannequin.js';
 
 const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); return o; };
 const cyl = (r1, r2, h, m, x, y, z, seg) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg || 8), m); o.position.set(x, y, z); return o; };
@@ -14,7 +14,7 @@ function glowEye(col, s) { const e = new THREE.Sprite(new THREE.SpriteMaterial({
 
 // Manekin z labiryntu
 function mannequin() {
-    const m = buildMannequin(T.mkRng(4242)), g = new THREE.Group();
+    const m = buildMannequin(T.mkRng(4242)), g = new THREE.Group(); addMonsterFace(m.head, { width: 0.058, open: 0.045, teeth: 11, long: 1.7, tears: 0x7a0a0a });
     m.group.position.y = -1.62; g.add(m.group);
     for (const sx of [-1, 1]) { const e = glowEye(0xff2000, 0.1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
     return { group: g, animate: (t) => { m.head.rotation.z = Math.sin(t * 7) * 0.08; } };
@@ -28,6 +28,9 @@ function blind() {
     g.add(cyl(0.08, 0.13, 0.9, skin, 0, -0.75, 0));
     for (let i = 0; i < 5; i++) g.add(box(0.2, 0.012, 0.02, skin, 0, -0.45 - i * 0.09, 0.1));   // żebra
     for (const sx of [-1, 1]) { const a = cyl(0.025, 0.035, 1.3, skin, sx * 0.2, -0.95, 0.05); a.rotation.z = sx * 0.12; g.add(a); const l = cyl(0.03, 0.045, 1.0, skin, sx * 0.08, -1.7, 0); g.add(l); }
+    const clawM = new THREE.MeshStandardMaterial({ color: 0x1a1412, roughness: 0.3, metalness: 0.2 }), bloodM = new THREE.MeshStandardMaterial({ color: 0x7a0a0a, roughness: 0.4 });
+    for (const sx of [-1, 1]) for (let f = 0; f < 4; f++) { const cl = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.22 + (f % 2) * 0.06, 5), clawM); cl.position.set(sx * 0.278 + (f - 1.5) * 0.025, -1.72, 0.05); cl.rotation.x = Math.PI; g.add(cl); }   // długie pazury
+    for (const sx of [-0.04, 0, 0.04]) g.add(cyl(0.006, 0.003, 0.2 + Math.abs(sx) * 2, bloodM, sx, -0.3, 0.2, 5));   // krew z paszczy
     return { group: g, animate: (t) => { mouth.scale.y = 0.8 + 0.3 * Math.sin(t * 9); head.rotation.z = Math.sin(t * 2) * 0.15; } };
 }
 // Smolisty Pełzacz ze Studni: czarna, lśniąca maź w kształcie postaci, ociekająca, z zielonymi oczami
@@ -35,6 +38,9 @@ function ooze() {
     const g = new THREE.Group(), tar = new THREE.MeshPhysicalMaterial({ color: 0x050505, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.05 });
     const head = ball(0.17, tar, 0, 0, 0); head.scale.set(1, 1.2, 1); g.add(head);
     for (const sx of [-1, 1]) { const e = glowEye(0x40ff60, 0.12); e.position.set(sx * 0.06, 0.02, 0.15); g.add(e); }
+    for (const sx of [-1, 1]) { const e = glowEye(0x40ff60, 0.07); e.position.set(sx * 0.095, 0.1, 0.13); g.add(e); }   // druga para oczu
+    const fang = new THREE.MeshStandardMaterial({ color: 0xe8e4d0, roughness: 0.3 });
+    for (let i = 0; i < 9; i++) { const a = (i / 8 - 0.5) * 2.0, big = i === 2 || i === 6, t = new THREE.Mesh(new THREE.ConeGeometry(0.014, big ? 0.1 : 0.06, 5), fang); t.rotation.x = Math.PI; t.position.set(Math.sin(a) * 0.1, -0.1 - (big ? 0.04 : 0.02), 0.14 + Math.cos(a) * 0.035); g.add(t); }   // szczerzone kły
     const blobs = [];
     for (let i = 0; i < 9; i++) { const b = ball(0.12 + Math.random() * 0.1, tar, (Math.random() - 0.5) * 0.25, -0.35 - i * 0.15, (Math.random() - 0.5) * 0.15); g.add(b); blobs.push(b); }
     for (let i = 0; i < 10; i++) { const d = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.2 + Math.random() * 0.3, 6), tar); d.position.set((Math.random() - 0.5) * 0.35, -0.3 - Math.random() * 1.0, (Math.random() - 0.5) * 0.2); d.rotation.x = Math.PI; g.add(d); }
@@ -48,11 +54,14 @@ function threadman() {
     x.fillStyle = '#f2eee6'; x.fillRect(0, 0, 128, 128); x.strokeStyle = 'rgba(40,30,30,0.7)'; x.lineWidth = 2;
     for (let i = 0; i < 4; i++) { x.beginPath(); x.moveTo(30 + i * 20, 10); x.lineTo(40 + i * 16, 60); x.lineTo(30 + i * 22, 110); x.stroke(); }
     x.fillStyle = '#100808'; x.fillRect(40, 92, 48, 5);
+    x.fillStyle = '#7a0a0a'; for (const px of [44, 76]) { x.fillRect(px, 40, 5, 52); x.beginPath(); x.arc(px + 2.5, 92, 4, 0, 7); x.fill(); }   // krwawe łzy
     const mask = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), new THREE.MeshPhysicalMaterial({ map: T.toTex(c, false), roughness: 0.12, clearcoat: 1 }));
     mask.rotation.x = Math.PI / 2; mask.scale.set(1, 1.5, 0.9); mask.position.z = 0.04; const mg = new THREE.Group(); mg.add(mask); mg.rotation.z = 0.32; g.add(mg);
     for (let i = 0; i < 4; i++) { const st = cyl(0.04, 0.08, 1.4, cloth, Math.cos(i * 1.6) * 0.06, -0.85, Math.sin(i * 1.6) * 0.04, 6); st.rotation.set(Math.sin(i) * 0.1, i * 0.8, Math.cos(i) * 0.1); g.add(st); }
     for (let i = 0; i < 4; i++) { const cb = cyl(0.01, 0.01, 0.9 + i * 0.15, cable, (i - 1.5) * 0.05, -0.7, 0.07, 5); g.add(cb); }
     for (const sx of [-1, 1]) { const a = cyl(0.03, 0.05, 1.7, cloth, sx * 0.2, -1.0, 0.05, 6); a.rotation.z = sx * 0.1; g.add(a); }
+    const claw2 = new THREE.MeshStandardMaterial({ color: 0x1a1412, roughness: 0.3 });
+    for (const sx of [-1, 1]) for (let f = 0; f < 4; f++) { const cl = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.28, 5), claw2); cl.position.set(sx * 0.24 + (f - 1.5) * 0.03, -1.9, 0.05); cl.rotation.x = Math.PI; g.add(cl); }   // pazury
     return { group: g, animate: (t) => { mg.rotation.z = 0.32 + Math.sin(t * 1.5) * 0.1; } };
 }
 // Lawowa Bestia: bazaltowe cielsko z żarzącymi się pęknięciami, rogi, świecące oczy i paszcza
@@ -75,6 +84,9 @@ export function lavaBeast() {
         const e = glowEye(0xffe060, 0.16); e.position.set(sx * 0.09, 0.03, 0.2); g.add(e);
     }
     const jaw = box(0.26, 0.08, 0.16, rock, 0, -0.18, 0.08); g.add(jaw);
+    const fangM = new THREE.MeshStandardMaterial({ color: 0xe6d8b8, roughness: 0.4, emissive: 0x401000, emissiveIntensity: 0.6 });
+    for (let i = 0; i < 7; i++) { const x = (i - 3) * 0.04, big = i === 1 || i === 5, t = new THREE.Mesh(new THREE.ConeGeometry(0.014, big ? 0.14 : 0.075, 5), fangM); t.rotation.x = Math.PI; t.position.set(x, -0.13 - (big ? 0.05 : 0.02), 0.2 - Math.abs(i - 3) * 0.01); g.add(t); }   // górne kły
+    for (let i = 0; i < 5; i++) { const t = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.07, 5), fangM); t.position.set((i - 2) * 0.045, 0.06, 0.07); jaw.add(t); }   // dolne kły (kłapią razem ze szczęką)
     const maw = glowEye(0xff8020, 0.32); maw.position.set(0, -0.12, 0.22); g.add(maw);
     g.add(cyl(0.2, 0.3, 1.0, rock, 0, -0.8, 0, 10));
     const sh = box(0.8, 0.22, 0.32, rock, 0, -0.38, 0); g.add(sh);
