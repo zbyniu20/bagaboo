@@ -431,4 +431,18 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     check('gfx: monsters get bloodshot eyes with veins and a slit pupil, wet teeth, gums and strings of saliva, also in the jumpscare mouth', /map: tex\.eyeBloodshot/.test(MAN) && /clearcoat: 1, clearcoatRoughness: 0\.12/.test(MAN) && /const gum = /.test(MAN) && /spit/.test(MAN) && /userData\.strands/.test(KIT) && /tex\.eyeBloodshot/.test(KIT));
 }
 
+// ---------- awatar: futro warstwowe, rany, mokre futro, ślina, powieki (core/avatarfxlogic.js) ----------
+{
+    const A = await import(url('core/avatarfxlogic.js'));
+    check('avatarfx: shell count depends on quality (low none, medium 3, high 4)', A.shellCount('low') === 0 && A.shellCount('medium') === 3 && A.shellCount('high') === 4);
+    check('avatarfx: shells are drawn only up close, fewer and nearer in VR, never when none were built', A.shellsVisible(3, 2, false) === 3 && A.shellsVisible(4, 2, true) === A.FUR.XR_MAX && A.shellsVisible(3, 6, false) === 0 && A.shellsVisible(3, 4, true) === 0 && A.shellsVisible(0, 1, false) === 0 && A.shellsVisible(3, NaN, false) === 0);
+    check('avatarfx: shell offsets grow, the alpha cut grows and shade brightens with the layer', [0, 1, 2].every(i => A.shellOffset(i + 1, 3) > A.shellOffset(i, 3) && A.shellCut(i + 1, 3) > A.shellCut(i, 3) && A.shellShade(i + 1, 3) > A.shellShade(i, 3)) && A.shellCut(2, 3) < 1);
+    check('avatarfx: the laundry is wet, the lobby is dry and clean, fur only gets darker and less rough when wet', A.grimeFor('laundry').wet === 1 && A.grimeFor('lobby').wet === 0 && A.grimeFor('lobby').dirt === 0 && A.mixFur(0.5, A.grimeFor('laundry')) < 0.5 && A.mixFur(0.5, A.grimeFor('lobby')) === 0.5 && A.furRoughness(0.9, A.grimeFor('laundry')) < 0.9 && A.furRoughness(0.4, { wet: 1, dirt: 0 }) >= 0.35);
+    check('avatarfx: wounds are deterministic, stay on the torso and are capped', (() => { const a = A.woundSpot(7), b = A.woundSpot(7); let l = []; for (let i = 0; i < 20; i++) l = A.addWound(l, i); return a.x === b.x && Math.abs(a.x) <= 0.14 && a.y >= -0.15 && a.y <= 0.15 && l.length === A.WOUND_MAX; })());
+    check('avatarfx: drool starts at a roar and is bounded; the blink lid is clamped for any gap', A.droolLevel(0.3) === 0 && A.droolLevel(2) === 1 && A.droolLevel(0.7) > 0 && [0.2, 0.13, 0.065, 0, -1, 99].every(b => { const v = A.lidFactor(b, 0.025); return v >= 0.08 && v <= 1; }) && A.lidFactor(0, 0) === 1);
+    check('avatarfx: muscle tremor only during a loud roar and stays small', A.tremor(0.3, 1) === 0 && Math.abs(A.tremor(1, 0.03)) <= 0.012 && Array.from({ length: 50 }, (_, i) => Math.abs(A.tremor(1, i * 0.01))).some(v => v > 0.005));
+    const AV = fs.readFileSync(path.join(ROOT, 'core/avatar.js'), 'utf8'), NW = fs.readFileSync(path.join(ROOT, 'core/network.js'), 'utf8');
+    check('avatarfx: avatar.js builds shell fur on torso and arms and uses SSS on the skin, face and hands', /addFurShells\(g\.userData\.chest/.test(AV) && /addFurShells\(m, look\)/.test(AV) && (AV.match(/sssify\(/g) || []).length >= 3);
+    check('avatarfx: network.js drives fx per frame, wounds only with gore on and cleared with the body, grime by level', /updateAvatarFx\(remoteAvatars\[id\]/.test(NW) && /SETTINGS\.gore && remoteAvatars\[id\]\) addWound/.test(NW) && (NW.match(/clearWounds\(p\)/g) || []).length >= 2 && /applyGrime\(p, L\.levelId\)/.test(NW));
+}
 done('logic');

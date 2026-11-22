@@ -4,8 +4,8 @@
 // zostać hostem tego samego pokoju, a gość nie połączy się, dopóki host nie jest online.
 // ==========================================
 import { emoteState, emotePose } from './emotes.js';
-import { THREE, camera, scene, L, CANNON, containBall, playerRig, tex } from './engine.js';
-import { createAvatar, poseHand, lookKey, animateFace, TAGS } from './avatar.js';
+import { THREE, camera, scene, L, CANNON, containBall, playerRig, tex, renderer } from './engine.js';
+import { createAvatar, poseHand, lookKey, animateFace, TAGS, updateAvatarFx, addWound, clearWounds, applyGrime } from './avatar.js';
 import { createVoiceHub } from './voicehub.js';
 import { getLook, SESSION, SAVE } from './economy.js';
 import { petLookNet, petCarryNet } from './petstore.js';
@@ -13,7 +13,7 @@ import { markAllDirty, toast } from './terminal.js';
 import { rankOf, setLocalMod, isStaffName, isOwnerName, isUltimateName, isReservedNick, canPunish, BANS_CLEARED, isModMenuUser } from './config.js';
 import { MOD } from './modstate.js';
 import { getAudioContext, stinger } from './audio.js';
-import { GAMES_CALM } from './settings.js';
+import { GAMES_CALM, SETTINGS } from './settings.js';
 import { account as myAccount, vouch, verifyProof, randomNonce } from './auth.js';
 import { lostLeft, lostRight, lostHead } from './dismemberlogic.js';
 
@@ -244,7 +244,7 @@ export function animateFaces(dt) {
         const dc = tears[id] ? 0 : (dismembered[id] || 0);   // urwane części (core/dismemberlogic.js) zostają ukryte, także gdy gracz stoi przy nas
         for (const c of a.group.children) if (c !== a.handL && c !== a.handR) c.visible = !close && !((c === a.head && lostHead(dc)) || (c === a.armL && lostLeft(dc)) || (c === a.armR && lostRight(dc)));
     }
-    for (const id in remoteAvatars) { const v = mutedPeers.has(id) ? { level: 0, pitch: 0.5 } : (NET.mode === 'guest' ? stateVoice(id) : readVoice(voiceAn[id])); animateFace(remoteAvatars[id].head, v.level, v.pitch, dt); }
+    for (const id in remoteAvatars) { const v = mutedPeers.has(id) ? { level: 0, pitch: 0.5 } : (NET.mode === 'guest' ? stateVoice(id) : readVoice(voiceAn[id])); animateFace(remoteAvatars[id].head, v.level, v.pitch, dt); updateAvatarFx(remoteAvatars[id], camera, !!(renderer.xr && renderer.xr.isPresenting), v.level, performance.now() / 1000); }
 }
 let meshT = 0;
 let silent = null;
@@ -349,6 +349,7 @@ function updateRemote(id, st) {
     if (remoteAvatars[id] && remoteAvatars[id].key !== k) removeRemote(id);   // gracz zmienił wygląd w sklepie
     if (!remoteAvatars[id]) { const a = createAvatar(st.profile); scene.add(a.group); remoteAvatars[id] = a; }
     const p = remoteAvatars[id];
+    if (p.grimeLv !== L.levelId) { p.grimeLv = L.levelId; applyGrime(p, L.levelId); }   // mokre i brudne futro wg poziomu
     const sz = Math.max(0.25, Math.min(8, +st.sz || 1));   // rozmiar goryla z BagaBooModMenu (host zeruje go u graczy spoza listy menu)
     if ((p.sz || 1) !== sz) {   // skala bazowa (ultimate admin = 4) razy rozmiar; ramiona grubieją razem z gorylem, a nie tylko wydłużają się do dłoni
         p.sz = sz; for (const o of [p.head, p.torso, p.handL, p.handR]) o.scale.setScalar((p.base || 1) * sz);
@@ -409,9 +410,10 @@ function restoreScale(p) { const b = (p.base || 1) * (p.sz || 1); for (const o o
 // code 0 = przywróć ciało (nowa runda, lobby, wyjście z trybu)
 export function setDismember(id, code) {
     const prev = dismembered[id] || 0; if (prev === code) return;
-    if (!code) { delete dismembered[id]; delete tears[id]; clearDebris(id); const p = remoteAvatars[id]; if (p) { applyDismember(p, 0); restoreScale(p); } return; }
+    if (!code) { delete dismembered[id]; delete tears[id]; clearDebris(id); const p = remoteAvatars[id]; if (p) { applyDismember(p, 0); restoreScale(p); clearWounds(p); } return; }
     dismembered[id] = code;
-    if (!prev && remoteAvatars[id]) tears[id] = { t: 0, code: code, drip: 0 };   // animacja, dopiero potem urywamy
+    if (!prev && remoteAvatars[id]) tears[id] = { t: 0, code: code, drip: 0 };
+    if (!prev && SETTINGS.gore && remoteAvatars[id]) addWound(remoteAvatars[id], (id.length * 31 + Date.now() / 1000) | 0);   // rana (ślad krwi) zostaje na futrze do nowej rundy   // animacja, dopiero potem urywamy
 }
 function finishTear(id, p, code) {
     restoreScale(p); applyDismember(p, code);
@@ -420,7 +422,7 @@ function finishTear(id, p, code) {
     try { stinger(p.head.position); } catch (e) {}
 }
 function clearDebris(id) { for (let i = debris.length - 1; i >= 0; i--) if (!id || debris[i].id === id) { scene.remove(debris[i].obj); debris.splice(i, 1); } }
-export function clearDismember() { for (const id in dismembered) { delete dismembered[id]; delete tears[id]; const p = remoteAvatars[id]; if (p) { applyDismember(p, 0); restoreScale(p); } } clearDebris(); for (const b of blood) { scene.remove(b.sp); b.sp.material.dispose(); } blood.length = 0; }
+export function clearDismember() { for (const id in dismembered) { delete dismembered[id]; delete tears[id]; const p = remoteAvatars[id]; if (p) { applyDismember(p, 0); restoreScale(p); clearWounds(p); } } clearDebris(); for (const b of blood) { scene.remove(b.sp); b.sp.material.dispose(); } blood.length = 0; }
 export function tickDismember(dt) {
     for (const id in tears) {
         const tr = tears[id], p = remoteAvatars[id]; if (!p) { delete tears[id]; continue; }
