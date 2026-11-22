@@ -101,3 +101,17 @@ check(T('gore: the host draws on a catch, the guest takes the map only through c
 check(T('gore: it is shown only with the option on, and the body is restored when the level ends'), /const on = !!SETTINGS\.gore/.test(monSrc) && /N\.clearDismember\(\)/.test(monSrc) && /export function setDismember/.test(netSrc) && /export function tickDismember/.test(netSrc));
 check(T('gore: tearing off is animated for a moment before the part drops, and the body stays torn until the round restarts or the level ends'), /const TEAR_TIME = 0\.6/.test(netSrc) && /tears\[id\] = \{/.test(netSrc) && /finishTear/.test(netSrc) && /const TEAR_TIME = 0\.6/.test(monSrc) && /S\.dm = Object\.create\(null\); S\.phase = 'play'/.test(monSrc) && /S\.bot = null; S\.dm = Object\.create\(null\)/.test(monSrc) && /N\.clearDismember\(\)/.test(monSrc));
 check(T('gore: the per-frame visibility loop in animateFaces keeps torn parts hidden (it used to bring the head and arms back every frame)'), /export function animateFaces[\s\S]{0,900}lostHead\(dc\)[\s\S]{0,200}lostLeft\(dc\)[\s\S]{0,200}lostRight\(dc\)/.test(netSrc));
+
+// ---------- polowanie: pulsy węchu, Final Hunt, strach (core/huntlogic.js, levels/monster.js) ----------
+const H = await import(pathToFileURL(path.join(ROOT, 'core/huntlogic.js')).href);
+check(T('hunt: scent pulses come at the end of every 22 s period, last 2.5 s and are announced 1 s earlier'), (() => {
+    const pu = (e, a = 3) => H.pulseAt(e, a);
+    return !pu(10).active && !pu(10).warn && pu(18.6).warn && !pu(18.6).active && pu(19.5).active && pu(21.9).active && !pu(22.1).active && pu(41.6).active && pu(41.6).n === 1 && pu(19.5).n === 0;
+})());
+check(T('hunt: with one survivor left the pulses come every 10 s'), H.pulseAt(7.6, 1).active && H.pulseAt(17.9, 1).active && !H.pulseAt(12, 1).active && H.pulseAt(6.6, 1).warn);
+check(T('hunt: no pulse before the first period, with no survivors or on bad input'), !H.pulseAt(2, 3).active && !H.pulseAt(100, 0).active && [NaN, -1, Infinity, undefined, null, 'x'].every(v => !H.pulseAt(v, 3).active && H.pulseAt(v, 3).n === -1));
+check(T('hunt: the last pulse of a 120 s round still fits the round'), (() => { let last = -1; for (let e = 0; e < 120; e += 0.1) if (H.pulseAt(e, 3).active) last = e; return last > 100 && last < 120; })());
+check(T('hunt: Final Hunt is the last 30 s only and speeds the monster by 12%'), H.finalHunt(30) && H.finalHunt(0.5) && !H.finalHunt(30.5) && !H.finalHunt(0) && !H.finalHunt(NaN) && Math.abs(H.monsterBoost(1.15, 20) - 1.15 * 1.12) < 1e-9 && H.monsterBoost(1.15, 60) === 1.15);
+check(T('hunt: the bot gets both boosts together and none outside them'), Math.abs(H.botBoost(10, true) - 1.12 * 1.2) < 1e-9 && H.botBoost(60, false) === 1 && H.botBoost(60, true) === 1.2 && H.botBoost(10, false) === 1.12);
+check(T('hunt: fear is 0 beyond 8 m, 1 within 2 m, grows as the monster gets closer and ignores bad input'), H.fearLevel(9) === 0 && H.fearLevel(8) === 0 && H.fearLevel(2) === 1 && H.fearLevel(0.5) === 1 && H.fearLevel(5) > H.fearLevel(6) && H.fearLevel(5) > 0 && H.fearLevel(5) < 1 && [NaN, -3, undefined, 'x'].every(v => H.fearLevel(v) === 0));
+check(T('hunt: the mode uses the logic, runs the director in calm mode and cleans up on exit'), /pulseAt\(HUNT\.ROUND - S\.t/.test(monSrc) && /monsterBoost\(MONSTER_BOOST, S\.t\)/.test(monSrc) && /botBoost\(S\.t, S\.pulseActive\)/.test(monSrc) && /calm: true, apparitions: false/.test(monSrc) && /setFinalLook\(false\)/.test(monSrc) && /DREAD\.fogMul = 1/.test(monSrc) && /setDread\(null\)/.test(monSrc));
