@@ -43,7 +43,7 @@ export function build() {
     buildItems();
     buildGate();
     buildGhost();
-    setDread(() => S.mon ? [S.mon.g.position] : []);
+    setDread(() => S.mon ? [S.mon.g.position] : [], { apparitions: false });   // Room 000 ma już zjawy-wabiki
     buildDecoys();
     buildDoor({ x: DOORS.start.x, z: DOORS.start.z, rotY: DOORS.start.rotY, label: 'LEVELS', color: '#bfe8ff', wood: 0x3a3228, portal: { target: 'levels', spawn: ARRIVAL_FROM_ROOM000, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);

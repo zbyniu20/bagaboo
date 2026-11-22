@@ -72,7 +72,7 @@ export function build() {
     buildExitDoor();
     buildWellDoor();
     S.mon = buildMonster();
-    setDread(() => S.mon ? [S.mon.root.position] : []);
+    setDread(() => S.mon ? [S.mon.root.position] : [], { apparitions: false });   // Cisza ma własny, dźwiękowy horror
     buildScare();
     buildHud();
     if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name, S.df.color);

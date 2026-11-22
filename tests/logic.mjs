@@ -369,7 +369,7 @@ check('ultimate: zbyniu runs 2x faster, but only on the verified account, and th
 check('noob: the host (not a client) decides when the ultimate admin touched someone, from the verified nick, with a cooldown, and the victim gets the NOOB jumpscare', (() => {
     const AUD = fs.readFileSync(path.join(ROOT, 'core/audio.js'), 'utf8'), KIT = fs.readFileSync(path.join(ROOT, 'core/levelkit.js'), 'utf8'), MAIN = fs.readFileSync(path.join(ROOT, 'main.js'), 'utf8');
     return /function noobCheck\(\)/.test(net) && /uid === myPeerId \? \(me && me\.nick\) : verifiedNickOf\(uid\)/.test(net) && /isUltimateName\(nick\)/.test(net) && /noobCd\[vid\] = now \+ NOOB_COOLDOWN/.test(net) && /gc\.send\(\{ type: 'noob' \}\)/.test(net) && /data\.type === 'noob'/.test(net) && /noobCheck\(\);/.test(net)
-        && /createJumpscare\(\{ noob: true \}\)/.test(MAIN) && /NETM\.onNoob\(/.test(MAIN) && /function noobVoice/.test(AUD) && /gooby === 'noob'/.test(AUD) && /fillText\('NOOB'/.test(KIT) && /SFX\.scare\(noob \? 'noob' : gooby\)/.test(KIT);
+        && /createJumpscare\(\{ noob: true \}\)/.test(MAIN) && /NETM\.onNoob\(/.test(MAIN) && /function noobVoice/.test(AUD) && /gooby === 'noob'/.test(AUD) && /fillText\('NOOB'/.test(KIT) && /SFX\.scare\(noob \? 'noob' : gooby[,)]/.test(KIT);
 })());
 check('therian: only spikyvr owns the Therian skin and it is equipped once, but can be changed and put back at any time', (() => {
     const run = (name, fn) => { E.markNickVerified(''); E.setProfile({ name: name }); return fn(); };

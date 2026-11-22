@@ -50,11 +50,11 @@ export function build() {
     buildStations();
     buildGate();
     buildDolls();
-    setDread(() => S.bots.filter(b => b.st.mode !== 'asleep').map(b => b.m.group.position));
+    setDread(() => S.bots.filter(b => b.st.mode !== 'asleep').map(b => b.m.group.position), { hide: (on) => S.bots.forEach(b => { b.m.group.visible = !on; }) });
     buildDoor({ x: cx(0), z: -WT / 2 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#ffd8c8', wood: 0x5a4034, portal: { target: 'levels', spawn: ARRIVAL_FROM_NURSERY, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
-    S.scare = createJumpscare({ seed: 9393 });
+    S.scare = createJumpscare({ seed: 9393, variant: 'doll' });
     if (df.id !== 'normal') toast('Difficulty: ' + df.name + ' (music lasts ' + m0 + ' s' + (df.checkpoints ? '' : ', no checkpoints, 2 dolls, a 3rd after 3 teddies') + ')', df.color);
     addStoryProps({ seed: 103, count: 28, corpses: 3 });   // krew, ślady, napisy i ciała (core/levelkit.js)
 }

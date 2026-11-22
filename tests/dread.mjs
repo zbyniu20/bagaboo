@@ -54,6 +54,39 @@ for (const lv of ['catacombs', 'cemetery', 'hospital', 'nursery', 'laundry', 'si
     ok(lv + ': calm mode (BagaBoo Games) switches the director off, and clearing the provider does too', r.calmNear === 99 && r.cleared === 99, r);
     if (['catacombs', 'cemetery', 'hospital', 'nursery', 'laundry', 'silence', 'furas', 'maze'].includes(lv)) ok(lv + ': the level has story props in at most 7 merged meshes', r.story >= 1 && r.story <= 7, r.story);
 }
+// ---- punkt 3 i 4: nasłuchiwanie, zjawy, znikanie po jumpscare'ie, warianty i mocny atak ----
+await page.evaluate(async () => { const M = await import('./main.js'); await M.loadLevel('catacombs'); }); await page.waitForTimeout(1800);
+const x = await page.evaluate(async () => {
+    const E = await import('./core/engine.js'), A = await import('./core/ambience.js'), B = await import('./core/botkit.js'), K = await import('./core/levelkit.js'), out = {};
+    // nasłuchiwanie: bot w patrolu staje co jakiś czas, w pościgu nigdy
+    const run = (mode, listen) => { const b = B.createBot(5000, 5000); b.mode = mode; b.listen = listen; let paused = 0, moved = 0, segs = 0, was = false; for (let i = 0; i < 6000; i++) { const x0 = b.x; B.stepBot(b, 0.016, b.x + 50, b.z, 0, 3, mode === 'chase'); const p = (b.pauseT || 0) > 0; if (p) paused++; if (p && !was) segs++; was = p; moved += Math.abs(b.x - x0); } return { paused: paused * 0.016, segs: segs, moved: moved }; };
+    out.patrol = run('patrol', true); out.chase = run('chase', true); out.plain = run('patrol', false);
+    // zjawy: figura pojawia się i znika po czasie
+    const camP = new E.THREE.Vector3(); E.camera.getWorldPosition(camP);
+    let hidden = 0; A.setDread(() => [{ x: camP.x + 80, y: 0, z: camP.z }], { hide: (on) => { hidden += on ? 1 : -1; } });
+    const f0 = A.DREAD.apps; let spawned = false; for (const k of ['side', 'behind', 'side', 'behind', 'side']) { if (A.dreadAppear(k)) { spawned = true; break; } }
+    out.spawned = spawned && A.DREAD.apps > f0;
+    const fig = E.L.root.getObjectByName('dreadApparition');
+    out.figVisible = !!fig && fig.visible; out.figMeshes = fig ? (() => { let n = 0; fig.traverse(o => { if (o.isMesh) n++; }); return n; })() : 0;
+    for (let i = 0; i < 220; i++) A.dreadUpdate(0.016); out.figGone = !!fig && fig.visible === false;
+    // jumpscare: potwory znikają na czas ataku i wracają, latarka gaśnie, ambient milknie
+    const j = K.createJumpscare({ seed: 1, variant: 'statue' }); const before = A.DREAD.scared;
+    j.trigger(); out.scaredCount = A.DREAD.scared - before; out.hidden = hidden; A.dreadUpdate(0.016); out.hushNow = A.DREAD.hush;
+    for (let i = 0; i < 40; i++) { j.update(0.02); A.dreadUpdate(0.02); } out.lampDark = E.lighting.headLamp.visible ? E.lighting.headLamp.intensity : null;
+    for (let i = 0; i < 200; i++) { j.update(0.02); A.dreadUpdate(0.02); } out.hiddenAfter = hidden; out.jumpDone = !j.active();
+    // warianty: każdy przechodzi całą sekwencję bez błędów; zwykły atak trwa 1,9 s, mocny (15%) 2,9 s
+    const realRandom = Math.random, res = {};
+    for (const v of ['grave', 'warden', 'doll', 'statue', 'butler', 'none']) { const jj = K.createJumpscare({ seed: 2, variant: v }); Math.random = () => 0.9; jj.trigger(); let n = 0; while (jj.active() && n < 400) { jj.update(0.02); n++; } res[v] = n * 0.02; jj.dispose(); }
+    const jb = K.createJumpscare({ seed: 3, variant: 'doll' }); Math.random = () => 0.01; jb.trigger(); let nb = 0; while (jb.active() && nb < 400) { jb.update(0.02); nb++; } out.bigDur = nb * 0.02; jb.dispose(); Math.random = realRandom;
+    out.variants = res;
+    return out;
+});
+ok('listening: a patrolling bot with listen stops now and then (several pauses) and still walks', x.patrol.segs >= 3 && x.patrol.paused > 5 && x.patrol.moved > 100, x.patrol);
+ok('listening: a chasing bot and a plain bot never pause', x.chase.paused === 0 && x.plain.paused === 0, { chase: x.chase, plain: x.plain });
+ok('apparitions: a figure appears (side or behind) and vanishes by itself', x.spawned && x.figVisible && x.figGone, x);
+ok('jumpscare: monsters are hidden for the attack, the ambience goes silent, the flashlight dies and everything returns after', x.scaredCount === 1 && x.hidden === 1 && x.hushNow === true && x.hiddenAfter === 0 && x.jumpDone, x);
+ok('jumpscare: every variant runs a normal sequence of about 1.9 s', Object.values(x.variants).every(d => d > 1.8 && d < 2.0), x.variants);
+ok('jumpscare: the rare big attack lasts about 2.9 s', x.bigDur > 2.8 && x.bigDur < 3.0, x.bigDur);
 ok('no page errors', errors.length === 0, errors.slice(0, 5));
 await browser.close(); server.close();
 console.log(fails ? 'FAILED: ' + fails : 'dread: all checks passed'); process.exit(fails ? 1 : 0);

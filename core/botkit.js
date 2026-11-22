@@ -9,6 +9,11 @@ export function createBot(x, z) { return { x: x, y: 0, z: z, vy: 0, ground: true
 // Ruch po podłodze z kolizją o skrzynie (wejście na niskie krawędzie, skok na wyższe, obejście gdy utknie)
 export function stepBot(b, dt, tx, tz, ty, speed, chasing) {
     const R = 0.4, TALL = 1.2;
+    // Nasłuchiwanie (tylko bot z b.listen = true: Grabarz, Strażnik, Furas, goście hotelu): co kilka sekund patrolu staje, rozgląda się i nasłuchuje 1,5-4 s; w pościgu nigdy
+    if (b.listen && !chasing && b.mode === 'patrol') {
+        if (b.pauseT > 0) { b.pauseT -= dt; speed = 0; b.dir += Math.sin(b.pauseT * 2.4) * dt * 0.9; }
+        else { b.listenT = (b.listenT === undefined ? 4 + Math.random() * 6 : b.listenT) - dt; if (b.listenT <= 0) { b.pauseT = 1.5 + Math.random() * 2.5; b.listenT = 8 + Math.random() * 9; } }
+    } else if (b.pauseT > 0) b.pauseT = 0;
     let dx = tx - b.x, dz = tz - b.z; const d = Math.hypot(dx, dz);
     if (d > 0.05) { dx /= d; dz /= d; } else { dx = 0; dz = 0; }
     if (b.side) { const sx = -dz * b.side, sz = dx * b.side; dx = dx * 0.4 + sx; dz = dz * 0.4 + sz; b.sideT -= dt; if (b.sideT <= 0) b.side = 0; }

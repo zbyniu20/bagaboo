@@ -59,11 +59,11 @@ export function build() {
     buildKeys();
     buildGate();
     buildWardens();
-    setDread(() => S.bots.map(b => b.m.group.position));
+    setDread(() => S.bots.map(b => b.m.group.position), { hide: (on) => S.bots.forEach(b => { b.m.group.visible = !on; }) });
     buildDoor({ x: cx(0), z: -WT / 2 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#bfe8ff', wood: 0x3a3228, portal: { target: 'levels', spawn: ARRIVAL_FROM_CATACOMBS, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
-    S.scare = createJumpscare({ seed: 8181 });
+    S.scare = createJumpscare({ seed: 8181, variant: 'warden' });
     if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints, 2 wardens, a 3rd after 3 keys)'), df.color);
     addStoryProps({ seed: 102, count: 30, corpses: 3 });   // krew, ślady, napisy i ciała (core/levelkit.js)
 }
@@ -129,7 +129,7 @@ function addWarden(start, i) {
     m.group.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: 0x14100e, roughness: 1 }); });
     addMonsterFace(m.head, { width: 0.058, open: 0.045, teeth: 11, toothColor: 0xd8d0b8, long: 1.5, horns: 0xcfc6a8 });
     for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1808, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.13, 0.13, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
-    const st = createBot(cx(start[0]), cz(start[1])); st.mode = 'patrol'; st.path = []; st.goalCell = null;
+    const st = createBot(cx(start[0]), cz(start[1])); st.mode = 'patrol'; st.path = []; st.goalCell = null; st.listen = true;   // czasem staje i nasłuchuje
     m.group.position.set(st.x, 0, st.z);
     S.bots.push({ m: m, st: st, lostT: 0, smellT: 0, last: null, stepT: 0, repath: 0, startCell: start });
 }

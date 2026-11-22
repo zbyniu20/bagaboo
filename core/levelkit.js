@@ -11,6 +11,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as SFX from './audio.js';
 import { GAMES_CALM } from './settings.js';
 import { toast } from './terminal.js';
+import { dreadScared } from './ambience.js';
 
 // Świecący napis na ciemnym tle
 export function signTexture(label, color, bg, font) {
@@ -149,9 +150,18 @@ function vignetteTexture() {   // krwawa winieta: przezroczysty środek, czerwon
     for (let i = 0; i < 26; i++) { let a = R() * 6.283, r = 150, px = 128 + Math.cos(a) * r, py = 128 + Math.sin(a) * r; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 5; k++) { a += (R() - 0.5) * 0.5; r -= 12 + R() * 14; x.lineTo(128 + Math.cos(a) * r, 128 + Math.sin(a) * r); } x.stroke(); }
     return (VIGNETTE = new THREE.CanvasTexture(c));
 }
+// Warianty jumpscare'a (o.variant): każdy potwór ma własny charakter. eye: kolor ślepi, lunge: czas wyskoku (s), shake: siła drżenia, stretch: rozciągnięcie głowy,
+// tilt: stałe przechylenie, step: ruch skokowy w klatkach co tyle sekund (posąg), creep: ile głowa nasuwa się na twarz. Dźwięk: SFX.scare(..., variant).
+const VARIANTS = {
+    grave: { eye: 0xffb030, lunge: 0.45, shake: 0.35, creep: 0.2 },                     // Grabarz: wolno wyłania się z mroku z bursztynowymi oczami
+    warden: { eye: 0xff1808, lunge: 0.06, shake: 1.1, stretch: [0.9, 1.6, 0.9] },       // Strażnik: wysoki, wyciągnięty
+    doll: { eye: 0xff1808, lunge: 0.12, shake: 0.2, tilt: 0.5 },                        // Lalka: przekrzywiona głowa, prawie bez drżenia
+    statue: { eye: 0xff2000, lunge: 0.01, shake: 0, step: 0.12 },                       // Posąg: klatki bez płynności, jak filmowe cięcia
+    butler: { eye: 0xff1808, lunge: 0.2, shake: 0.6, stretch: [1, 1.35, 1] }            // Lokaj: sztywny, wydłużony
+};
 export function createJumpscare(o) {
     o = o || {};
-    const noob = !!o.noob, gooby = !!o.gooby || noob;   // noob: płaski napis NOOB (jak Gooby, tylko z innym obrazem i głosem)
+    const noob = !!o.noob, gooby = !!o.gooby || noob, V = (!gooby && VARIANTS[o.variant]) || {};   // noob: płaski napis NOOB (jak Gooby, tylko z innym obrazem i głosem)
     let head;
     if (gooby) {   // płaski obraz (core/gooby.js albo napis NOOB) centrowany przed oczami
         head = new THREE.Group();
@@ -163,7 +173,7 @@ export function createJumpscare(o) {
         let maw = null;
         if (!head) { const m = buildMannequin(T.mkRng(o.seed || 4242)); head = m.head; head.parent.remove(head); maw = buildMaw(); head.add(maw); head.userData.maw = maw; }
         head.traverse((c) => { if (c.material) { c.material = c.material.clone(); c.material.depthTest = false; c.material.transparent = true; c.renderOrder = 1000; } });
-        if (o.eyes !== false) for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1000, transparent: true, blending: THREE.AdditiveBlending, depthTest: false })); e.scale.set(0.17, 0.17, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 1001; head.add(e); (head.userData.eyes = head.userData.eyes || []).push(e); }
+        if (o.eyes !== false) for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: V.eye || 0xff1000, transparent: true, blending: THREE.AdditiveBlending, depthTest: false })); e.scale.set(0.17, 0.17, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 1001; head.add(e); (head.userData.eyes = head.userData.eyes || []).push(e); }
         head.scale.setScalar(o.scale || 2.4);
     }
     const plane = (col) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, depthTest: false })); p.position.z = -0.25; return p; };
@@ -173,28 +183,33 @@ export function createJumpscare(o) {
     // Wszystko przy samych oczach: wyłączamy odrzucanie obiektów poza kadrem (w goglach potrafiło ukryć duże modele tuż przy kamerze)
     g.traverse((c) => { c.frustumCulled = false; });
     const y = gooby ? 0 : (o.y !== undefined ? o.y : -0.36), rest = gooby ? -0.4 : (o.restZ !== undefined ? o.restZ : -0.32), from = gooby ? -2.0 : (o.fromZ !== undefined ? o.fromZ : -1.9);
-    let t = -1;
+    let t = -1, big = false, lastQ = -1;   // big: rzadszy (15%), mocniejszy atak: drugi skok na twarz i dłuższa sekwencja
     return {
         active() { return t >= 0; },
         trigger() { if (t >= 0 || GAMES_CALM.on) return false;   // BagaBoo Games: bez jumpscare'ów
-            t = 0; g.visible = true; SFX.scare(noob ? 'noob' : gooby); return true; },
+            t = 0; lastQ = -1; big = !gooby && Math.random() < 0.15; g.visible = true; SFX.scare(noob ? 'noob' : gooby, V.eye ? o.variant : null, big); if (!gooby) dreadScared(); return true; },
         update(dt) {
             if (t < 0) return;
             t += dt;
-            const j = (a) => (Math.random() - 0.5) * a, base = gooby ? 2.3 : (o.scale || 2.4), shake = t < 0.5 ? 1 : Math.max(0.35, 1.5 - t);
-            let z = t < 0.08 ? from + (rest - from) * (t / 0.08) : rest;   // wyskok z ciemności w 0,08 s
+            const j = (a) => (Math.random() - 0.5) * a, base = gooby ? 2.3 : (o.scale || 2.4), shake = (t < 0.5 ? 1 : Math.max(0.35, 1.5 - t)) * (V.shake === undefined ? 1 : V.shake), lunge = V.lunge || 0.08, endT = big ? 2.9 : 1.9, fadeT = big ? 2.0 : 1.1;
+            const tq = V.step ? Math.floor(t / V.step) * V.step : t, redo = !V.step || tq !== lastQ; lastQ = tq;   // posąg: pozycja i poza odświeżają się tylko co V.step
+            let z = tq < lunge ? from + (rest - from) * (tq / lunge) : rest;   // wyskok z ciemności (wariant ustala czas)
+            const pop = big && t > 1.3 && t < 1.7 ? 1.25 : 1;   // drugi skok na twarz w mocnym ataku
+            const st = V.stretch || [1, 1, 1];
             if (gooby) { z += Math.min(0.12, t * 0.1); head.scale.setScalar(base + Math.min(0.5, t * 0.45)); }   // Gooby po wyskoczeniu powoli najeżdża na twarz
-            else { z += Math.min(0.06, Math.max(0, t - 0.08) * 0.05); head.scale.setScalar(base * (1 + 0.05 * Math.sin(t * 38) + Math.min(0.1, t * 0.08))); }   // reszta: nacieranie na twarz i drżenie rozmiaru
-            head.position.set(j(0.05 * shake), y + j(0.035 * shake), z + j(0.025 * shake));
-            head.rotation.set((o.tilt || 0) + j(0.22 * shake), j(0.3 * shake), j(0.5 * shake));
+            else { z += Math.min(0.06 + (V.creep || 0), Math.max(0, tq - lunge) * (0.05 + (V.creep || 0))); const s = base * pop * (1 + 0.05 * Math.sin(tq * 38) * (V.shake === 0 ? 0 : 1) + Math.min(0.1, tq * 0.08)); head.scale.set(s * st[0], s * st[1], s * st[2]); }
+            if (redo) {
+                head.position.set(j(0.05 * shake), y + j(0.035 * shake), z + j(0.025 * shake));
+                head.rotation.set((o.tilt || 0) + j(0.22 * shake), j(0.3 * shake), (V.tilt || 0) + j(0.5 * shake));
+            }
             const maw = head.userData.maw; if (maw) maw.userData.jaw.position.y = -0.028 * Math.abs(Math.sin(t * 17));   // szczęka kłapie
             if (head.userData.eyes) for (const e of head.userData.eyes) e.scale.setScalar(0.17 + 0.06 * Math.abs(Math.sin(t * 25)));
             const ph = Math.floor(t / 0.04) % 4;
-            white.material.opacity = t < 0.07 ? 0.85 : (t < 0.4 && ph === 3 ? 0.35 : 0);   // biały błysk na starcie i krótkie rozbłyski
-            if (t < 1.1) { red.material.opacity = ph === 0 || ph === 2 ? 0.65 : 0; black.material.opacity = ph === 1 ? 0.95 : 0.5; }
-            else { const f = Math.max(0, 1 - (t - 1.1) / 0.8); red.material.opacity = 0.4 * f; black.material.opacity = 0.65 * f; }
-            vig.material.opacity = Math.min(1, t * 6) * (t < 1.3 ? 1 : Math.max(0, 1 - (t - 1.3) / 0.6)); vig.scale.setScalar(1 - Math.min(0.25, t * 0.2));   // krwawa winieta zaciska się
-            if (t > 1.9) { g.visible = false; t = -1; }
+            white.material.opacity = t < 0.07 ? 0.85 : (t < 0.4 && ph === 3 ? 0.35 : (big && t > 1.3 && t < 1.36 ? 0.8 : 0));   // biały błysk na starcie, krótkie rozbłyski (i przy drugim skoku)
+            if (t < fadeT) { red.material.opacity = ph === 0 || ph === 2 ? 0.65 : 0; black.material.opacity = ph === 1 ? 0.95 : 0.5; }
+            else { const f = Math.max(0, 1 - (t - fadeT) / 0.8); red.material.opacity = 0.4 * f; black.material.opacity = 0.65 * f; }
+            vig.material.opacity = Math.min(1, t * 6) * (t < fadeT + 0.2 ? 1 : Math.max(0, 1 - (t - fadeT - 0.2) / 0.6)); vig.scale.setScalar(1 - Math.min(0.25, t * 0.2));   // krwawa winieta zaciska się
+            if (t > endT) { g.visible = false; t = -1; }
         },
         dispose() { camera.remove(g); }
     };

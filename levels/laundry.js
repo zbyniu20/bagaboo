@@ -76,7 +76,7 @@ export function build() {
     buildGate();
     buildDoor({ x: 0, z: Z0 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#ffd27a', wood: 0x5a6a7a, portal: { target: 'levels', spawn: ARRIVAL_LAUNDRY, onEnter: () => toast('Back to the levels') } });
     buildThreadman();
-    setDread(() => S.tm ? [S.tm.root.position] : []);
+    setDread(() => S.tm ? [S.tm.root.position] : [], { hide: (on) => { if (S.tm) S.tm.root.visible = !on; } });
     buildGlimpse();
     buildGrid();
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);

@@ -46,11 +46,11 @@ export function build() {
     buildRelics();
     buildGate();
     buildDiggers();
-    setDread(() => S.bots.filter(b => b.active).map(b => b.m.group.position));
+    setDread(() => S.bots.filter(b => b.active).map(b => b.m.group.position), { hide: (on) => S.bots.forEach(b => { if (b.active) b.m.group.visible = !on; }) });
     buildDoor({ x: 0, z: Z0 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#bfe8ff', wood: 0x4a5a52, portal: { target: 'levels', spawn: ARRIVAL_FROM_CEMETERY, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
-    S.scare = createJumpscare({ seed: 7171 });
+    S.scare = createJumpscare({ seed: 7171, variant: 'grave' });
     if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints, 2 gravediggers)'), df.color);
     addStoryProps({ seed: 101, count: 34, corpses: 3 });   // krew, ślady, napisy i ciała (core/levelkit.js)
 }
@@ -149,7 +149,7 @@ function buildDiggers() {
         const lamp = new THREE.PointLight(0xffb050, 26, 14, 1.6); lamp.position.set(0.4, 1.3, 0.3); m.group.add(lamp);
         const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffc070, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.9 })); glow.scale.set(0.8, 0.8, 1); glow.position.set(0.4, 1.3, 0.3); m.group.add(glow);
         const on = i < active, start = on ? DIGGER_STARTS[i] : DORMANT;
-        const st = createBot(start[0], start[1]); st.mode = 'patrol';
+        const st = createBot(start[0], start[1]); st.mode = 'patrol'; st.listen = true;   // czasem staje i nasłuchuje
         m.group.position.set(start[0], 0, start[1]);
         S.bots.push({ m: m, st: st, active: on, home: on ? start : DIGGER_STARTS[i], goal: null, lostT: 0, smellT: 0, last: null, wT: 0, wx: start[0], wz: start[1], stuckN: 0, invT: 0 });
     }

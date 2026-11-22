@@ -125,8 +125,8 @@ export function build() {
     buildDoor({ x: 0, z: -WALL_T / 2 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#ffd8b8', wood: 0x4a3224, portal: { target: 'levels', spawn: ARRIVAL_FROM_HOTEL, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
-    S.scare = createJumpscare({ seed: 1313 });
-    setDread(() => { const r = []; for (const rm of S.rooms.values()) { if (rm.weeper) r.push(rm.weeper.m.group.position); if (rm.figure) r.push(rm.figure.m.group.position); } return r; });
+    S.scare = createJumpscare({ seed: 1313, variant: 'butler' });
+    setDread(() => { const r = []; for (const rm of S.rooms.values()) { if (rm.weeper) r.push(rm.weeper.m.group.position); if (rm.figure) r.push(rm.figure.m.group.position); } return r; }, { hide: (on) => { for (const rm of S.rooms.values()) { if (rm.weeper) rm.weeper.m.group.visible = !on; if (rm.figure) rm.figure.m.group.visible = !on; } } });
     S.rushMesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: faceTexture('rush'), transparent: true, depthWrite: false, fog: false })); S.rushMesh.scale.set(5.5, 5.5, 1); S.rushMesh.visible = false; L.root.add(S.rushMesh);
     S.screechMesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: faceTexture('screech'), transparent: true, depthWrite: false, fog: false })); S.screechMesh.scale.set(1.3, 1.3, 1); S.screechMesh.visible = false; L.root.add(S.screechMesh);
     if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints)'), df.color);
@@ -158,7 +158,7 @@ function makeBlind(room, seed, scale, path, x, z, big) {   // Ślepy Lokaj (hol)
     m.group.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: big ? 0x0c0a0a : 0x14100e, roughness: 1 }); });
     m.head.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: big ? 0xeee8dc : 0xd8d0c0, roughness: 0.6 }); });
     addMonsterFace(m.head, big ? { width: 0.06, open: 0.05, teeth: 11, long: 1.8, horns: 0xcfc6a8, tears: 0x7a0a0a } : { width: 0.052, open: 0.03, long: 1.3, tears: 0x7a0a0a });
-    const st = createBot(x, z); st.mode = 'patrol'; st.wp = 0; m.group.position.set(st.x, 0, st.z);
+    const st = createBot(x, z); st.mode = 'patrol'; st.wp = 0; st.listen = true;   // czasem staje i nasłuchuje m.group.position.set(st.x, 0, st.z);
     return { m: m, st: st, path: path, wT: 0, wx: st.x, wz: st.z, stuckN: 0, lost: 0 };
 }
 function buildRoom(i) {

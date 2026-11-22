@@ -43,12 +43,12 @@ export function build() {
     buildCards();
     buildGate();
     buildStatues();
-    setDread(() => S.st.map(st => st.m.group.position));
+    setDread(() => S.st.map(st => st.m.group.position), { hide: (on) => S.st.forEach(st => { st.m.group.visible = !on; }) });
     buildGrid();
     buildDoor({ x: 0, z: Z0 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#bfe8ff', wood: 0x5a6a72, portal: { target: 'levels', spawn: ARRIVAL_FROM_HOSPITAL, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
-    S.scare = createJumpscare({ seed: 6161 });
+    S.scare = createJumpscare({ seed: 6161, variant: 'statue' });
     if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints, 4 patients at the start)'), df.color);
     addStoryProps({ seed: 104, count: 26, corpses: 3 });   // krew, ślady, napisy i ciała (core/levelkit.js)
 }

@@ -157,7 +157,7 @@ export function build() {
     buildFish();
     buildGate();
     buildFurasBots();
-    setDread(() => S.bots.filter(b => b.active).map(b => b.f.root.position));
+    setDread(() => S.bots.filter(b => b.active).map(b => b.f.root.position), { hide: (on) => S.bots.forEach(b => { if (b.active) b.f.root.visible = !on; }) });
     buildDoor({ x: 0, z: Z0 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#ffd0e8', wood: 0x5a3a46, portal: { target: 'levels', spawn: ARRIVAL_FROM_FURAS, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
@@ -255,7 +255,7 @@ function addBot(idx, on) {
     const n = STARTS[idx], f = buildFuras(true); if (idx) f.root.scale.setScalar(1.1);
     L.root.add(f.root);
     const x = on ? NODES[n][0] : DORMANT[0], z = on ? NODES[n][1] : DORMANT[1];
-    const st = createBot(x, z); st.mode = 'patrol';
+    const st = createBot(x, z); st.mode = 'patrol'; st.listen = true;   // czasem staje i nasłuchuje
     f.root.position.set(st.x, 0, st.z);
     const b = { f: f, st: st, active: on, home: n, node: n, prevNode: -1, goal: null, lostT: 0, last: null, t: 0, cd: 2.5, dirx: 0, dirz: 1, ph: 0, px: st.x, pz: st.z, crouch: 0, purr: Math.random(), wT: 0, wx: st.x, wz: st.z, smellT: 0 };
     shown(b, on); S.bots.push(b); return b;
