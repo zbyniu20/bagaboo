@@ -18,7 +18,7 @@ function geo() {
     GEO = {
         body: new THREE.SphereGeometry(0.26, 24, 18), cap: cap, belly: new THREE.SphereGeometry(0.2, 16, 12), ear: new THREE.ConeGeometry(0.075, 0.2, 10), foot: new THREE.SphereGeometry(0.07, 12, 8),
         tail: new THREE.SphereGeometry(0.065, 10, 8), horn: new THREE.ConeGeometry(0.035, 0.14, 8), spike: new THREE.ConeGeometry(0.04, 0.13, 6), halo: new THREE.TorusGeometry(0.14, 0.012, 8, 30),
-        shadow: new THREE.CircleGeometry(0.3, 20),
+        shadow: new THREE.CircleGeometry(0.3, 20), claw: new THREE.ConeGeometry(0.012, 0.055, 5),
         // gatunki: wąsy kota, skrzydło smoka, spódnica i frędzle ducha
         whisker: new THREE.BoxGeometry(0.14, 0.006, 0.006), wing: new THREE.ConeGeometry(0.11, 0.3, 3), skirt: new THREE.CylinderGeometry(0.255, 0.215, 0.3, 20), scallop: new THREE.SphereGeometry(0.07, 8, 6),
         // Pet Pack: czapki i dodatki na szyję (podstawy w początku układu, żeby stały na głowie lub wisiały od szyi)
@@ -27,14 +27,14 @@ function geo() {
         crownBand: new THREE.CylinderGeometry(0.1, 0.085, 0.07, 10, 1, true), crownTip: new THREE.ConeGeometry(0.024, 0.06, 6), neckRing: new THREE.TorusGeometry(0.215, 0.04, 8, 24), thinRing: new THREE.TorusGeometry(0.215, 0.02, 8, 24),
         bowWing: new THREE.ConeGeometry(0.06, 0.13, 8), bandana: new THREE.ConeGeometry(0.11, 0.16, 3), scarfTail: new THREE.BoxGeometry(0.07, 0.2, 0.03), bell: new THREE.SphereGeometry(0.042, 10, 8), cape: new THREE.BoxGeometry(0.42, 0.36, 0.015)
     };
-    GEO.partyCone.translate(0, 0.11, 0); GEO.wizCone.translate(0, 0.17, 0); GEO.hatTop.translate(0, 0.065, 0); GEO.scarfTail.translate(0, -0.1, 0); GEO.cape.translate(0, -0.18, 0);
+    GEO.claw.translate(0, 0.0275, 0); GEO.partyCone.translate(0, 0.11, 0); GEO.wizCone.translate(0, 0.17, 0); GEO.hatTop.translate(0, 0.065, 0); GEO.scarfTail.translate(0, -0.1, 0); GEO.cape.translate(0, -0.18, 0);
     GEO.wing.translate(0, 0.15, 0); GEO.ear.translate(0, 0.1, 0); GEO.horn.translate(0, 0.07, 0); GEO.spike.translate(0, 0.06, 0);   // podstawy w początku układu, żeby obracać wokół nich
     return GEO;
 }
 function heartTex() {
     if (HEART) return HEART;
     const c = T.makeCanvas(64, 64), x = c.getContext('2d');
-    x.shadowColor = '#ff8aa8'; x.shadowBlur = 8; x.fillStyle = '#ff5b8a'; x.beginPath(); x.moveTo(32, 54);
+    x.shadowColor = SCARY_PET ? '#ff2a2a' : '#ff8aa8'; x.shadowBlur = 8; x.fillStyle = SCARY_PET ? '#a8101c' : '#ff5b8a'; x.beginPath(); x.moveTo(32, 54);
     x.bezierCurveTo(4, 34, 10, 10, 26, 14); x.bezierCurveTo(30, 15, 32, 19, 32, 22); x.bezierCurveTo(32, 19, 34, 15, 38, 14); x.bezierCurveTo(54, 10, 60, 34, 32, 54); x.fill();
     x.shadowBlur = 0; x.fillStyle = 'rgba(255,255,255,0.55)'; x.beginPath(); x.ellipse(21, 22, 5, 3, -0.6, 0, Math.PI * 2); x.fill();
     return (HEART = T.toTex(c, false));
@@ -48,7 +48,40 @@ function zeeTex() {
 
 // ---------- twarz ----------
 const FACE_W = 256, FACE_H = 144, EYES = [88, 168], EYE_Y = 66;
+const SCARY_PET = true;   // straszne stworki: czerwone oczy, kły, blizna, pazury, kolce, mroczne dodatki (wyłącza ta stała)
+function drawScaryFace(g, expr, look) {
+    g.clearRect(0, 0, FACE_W, FACE_H); g.lineCap = 'round'; g.lineJoin = 'round';
+    g.save(); g.translate(128, 60); g.scale(1.22, 1.22); g.translate(-128, -84);   // twarz wyżej i większa: wypukły brzuszek zasłaniał dolną część
+    const gold = !!(PET.COLORS[look.c] || {}).rare, glowC = gold ? '#ffd23a' : '#ff2412', teeth = '#f2ead2', blood = '#a50f18';
+    const eye = (ex, s) => {   // ciemny oczodół, świecące oko ze szczeliną źrenicy
+        g.fillStyle = 'rgba(25,0,6,0.8)'; g.beginPath(); g.ellipse(ex, EYE_Y, 20 * s, 25 * s, 0, 0, Math.PI * 2); g.fill();
+        g.shadowColor = glowC; g.shadowBlur = 14; g.fillStyle = glowC; g.beginPath(); g.ellipse(ex, EYE_Y, 14 * s, 19 * s, 0, 0, Math.PI * 2); g.fill(); g.shadowBlur = 0;
+        g.fillStyle = '#120000'; g.beginPath(); g.ellipse(ex, EYE_Y, 3.6 * s, 17 * s, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.8)'; g.beginPath(); g.arc(ex - 6 * s, EYE_Y - 8 * s, 2.4 * s, 0, Math.PI * 2); g.fill();
+    };
+    const brows = (lift) => { g.strokeStyle = '#140309'; g.lineWidth = 9; for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(128 + sx * 66, EYE_Y - 36 + lift); g.lineTo(128 + sx * 18, EYE_Y - 14 + lift); g.stroke(); } };
+    const slit = (ex, y) => { g.shadowColor = glowC; g.shadowBlur = 10; g.strokeStyle = glowC; g.lineWidth = 5; g.beginPath(); g.moveTo(ex - 16, y - 4); g.quadraticCurveTo(ex, y + 6, ex + 16, y - 4); g.stroke(); g.shadowBlur = 0; };
+    const mouth = (h, wide) => {   // zębata paszcza: otwiera się o h, górne i dolne kły na przemian
+        const x0 = 128 - wide, x1 = 128 + wide;
+        g.fillStyle = '#34040a'; g.beginPath(); g.moveTo(x0, 90); g.quadraticCurveTo(128, 90 + 20 + h, x1, 90); g.quadraticCurveTo(128, 84, x0, 90); g.fill();
+        g.fillStyle = teeth; const n = 9;
+        for (let i = 0; i < n; i++) { const t = i / (n - 1), x = x0 + 8 + t * (2 * wide - 16), big = i === 1 || i === n - 2; g.beginPath(); g.moveTo(x - 5, 88 - 2 * Math.sin(t * Math.PI)); g.lineTo(x + 5, 88 - 2 * Math.sin(t * Math.PI)); g.lineTo(x, 88 + (big ? 18 : 10)); g.fill(); }
+        for (let i = 0; i < n - 2; i++) { const t = (i + 0.5) / (n - 2), x = x0 + 14 + t * (2 * wide - 28), by = 88 + 10 + (20 + h) * Math.sin(t * Math.PI) * 0.82; g.beginPath(); g.moveTo(x - 4, by); g.lineTo(x + 4, by); g.lineTo(x, by - 9); g.fill(); }
+    };
+    const scar = () => { g.strokeStyle = blood; g.lineWidth = 4; g.beginPath(); g.moveTo(190, 72); g.lineTo(224, 116); g.stroke(); g.strokeStyle = '#2a0508'; g.lineWidth = 2.5; for (let i = 0; i < 4; i++) { const t = i / 3, x = 190 + 34 * t, y = 72 + 44 * t; g.beginPath(); g.moveTo(x - 6, y + 4); g.lineTo(x + 6, y - 4); g.stroke(); } };
+    const drip = (x, y, len) => { g.fillStyle = blood; g.fillRect(x - 2, y, 4, len); g.beginPath(); g.arc(x, y + len, 4, 0, Math.PI * 2); g.fill(); };
+    const closed = () => { for (const ex of EYES) slit(ex, EYE_Y + 4); };
+    if (expr === 'blink') { closed(); brows(2); mouth(2, 64); }
+    else if (expr === 'happy') { for (const ex of EYES) { g.shadowColor = glowC; g.shadowBlur = 12; g.strokeStyle = glowC; g.lineWidth = 7; g.beginPath(); g.arc(ex, EYE_Y + 12, 16, 1.15 * Math.PI, 1.85 * Math.PI); g.stroke(); g.shadowBlur = 0; } brows(6); mouth(16, 72); drip(150, 104, 14); }
+    else if (expr === 'eat') { eye(EYES[0], 0.9); eye(EYES[1], 0.9); brows(0); mouth(26, 64); g.fillStyle = '#7a1424'; g.beginPath(); g.ellipse(128, 112, 18, 9, 0, 0, Math.PI); g.fill(); drip(100, 100, 18); }
+    else if (expr === 'sleep') { closed(); g.strokeStyle = '#140309'; g.lineWidth = 3; for (const [dx, dy] of [[-8, -8], [8, -8], [-8, 8], [8, 8]]) { g.beginPath(); g.moveTo(EYES[0], EYE_Y + 4); g.lineTo(EYES[0] + dx, EYE_Y + 4 + dy); g.stroke(); } brows(4); mouth(0, 52); }
+    else if (expr === 'sad') { eye(EYES[0], 0.85); eye(EYES[1], 0.85); g.strokeStyle = '#140309'; g.lineWidth = 7; for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(128 + sx * 64, EYE_Y - 20); g.lineTo(128 + sx * 20, EYE_Y - 36); g.stroke(); } drip(EYES[0] - 4, EYE_Y + 22, 24); mouth(-6, 40); }
+    else if (expr === 'hungry') { eye(EYES[0], 1.12); eye(EYES[1], 1.12); brows(-2); mouth(20, 56); drip(112, 106, 22); drip(150, 106, 12); }
+    else { eye(EYES[0], 1); eye(EYES[1], 1); brows(0); mouth(6, 66); }
+    scar(); g.restore();
+}
 function drawFace(g, expr, look) {
+    if (SCARY_PET) return drawScaryFace(g, expr, look);
     g.clearRect(0, 0, FACE_W, FACE_H);
     const ink = '#241530', lineW = 8;
     g.lineCap = 'round'; g.lineJoin = 'round';
@@ -72,7 +105,8 @@ export function createPetModel(look, opts) {
     const G = geo(), col = PET.COLORS[look.c] || PET.COLORS[0], sc = scaleOf(look.l), gold = !!col.rare;
     const group = new THREE.Group();
     const mats = [], mat = (c, o) => { const m = new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.55 }, o || {})); mats.push(m); return m; };
-    const bodyM = mat(col.body, gold ? { metalness: 0.35, roughness: 0.3, emissive: 0x6b4a00, emissiveIntensity: 0.35 } : null), bellyM = mat(col.belly), accM = mat(col.accent), hornM = mat('#fff2c8', { roughness: 0.4 });
+    const grimy = (c, k) => SCARY_PET ? new THREE.Color(c).multiplyScalar(gold ? 0.95 : k).lerp(new THREE.Color(0x2a1018), gold ? 0 : 0.14) : c;   // zabrudzone, przygaszone kolory
+    const bodyM = mat(grimy(col.body, 0.68), gold ? { metalness: 0.35, roughness: 0.3, emissive: 0x6b4a00, emissiveIntensity: 0.35 } : null), bellyM = mat(grimy(col.belly, 0.6)), accM = mat(grimy(col.accent, 0.62)), hornM = mat(SCARY_PET ? '#d8cdb0' : '#fff2c8', { roughness: 0.4 });
     const part = (g, m, x, y, z, parent) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); (parent || root).add(o); return o; };
 
     // cień na ziemi (poza skaczącym ciałem)
@@ -80,7 +114,7 @@ export function createPetModel(look, opts) {
     const root = new THREE.Group(); group.add(root);
     const bodyG = new THREE.Group(); bodyG.scale.set(1, 0.92, 1); root.add(bodyG);
     part(G.body, bodyM, 0, 0, 0, bodyG);
-    const belly = part(G.belly, bellyM, 0, -0.07, 0.15, bodyG); belly.scale.set(1, 1.05, 0.62);
+    const belly = part(G.belly, bellyM, 0, -0.07, 0.15, bodyG); belly.scale.set(1, 1.05, SCARY_PET ? 0.5 : 0.62);
     // twarz: wycinek sfery z płótnem
     const fc = T.makeCanvas(FACE_W, FACE_H), fg = fc.getContext('2d'), fTex = T.toTex(fc, false);
     const faceM = new THREE.MeshBasicMaterial({ map: fTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, toneMapped: false }); mats.push(faceM);
@@ -90,6 +124,10 @@ export function createPetModel(look, opts) {
     part(G.ear, bodyM, 0, 0, 0, earL); part(G.ear, bodyM, 0, 0, 0, earR);
     const footL = part(G.foot, accM, -0.1, -0.245, 0.07), footR = part(G.foot, accM, 0.1, -0.245, 0.07); footL.scale.set(1, 0.62, 1.3); footR.scale.set(1, 0.62, 1.3);
     const tailP = new THREE.Group(); tailP.position.set(0, -0.12, -0.23); root.add(tailP); part(G.tail, accM, 0, 0, -0.05, tailP); part(G.tail, bodyM, 0, 0.03, -0.12, tailP).scale.setScalar(0.7);
+    if (SCARY_PET) {   // pazury na łapkach i małe kolce na grzbiecie (poziom 4 dokłada duże)
+        const clawM = mat('#15100c', { roughness: 0.35, metalness: 0.2 });
+        for (const f of [footL, footR]) for (let i = -1; i <= 1; i++) { const c = part(G.claw, clawM, i * 0.045, 0.0, 0.085, f); c.rotation.x = Math.PI / 2 - 0.25; c.scale.set(1, 1, 1 / 1.3); }
+    }
     // gatunek: ta sama bryła, ale inne uszy, ogon i dodatki (indeks z PET.SPECIES; 0 = Blobby bez zmian)
     const spId = (PET.SPECIES[look.sp || 0] || PET.SPECIES[0]).id, wings = [], ghost = spId === 'ghost', inkM = mat('#241530');
     if (spId === 'bunny') { for (const e of [earL, earR]) e.scale.set(0.8, 2.1, 0.8); tailP.scale.setScalar(1.7); footL.scale.set(1.2, 0.7, 1.7); footR.scale.set(1.2, 0.7, 1.7); }
@@ -110,25 +148,27 @@ export function createPetModel(look, opts) {
         part(G.skirt, bodyM, 0, -0.16, 0, bodyG);
         for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; part(G.scallop, bodyM, Math.cos(a) * 0.19, -0.3, Math.sin(a) * 0.19, bodyG); }
     }
+    if (SCARY_PET && !ghost && spId !== 'dragon' && look.l < 4) [[0, 0.2, -0.17, -0.6], [0, 0.1, -0.245, -0.95]].forEach(([x, y, z, rx], i) => { const sp2 = part(G.spike, hornM, x, y, z); sp2.rotation.x = rx; sp2.scale.setScalar(0.7 - i * 0.12); });
     // poziomy: rogi, grzbiet z kolcami, aureola (nad wysoką czapką wyżej)
     const hatId = PET.HATS[look.h || 0] || 'none', neckId = PET.NECKS[look.k || 0] || 'none', haloBase = 0.47 + (hatId === 'wizard' ? 0.2 : (hatId !== 'none' ? 0.08 : 0));
     let halo = null; const spikes = [];
     if (look.l >= 3) for (const sx of [-1, 1]) { const h = part(G.horn, hornM, sx * 0.075, 0.245, 0.05); h.rotation.set(0.15, 0, -sx * 0.25); }
     if (look.l >= 4) [[0, 0.2, -0.17, -0.6], [0, 0.1, -0.245, -0.95], [0, -0.01, -0.275, -1.25]].forEach(([x, y, z, rx], i) => { const s = part(G.spike, accM, x, y, z); s.rotation.x = rx; s.scale.setScalar(1 - i * 0.18); spikes.push(s); });
-    if (look.l >= 5) { halo = part(G.halo, new THREE.MeshBasicMaterial({ color: 0xffe27a, toneMapped: false }), 0, haloBase, 0); mats.push(halo.material); halo.rotation.x = Math.PI / 2; }
+    if (look.l >= 5) { halo = part(G.halo, new THREE.MeshBasicMaterial({ color: SCARY_PET ? 0xc01420 : 0xffe27a, toneMapped: false }), 0, haloBase, 0); mats.push(halo.material); halo.rotation.x = Math.PI / 2; }
     // Pet Pack: czapka na głowie i dodatek na szyi (identyfikatory z PET.HATS i PET.NECKS)
     let capeP = null, scarfT = null, star = null;
+    const P = (a, b) => SCARY_PET ? b : a;
     const acc = (c, o) => mat(c, Object.assign({ roughness: 0.6 }, o || {})), glow = (c) => acc(c, { emissive: c, emissiveIntensity: 0.35, metalness: 0.4, roughness: 0.35 });
-    if (hatId === 'party') { const c = part(G.partyCone, acc('#ff5fa8'), 0, 0.225, 0); c.rotation.z = -0.12; const p = part(G.pom, glow('#ffe27a'), 0.03, 0.455, 0); p.scale.setScalar(1.1); }
-    else if (hatId === 'flower') { const f = new THREE.Group(); f.position.set(0.12, 0.23, 0.08); f.rotation.set(-0.5, 0, -0.35); root.add(f); part(G.petalRing, acc('#ff8fc0'), 0, 0, 0, f); part(G.dot, acc('#ffd24a'), 0, 0, 0.01, f).scale.setScalar(1.15); }
-    else if (hatId === 'cowboy') { const b = acc('#8a5a32'); part(G.brim, b, 0, 0.245, 0).rotation.z = 0.04; part(G.hatTop, b, 0, 0.255, 0); part(G.hatBand, acc('#3a2a1c'), 0, 0.28, 0); }
-    else if (hatId === 'wizard') { const w = acc('#6a43c8'); const c = part(G.wizCone, w, 0, 0.235, 0); c.rotation.z = 0.12; part(G.wizBrim, w, 0, 0.24, 0); const st = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffe27a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); st.scale.setScalar(0.09); st.position.set(0.03, 0.4, 0.04); root.add(st); mats.push(st.material); star = st; }
-    else if (hatId === 'crown') { const g = glow('#ffd24a'); part(G.crownBand, g, 0, 0.255, 0).material.side = THREE.DoubleSide; for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; part(G.crownTip, g, Math.cos(a) * 0.092, 0.31, Math.sin(a) * 0.092); } part(G.dot, acc('#ff5b8a'), 0, 0.27, 0.098).scale.setScalar(0.8); }
-    if (neckId === 'bow') { const m = acc('#e0334e'); for (const sx of [-1, 1]) { const w = part(G.bowWing, m, sx * 0.07, -0.13, 0.235); w.rotation.z = -sx * Math.PI / 2; } part(G.dot, m, 0, -0.13, 0.245).scale.setScalar(0.85); }
-    else if (neckId === 'bandana') { part(G.thinRing, acc('#2f7fe0'), 0, -0.13, 0).rotation.x = Math.PI / 2; const b = part(G.bandana, acc('#2f7fe0', { side: THREE.DoubleSide }), 0, -0.2, 0.2); b.rotation.set(0.15, 0, Math.PI); }
-    else if (neckId === 'scarf') { part(G.neckRing, acc('#f58a1f'), 0, -0.13, 0).rotation.x = Math.PI / 2; scarfT = new THREE.Group(); scarfT.position.set(0.14, -0.15, 0.18); root.add(scarfT); part(G.scarfTail, acc('#f6d928'), 0, 0, 0, scarfT); }
-    else if (neckId === 'bell') { part(G.thinRing, acc('#d9393a'), 0, -0.13, 0).rotation.x = Math.PI / 2; part(G.bell, glow('#ffd24a'), 0, -0.19, 0.225); }
-    else if (neckId === 'cape') { const m = acc('#c0283a', { side: THREE.DoubleSide }); capeP = new THREE.Group(); capeP.position.set(0, -0.05, -0.215); root.add(capeP); part(G.cape, m, 0, 0, 0, capeP); part(G.dot, glow('#ffd24a'), 0, -0.07, 0.24).scale.setScalar(1.1); part(G.thinRing, m, 0, -0.13, 0).rotation.x = Math.PI / 2; }
+    if (hatId === 'party') { const c = part(G.partyCone, acc(P('#ff5fa8', '#5a0c1c')), 0, 0.225, 0); c.rotation.z = -0.12; const p = part(G.pom, glow(P('#ffe27a', '#c02030')), 0.03, 0.455, 0); p.scale.setScalar(1.1); }
+    else if (hatId === 'flower') { const f = new THREE.Group(); f.position.set(0.12, 0.23, 0.08); f.rotation.set(-0.5, 0, -0.35); root.add(f); part(G.petalRing, acc(P('#ff8fc0', '#7a0f1c')), 0, 0, 0, f); part(G.dot, acc(P('#ffd24a', '#2a0a0a')), 0, 0, 0.01, f).scale.setScalar(1.15); }
+    else if (hatId === 'cowboy') { const b = acc(P('#8a5a32', '#4a2c1a')); part(G.brim, b, 0, 0.245, 0).rotation.z = 0.04; part(G.hatTop, b, 0, 0.255, 0); part(G.hatBand, acc(P('#3a2a1c', '#6a0c10')), 0, 0.28, 0); }
+    else if (hatId === 'wizard') { const w = acc(P('#6a43c8', '#2a1850')); const c = part(G.wizCone, w, 0, 0.235, 0); c.rotation.z = 0.12; part(G.wizBrim, w, 0, 0.24, 0); const st = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: P(0xffe27a, 0xff3030), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); st.scale.setScalar(0.09); st.position.set(0.03, 0.4, 0.04); root.add(st); mats.push(st.material); star = st; }
+    else if (hatId === 'crown') { const g = glow(P('#ffd24a', '#8a6a20')); part(G.crownBand, g, 0, 0.255, 0).material.side = THREE.DoubleSide; for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; part(G.crownTip, g, Math.cos(a) * 0.092, 0.31, Math.sin(a) * 0.092); } part(G.dot, acc(P('#ff5b8a', '#c01020')), 0, 0.27, 0.098).scale.setScalar(0.8); }
+    if (neckId === 'bow') { const m = acc(P('#e0334e', '#5a0a14')); for (const sx of [-1, 1]) { const w = part(G.bowWing, m, sx * 0.07, -0.13, 0.235); w.rotation.z = -sx * Math.PI / 2; } part(G.dot, m, 0, -0.13, 0.245).scale.setScalar(0.85); }
+    else if (neckId === 'bandana') { part(G.thinRing, acc(P('#2f7fe0', '#1a1a22')), 0, -0.13, 0).rotation.x = Math.PI / 2; const b = part(G.bandana, acc(P('#2f7fe0', '#1a1a22'), { side: THREE.DoubleSide }), 0, -0.2, 0.2); b.rotation.set(0.15, 0, Math.PI); }
+    else if (neckId === 'scarf') { part(G.neckRing, acc(P('#f58a1f', '#4a1a12')), 0, -0.13, 0).rotation.x = Math.PI / 2; scarfT = new THREE.Group(); scarfT.position.set(0.14, -0.15, 0.18); root.add(scarfT); part(G.scarfTail, acc(P('#f6d928', '#7a1a14')), 0, 0, 0, scarfT); }
+    else if (neckId === 'bell') { part(G.thinRing, acc(P('#d9393a', '#3a0a0a')), 0, -0.13, 0).rotation.x = Math.PI / 2; part(G.bell, glow(P('#ffd24a', '#8a6a20')), 0, -0.19, 0.225); }
+    else if (neckId === 'cape') { const m = acc(P('#c0283a', '#3a0610'), { side: THREE.DoubleSide }); capeP = new THREE.Group(); capeP.position.set(0, -0.05, -0.215); root.add(capeP); part(G.cape, m, 0, 0, 0, capeP); part(G.dot, glow(P('#ffd24a', '#8a6a20')), 0, -0.07, 0.24).scale.setScalar(1.1); part(G.thinRing, m, 0, -0.13, 0).rotation.x = Math.PI / 2; }
     // iskry złotego stworka
     const sparks = [];   // iskry krążące wokół złotego stworka
     if (gold) for (let i = 0; i < 3; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffe27a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); sp.scale.setScalar(0.07); root.add(sp); sparks.push(sp); mats.push(sp.material); }
