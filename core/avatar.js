@@ -93,7 +93,7 @@ function skinMaterial(look) {
     // Gołe dłonie mają ten sam kolor co postać gracza (albo skórka)
     const k = SKINS[look.skin];
     if (k && k.metal) return new THREE.MeshStandardMaterial({ map: tex.skin, color: furColor(look), metalness: 0.7, roughness: 0.3, envMapIntensity: Math.max(0.8, ENV) });
-    return new THREE.MeshPhysicalMaterial({ map: tex.skin, bumpMap: tex.skin, bumpScale: 0.25, color: furColor(look), roughness: 0.5, sheen: 0.6, sheenColor: new THREE.Color(0xff8f70), sheenRoughness: 0.45, clearcoat: 0.06, clearcoatRoughness: 0.6, envMapIntensity: ENV });
+    return new THREE.MeshPhysicalMaterial({ map: tex.skin, bumpMap: tex.skin, bumpScale: 0.25, color: furColor(look).multiplyScalar(SCARY ? 0.55 : 1), roughness: 0.5, sheen: 0.6, sheenColor: new THREE.Color(SCARY ? 0x5a3a34 : 0xff8f70), sheenRoughness: 0.45, clearcoat: 0.06, clearcoatRoughness: 0.6, envMapIntensity: ENV });
 }
 function nailMaterial(look) {
     if (look.gloves && look.gloves !== 'none') return null;
@@ -116,6 +116,11 @@ function fingerSeg(r, len) {
     return g;
 }
 
+const CLAW_MAT = new THREE.MeshStandardMaterial({ color: 0x1c1612, roughness: 0.35, metalness: 0.2 });
+function claw(joint, r, len, l) {   // zakrzywiony czarny pazur na czubku palca (stożek odchylony w dół)
+    const g = new THREE.ConeGeometry(r * 0.7, l, 6, 1); g.translate(0, l / 2, 0); g.rotateX(-Math.PI / 2 - 0.35);
+    const m = new THREE.Mesh(g, CLAW_MAT); m.position.set(0, -r * 0.1, -len + r * 0.4); joint.add(m);
+}
 export function createRealHand(isLeft, look) {
     const side = isLeft ? -1 : 1, outer = new THREE.Group(), model = new THREE.Group();
     model.position.set(0, -0.015, 0.075); model.rotation.set(-0.3, 0, -0.9 * side); outer.add(model);
@@ -137,6 +142,7 @@ export function createRealHand(isLeft, look) {
             if (k > 0) { j.position.z = -f.len[k - 1]; parent.add(j); joints.push(j); }
             add(fingerSeg(r, f.len[k]), skin, j);
             if (k === 2 && nailMat) { const n = add(NAIL_GEO, nailMat, j); n.position.set(0, r * 0.62, -f.len[2] * 0.6); n.scale.set(r * 0.8, r * 0.25, f.len[2] * 0.33); }
+            if (k === 2 && SCARY) claw(j, r, f.len[2], 0.03);
             parent = j; r *= 0.88;
         }
         fingers.push(joints);
@@ -148,6 +154,7 @@ export function createRealHand(isLeft, look) {
         if (k > 0) { j.position.z = -tl[k - 1]; tp.add(j); thumb.push(j); }
         add(fingerSeg(tr, tl[k]), skin, j);
         if (k === 2 && nailMat) { const n = add(NAIL_GEO, nailMat, j); n.position.set(0, tr * 0.62, -tl[2] * 0.6); n.scale.set(tr * 0.8, tr * 0.25, tl[2] * 0.33); }
+        if (k === 2 && SCARY) claw(j, tr, tl[2], 0.022);
         tp = j; tr *= 0.88;
     }
     outer.userData.rig = { fingers: fingers, thumb: thumb, grip: 0.22, target: 0.22 };
@@ -403,6 +410,33 @@ function buildCarrot(earsGroup) {
     };
     return g;
 }
+// Straszniejszy goryl (styl Gorilla Tag, niski poligon): szeroki grymas z kłami, gniewne powieki, blizny, krew; w createHead i na tułowiu kolce i rysy pazurów
+const SCARY = true;
+const BONE = () => new THREE.MeshStandardMaterial({ color: 0xd9d0b4, roughness: 0.5 });
+function toothGeo(x, y, z, len, r, up) { const g = new THREE.ConeGeometry(r, len, 5, 1); g.translate(0, len / 2, 0); if (!up) g.rotateX(Math.PI); g.translate(x, y, z); return g; }
+function addScaryFace(head, mouth, k) {
+    const f = head.userData.face, bone = BONE(), dark = new THREE.MeshStandardMaterial({ color: 0x120a08, roughness: 0.9 });
+    f.wide = 1.55; mouth.material = new THREE.MeshBasicMaterial({ color: 0x2c0404 });
+    const zAt = (x) => -0.153 + 0.03 * Math.min(1, (x / 0.062) ** 2) - 0.003;   // wzdłuż krzywizny pyska
+    const upG = [], loG = [];
+    for (let i = 0; i < 11; i++) {
+        const x = (i - 5) * 0.0105, big = Math.abs(i - 5) === 3, len = big ? 0.026 : (Math.abs(i - 5) === 5 ? 0.008 : 0.013), r = big ? 0.0056 : 0.0044;
+        upG.push(toothGeo(x, -0.081, zAt(x), len, r, false));
+        if (i % 2 === 0 || big) loG.push(toothGeo(x * 0.9, 0, zAt(x * 0.9) + 0.004, big ? 0.02 : 0.011, big ? 0.005 : 0.004, true));
+    }
+    head.add(ellMesh(upG, bone));
+    const jaw = new THREE.Group(); jaw.position.y = -0.0894; jaw.add(ellMesh(loG, bone)); head.add(jaw); f.jaw = jaw;
+    for (const s of [-1, 1]) {   // gniewne powieki nad oczami (wewnętrzny koniec niżej), ciemne wory
+        const lid = meshAt(new THREE.SphereGeometry(1, 12, 8), dark, s * 0.045, 0.044, -0.138); lid.scale.set(0.034, 0.012, 0.018); lid.rotation.z = s * 0.5; head.add(lid);
+        const bag = meshAt(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshStandardMaterial({ color: 0x1a0c0c, roughness: 1 }), s * 0.045, -0.006, -0.138); bag.scale.set(0.03, 0.007, 0.014); head.add(bag);
+    }
+    const red = new THREE.MeshStandardMaterial({ color: 0x8a0f0f, roughness: 0.5, emissive: 0x300000 }), pale = new THREE.MeshStandardMaterial({ color: 0x6a4a44, roughness: 0.7 });
+    const slash = (x, y, rot, len, mat) => { const m = meshAt(new THREE.BoxGeometry(len, 0.004, 0.006), mat, x, y, -0.132); m.rotation.z = rot; head.add(m); };
+    for (let i = 0; i < 3; i++) slash(-0.048 + i * 0.008, -0.022 - i * 0.012, 0.95, 0.045, red);   // trzy ślady pazurów na policzku
+    for (let i = 0; i < 5; i++) slash(0.05 + (i % 2) * 0.004, 0.058 - i * 0.012, 1.57, 0.012, pale);   // szwy na czole: poprzeczne ściegi
+    slash(0.052, 0.03, 1.57, 0.07, pale);
+    for (const x of [-0.03, 0.004, 0.034]) { const d = meshAt(new THREE.CylinderGeometry(0.0022, 0.0009, 0.014 + Math.abs(x) * 0.3, 5), red, x, -0.1, zAt(x) - 0.003); head.add(d); }   // krew spływająca z pyska
+}
 export function createHead(look, withName) {
     const head = new THREE.Group(), fur = furMat(look), face = faceMat(look), k = SKINS[look.skin] || {};
     const maskId = (k.catMask && (!look.mask || look.mask === 'none')) ? 'furascat' : look.mask;   // skórki z catMask (Furas, Furasek) mają własną maskę kota (inna założona maska ma pierwszeństwo)
@@ -419,9 +453,9 @@ export function createHead(look, withName) {
     const faceM = face.clone(), muzzleM = face.clone(); faceM.map = faceTexture('face'); muzzleM.map = faceTexture('muzzle');
     head.add(ellMesh([ellGeo(0.098, 0.088, 0.04, 0, -0.02, -0.1)], faceM));
     if (!masked) head.add(ellMesh([ellGeo(0.058, 0.038, 0.035, 0, -0.07, -0.118)], muzzleM));
-    const brow = ellMesh([ellGeo(0.108, 0.03, 0.045, 0, 0.058, -0.103)], fur);
+    const brow = ellMesh([ellGeo(0.108, SCARY ? 0.034 : 0.03, 0.045, 0, 0, -0.103)], fur); brow.position.y = SCARY ? 0.05 : 0.058;   // geometria w zerze: animateFace ustawia position.y (wcześniej wysokość liczyła się podwójnie i brew unosiła się nad głową)
     head.add(brow);
-    head.userData.face = { brow: brow, browY: 0.058, mouth: null, eyes: [], level: 0, blinkT: 2 + Math.random() * 3, blink: 0 };
+    head.userData.face = { brow: brow, browY: SCARY ? 0.05 : 0.058, mouth: null, eyes: [], level: 0, blinkT: 2 + Math.random() * 3, blink: 0 };
     if (!masked) {
         const dark = new THREE.MeshBasicMaterial({ color: 0x0a0605 });
         head.add(ellMesh([ellGeo(0.011, 0.007, 0.006, -0.019, -0.062, -0.151), ellGeo(0.011, 0.007, 0.006, 0.019, -0.062, -0.151)], dark));   // nozdrza
@@ -430,11 +464,13 @@ export function createHead(look, withName) {
         // Usta: ciemny owal, który otwiera się w rytm głosu (rozmowa przez mikrofon)
         const mouth = meshAt(new THREE.SphereGeometry(0.035, 14, 8), new THREE.MeshBasicMaterial({ color: 0x1a0606 }), 0, -0.085, -0.145);
         mouth.scale.set(1, 0.12, 0.35); head.add(mouth); head.userData.face.mouth = mouth;
-        const eyeMat = k.glowEyes ? new THREE.MeshBasicMaterial({ color: 0xff2a10 }) : new THREE.MeshPhysicalMaterial({ map: eyeTexture(), color: 0xffffff, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 2.2, reflectivity: 0.9 });
+        if (SCARY) addScaryFace(head, mouth, k);
+        const eyeMat = (k.glowEyes || SCARY) ? new THREE.MeshBasicMaterial({ color: 0xff1a0a }) : new THREE.MeshPhysicalMaterial({ map: eyeTexture(), color: 0xffffff, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 2.2, reflectivity: 0.9 });
         const spark = new THREE.MeshBasicMaterial({ color: 0xfff4e8 });
         for (const s of [-1, 1]) {
             const e = meshAt(new THREE.SphereGeometry(0.0165, 16, 12), eyeMat, s * 0.045, 0.02, -0.136); head.add(e); head.userData.face.eyes.push(e);
-            if (!k.glowEyes) { const c = new THREE.Mesh(new THREE.SphereGeometry(0.0042, 8, 6), spark); c.position.set(-0.0055, 0.0062, -0.0135); e.add(c); }   // odblask: oko wygląda na żywe
+            if (SCARY && !k.glowEyes) { const pu = meshAt(new THREE.SphereGeometry(0.01, 8, 8), new THREE.MeshBasicMaterial({ color: 0x120000 }), 0, 0, -0.015); pu.scale.set(0.3, 1.2, 0.5); e.add(pu); }   // szczelinowa źrenica
+            else if (!k.glowEyes) { const c = new THREE.Mesh(new THREE.SphereGeometry(0.0042, 8, 6), spark); c.position.set(-0.0055, 0.0062, -0.0135); e.add(c); }   // odblask: oko wygląda na żywe
         }
     }
     head.add(buildMask(maskId)); head.add(buildHat(look.hat)); head.add(buildGlasses(look.glasses));
@@ -538,6 +574,14 @@ export function createGorillaTorso(look) {
         tg.position.set(0, -0.2, 0.16); tg.add(meshAt(new THREE.SphereGeometry(0.06, 14, 10), white, 0, 0, 0.02));
         for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; tg.add(meshAt(new THREE.SphereGeometry(0.025, 8, 6), white, Math.cos(a) * 0.05, Math.sin(a) * 0.05, 0.03)); }
         g.add(tg); g.userData.tail = tg;
+    }
+    if (SCARY) {   // kościane kolce na barkach i grzbiecie oraz ślady pazurów na piersi
+        const sp = [];
+        for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) { const a = 0.5 + i * 0.5; sp.push(toothGeo(0, 0, 0, 0.05 - i * 0.01, 0.014, true).rotateZ(-sx * (0.9 - i * 0.5)).translate(sx * (0.215 + Math.sin(a) * 0.085), 0.145 + Math.cos(a) * 0.085, 0.01)); }
+        for (let i = 0; i < 4; i++) sp.push(toothGeo(0, 0, 0, 0.045, 0.013, true).rotateX(Math.PI / 2 + 0.2).translate(0, 0.14 - i * 0.075, 0.15 + (i % 2) * 0.01));
+        g.add(ellMesh(sp, BONE()));
+        const red = new THREE.MeshStandardMaterial({ color: 0x701010, roughness: 0.6 });
+        for (let i = 0; i < 3; i++) { const m = meshAt(new THREE.BoxGeometry(0.1, 0.006, 0.004), red, -0.05 + i * 0.014, 0.02 - i * 0.026, -0.149); m.rotation.z = 0.7; g.add(m); }
     }
     return g;
 }
@@ -694,7 +738,10 @@ export function animateFace(head, level, pitch, dt) {
     const f = head && head.userData.face; if (!f) return;
     f.level += (level - f.level) * Math.min(1, dt * (level > f.level ? 22 : 10));
     const L = f.level, p = pitch || 0.5;
-    if (f.mouth) { f.mouth.scale.y = 0.12 + L * 0.95; f.mouth.scale.x = 1.15 - p * 0.45 + L * 0.15; }
+    if (f.mouth) {
+        f.mouth.scale.y = 0.12 + L * 0.95; f.mouth.scale.x = (1.15 - p * 0.45 + L * 0.15) * (f.wide || 1);
+        if (f.jaw) { f.mouth.position.y = -0.081 - 0.035 * f.mouth.scale.y; f.jaw.position.y = -0.081 - 0.07 * f.mouth.scale.y; }   // górne zęby stoją, dolna szczęka schodzi w dół
+    }
     if (f.brow) f.brow.position.y = (f.browY || 0.058) + L * 0.018 + (p - 0.5) * 0.008;
     // Mruganie co 2-5 s (powieka: oko spłaszcza się na ułamek sekundy)
     f.blinkT -= dt; if (f.blinkT <= 0) { f.blink = 0.13; f.blinkT = 2 + Math.random() * 3.5; }

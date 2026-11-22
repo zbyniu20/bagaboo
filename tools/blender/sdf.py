@@ -25,3 +25,10 @@ def smin(a, b, k):
 def smax(a, b, k): return -smin(-a, -b, k)
 def sub(a, b, k=0.0): return smax(a, -b, k)             # a minus b
 def plane_z(g, z0, up=True): return ((g.Z - z0) * (-1 if up else 1) + 0 * g.Y + 0 * g.X).astype(np.float32)
+
+def capsule(g, a, b, ra, rb):
+    """zwężająca się kapsuła od a (promień ra) do b (promień rb): ramiona, palce, kończyny."""
+    a, b = np.array(a, np.float32), np.array(b, np.float32); ab = b - a; l2 = float((ab * ab).sum())
+    t = np.clip(((g.X - a[0]) * ab[0] + (g.Y - a[1]) * ab[1] + (g.Z - a[2]) * ab[2]) / l2, 0, 1)
+    dx, dy, dz = g.X - (a[0] + t * ab[0]), g.Y - (a[1] + t * ab[1]), g.Z - (a[2] + t * ab[2])
+    return (np.sqrt(dx * dx + dy * dy + dz * dz) - (ra + (rb - ra) * t)).astype(np.float32)
