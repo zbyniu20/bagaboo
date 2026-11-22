@@ -2,11 +2,23 @@
   "name": "bagaboo-tests",
   "private": true,
   "type": "module",
-  "scripts": { "fast": "node registry.mjs && node static.mjs && node levelpack.mjs && node rounds.mjs && node logic.mjs && node modes/generatorlogic.mjs", "registry": "node registry.mjs", "static": "node static.mjs", "levelpack": "node levelpack.mjs", "logic": "node logic.mjs", "changed": "node changed.mjs", "check": "npm run fast && node changed.mjs", "smoke": "node smoke.mjs", "test": "npm run fast && node smoke.mjs", "rounds": "node rounds.mjs" },
+  "scripts": {
+    "fast": "node registry.mjs && node static.mjs && node levelpack.mjs && node rounds.mjs && node logic.mjs && node modes/generatorlogic.mjs",
+    "registry": "node registry.mjs",
+    "static": "node static.mjs",
+    "levelpack": "node levelpack.mjs",
+    "logic": "node logic.mjs",
+    "changed": "node changed.mjs",
+    "check": "npm run fast && node changed.mjs", "types": "tsc -p tsconfig.json",
+    "smoke": "node smoke.mjs",
+    "test": "npm run fast && node smoke.mjs",
+    "rounds": "node rounds.mjs"
+  },
   "devDependencies": {
     "cannon-es": "0.20.0",
     "peerjs": "1.5.2",
     "playwright": "^1.45.0",
-    "three": "0.160.0"
+    "three": "0.160.0",
+    "typescript": "^5.9.3"
   }
 }

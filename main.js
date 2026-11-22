@@ -17,6 +17,7 @@ import { pollEmoteButtons } from './core/emotepanel.js';
 import { setAmbience } from './core/ambience.js';
 import { updateHighFive } from './core/highfive.js';
 import { startXrPerf, stopXrPerf, updateXrPerf } from './core/xrperf.js';
+import { updateDesktopPerf, resetDesktopPerf } from './core/desktopperf.js';   // automatyczna rozdzielczość poza VR
 import { drawScoreboard } from './core/ui.js';
 import { PAUSE, pauseMenu, pollPauseButtons, closePause } from './core/pause.js';
 import { LEVEL_DATA, payload as levelPayload, accept as levelAccept } from './core/leveldata.js';
@@ -315,7 +316,7 @@ const noobScare = createJumpscare({ noob: true });   // ultimate admin (zbyniu) 
 NETM.onNoob(() => noobScare.trigger());
 renderer.setAnimationLoop(() => {
     const rawDt = clock.getDelta(), dt = Math.min(rawDt, 0.1), t = clock.elapsedTime;
-    if (renderer.xr.isPresenting) updateXrPerf(rawDt);
+    if (renderer.xr.isPresenting) { updateXrPerf(rawDt); resetDesktopPerf(); } else updateDesktopPerf(rawDt);
     for (let i = frameWaiters.length - 1; i >= 0; i--) if (--frameWaiters[i].n <= 0) { frameWaiters[i].r(); frameWaiters.splice(i, 1); }
     pollPauseButtons(); pollEmoteButtons();
     updateModMenu(dt);   // BagaBooModMenu: B przez 2 s (tylko konta z MODMENU_NAMES), opcje admina

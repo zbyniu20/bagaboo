@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "es2022",
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    "strict": false,
+    "skipLibCheck": true,
+    "lib": [
+      "es2022",
+      "dom"
+    ],
+    "types": []
+  },
+  "files": [
+    "../core/lobbylogic.js",
+    "../core/minigames.js",
+    "../core/monstermaps.js",
+    "../core/room000map.js",
+    "../core/petlogic.js",
+    "../core/homelogic.js",
+    "../core/workshoplogic.js",
+    "../core/graffitilogic.js",
+    "../core/graffitiround.js",
+    "../core/generatorlogic.js",
+    "../core/netguard.js",
+    "../core/modstate.js",
+    "../core/config.js",
+    "../core/perflogic.js"
+  ]
+}

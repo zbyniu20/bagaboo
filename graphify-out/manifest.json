@@ -300,10 +300,10 @@
     "semantic_hash": "b08c44c4e6c0c8a096f39c816967902f"
   },
   "core/xrperf.js": {
-    "mtime": 1795016110.881786,
-    "seen": 1795275190.7333357,
-    "ast_hash": "c0e69bef68861caee343130c844452aa",
-    "semantic_hash": "c0e69bef68861caee343130c844452aa"
+    "mtime": 1795353853.6799397,
+    "seen": 1795353961.8534942,
+    "ast_hash": "a7996e7a434a0602421f4cb5c868e7b3",
+    "semantic_hash": ""
   },
   "levels/banana.js": {
     "mtime": 1795016110.9177861,
@@ -456,15 +456,15 @@
     "semantic_hash": "d2969ca6591f6efdd00476b182e9a5b0"
   },
   "main.js": {
-    "mtime": 1795281743.932352,
-    "seen": 1795281878.9615157,
-    "ast_hash": "7bcdaf4f457a88b4ac4582649d15c885",
+    "mtime": 1795353853.6807323,
+    "seen": 1795353961.8535366,
+    "ast_hash": "aa7f59b5eeb7a0b7a93f5c816cce0eb6",
     "semantic_hash": ""
   },
   "tests/package.json": {
-    "mtime": 1795274239.275369,
-    "seen": 1795275190.733391,
-    "ast_hash": "4581b4c1a8ef8450f94456a772bb1400",
+    "mtime": 1795353862.8284516,
+    "seen": 1795353961.8535545,
+    "ast_hash": "43853855734076d875d2b6107affd93e",
     "semantic_hash": ""
   },
   "tests/smoke.mjs": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795287573.5723855,
-    "seen": 1795287587.9598174,
-    "ast_hash": "a94929351373ef3dff7bbf4af98b7e02",
+    "mtime": 1795353893.2137008,
+    "seen": 1795353961.8538127,
+    "ast_hash": "6988ef3cbe6b14bd77f85fd8cb3f2747",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795287454.6069105,
-    "seen": 1795287514.6909673,
-    "ast_hash": "e06c37b40afb0e3429f5fec0da39c1da",
+    "mtime": 1795353862.8304155,
+    "seen": 1795353961.8538187,
+    "ast_hash": "a28b2d846f8b83b6c4690cd74b12dd32",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795287562.647882,
-    "seen": 1795287587.959625,
-    "ast_hash": "991b6e58215a6ffba807d74ddc42df96",
+    "mtime": 1795353878.302873,
+    "seen": 1795353961.8535433,
+    "ast_hash": "c649a829916e4446225baa682bb65e60",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10031,10 +10031,34 @@
     "ast_hash": "a82a80a79d3694de4b9854b5feeb3ebe",
     "semantic_hash": ""
   },
+  ".github/workflows/check.yml": {
+    "mtime": 1795353862.8309858,
+    "seen": 1795353961.853311,
+    "ast_hash": "8ac67bb02838c014da334fccf17758c2",
+    "semantic_hash": ""
+  },
+  "core/desktopperf.js": {
+    "mtime": 1795353853.678734,
+    "seen": 1795353961.8533294,
+    "ast_hash": "3d6bd2d80e27ad8e9c407c2b8ff9e64b",
+    "semantic_hash": ""
+  },
+  "core/perflogic.js": {
+    "mtime": 1795353853.6786666,
+    "seen": 1795353961.8534293,
+    "ast_hash": "21d95535df9cf2365bf5512e28d91e89",
+    "semantic_hash": ""
+  },
+  "tests/tsconfig.json": {
+    "mtime": 1795353862.8258634,
+    "seen": 1795353961.8535616,
+    "ast_hash": "6f734c7a8041ab957a2151269bb22fdb",
+    "semantic_hash": ""
+  },
   "tests/package-lock.json": {
-    "mtime": 1795016110.9240873,
-    "seen": 1795275190.7347693,
-    "ast_hash": "0bae4a30078ab44cbc5c3b3945b493cc",
+    "mtime": 1795353795.8758636,
+    "seen": 1795353961.8552709,
+    "ast_hash": "1c35b7a831578eae41eaaf149e4e5256",
     "semantic_hash": ""
   }
 }

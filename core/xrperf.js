@@ -10,17 +10,8 @@ import { renderer, lighting } from './engine.js';
 import { GFX } from './config.js';
 import { SETTINGS, saveSettings } from './settings.js';
 
-export const GOV = { slowMs: 2000, fastMs: 20000, slowRatio: 1.18, fastRatio: 1.05, cooldownMs: 3000, maxLevel: 3, alpha: 0.05 };
-// Czysta funkcja regulatora (testowana w tests/smoke.mjs). s: { avg, slow, fast, cool, level }. Zwraca nowy poziom.
-export function govern(s, dtMs, budgetMs) {
-    s.avg = s.avg ? s.avg + (dtMs - s.avg) * GOV.alpha : dtMs;
-    s.cool = Math.max(0, s.cool - dtMs);
-    s.slow = s.avg > budgetMs * GOV.slowRatio ? s.slow + dtMs : 0;
-    s.fast = s.avg < budgetMs * GOV.fastRatio ? s.fast + dtMs : 0;
-    if (s.slow > GOV.slowMs && s.cool <= 0 && s.level < GOV.maxLevel) { s.level++; s.slow = 0; s.cool = GOV.cooldownMs; return s.level; }
-    if (s.fast > GOV.fastMs && s.level > 0) { s.level--; s.fast = 0; s.cool = GOV.cooldownMs; return s.level; }
-    return s.level;
-}
+import { GOV, govern } from './perflogic.js';
+export { GOV, govern };   // regulator jest w czystym core/perflogic.js (testy: tests/logic.mjs); eksport zostaje tu dla testów w przeglądarce (tests/smoke.mjs)
 
 const st = { avg: 0, slow: 0, fast: 0, cool: 0, level: 0 };
 let active = false, budget = 1000 / 72, applied = -1, lastScaleSave = 0, warmup = 0;
