@@ -99,10 +99,10 @@ export function build() {
 }
 
 function buildHall() {
-    addCrispBlock(0, -0.5, (Z0 + Z1) / 2, X1 - X0 + 2, 1, Z0 - Z1 + 2, 0x7a7670, 0x101010, tex.floor, { rough: tex.floorRough });
+    addCrispBlock(0, -0.5, (Z0 + Z1) / 2, X1 - X0 + 2, 1, Z0 - Z1 + 2, 0x7a7670, 0x101010, tex.floor, { rough: tex.floorWet, physical: true });   // mokra posadzka pralni
     addCrispBlock(0, H + 0.5, (Z0 + Z1) / 2, X1 - X0 + 2, 1, Z0 - Z1 + 2, 0x4a4844, 0x101010);
     for (const [x, z, w, d] of [[0, Z1 - 0.5, X1 - X0 + 2, 1], [0, Z0 + 0.5, X1 - X0 + 2, 1], [X0 - 0.5, (Z0 + Z1) / 2, 1, Z0 - Z1], [X1 + 0.5, (Z0 + Z1) / 2, 1, Z0 - Z1]])
-        addCrispBlock(x, H / 2, z, w, H, d, 0x8a8478, 0x1a1a1a, tex.wall);
+        addCrispBlock(x, H / 2, z, w, H, d, 0x8a8478, 0x1a1a1a, tex.wallRust);   // zardzewiałe, wilgotne ściany
     // Przemysłowe lampy w parze
     // Przemysłowe lampy w parze: słabe, migoczą i czasem gasną
     for (const z of [-2, -14, -26, -38, -50]) for (const x of [-8, 8]) {

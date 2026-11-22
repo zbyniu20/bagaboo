@@ -104,7 +104,7 @@ export function build() {
     S.onPath = new Set(path);
 
     // Podłoga i sufit (sufit zamyka górę, więc nie da się przejść nad ścianami)
-    addCrispBlock(0, -2.5, 0, 112, 5, 132, NP.floorTint, 0x220000, tex.floor, { rough: tex.floorRough, physical: true });
+    addCrispBlock(0, -2.5, 0, 112, 5, 132, NP.floorTint, 0x220000, tex.floor, { rough: tex.floorWet, physical: true });
     addCrispBlock(0, 22.5, 0, 112, 5, 132, 0x3a3a3a, 0x110000);
 
     // Ściany labiryntu, połączone w dłuższe odcinki i scalone w jedną siatkę

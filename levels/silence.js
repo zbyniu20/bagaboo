@@ -90,7 +90,7 @@ export function build() {
 
 function buildRoom() {
     const root = L.root;
-    addCrispBlock(0, -2.5, 0, 40, 5, 40, NP.floorTint, 0x101820, tex.floor, { rough: tex.floorRough, physical: true });
+    addCrispBlock(0, -2.5, 0, 40, 5, 40, NP.floorTint, 0x101820, tex.floor, { rough: tex.floorWet, physical: true });
     addCrispBlock(0, CEIL + 2.5, 0, 40, 5, 40, 0x2a2e33, 0x101820);
     addCrispBlock(0, CEIL / 2, -17.5, 40, CEIL, 5, 0x8a9096, 0x101820);
     addCrispBlock(0, CEIL / 2, 17.5, 40, CEIL, 5, 0x8a9096, 0x101820);
