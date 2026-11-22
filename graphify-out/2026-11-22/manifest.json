@@ -18,9 +18,9 @@
     "semantic_hash": "7d0b0caf69591d61cf1e070633871556"
   },
   "core/avatar.js": {
-    "mtime": 1795365058.4907799,
-    "seen": 1795365204.5241027,
-    "ast_hash": "e3b43f1db207f162d7b042ffe1d10608",
+    "mtime": 1795379784.2101476,
+    "seen": 1795379823.9278386,
+    "ast_hash": "a6873b98895457031b5bef8ca8182501",
     "semantic_hash": ""
   },
   "core/botkit.js": {
@@ -168,9 +168,9 @@
     "semantic_hash": "afa9211bf3987525436ce6ca2c449474"
   },
   "core/mannequin.js": {
-    "mtime": 1795377494.1147325,
-    "seen": 1795377979.404139,
-    "ast_hash": "54e7d162205380bf73fbbbb1519c7be2",
+    "mtime": 1795379800.226247,
+    "seen": 1795379823.927916,
+    "ast_hash": "c45a72dd9f0cb779eb6f9125ace0e87c",
     "semantic_hash": ""
   },
   "core/modmenu.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795377909.8741395,
-    "seen": 1795377979.4047039,
-    "ast_hash": "7add927d87a9d5ab00cbea92df073945",
+    "mtime": 1795379815.513148,
+    "seen": 1795379823.928262,
+    "ast_hash": "ad1f6af13667169ee9b46c927c12cc42",
     "semantic_hash": ""
   },
   "README.md": {
@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "tests/static.mjs": {
-    "mtime": 1795277714.4583356,
-    "seen": 1795277723.5793996,
-    "ast_hash": "e507caffba1b85473f78213b72542a3b",
+    "mtime": 1795379815.5125108,
+    "seen": 1795379823.9280648,
+    "ast_hash": "8ec1f581bc8b35230e5ce785c4b8a1a0",
     "semantic_hash": ""
   },
   "tests/changed.mjs": {
@@ -10116,9 +10116,9 @@
     "semantic_hash": ""
   },
   "tests/avatarshot.mjs": {
-    "mtime": 1795365219.944535,
-    "seen": 1795365414.0358326,
-    "ast_hash": "8f4692c08f68f579ee6d8a29f95f6bc9",
+    "mtime": 1795379659.5827734,
+    "seen": 1795379823.92802,
+    "ast_hash": "6b77598fccdd408deb4ce43b82bfbe78",
     "semantic_hash": ""
   },
   "tests/petshot.mjs": {

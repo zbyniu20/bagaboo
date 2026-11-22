@@ -4,11 +4,25 @@
 import { THREE, tex, place, seg, V3, UNIT_SPHERE, UNIT_BOX } from './engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LP } from './config.js';
-import { normalFor } from './textures.js';
+import { normalFor, makeCanvas, toTex, mkRng } from './textures.js';
 
 const ENV = LP.envIntensity, UNIT_CONE = new THREE.ConeGeometry(1, 1, 5);
 // Gips jak porcelana: normalna z tekstury (pęknięcia, ziarno), lekko lakierowana powierzchnia łapie odbicia latarki i lamp
 const plasterMat = new THREE.MeshPhysicalMaterial({ map: tex.plaster, normalMap: normalFor(tex.plaster, 3), normalScale: new THREE.Vector2(0.9, 0.9), color: 0xd8d0c2, roughness: 0.42, clearcoat: 0.55, clearcoatRoughness: 0.4, envMapIntensity: Math.max(0.5, ENV) });
+// Świecące pęknięcia w gipsie: czerwona żyłkowana mapa emisji (rysowana raz, deterministyczna)
+let _crackTex = null;
+function crackTex() {
+    if (_crackTex) return _crackTex;
+    const c = makeCanvas(256, 256), x = c.getContext('2d'), r = mkRng(77);
+    x.fillStyle = '#000'; x.fillRect(0, 0, 256, 256); x.strokeStyle = '#ff3a12'; x.lineCap = 'round';
+    for (let i = 0; i < 14; i++) {
+        let px = r() * 256, py = r() * 256, a = r() * 6.28; x.lineWidth = 1 + r() * 1.5; x.beginPath(); x.moveTo(px, py);
+        for (let j = 0; j < 9; j++) { a += (r() - 0.5) * 1.3; px += Math.cos(a) * (8 + r() * 14); py += Math.sin(a) * (8 + r() * 14); x.lineTo(px, py); }
+        x.stroke();
+    }
+    _crackTex = toTex(c); return _crackTex;
+}
+plasterMat.emissiveMap = crackTex(); plasterMat.emissive = new THREE.Color(0xff3010); plasterMat.emissiveIntensity = 0.5;
 const darkJoint = new THREE.MeshStandardMaterial({ color: 0x101012, roughness: 0.4, metalness: 0.6, envMapIntensity: ENV });
 const bloodMat = new THREE.MeshStandardMaterial({ color: 0x6a0808, roughness: 0.4 }), voidMat = new THREE.MeshBasicMaterial({ color: 0x000000 }), eyeGlowMat = new THREE.MeshBasicMaterial({ map: tex.eyeBloodshot, color: 0xffffff, toneMapped: false });   // krwiste oko: żyłki, czerwona tęczówka, szczelina źrenicy
 const ARM_POSES = [
@@ -30,6 +44,7 @@ function buildArm(S, s, body, joints, R) {
         const F0 = palmEnd.clone().addScaledVector(p, (i - 2) * 0.014), d1 = d.clone().addScaledVector(p, (i - 2) * 0.15).add(jit(R, 0.3)).normalize();
         const len1 = (i === 0 || i === 4) ? 0.055 : 0.07, Mid = F0.clone().addScaledVector(d1, len1), d2 = d1.clone().add(jit(R, 0.9)).normalize(), Tip = Mid.clone().addScaledVector(d2, len1 * 0.85);
         body.push(seg(F0, Mid, 0.009, 0.007, 4)); body.push(seg(Mid, Tip, 0.007, 0.004, 4));
+        const claw = new THREE.ConeGeometry(0.0055, 0.045, 5); claw.translate(0, 0.0225, 0); claw.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), d2)); claw.translate(Tip.x, Tip.y, Tip.z); joints.push(claw);   // czarny pazur
     }
 }
 function buildLeg(s, body, joints, R) {
