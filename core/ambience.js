@@ -7,8 +7,8 @@
 import { THREE, camera, scene, lighting, L, tex } from './engine.js';
 import { buildMannequin, addMonsterFace } from './mannequin.js';
 import { LEVEL_DEFS } from './registry.js';
-import { audioBus, spatial, noiseBuf, creak, bang, whisper, setRoom, breath, growl, step, stinger } from './audio.js';
-import { GAMES_CALM } from './settings.js';
+import { audioBus, spatial, noiseBuf, creak, bang, whisper, setRoom, breath, growl, step, stinger, pa, childLaugh } from './audio.js';
+import { GAMES_CALM, SETTINGS } from './settings.js';
 
 // loops: stałe źródła [typ, [[x,y,z], ...]], rand: losowe odgłosy { t: typ, e: [min,max] s między, d: [min,max] m od gracza, v: głośność }
 const DEFS = Object.fromEntries(LEVEL_DEFS.filter(d => d.ambience).map(d => [d.id, d.ambience]));   // z core/registry.js
@@ -32,6 +32,8 @@ function oneShot(ctx, def, pos) {
     if (def.t === 'creak') return creak(v, pos);
     if (def.t === 'bang') return bang(pos);
     if (def.t === 'whisper') return whisper(pos);
+    if (def.t === 'pa') return pa(pos, v);   // lobby: komunikat z głośnika
+    if (def.t === 'laugh') return childLaugh(pos, v);   // lobby: śmiech dziecka
     const dst = spatial(pos);
     if (def.t === 'drip') { tone(ctx, dst, t0, 1900, 800, 0.12, v); tone(ctx, dst, t0 + 0.22, 1500, 700, 0.14, v * 0.35); tone(ctx, dst, t0 + 0.42, 1300, 650, 0.16, v * 0.15); }
     else if (def.t === 'owl') { tone(ctx, dst, t0, 420, 360, 0.5, v); tone(ctx, dst, t0 + 0.7, 400, 330, 0.7, v * 0.9); }
@@ -73,7 +75,7 @@ function tick() {
         timers = (cur.rand || []).map(r => rnd(r.e[0], r.e[1]) * 0.6);
     }
     for (const l of loops) if (l.tick) l.tick();
-    (cur.rand || []).forEach((r, i) => { timers[i] -= dt; if (timers[i] <= 0) { timers[i] = rnd(r.e[0], r.e[1]); if (!DREAD.hush) oneShot(ctx, r, aroundPlayer(r.d)); } });   // blisko potwora ambient milknie: słychać tylko jego
+    (cur.rand || []).forEach((r, i) => { timers[i] -= dt; if (timers[i] <= 0) { timers[i] = rnd(r.e[0], r.e[1]); if (!DREAD.hush && !((r.t === 'pa' || r.t === 'laugh') && SETTINGS.lobbyEvents === false)) oneShot(ctx, r, aroundPlayer(r.d)); } });   // blisko potwora ambient milknie: słychać tylko jego
 }
 setInterval(tick, 250);
 

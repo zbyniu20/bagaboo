@@ -17,6 +17,7 @@
   "files": [
     "../core/lobbylogic.js",
     "../core/dismemberlogic.js",
+    "../core/hauntlogic.js",
     "../core/huntlogic.js",
     "../core/minigames.js",
     "../core/monstermaps.js",

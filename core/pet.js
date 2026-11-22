@@ -18,6 +18,7 @@ import { LEVEL_BY_ID } from './registry.js';
 import { handsOf } from './roundkit.js';
 import * as N from './network.js';
 import * as SFX from './audio.js';
+import { HAUNT_STATE, petFear, hideSpot } from './hauntlogic.js';
 import { toast, GOLD } from './terminal.js';
 
 let HUB = false, P = null, holdSpawn = false, vPress = false;
@@ -42,7 +43,7 @@ function spawn(ctx, born, at) {
     const x = at ? at.x : pl.x + Math.cos(a) * 1.3, z = at ? at.z : pl.z + Math.sin(a) * 1.3, bot = createBot(x, z);
     bot.y = at && at.y !== undefined ? at.y : Math.max(0, pl.y - 1.0);
     L.root.add(model.group);
-    P = { model: model, bot: bot, lvl: st.level, sig: lookSig(lookFor(st)), name: st.name, idleT: 0, last: { x: pl.x, z: pl.z }, sp: 0, petted: 0, eating: 0, handT: 0, patCd: 0, carry: 0, hand: 1, gripPrev: [false, false], squeakIn: 8 + Math.random() * 10, jumpCd: 0, statT: 0, follow: false, hungry: st.hungry, sad: st.mood < 0.35, mood: st.moodLabel, tagMood: '' };
+    P = { model: model, bot: bot, lvl: st.level, sig: lookSig(lookFor(st)), name: st.name, idleT: 0, last: { x: pl.x, z: pl.z }, sp: 0, petted: 0, eating: 0, handT: 0, patCd: 0, carry: 0, hand: 1, gripPrev: [false, false], squeakIn: 8 + Math.random() * 10, jumpCd: 0, statT: 0, follow: false, fear: 0, fearSnd: 0, hungry: st.hungry, sad: st.mood < 0.35, mood: st.moodLabel, tagMood: '' };
     model.group.position.set(bot.x, bot.y, bot.z);
     model.setTag(st.name, st.level, st.moodLabel);
 }
@@ -98,10 +99,14 @@ function updateMine(dt, t, ctx) {
     const rest = restSpot(pl.x, pl.z, _dir.x, _dir.z, L.bounds), dRest = Math.hypot(rest.x - b.x, rest.z - b.z);
     p.follow = shouldFollow(p.follow, d, dRest);
     const busy = p.petted > 0 || p.eating > 0 || (stage !== 'idle' && !p.follow);
-    const want = busy || !p.follow ? 0 : followSpeed(dRest);
+    let want = busy || !p.follow ? 0 : followSpeed(dRest);
+    // strach: gdy potwór Nocnej Zmiany jest blisko, stworek chowa się za graczem, drży i patrzy w stronę potwora (wskazówka, skąd idzie); piszczy co kilka sekund
+    const mon = HAUNT_STATE.monster; p.fear += (petFear(mon, { x: b.x, z: b.z }) - p.fear) * Math.min(1, dt * 3);
+    const hs = p.fear > 0.3 && mon ? hideSpot(mon, pl, 0.9) : null;
+    if (hs) { const dh = Math.hypot(hs.x - b.x, hs.z - b.z); want = dh < 0.35 ? 0 : Math.min(6.5, 1.5 + dh * 3); p.fearSnd -= dt; if (p.fearSnd <= 0) { p.fearSnd = 2.2 + Math.random() * 2; SFX.squeak(posOf()); } }
     if (ctx.body && ctx.body.velocity.y > 3.5 && p.jumpCd <= 0 && b.ground && stage === 'idle' && d < 4) { b.vy = 4.6; b.ground = false; p.jumpCd = 0.9; }
-    stepBot(b, dt, p.follow ? rest.x : pl.x, p.follow ? rest.z : pl.z, pl.y - 1.0, want, p.follow && dRest > 2.5);
-    if (want === 0 && d > 0.2) { const target = Math.atan2(dx, dz); let dd = target - p.model.group.rotation.y; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); b.dir = p.model.group.rotation.y + dd * Math.min(1, dt * 3); }
+    stepBot(b, dt, hs ? hs.x : (p.follow ? rest.x : pl.x), hs ? hs.z : (p.follow ? rest.z : pl.z), pl.y - 1.0, want, (p.follow && dRest > 2.5) || !!hs);
+    if (want === 0 && d > 0.2) { const target = hs ? Math.atan2(mon.x - b.x, mon.z - b.z) : Math.atan2(dx, dz); let dd = target - p.model.group.rotation.y; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); b.dir = p.model.group.rotation.y + dd * Math.min(1, dt * 3); }
     p.model.group.position.set(b.x, b.y, b.z); p.model.group.rotation.y = b.dir;
     p.sp += (Math.min(1, want / 6.5 + (want > 0 ? 0.25 : 0)) - p.sp) * Math.min(1, dt * 8);
     // głodny stworek prosi o jedzenie
@@ -117,7 +122,7 @@ function updateMine(dt, t, ctx) {
         if (r.ok) { SFX.purr(posOf(), 0.7); toast(p.name + ' loves it!', '#ff9ec0'); }
     }
     const camD = Math.hypot(ctx.pos.x - b.x, ctx.pos.z - b.z);
-    p.model.update(dt, t, { speed: p.sp, sleeping: stage === 'sleep' && p.petted <= 0 && p.eating <= 0, sitting: stage !== 'idle', sad: p.sad, hungry: p.hungry, petted: p.petted > 0 ? Math.min(1, p.petted) : 0, eating: p.eating, tag: camD > 1.0 && camD < 9 });   // tuż przy kamerze plakietka byłaby ogromna
+    p.model.update(dt, t, { speed: p.sp, sleeping: stage === 'sleep' && p.petted <= 0 && p.eating <= 0, sitting: stage !== 'idle', sad: p.sad, hungry: p.hungry, fear: p.fear, petted: p.petted > 0 ? Math.min(1, p.petted) : 0, eating: p.eating, tag: camD > 1.0 && camD < 9 });   // tuż przy kamerze plakietka byłaby ogromna
     if (p.eating > 0 && Math.random() < dt * 5) p.model.burst('heart', 1);
 }
 

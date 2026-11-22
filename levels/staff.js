@@ -3,7 +3,13 @@
 // Wejście tylko dla admina i moderatorów (core/config.js). Telewizor: zaproszenia. Komputer na biurku:
 // wybór moderatorów (admin), lista banów, zakup i zakładanie młotków Kick i Ban. Kanapa, fotele, stolik, biurko szefa, regał i telewizor z listą graczy.
 // ==========================================
-import { THREE, L, tex, addCrispBlock, addStaticBody, CANNON } from '../core/engine.js';
+import { THREE, L, tex, addCrispBlock, addStaticBody, CANNON, camera, lighting } from '../core/engine.js';
+import * as SFX from '../core/audio.js';
+import { SETTINGS } from '../core/settings.js';
+import { setDread, DREAD } from '../core/ambience.js';
+import { addStoryProps } from '../core/levelkit.js';
+import { buildMannequin, addMonsterFace } from '../core/mannequin.js';
+import { HAUNT, STAFF, nextIn, pickKind, manStep, staffDread, staffGap, staffBlackoutDue, eyesDistance, pupilOffset } from '../core/hauntlogic.js';
 import { LIGHT_PRESETS, isStaffName, isAdminName, isModName, isUltimateName, MOD_NAMES, localMods, setLocalMod } from '../core/config.js';
 import { SAVE, CATALOG, isOwned, buyItem, equipItem, setHideTag, markCheater } from '../core/economy.js';
 import * as T from '../core/textures.js';
@@ -122,10 +128,11 @@ export function build() {
     }
     L.spawn = info.spawn.slice();
     L.bounds = { minX: -W + 0.3, maxX: W - 0.3, minZ: -D + 0.3, maxZ: D - 0.3, maxY: H - 0.3 };
-    S = { tvT: 0 };
+    S = { tvT: 0, ceil: [] };
     buildRoom();
     buildFurniture();
     buildTrainingDummy(-4.6, 2.4, Math.PI / 2 - 0.2);   // manekin do testów młotków ekipy (Nothing Hammer)
+    buildHaunt();   // pokój, który z czasem się psuje (niżej)
     const screen = tv.createMesh(2.4, 1.5); screen.position.set(0, 1.85, -D + 0.075); L.root.add(screen);
     buildDoor({ x: 0, z: D - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x6a4a30, signY: 2.6,
         portal: { target: 'lobby', spawn: ARRIVAL_STAFF, onEnter: () => toast('Back to the lobby') } });
@@ -166,7 +173,7 @@ function buildRoom() {
     rug.rotation.x = -Math.PI / 2; rug.position.set(0, 0.01, -1.4); rug.scale.set(1.4, 1.4, 1); rug.receiveShadow = true; L.root.add(rug);
     // Ciepłe światła sufitowe
     for (const [x, z] of [[-3.5, -2.5], [3.5, -2.5], [-3.5, 2.5], [3.5, 2.5]]) {
-        const l = new THREE.PointLight(0xffc890, 10, 10, 1.6); l.position.set(x, H - 0.4, z); L.root.add(l);
+        const l = new THREE.PointLight(0xffc890, 10, 10, 1.6); l.position.set(x, H - 0.4, z); L.root.add(l); S.ceil.push({ l: l, base: 10 });
         const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 0.22, 20, 1, true), new THREE.MeshStandardMaterial({ color: 0xe8d8b0, emissive: 0x6a5030, side: THREE.DoubleSide }));
         shade.position.set(x, H - 0.25, z); L.root.add(shade);
     }
@@ -253,12 +260,159 @@ function buildFurniture() {
     box(-W + 0.04, 1.9, 1.5, 0.04, 1.12, 1.72, gold, false);
 }
 
+// ==========================================
+// STAFF ROOM: POKÓJ, KTÓRY SIĘ PSUJE (zasady i liczby: core/hauntlogic.js, STAFF). Wszystko lokalne i wizualne, drzwi i ekrany działają normalnie.
+// Statyczne: przyćmione światło i gęstsza mgła, krew i napisy na ścianach, ciała na dywanie, portrety z oczami, które śledzą gracza, słoiki z oczami, wisząca postać, trzy manekiny.
+// Z czasem w pokoju (staffDread 0..1): szepty za plecami, mruganie świateł, widmo w telewizorze, napisy, kapanie krwi, kroki, manekiny skradają się, gdy nie patrzysz,
+// a przy szczycie napięcia gasną wszystkie światła i czerwone oczy zbliżają się z ciemności (potem światło wraca, a manekiny stoją bliżej).
+// ==========================================
+const _sc = new THREE.Vector3(), _sd = new THREE.Vector3(), _sl = new THREE.Vector3();
+const WRITES = ['LEAVE', 'HE IS BEHIND YOU', 'YOU SHOULD NOT BE HERE', 'I WAS THE BOSS', 'COUNT THE EXITS', "DON'T TURN AROUND"];
+function paintCanvas(w, h, draw) { const c = T.makeCanvas(w, h), x = c.getContext('2d'); draw(x, w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return { c: c, x: x, t: t }; }
+function portrait(px, py, pz, rotY, seed) {
+    const R = T.mkRng(seed), g = new THREE.Group(); g.position.set(px, py, pz); g.rotation.y = rotY; L.root.add(g);
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(0.92, 1.17, 0.05), new THREE.MeshStandardMaterial({ color: 0x2a1c0c, metalness: 0.6, roughness: 0.4 })));
+    const pic = paintCanvas(256, 320, (x) => {   // ciemny obraz: blada, wychudzona twarz z pustymi oczodołami
+        const gr = x.createLinearGradient(0, 0, 0, 320); gr.addColorStop(0, '#120a06'); gr.addColorStop(1, '#2a1a10'); x.fillStyle = gr; x.fillRect(0, 0, 256, 320);
+        x.fillStyle = '#1a1210'; x.beginPath(); x.ellipse(128, 120, 92, 108, 0, 0, 7); x.fill();   // włosy
+        x.fillStyle = '#c8b8a0'; x.beginPath(); x.ellipse(128, 150, 70, 96, 0, 0, 7); x.fill();
+        x.fillStyle = 'rgba(40,20,10,0.5)'; x.beginPath(); x.ellipse(90, 130, 26, 22, 0, 0, 7); x.ellipse(166, 130, 26, 22, 0, 0, 7); x.fill();
+        x.strokeStyle = '#3a1410'; x.lineWidth = 3; x.beginPath(); x.moveTo(98, 226); x.quadraticCurveTo(128, 216 + R() * 12, 158, 226); x.stroke();
+        x.fillStyle = '#7a0c10'; for (let i = 0; i < 4; i++) x.fillRect(100 + i * 18, 224, 3, 10 + R() * 30);
+    });
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.02), new THREE.MeshStandardMaterial({ map: pic.t, roughness: 0.7 })); plane.position.z = 0.03; g.add(plane);
+    const eyes = [];
+    for (const sx of [-1, 1]) {
+        const ex = sx * 0.122, ey = 0.096, w = new THREE.Mesh(new THREE.PlaneGeometry(0.115, 0.06), new THREE.MeshBasicMaterial({ color: 0xe8e0c0 })); w.position.set(ex, ey, 0.034); g.add(w);
+        const pu = new THREE.Mesh(new THREE.CircleGeometry(0.024, 14), new THREE.MeshBasicMaterial({ color: 0x120000 })); pu.position.set(ex, ey, 0.036); g.add(pu); eyes.push({ w: w, p: pu, bx: ex, by: ey });
+    }
+    S.h.portraits.push({ g: g, eyes: eyes, blink: 0 }); return g;
+}
+function buildHaunt() {
+    const h = S.h = { elapsed: 0, evT: 12, last: -1, done: false, bo: { t: -1, base: [], eyes: null, hemi: 0 }, portraits: [], jars: [], hang: null, mans: [], tvG: null, writes: [], flick: 0, steps: [], drops: [], creakT: 6, hangT: 0 };
+    // atmosfera: przyćmione, chorobliwe światło i gęstsza mgła
+    for (const c of S.ceil) { c.base = 6; c.l.intensity = 6; c.l.color.setHex(0xc8a070); }
+    lighting.hemi.intensity *= 0.6; DREAD.fogMul = 1.5; setDread(() => [], {});   // pusta lista: reżyser grozy daje tylko zjawy
+    addStoryProps({ seed: 777, count: 46, corpses: 2 });
+    // portrety (oczy śledzą gracza)
+    portrait(-4.2, 2.0, -D + 0.05, 0, 31); portrait(4.2, 2.0, -D + 0.05, 0, 32); portrait(-W + 0.05, 2.0, 3.4, Math.PI / 2, 33); portrait(W - 0.05, 2.2, 3.8, -Math.PI / 2, 34);
+    // konsola ze słoikami z oczami
+    const wood = new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x2e1c12, roughness: 0.5 });
+    box(-3.6, 0.45, D - 0.3, 2.2, 0.9, 0.5, wood);
+    const glass = new THREE.MeshPhysicalMaterial({ color: 0x90b090, transparent: true, opacity: 0.32, roughness: 0.1, clearcoat: 1 }), eyeM = new THREE.MeshStandardMaterial({ map: tex.eye, roughness: 0.2, emissive: 0x220000 });
+    for (let i = 0; i < 5; i++) {
+        const x = -4.5 + i * 0.45, jar = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.3, 14), glass); jar.position.set(x, 1.05, D - 0.3); L.root.add(jar);
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.052, 14, 12), eyeM); eye.position.set(x, 1.04, D - 0.3); L.root.add(eye); h.jars.push(eye);
+    }
+    // wisząca postać (kołysze się, skrzypi)
+    { const g = new THREE.Group(); g.position.set(4.6, H, 3.4); L.root.add(g); const cloth = new THREE.MeshStandardMaterial({ color: 0x1c1c22, roughness: 0.9 }), skin = new THREE.MeshStandardMaterial({ color: 0xc8b8a8, roughness: 0.7 });
+      const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.9, 6), new THREE.MeshStandardMaterial({ color: 0x4a3a28 })); rope.position.y = -0.45; g.add(rope);
+      const body = new THREE.Group(); body.position.y = -0.9; g.add(body);
+      const hd = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 10), skin); hd.position.set(0, -0.12, 0); hd.rotation.z = 0.5; body.add(hd);
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 0.45, 4, 10), cloth); torso.position.y = -0.55; body.add(torso);
+      for (const s of [-1, 1]) { const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.5, 4, 8), cloth); arm.position.set(s * 0.22, -0.55, 0.03); arm.rotation.z = s * 0.08; body.add(arm); const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.6, 4, 8), cloth); leg.position.set(s * 0.08, -1.2, 0); body.add(leg); }
+      h.hang = g; }
+    // manekiny w rogach (skradają się, gdy nie patrzysz)
+    [[-5.2, -4.0], [4.4, -4.3], [-5.4, 2.4]].forEach(([x, z], i) => {
+        const m = buildMannequin(T.mkRng(9100 + i)); addMonsterFace(m.head, { width: 0.058, open: 0.045, teeth: 11, long: 1.6, tears: 0x7a0a0a });
+        m.group.position.set(x, 0, z); m.group.rotation.y = Math.atan2(-x, -z); L.root.add(m.group); h.mans.push({ g: m.group, head: m.head, home: { x: x, z: z }, t: nextIn(STAFF.CREEP.EVERY, Math.random) });
+    });
+    // widmo w telewizorze (nakładka z szumem i twarzą; sam ekran telewizora zostaje działający)
+    { const tvg = paintCanvas(128, 80, () => {}); const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.5), new THREE.MeshBasicMaterial({ map: tvg.t, transparent: true, opacity: 0, depthWrite: false, toneMapped: false })); mesh.position.set(0, 1.85, -D + 0.085); mesh.renderOrder = 4; mesh.visible = false; L.root.add(mesh); h.tvG = { mesh: mesh, x: tvg.x, t: tvg.t, left: 0 }; }
+    // napisy na ścianach (cztery miejsca)
+    for (const [x, y, z, ry, w] of [[-W + 0.03, 1.6, -0.3, Math.PI / 2, 1.8], [W - 0.03, 1.8, -0.5, -Math.PI / 2, 2.4], [-3.8, 1.2, -D + 0.03, 0, 2.4], [3.6, 2.0, D - 0.03, Math.PI, 2.4]]) {
+        const cv = paintCanvas(512, 160, () => {}), mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, w * 160 / 512), new THREE.MeshBasicMaterial({ map: cv.t, transparent: true, opacity: 0, depthWrite: false, toneMapped: false })); mesh.position.set(x, y, z); mesh.rotation.y = ry; mesh.visible = false; L.root.add(mesh); h.writes.push({ mesh: mesh, x: cv.x, t: cv.t, age: -1, len: 8 });
+    }
+}
+function drawStatic(face) {
+    const g = S.h.tvG, x = g.x, W2 = 128, H2 = 80, id = x.createImageData(W2, H2);
+    for (let i = 0; i < id.data.length; i += 4) { const v = Math.random() * 230; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; }
+    x.putImageData(id, 0, 0);
+    if (face) { x.fillStyle = 'rgba(225,215,195,0.92)'; x.beginPath(); x.ellipse(64, 40, 24, 34, 0, 0, 7); x.fill(); x.fillStyle = '#080000'; x.beginPath(); x.ellipse(54, 32, 6, 8, 0, 0, 7); x.ellipse(74, 32, 6, 8, 0, 0, 7); x.ellipse(64, 54, 9, 13, 0, 0, 7); x.fill(); }
+    g.t.needsUpdate = true;
+}
+function writeOn(i, text) {
+    const w = S.h.writes[i]; w.x.clearRect(0, 0, 512, 160); w.x.textAlign = 'center'; w.x.textBaseline = 'middle'; w.x.font = 'bold ' + (text.length > 14 ? 52 : 82) + 'px "Courier New", monospace'; w.x.fillStyle = 'rgba(150,10,14,0.96)'; w.x.fillText(text, 256, 66);
+    for (let k = 0; k < 8; k++) { w.x.fillStyle = 'rgba(140,8,12,0.9)'; w.x.fillRect(30 + Math.random() * 450, 96, 3 + Math.random() * 3, 12 + Math.random() * 46); }
+    w.t.needsUpdate = true; w.age = 0; w.len = 8;
+}
+function startEvent(kind) {
+    const h = S.h; camera.getWorldPosition(_sc); camera.getWorldDirection(_sd); _sd.y = 0; if (_sd.lengthSq() < 1e-4) _sd.set(0, 0, -1); _sd.normalize();
+    if (kind === 'whisper') SFX.whisper({ x: _sc.x - _sd.x * 1.2, y: _sc.y - 0.1, z: _sc.z - _sd.z * 1.2 });
+    else if (kind === 'flicker') { h.flick = 1.3; SFX.crackle({ x: 0, y: H - 0.4, z: 0 }); }
+    else if (kind === 'tv') { h.tvG.left = 0.15 + Math.random() * 0.3; drawStatic(Math.random() < 0.5); h.tvG.mesh.visible = true; h.tvG.mesh.material.opacity = 0.95; SFX.crackle({ x: 0, y: 1.8, z: -D + 0.3 }); }
+    else if (kind === 'writing') { const free = h.writes.map((w, i) => i).filter(i => h.writes[i].age < 0); if (free.length) { writeOn(free[(Math.random() * free.length) | 0], WRITES[(Math.random() * WRITES.length) | 0]); SFX.whisper({ x: _sc.x + _sd.x * 0.5, y: _sc.y, z: _sc.z + _sd.z * 0.5 }); } }
+    else if (kind === 'drip') { const a = Math.random() * 6.283, d = 1.5 + Math.random() * 2.5, sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xa80000, transparent: true, depthWrite: false })); sp.scale.setScalar(0.07); sp.position.set(_sc.x + Math.cos(a) * d, H - 0.1, _sc.z + Math.sin(a) * d); L.root.add(sp); h.drops.push({ sp: sp, v: 0 }); }
+    else if (kind === 'slam') SFX.bang({ x: _sc.x - _sd.x * 5, y: 1.2, z: _sc.z - _sd.z * 5 });
+    else if (kind === 'step') h.steps = [0.4, 0.95, 1.5, 2.05].map((t, i) => ({ t: t, d: 4 - i * 0.7 }));   // cztery kroki z tyłu, coraz bliżej, potem cisza
+}
+function startBlackout() {
+    const b = S.h.bo; b.t = 0; b.base = []; L.root.traverse(o => { if (o.isPointLight) { b.base.push({ l: o, i: o.intensity }); o.intensity = 0; } }); b.hemi = lighting.hemi.intensity; lighting.hemi.intensity = b.hemi * 0.04;
+    camera.getWorldDirection(_sd); _sd.y = 0; _sd.normalize(); b.dir = { x: _sd.x, z: _sd.z };
+    if (!b.eyes) { b.eyes = []; for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1808, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false })); e.scale.set(0.22, 0.22, 1); e.renderOrder = 999; L.root.add(e); b.eyes.push(e); } }
+    SFX.crackle({ x: 0, y: H - 0.4, z: 0 }); toast('The lights went out...', '#ff3a2a');
+}
+function endBlackout() {
+    const b = S.h.bo; for (const o of b.base) o.l.intensity = o.i; lighting.hemi.intensity = b.hemi; b.t = -1; for (const e of b.eyes || []) e.visible = false;
+    camera.getWorldPosition(_sc); SFX.crackle({ x: 0, y: H - 0.4, z: 0 }); SFX.stinger({ x: _sc.x, y: 1.5, z: _sc.z });
+    for (const m of S.h.mans) { const n = manStep(m.g.position, m.home, { x: _sc.x, z: _sc.z }, [], Object.assign({}, STAFF.CREEP, { STEP: 1.4, MIN_DIST: 1.2, DRIFT: 9 })); if (n) { m.g.position.x = n.x; m.g.position.z = n.z; } }   // światło wraca: manekiny stoją bliżej
+    writeOn(0, 'LEAVE'); S.h.elapsed = STAFF.AFTER_BLACKOUT * STAFF.RAMP;
+}
+function updateHaunt(dt, t) {
+    const h = S.h; if (!h) return;
+    camera.getWorldPosition(_sc); camera.getWorldDirection(_sd);
+    const on = SETTINGS.lobbyEvents !== false;
+    // portrety: źrenice wodzą za graczem, czasem mrugnięcie; słoiki: oczy patrzą na gracza
+    for (const p of h.portraits) {
+        _sl.copy(_sc); p.g.worldToLocal(_sl); const off = pupilOffset({ x: _sl.x - p.eyes[0].bx, y: _sl.y - p.eyes[0].by, z: _sl.z });
+        for (const e of p.eyes) { e.p.position.x = e.bx + off.x * 0.026; e.p.position.y = e.by + off.y * 0.014; }
+        p.blink -= dt; const closed = p.blink > -0.12 && p.blink < 0; if (p.blink <= -0.12) p.blink = 2.5 + Math.random() * 5; for (const e of p.eyes) { e.w.scale.y = closed ? 0.1 : 1; e.p.visible = !closed; }
+    }
+    for (const e of h.jars) e.lookAt(_sc);
+    if (h.hang) { h.hang.rotation.z = Math.sin(t * 0.8) * 0.06; h.hang.rotation.x = Math.sin(t * 0.55 + 1) * 0.04; h.creakT -= dt; if (h.creakT <= 0) { h.creakT = 9 + Math.random() * 9; if (on) SFX.creak(0.22, { x: h.hang.position.x, y: 2.6, z: h.hang.position.z }); } }
+    // widmo w telewizorze, napisy, kapanie, kroki, mruganie
+    if (h.tvG.left > 0) { h.tvG.left -= dt; if (Math.random() < 0.5) drawStatic(Math.random() < 0.3); if (h.tvG.left <= 0) { h.tvG.mesh.visible = false; h.tvG.mesh.material.opacity = 0; } }
+    for (const w of h.writes) if (w.age >= 0) { w.age += dt; const a = w.age < 1 ? w.age : (w.age > w.len - 1.5 ? Math.max(0, (w.len - w.age) / 1.5) : 1); w.mesh.material.opacity = a; w.mesh.visible = a > 0.01; if (w.age > w.len) { w.age = -1; w.mesh.visible = false; } }
+    for (let i = h.drops.length - 1; i >= 0; i--) { const d = h.drops[i]; d.v += dt * 9; d.sp.position.y -= d.v * dt; if (d.sp.position.y <= 0.05) { SFX.splat && SFX.splat({ x: d.sp.position.x, y: 0.1, z: d.sp.position.z }); L.root.remove(d.sp); d.sp.material.dispose(); h.drops.splice(i, 1); } }
+    for (let i = h.steps.length - 1; i >= 0; i--) { const s = h.steps[i]; s.t -= dt; if (s.t <= 0) { SFX.step(0.9, { x: _sc.x - _sd.x * s.d, y: 0, z: _sc.z - _sd.z * s.d }); h.steps.splice(i, 1); } }
+    if (h.flick > 0) { h.flick -= dt; for (const c of S.ceil) c.l.intensity = c.base * (h.flick > 0 && Math.random() < 0.55 ? 0.05 : 1); if (h.flick <= 0) for (const c of S.ceil) c.l.intensity = c.base; }
+    // zaciemnienie: wszystkie światła gasną, czerwone oczy zbliżają się z kierunku, w którym patrzysz, serce wali
+    const b = h.bo;
+    if (b.t >= 0) {
+        b.t += dt; const d = eyesDistance(b.t), blink = Math.sin(b.t * 2.3) > 0.93 ? 0.1 : 1;
+        for (let i = 0; i < 2; i++) { const e = b.eyes[i], side = i ? 1 : -1; e.visible = true; e.position.set(_sc.x + b.dir.x * d - b.dir.z * side * 0.07, STAFF.EYES.DEFAULT_HEIGHT + Math.sin(b.t * 1.7) * 0.05, _sc.z + b.dir.z * d + b.dir.x * side * 0.07); e.scale.set(0.22, 0.22 * blink, 1); }
+        SFX.heartbeat(Math.min(1, 0.3 + b.t / STAFF.BLACKOUT_LEN * 0.7));
+        if (b.t >= STAFF.BLACKOUT_LEN) endBlackout();
+        return;
+    }
+    // manekiny skradają się, gdy nie patrzysz
+    if (on) for (const m of h.mans) {
+        _sl.set(m.g.position.x - _sc.x, 1.0 - _sc.y, m.g.position.z - _sc.z); const dist = _sl.length(); if (dist < 0.01) continue; _sl.multiplyScalar(1 / dist);
+        if (_sd.dot(_sl) > 0.42) continue;   // widzisz go: stoi nieruchomo
+        const target = Math.atan2(_sc.x - m.g.position.x, _sc.z - m.g.position.z); let dd = target - m.g.rotation.y; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); m.g.rotation.y += Math.max(-1.4 * dt, Math.min(1.4 * dt, dd));
+        m.t -= dt * (1 + 1.5 * staffDread(h.elapsed));
+        if (m.t <= 0) { m.t = nextIn(STAFF.CREEP.EVERY, Math.random); const n = manStep(m.g.position, m.home, { x: _sc.x, z: _sc.z }, h.mans.filter(o => o !== m).map(o => o.g.position), STAFF.CREEP); if (n) { m.g.position.x = n.x; m.g.position.z = n.z; SFX.creak(0.07, { x: n.x, y: 1, z: n.z }); } }
+    }
+    // narastanie napięcia i zdarzenia
+    if (!on) return;
+    h.elapsed += dt; const dread = staffDread(h.elapsed);
+    if (staffBlackoutDue(dread, h.done)) { h.done = true; startBlackout(); return; }
+    h.evT -= dt;
+    if (h.evT <= 0) { h.evT = staffGap(dread, Math.random); const k = pickKind(STAFF.EVENTS.length, Math.random, h.last); h.last = k; startEvent(STAFF.EVENTS[k]); }
+}
+// Hak dla testu w przeglądarce (tests/staffhaunt.mjs): wymusza zdarzenie, ustawia czas w pokoju i podaje stan
+export function debugStaff(cmd, arg) {
+    if (!S || !S.h) return null; const h = S.h;
+    if (cmd === 'event') startEvent(arg); else if (cmd === 'elapsed') h.elapsed = arg; else if (cmd === 'blackout') startBlackout();
+    return { elapsed: h.elapsed, dread: staffDread(h.elapsed), done: h.done, blackout: h.bo.t, eyes: h.bo.eyes ? h.bo.eyes.map(e => e.visible) : null, lights: S.ceil.map(c => c.l.intensity), flick: h.flick, tv: h.tvG.mesh.visible, writes: h.writes.map(w => w.age), steps: h.steps.length, drops: h.drops.length, mans: h.mans.map(m => ({ x: m.g.position.x, z: m.g.position.z, home: m.home })), portraits: h.portraits.length, jars: h.jars.length, hang: !!h.hang, fogMul: DREAD.fogMul };
+}
 export function update(dt, t) {
     if (!S) return;
+    updateHaunt(dt, t);
     S.flame.sprite.material.opacity = 0.75 + 0.25 * Math.sin(t * 13) * Math.sin(t * 7.3);
     S.flame.light.intensity = 1.3 + 0.4 * Math.sin(t * 11);
     S.tvT -= dt; if (S.tvT <= 0) { S.tvT = 0.1; tv.dirty = true; }   // pasek na dole się przesuwa
     updateTrainingDummy(dt);
     S.pcT = (S.pcT || 0) - dt; if (S.pcT <= 0) { S.pcT = 1; staffPC.dirty = true; }
 }
-export function dispose() { S = null; disposeTrainingDummy(); }
+export function dispose() { if (S && S.h && S.h.bo.t >= 0) { for (const o of S.h.bo.base) o.l.intensity = o.i; lighting.hemi.intensity = S.h.bo.hemi; } DREAD.fogMul = 1; setDread(null); S = null; disposeTrainingDummy(); }
