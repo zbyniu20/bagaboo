@@ -21,8 +21,8 @@ const jit = (R, k) => V3((R() - 0.5) * k, (R() - 0.5) * k, (R() - 0.5) * k);
 function buildArm(S, s, body, joints, R) {
     const pose = ARM_POSES[(R() * ARM_POSES.length) | 0](s);
     const E = S.clone().add(pose[0]).add(jit(R, 0.05)), W = E.clone().add(pose[1]).add(jit(R, 0.05));
-    body.push(seg(S, E, 0.038, 0.032, 7)); body.push(seg(E, W, 0.032, 0.026, 7));
-    joints.push(place(UNIT_SPHERE, E.x, E.y, E.z, 0, 0, 0, 0.038, 0.038, 0.038)); joints.push(place(UNIT_SPHERE, W.x, W.y, W.z, 0, 0, 0, 0.03, 0.03, 0.03));
+    body.push(seg(S, E, 0.048, 0.04, 8)); body.push(seg(E, W, 0.04, 0.03, 8));
+    joints.push(place(UNIT_SPHERE, E.x, E.y, E.z, 0, 0, 0, 0.046, 0.046, 0.046)); joints.push(place(UNIT_SPHERE, W.x, W.y, W.z, 0, 0, 0, 0.03, 0.03, 0.03));
     const d = new THREE.Vector3().subVectors(W, E).normalize(), palmEnd = W.clone().addScaledVector(d, 0.085);
     body.push(seg(W, palmEnd, 0.026, 0.022, 5));
     const p = new THREE.Vector3().crossVectors(d, V3(0, 1, 0)); if (p.lengthSq() < 0.01) p.set(1, 0, 0); p.normalize();
@@ -37,7 +37,7 @@ function buildLeg(s, body, joints, R) {
     const K = V3(H.x + s * 0.01, 0.50, kneeZ), A = V3(H.x + (R() - 0.5) * 0.04, 0.06, (R() - 0.5) * 0.08);
     body.push(seg(H, K, 0.062, 0.045, 7)); body.push(seg(K, A, 0.045, 0.03, 7));
     joints.push(place(UNIT_SPHERE, K.x, K.y, K.z, 0, 0, 0, 0.047, 0.047, 0.047)); joints.push(place(UNIT_SPHERE, A.x, A.y, A.z, 0, 0, 0, 0.033, 0.033, 0.033));
-    body.push(seg(A, V3(A.x + (R() - 0.5) * 0.05, 0.03, A.z + 0.2), 0.03, 0.022, 5));
+    body.push(seg(A, V3(A.x + (R() - 0.5) * 0.05, 0.03, A.z + 0.2), 0.036, 0.026, 6));
 }
 export function buildMannequin(R) {
     const body = [], joints = [], hp = [], hv = [], hg = [];

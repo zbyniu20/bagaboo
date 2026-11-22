@@ -437,7 +437,11 @@ function addScaryFace(head, mouth, k) {
     }
     const red = new THREE.MeshStandardMaterial({ color: 0x8a0f0f, roughness: 0.5, emissive: 0x300000 }), pale = new THREE.MeshStandardMaterial({ color: 0x6a4a44, roughness: 0.7 });
     const slash = (x, y, rot, len, mat) => { const m = meshAt(new THREE.BoxGeometry(len, 0.004, 0.006), mat, x, y, -0.132); m.rotation.z = rot; head.add(m); };
-    for (let i = 0; i < 3; i++) slash(-0.048 + i * 0.008, -0.022 - i * 0.012, 0.95, 0.045, red);   // trzy ślady pazurów na policzku
+    for (let i = 0; i < 3; i++) {   // trzy krzywe ślady pazurów (rurki) na policzku
+        const c = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.07 + i * 0.008, 0.004 - i * 0.004, zAt(-0.06) + 0.012), new THREE.Vector3(-0.056 + i * 0.008, -0.018 - i * 0.006, zAt(-0.05) + 0.008), new THREE.Vector3(-0.036 + i * 0.008, -0.04 - i * 0.008, zAt(-0.036) + 0.012));
+        head.add(new THREE.Mesh(new THREE.TubeGeometry(c, 8, 0.0017, 5), red));
+    }
+    for (const s of [-1, 1]) { const ridge = meshAt(new THREE.SphereGeometry(1, 12, 8), dark, s * 0.045, 0.036, -0.14); ridge.scale.set(0.04, 0.008, 0.016); ridge.rotation.z = s * 0.35; head.add(ridge); }   // mocniejszy łuk brwiowy   // trzy ślady pazurów na policzku
     for (let i = 0; i < 5; i++) slash(0.05 + (i % 2) * 0.004, 0.058 - i * 0.012, 1.57, 0.012, pale);   // szwy na czole: poprzeczne ściegi
     slash(0.052, 0.03, 1.57, 0.07, pale);
     for (const x of [-0.03, 0.004, 0.034]) { const d = meshAt(new THREE.CylinderGeometry(0.0022, 0.0009, 0.014 + Math.abs(x) * 0.3, 5), red, x, -0.1, zAt(x) - 0.003); head.add(d); }   // krew spływająca z pyska
@@ -470,11 +474,12 @@ export function createHead(look, withName) {
         const mouth = meshAt(new THREE.SphereGeometry(0.035, 14, 8), new THREE.MeshBasicMaterial({ color: 0x1a0606 }), 0, -0.085, -0.145);
         mouth.scale.set(1, 0.12, 0.35); head.add(mouth); head.userData.face.mouth = mouth;
         if (SCARY) addScaryFace(head, mouth, k);
-        const eyeMat = (k.glowEyes || SCARY) ? new THREE.MeshBasicMaterial({ color: 0xff1a0a }) : new THREE.MeshPhysicalMaterial({ map: eyeTexture(), color: 0xffffff, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 2.2, reflectivity: 0.9 });
+        const eyeMat = k.glowEyes ? new THREE.MeshBasicMaterial({ color: 0xff1a0a }) : SCARY ? new THREE.MeshStandardMaterial({ map: tex.eyeBloodshot, roughness: 0.15, emissive: 0x2a0000 }) : new THREE.MeshPhysicalMaterial({ map: eyeTexture(), color: 0xffffff, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 2.2, reflectivity: 0.9 });
         const spark = new THREE.MeshBasicMaterial({ color: 0xfff4e8 });
         for (const s of [-1, 1]) {
             const e = meshAt(new THREE.SphereGeometry(0.0165, 16, 12), eyeMat, s * 0.045, 0.02, -0.136); head.add(e); head.userData.face.eyes.push(e);
-            if (SCARY && !k.glowEyes) { const pu = meshAt(new THREE.SphereGeometry(0.01, 8, 8), new THREE.MeshBasicMaterial({ color: 0x120000 }), 0, 0, -0.015); pu.scale.set(0.3, 1.2, 0.5); e.add(pu); }   // szczelinowa źrenica
+            if (SCARY && !k.glowEyes) e.rotation.y = Math.PI;   // przekrwione oko: tekstura patrzy w +Z, głowa w -Z
+            if (false) { const pu = meshAt(new THREE.SphereGeometry(0.01, 8, 8), new THREE.MeshBasicMaterial({ color: 0x120000 }), 0, 0, -0.015); pu.scale.set(0.3, 1.2, 0.5); e.add(pu); }   // szczelinowa źrenica
             else if (!k.glowEyes) { const c = new THREE.Mesh(new THREE.SphereGeometry(0.0042, 8, 6), spark); c.position.set(-0.0055, 0.0062, -0.0135); e.add(c); }   // odblask: oko wygląda na żywe
         }
     }
@@ -552,7 +557,9 @@ export function createGorillaTorso(look) {
     g.userData.chest = ellMesh(bodyGeos, fur);
     g.add(g.userData.chest);
     // Łysy placek na piersi (dwa mięśnie piersiowe) i brzuchu
-    g.add(ellMesh([ellGeo(0.075, 0.085, 0.022, -0.062, -0.035, -0.125), ellGeo(0.075, 0.085, 0.022, 0.062, -0.035, -0.125), ellGeo(0.1, 0.1, 0.02, 0, -0.19, -0.125)], face));
+    g.add(ellMesh([ellGeo(0.08, 0.075, 0.026, -0.064, -0.02, -0.123), ellGeo(0.08, 0.075, 0.026, 0.064, -0.02, -0.123), ellGeo(0.05, 0.03, 0.02, -0.04, -0.125, -0.126), ellGeo(0.05, 0.03, 0.02, 0.04, -0.125, -0.126), ellGeo(0.06, 0.03, 0.02, -0.04, -0.19, -0.126), ellGeo(0.06, 0.03, 0.02, 0.04, -0.19, -0.126), ellGeo(0.06, 0.03, 0.018, -0.04, -0.25, -0.12), ellGeo(0.06, 0.03, 0.018, 0.04, -0.25, -0.12)], face));   // piersiowe, kratka brzucha
+    g.add(meshAt(new THREE.BoxGeometry(0.006, 0.2, 0.006), new THREE.MeshStandardMaterial({ color: 0x120a08, roughness: 1 }), 0, -0.1, -0.15));   // rowek mostka
+    g.add(ellMesh([ellGeo(0.1, 0.045, 0.05, -0.1, 0.17, -0.05), ellGeo(0.1, 0.045, 0.05, 0.1, 0.17, -0.05)], fur));   // mięśnie czworoboczne
     if (k.back) g.add(meshAt(ellGeo(0.17, 0.17, 0.02, 0, -0.02, 0.138), new THREE.MeshStandardMaterial({ map: furTexture(), color: k.back, roughness: 0.9 }), 0, 0, 0));
     const badge = buildBadge(look.badge);
     if (badge) { badge.position.set(0.11, 0.09, -0.112); g.add(badge); }
@@ -592,7 +599,7 @@ export function createGorillaTorso(look) {
 }
 // Ramię goryla: cylinder od barku do nadgarstka, ustawiany co klatkę
 // Profil ramienia (promień wg wysokości 0 = bark .. 1 = nadgarstek): masywna ręka, zwężenie w łokciu, mocne przedramię
-const ARM_GEO = new THREE.LatheGeometry([[0.07, 0], [0.088, 0.1], [0.09, 0.28], [0.066, 0.5], [0.074, 0.68], [0.062, 0.88], [0.05, 1]].map(p => new THREE.Vector2(p[0], p[1])), 14);
+const ARM_GEO = new THREE.LatheGeometry([[0.07, 0], [0.092, 0.06], [0.1, 0.16], [0.094, 0.3], [0.07, 0.46], [0.062, 0.52], [0.08, 0.64], [0.084, 0.74], [0.066, 0.9], [0.052, 1]].map(p => new THREE.Vector2(p[0], p[1])), 20);
 export function createGorillaArm(look) { const m = new THREE.Mesh(ARM_GEO, furMat(look)); m.castShadow = true; return m; }
 const _Y = new THREE.Vector3(0, 1, 0), _sh = new THREE.Vector3(), _hp = new THREE.Vector3(), _dir = new THREE.Vector3();
 export function placeArm(arm, torso, side, hand) {
@@ -750,6 +757,6 @@ export function animateFace(head, level, pitch, dt) {
     if (f.brow) f.brow.position.y = (f.browY || 0.058) + L * 0.018 + (p - 0.5) * 0.008;
     // Mruganie co 2-5 s (powieka: oko spłaszcza się na ułamek sekundy)
     f.blinkT -= dt; if (f.blinkT <= 0) { f.blink = 0.13; f.blinkT = 2 + Math.random() * 3.5; }
-    let lid = 1; if (f.blink > 0) { f.blink -= dt; lid = Math.max(0.08, Math.abs(f.blink / 0.13 - 0.5) * 2); }
+    let lid = 1; if (f.blink > 0) { f.blink -= dt; lid = Math.max(0.08, Math.min(1, Math.abs(f.blink / 0.13 - 0.5) * 2)); }   // lid nigdy większe od 1: przy przerwie w klatkach oczy nie rosną
     for (const e of f.eyes) { const sc = 1 + L * 0.35; e.scale.set(sc, sc * lid, sc); }
 }

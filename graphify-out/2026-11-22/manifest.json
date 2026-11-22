@@ -84,10 +84,10 @@
     "semantic_hash": "cf2aaa4822beaa982090fd4c2f6b5ac4"
   },
   "core/engine.js": {
-    "mtime": 1795016110.8798718,
-    "seen": 1795275190.7332675,
-    "ast_hash": "7decac295534089295a7d2aafa109d4b",
-    "semantic_hash": "7decac295534089295a7d2aafa109d4b"
+    "mtime": 1795377687.816216,
+    "seen": 1795377979.404033,
+    "ast_hash": "cd46d713399da15af4427d3e3bfe0615",
+    "semantic_hash": ""
   },
   "core/envcapture.js": {
     "mtime": 1795016110.8798718,
@@ -150,9 +150,9 @@
     "semantic_hash": ""
   },
   "core/levelkit.js": {
-    "mtime": 1795369343.0154698,
-    "seen": 1795370038.6916862,
-    "ast_hash": "869d3981631b70252dc3018153c15bcf",
+    "mtime": 1795377494.1157837,
+    "seen": 1795377979.4040945,
+    "ast_hash": "fae7ae3d08fa81c4137ccb749287c73b",
     "semantic_hash": ""
   },
   "core/lightpool.js": {
@@ -168,9 +168,9 @@
     "semantic_hash": "afa9211bf3987525436ce6ca2c449474"
   },
   "core/mannequin.js": {
-    "mtime": 1795365753.0646908,
-    "seen": 1795365997.349291,
-    "ast_hash": "b425883b4d6c5129a7d5f03bda128f6b",
+    "mtime": 1795377494.1147325,
+    "seen": 1795377979.404139,
+    "ast_hash": "54e7d162205380bf73fbbbb1519c7be2",
     "semantic_hash": ""
   },
   "core/modmenu.js": {
@@ -264,10 +264,10 @@
     "semantic_hash": ""
   },
   "core/textures.js": {
-    "mtime": 1795016110.881786,
-    "seen": 1795275190.7333267,
-    "ast_hash": "3204b9f903a50d25574c489e86033bee",
-    "semantic_hash": "3204b9f903a50d25574c489e86033bee"
+    "mtime": 1795377472.0468035,
+    "seen": 1795377979.4042087,
+    "ast_hash": "c45794057ead49ee6ce42c6493a2aae4",
+    "semantic_hash": ""
   },
   "core/trainingdummy.js": {
     "mtime": 1795274239.2193687,
@@ -318,9 +318,9 @@
     "semantic_hash": ""
   },
   "levels/cemetery.js": {
-    "mtime": 1795375621.3743649,
-    "seen": 1795376188.2605817,
-    "ast_hash": "1713ee8dc0d644eba28ba72c0b3f853c",
+    "mtime": 1795377494.1063461,
+    "seen": 1795377979.404236,
+    "ast_hash": "d28e96377e168f88a596690ed4e1a2d4",
     "semantic_hash": ""
   },
   "levels/dodgeball.js": {
@@ -348,9 +348,9 @@
     "semantic_hash": "baaf9b08ddeeb6235cb8ca0347159b3f"
   },
   "levels/hospital.js": {
-    "mtime": 1795369343.018349,
-    "seen": 1795370038.691754,
-    "ast_hash": "1fd8109b02b272527e3fcb9127461cfb",
+    "mtime": 1795377494.1056736,
+    "seen": 1795377979.4042537,
+    "ast_hash": "183c0e0f66975a4be0c3dcb23d533504",
     "semantic_hash": ""
   },
   "levels/hotel.js": {
@@ -366,9 +366,9 @@
     "semantic_hash": "4a89a2231e55fc6b65648f11874fbcfc"
   },
   "levels/laundry.js": {
-    "mtime": 1795375658.095082,
-    "seen": 1795376188.2605991,
-    "ast_hash": "5068085271d070da71efdd0c298c204e",
+    "mtime": 1795377494.1114926,
+    "seen": 1795377979.4042616,
+    "ast_hash": "fc7dccb702fc63c7c269c3a991b7382c",
     "semantic_hash": ""
   },
   "levels/lava.js": {
@@ -396,9 +396,9 @@
     "semantic_hash": ""
   },
   "levels/maze.js": {
-    "mtime": 1795368620.2445374,
-    "seen": 1795369188.6989012,
-    "ast_hash": "b5dcd517a9c41478745913de694cbb80",
+    "mtime": 1795377494.111969,
+    "seen": 1795377979.404274,
+    "ast_hash": "21a976732e44c0aaa5d43c0b2fc85e9e",
     "semantic_hash": ""
   },
   "levels/memory.js": {
@@ -432,9 +432,9 @@
     "semantic_hash": ""
   },
   "levels/silence.js": {
-    "mtime": 1795369300.4175403,
-    "seen": 1795370038.6917703,
-    "ast_hash": "90c2f1bc6e29826a81576f259f1f100c",
+    "mtime": 1795377494.1071007,
+    "seen": 1795377979.4042902,
+    "ast_hash": "5781db20b60aa7907b6257ff296214f0",
     "semantic_hash": ""
   },
   "levels/staff.js": {
@@ -450,10 +450,10 @@
     "semantic_hash": "e44bb448264a5e8b9b7c0d6f373aa200"
   },
   "levels/well.js": {
-    "mtime": 1795016110.9217863,
-    "seen": 1795275190.733375,
-    "ast_hash": "d2969ca6591f6efdd00476b182e9a5b0",
-    "semantic_hash": "d2969ca6591f6efdd00476b182e9a5b0"
+    "mtime": 1795377494.1075764,
+    "seen": 1795377979.4042978,
+    "ast_hash": "f89bc9676407a3f8715e91ed598a4b9c",
+    "semantic_hash": ""
   },
   "main.js": {
     "mtime": 1795368536.1936092,
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795376178.0783207,
-    "seen": 1795376188.2608905,
-    "ast_hash": "37913c9c79e5ac6bacd005c0d00310d0",
+    "mtime": 1795377909.8741395,
+    "seen": 1795377979.4047039,
+    "ast_hash": "7add927d87a9d5ab00cbea92df073945",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795371637.5034907,
-    "seen": 1795373079.3481426,
-    "ast_hash": "ee38fa19c65507dfcd1fc9233fee1284",
+    "mtime": 1795377687.8169327,
+    "seen": 1795377979.4047124,
+    "ast_hash": "cb1638b3b08558a5bec677c3c2d5332d",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795369350.3983192,
-    "seen": 1795370038.69179,
-    "ast_hash": "847b1b66bd289e2d7b8b0f81ff3f78e3",
+    "mtime": 1795377701.4695382,
+    "seen": 1795377979.4043405,
+    "ast_hash": "eea1340eefea63c66dfb3984433bcbf6",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10008,9 +10008,9 @@
     "semantic_hash": ""
   },
   "levels/room000.js": {
-    "mtime": 1795369300.4182906,
-    "seen": 1795370038.6917694,
-    "ast_hash": "036affbbebe3a8d0cc612e2b1fb2fdcc",
+    "mtime": 1795377494.1082914,
+    "seen": 1795377979.4042878,
+    "ast_hash": "0f60a1522de89de4de3a8a0a920bcb2a",
     "semantic_hash": ""
   },
   "tests/modes/room000.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795371637.5041118,
-    "seen": 1795373079.347771,
-    "ast_hash": "cf958d8d1b3d0a25695b2c0589e17f4d",
+    "mtime": 1795377687.8173788,
+    "seen": 1795377979.4043868,
+    "ast_hash": "373189ab2d208ae2720d6eb7f8d87562",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10203,6 +10203,18 @@
     "mtime": 1795375687.8919919,
     "seen": 1795376188.2606497,
     "ast_hash": "aeb6cddc0dccfa7bd4ad0bdd832baef0",
+    "semantic_hash": ""
+  },
+  "core/gfxlogic.js": {
+    "mtime": 1795377687.7879486,
+    "seen": 1795377979.404045,
+    "ast_hash": "a1b45866d6d49df4ac213b760f146644",
+    "semantic_hash": ""
+  },
+  "tests/gfx.mjs": {
+    "mtime": 1795377799.2906072,
+    "seen": 1795377979.4043171,
+    "ast_hash": "c0b357f5d5cbe31ad6f3b0df6e49428c",
     "semantic_hash": ""
   },
   "package-lock.json": {
