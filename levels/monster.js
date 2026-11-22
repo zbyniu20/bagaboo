@@ -358,6 +358,8 @@ function tickLocalTear(dt) {
     } else S.flashA = Math.max(0, S.flashA - dt * 0.9);
     S.flash.material.opacity = S.flashA; S.flash.visible = S.flashA > 0.01;
 }
+// Hak dla testu w przeglądarce (tests/gore.mjs): ustawia urwane kończyny TEGO gracza tak, jakby potwór go złapał (0 = przywróć). Nie zmienia przebiegu rundy.
+export function debugDismember(code) { if (!S) return false; S.dm = code ? Object.assign(Object.create(null), { [N.myId()]: code }) : Object.create(null); return true; }
 function syncDismember() {
     const on = !!SETTINGS.gore, seen = new Set();
     for (const k of Object.keys(S.dm)) { const id = fromNet(k); seen.add(id); const c = on ? S.dm[k] : 0; if (id === 'me') localDismember(c); else N.setDismember(id, c); }

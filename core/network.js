@@ -241,7 +241,8 @@ export function animateFaces(dt) {
     for (const id in remoteAvatars) {
         const a = remoteAvatars[id]; a.head.getWorldPosition(_hw);
         const close = _hw.distanceTo(_cw) < 0.9;   // inny gracz tuż przy tobie: widzisz tylko jego dłonie, a nie wnętrze jego ciała
-        for (const c of a.group.children) if (c !== a.handL && c !== a.handR) c.visible = !close;
+        const dc = tears[id] ? 0 : (dismembered[id] || 0);   // urwane części (core/dismemberlogic.js) zostają ukryte, także gdy gracz stoi przy nas
+        for (const c of a.group.children) if (c !== a.handL && c !== a.handR) c.visible = !close && !((c === a.head && lostHead(dc)) || (c === a.armL && lostLeft(dc)) || (c === a.armR && lostRight(dc)));
     }
     for (const id in remoteAvatars) { const v = mutedPeers.has(id) ? { level: 0, pitch: 0.5 } : (NET.mode === 'guest' ? stateVoice(id) : readVoice(voiceAn[id])); animateFace(remoteAvatars[id].head, v.level, v.pitch, dt); }
 }
