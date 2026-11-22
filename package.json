@@ -1,0 +1,20 @@
+{
+  "name": "bagaboo",
+  "private": true,
+  "type": "module",
+  "description": "BagaBoo: gra VR w przeglądarce. Strona z repozytorium działa bez budowania; ten package.json służy tylko opcjonalnemu buildowi produkcyjnemu (Vite).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "smoke:dist": "node tests/smoke-dist.mjs"
+  },
+  "dependencies": {
+    "cannon-es": "0.20.0",
+    "peerjs": "1.5.2",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.8"
+  }
+}

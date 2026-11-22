@@ -1,0 +1,39 @@
+# Testy szybkie (czysty Node, bez przeglądarki): rejestr, spójność plików, logika, poziomy i tryby. Smoke testy w przeglądarce NIE są tu uruchamiane.
+name: check
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Testy szybkie
+        run: cd tests && npm run fast
+      - name: Kontrola zmian (brak testów, rejestracji, odświeżonego grafu)
+        if: github.event_name == 'pull_request'
+        run: cd tests && node changed.mjs
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Budowanie paczki produkcyjnej (Vite)
+        run: npm ci && npm run build
+  types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Sprawdzanie typów (JSDoc, moduły z czystą logiką)
+        run: cd tests && npm ci && npm run types
