@@ -10,7 +10,7 @@ const ENV = LP.envIntensity, UNIT_CONE = new THREE.ConeGeometry(1, 1, 5);
 // Gips jak porcelana: normalna z tekstury (pęknięcia, ziarno), lekko lakierowana powierzchnia łapie odbicia latarki i lamp
 const plasterMat = new THREE.MeshPhysicalMaterial({ map: tex.plaster, normalMap: normalFor(tex.plaster, 3), normalScale: new THREE.Vector2(0.9, 0.9), color: 0xd8d0c2, roughness: 0.42, clearcoat: 0.55, clearcoatRoughness: 0.4, envMapIntensity: Math.max(0.5, ENV) });
 const darkJoint = new THREE.MeshStandardMaterial({ color: 0x101012, roughness: 0.4, metalness: 0.6, envMapIntensity: ENV });
-const bloodMat = new THREE.MeshStandardMaterial({ color: 0x6a0808, roughness: 0.4 }), voidMat = new THREE.MeshBasicMaterial({ color: 0x000000 }), eyeGlowMat = new THREE.MeshBasicMaterial({ color: 0xff2200 });
+const bloodMat = new THREE.MeshStandardMaterial({ color: 0x6a0808, roughness: 0.4 }), voidMat = new THREE.MeshBasicMaterial({ color: 0x000000 }), eyeGlowMat = new THREE.MeshBasicMaterial({ map: tex.eyeBloodshot, color: 0xffffff, toneMapped: false });   // krwiste oko: żyłki, czerwona tęczówka, szczelina źrenicy
 const ARM_POSES = [
     (s) => [V3(s * 0.03, -0.30, 0.02), V3(0, -0.28, 0.05)], (s) => [V3(s * 0.06, -0.08, 0.26), V3(0, 0.02, 0.26)],
     (s) => [V3(s * 0.14, 0.25, 0.04), V3(s * 0.04, 0.27, 0.05)], (s) => [V3(s * 0.25, -0.10, -0.05), V3(-s * 0.15, -0.22, 0.12)],
@@ -55,7 +55,7 @@ export function buildMannequin(R) {
     const wide = R() < 0.25;
     hv.push(place(UNIT_BOX, 0, 0.055, 0.098, 0, 0, 0, wide ? 0.075 : 0.045, wide ? 0.02 : 0.005, 0.02));
     R();   // wywołanie zostaje, żeby ułożenia z ziarna się nie zmieniły (kiedyś decydowało o świecących oczach; teraz świecą zawsze)
-    for (const s of [-1, 1]) hg.push(place(UNIT_SPHERE, s * 0.04, 0.152, 0.1, 0, 0, 0, 0.0135, 0.0135, 0.0135));
+    for (const s of [-1, 1]) hg.push(place(UNIT_SPHERE, s * 0.04, 0.152, 0.1, 0, 0, 0, 0.017, 0.017, 0.017));
     const hb = [];   // zęby (gips) i krwawe łzy
     for (let i = -3; i <= 3; i++) { const big = Math.abs(i) === 2; hb.push(place(UNIT_CONE, i * 0.011, 0.052 - (big ? 0.012 : 0.007), 0.099, Math.PI, 0, 0, 0.0045, big ? 0.03 : 0.018, 0.0045)); }
     const bl = [];
@@ -81,7 +81,8 @@ export function buildMannequin(R) {
 export function addMonsterFace(head, o) {
     o = o || {};
     const W = o.width || 0.055, open = o.open === undefined ? 0.03 : o.open, n = o.teeth || 9, long = o.long || 1, y0 = 0.055, g = new THREE.Group();
-    const tooth = new THREE.MeshStandardMaterial({ color: o.toothColor || 0xe0d6b8, roughness: 0.4 }), cav = new THREE.MeshBasicMaterial({ color: o.cavity === undefined ? 0x1a0000 : o.cavity });
+    const tooth = new THREE.MeshPhysicalMaterial({ color: o.toothColor || 0xe0d6b8, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.12 }),   // zęby mokre od śliny
+         cav = new THREE.MeshBasicMaterial({ color: o.cavity === undefined ? 0x1a0000 : o.cavity });
     const mouth = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), cav); mouth.scale.set(W * 1.05, open + 0.014, 0.02); mouth.position.set(0, y0 - open * 0.45, 0.101); g.add(mouth);
     const up = [], lo = [];
     for (let i = 0; i < n; i++) {
@@ -90,6 +91,10 @@ export function addMonsterFace(head, o) {
         if (i % 2 === 0 || big) { const l = (big ? 0.026 : 0.014) * long, b = new THREE.ConeGeometry(0.005, l, 5); b.translate(x * 0.92, y0 - open * 0.9 - 0.012 + l / 2, 0.106); lo.push(b); }
     }
     g.add(new THREE.Mesh(mergeGeometries(up), tooth), new THREE.Mesh(mergeGeometries(lo), tooth));
+    // dziąsła nad górnymi zębami i nitki śliny między zębami (połyskliwe, półprzezroczyste); im szerzej otwarta paszcza, tym dłuższe nitki
+    const gum = new THREE.Mesh(new THREE.BoxGeometry(W * 2.05, 0.009, 0.012), new THREE.MeshPhysicalMaterial({ color: 0x7a1424, roughness: 0.35, clearcoat: 0.8 })); gum.position.set(0, y0 + 0.016, 0.104); g.add(gum);
+    const spit = new THREE.MeshPhysicalMaterial({ color: 0xd8f0e8, transparent: true, opacity: 0.5, roughness: 0.04, clearcoat: 1, depthWrite: false });
+    if (open >= 0.02) for (const sx of [-0.55, -0.15, 0.3, 0.65]) { const len = open * 1.6 + 0.012, s = new THREE.Mesh(new THREE.CylinderGeometry(0.0016, 0.0009, len, 5), spit); s.position.set(sx * W, y0 + 0.004 - len / 2, 0.106); g.add(s); }
     if (o.horns) {
         const horn = new THREE.MeshStandardMaterial({ color: o.horns, roughness: 0.5 });
         for (const s of [-1, 1]) { const h = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2, 6), horn); h.position.set(s * 0.075, 0.27, 0); h.rotation.z = -s * 0.5; g.add(h); const h2 = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.1, 5), horn); h2.position.set(s * 0.135, 0.3, 0); h2.rotation.z = -s * 1.0; g.add(h2); }

@@ -417,4 +417,18 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     for (const k of Object.keys(E.SAVE)) delete E.SAVE[k]; Object.assign(E.SAVE, JSON.parse(snap));   // przywraca zapis z początku bloku
 }
 
+// ---------- grafika: wypalone AO bloków i nowe materiały (core/gfxlogic.js, core/engine.js, core/textures.js, levels, core/mannequin.js, core/levelkit.js) ----------
+{
+    const G = await import(url('core/gfxlogic.js'));
+    check('gfx: a wall standing on the floor gets base AO (and top AO only when it is tall enough to reach a ceiling)', (() => { const w = G.aoFor(0, 1.8, 0, 20, 3.6, 1), low = G.aoFor(0, 1, 0, 6, 2, 0.4); return w && w.b === 0.5 && w.t === 0.35 && w.f === 0 && w.c === 0 && low && low.b === 0.5 && low.t === 0; })());
+    check('gfx: a big floor slab gets edge AO on its top, a big ceiling slab on its underside, and nothing else', (() => { const f = G.aoFor(0, -0.5, 0, 30, 1, 30), f2 = G.aoFor(0, -2.5, 0, 40, 5, 40), c = G.aoFor(0, 4.1, 0, 30, 1, 30); return f && f.f === 0.42 && f.b === 0 && f2 && f2.f === 0.42 && c && c.c === 0.4 && c.f === 0; })());
+    check('gfx: small blocks, platforms, steps and blocks floating high get no AO, and opts.noAO switches it off', G.aoFor(0, 0.45, 0, 1.2, 0.9, 2.2) === null && G.aoFor(0, 5, 0, 4, 0.4, 4) === null && G.aoFor(0, 9, 0, 1, 2, 1) === null && G.aoFor(0, 1.8, 0, 20, 3.6, 1, { noAO: true }) === null && G.aoFor(0, 12, 0, 20, 3, 1) === null);
+    check('gfx: the AO decision never throws and gives nothing for bad sizes', [[NaN, 0, 0, 1, 1, 1], [0, 0, 0, 0, 2, 1], [0, 0, 0, 1, -2, 1], [0, undefined, 0, 1, 1, 1], ['x', 0, 0, 1, 1, 1]].every(a => G.aoFor(...a) === null));
+    const ENG = fs.readFileSync(path.join(ROOT, 'core/engine.js'), 'utf8'), TXT = fs.readFileSync(path.join(ROOT, 'core/textures.js'), 'utf8'), MAN = fs.readFileSync(path.join(ROOT, 'core/mannequin.js'), 'utf8'), KIT = fs.readFileSync(path.join(ROOT, 'core/levelkit.js'), 'utf8');
+    check('gfx: the block shader applies AO from its uniform in the same program as the edges (no extra compile, no extra mesh), and the wet/rust/eye textures are lazy', /uniform vec4 uAO/.test(ENG) && /diffuseColor\.rgb \*= aoF/.test(ENG) && /customProgramCacheKey = \(\) => 'crispEdge'/.test(ENG) && /aoFor\(x, y, z, w, h, d, opts\)/.test(ENG) && /get floorWet\(\)/.test(ENG) && /get wallRust\(\)/.test(ENG) && /get eyeBloodshot\(\)/.test(ENG) && /createFloorWetRoughTexture = cached/.test(TXT) && /createWallRustTexture = cached/.test(TXT) && /createBloodshotEyeTexture = cached/.test(TXT));
+    const lv = (f) => fs.readFileSync(path.join(ROOT, 'levels', f), 'utf8');
+    check('gfx: wet floors in the hospital, cemetery, Silence, the well, Room 000, the laundry and the maze, rusty walls in the laundry', ['hospital.js', 'cemetery.js', 'silence.js', 'well.js', 'room000.js', 'laundry.js', 'maze.js'].every(f => /rough: tex\.floorWet/.test(lv(f))) && /tex\.wallRust/.test(lv('laundry.js')));
+    check('gfx: monsters get bloodshot eyes with veins and a slit pupil, wet teeth, gums and strings of saliva, also in the jumpscare mouth', /map: tex\.eyeBloodshot/.test(MAN) && /clearcoat: 1, clearcoatRoughness: 0\.12/.test(MAN) && /const gum = /.test(MAN) && /spit/.test(MAN) && /userData\.strands/.test(KIT) && /tex\.eyeBloodshot/.test(KIT));
+}
+
 done('logic');

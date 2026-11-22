@@ -390,6 +390,68 @@ export function createBandageTexture() {
     return toTex(c, true);
 }
 
+
+// ---------- MOKRE I ZARDZEWIAŁE MATERIAŁY, KRWISTE OCZY (lazy: rysowane dopiero przy pierwszym użyciu) ----------
+// Mokra podłoga: mapa chropowatości z dużymi, nieregularnymi kałużami (ciemne = lustrzane) zamiast drobnych plam z createFloorRoughTexture
+function _createFloorWetRoughTexture() {
+    const S = 512, c = makeCanvas(S, S), ctx = c.getContext('2d'), R = mkRng(911);
+    ctx.fillStyle = 'rgb(190,190,190)'; ctx.fillRect(0, 0, S, S);
+    for (let i = 0; i < 4000; i++) { const v = (140 + R() * 80) | 0; ctx.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',0.35)'; ctx.fillRect(R() * S, R() * S, 2 + R() * 4, 2 + R() * 4); }
+    for (let i = 0; i < 16; i++) {   // kałuża = kilka nachodzących na siebie plam, zawijane na krawędziach (tekstura się powtarza)
+        const x = R() * S, y = R() * S, n = 3 + ((R() * 4) | 0);
+        for (let k = 0; k < n; k++) {
+            const ox = x + (R() - 0.5) * 70, oy = y + (R() - 0.5) * 50, r = 30 + R() * 70, sx = 0.7 + R() * 0.9;
+            for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) {
+                const g = ctx.createRadialGradient(ox + dx, oy + dy, 0, ox + dx, oy + dy, r);
+                g.addColorStop(0, 'rgba(12,12,12,0.98)'); g.addColorStop(0.75, 'rgba(24,24,24,0.9)'); g.addColorStop(1, 'rgba(190,190,190,0)');
+                ctx.save(); ctx.translate(ox + dx, oy + dy); ctx.scale(sx, 1); ctx.translate(-(ox + dx), -(oy + dy)); ctx.fillStyle = g; ctx.fillRect(ox + dx - r, oy + dy - r, r * 2, r * 2); ctx.restore();
+            }
+        }
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.NoColorSpace; t.anisotropy = ANISO(8);
+    return t;
+}
+// Zardzewiała, wilgotna ściana: blacha lub beton z rdzawymi zaciekami spod nitów i łączeń, łuszcząca się farba, ciemne zacieki wody
+function _createWallRustTexture() {
+    const S = 1024, RES = GFX.surfaceRes, c = makeCanvas(RES, RES), ctx = c.getContext('2d'), R = mkRng(2718);
+    ctx.scale(RES / S, RES / S);
+    ctx.fillStyle = '#4e5256'; ctx.fillRect(0, 0, S, S);
+    speckle(ctx, R, S, 70000, 0.2, 0.05);
+    for (let i = 0; i < 40; i++) radial(ctx, R() * S, R() * S, 60 + R() * 170, R() > 0.3 ? 'rgba(12,8,6,0.26)' : 'rgba(150,150,150,0.06)', 'rgba(0,0,0,0)');
+    for (let i = 0; i <= S; i += 256) { ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(i - 2, 0, 4, S); ctx.fillRect(0, i - 2, S, 4); ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fillRect(i + 2, 0, 2, S); ctx.fillRect(0, i + 2, S, 2); }
+    for (let i = 0; i < 70; i++) {   // plamy rdzy z nierównym brzegiem
+        const x = R() * S, y = R() * S, r = 12 + R() * 70;
+        for (let k = 0; k < 6; k++) { ctx.fillStyle = 'rgba(' + (120 + ((R() * 50) | 0)) + ',' + (50 + ((R() * 25) | 0)) + ',14,' + (0.25 + R() * 0.3) + ')'; ctx.beginPath(); ctx.ellipse(x + (R() - 0.5) * r, y + (R() - 0.5) * r, r * (0.3 + R() * 0.6), r * (0.2 + R() * 0.5), R() * 3, 0, 7); ctx.fill(); }
+    }
+    for (let x = 0; x <= S; x += 256) for (let y = 0; y <= S; y += 256) for (const o of [[14, 14], [-14, 14], [14, -14], [-14, -14]]) {   // nity z rdzawymi zaciekami w dół
+        ctx.fillStyle = 'rgba(20,20,22,0.8)'; ctx.beginPath(); ctx.arc(x + o[0], y + o[1], 4, 0, 7); ctx.fill();
+        const l = 60 + R() * 260, g = ctx.createLinearGradient(0, y + o[1], 0, y + o[1] + l); g.addColorStop(0, 'rgba(140,60,16,0.55)'); g.addColorStop(1, 'rgba(140,60,16,0)'); ctx.fillStyle = g; ctx.fillRect(x + o[0] - 3, y + o[1], 6 + R() * 6, l);
+    }
+    for (let i = 0; i < 22; i++) {   // ciemne zacieki wody
+        const x = R() * S, y = R() * S * 0.5, l = 120 + R() * 380, w = 10 + R() * 40, g = ctx.createLinearGradient(0, y, 0, y + l); g.addColorStop(0, 'rgba(8,10,10,0.0)'); g.addColorStop(0.2, 'rgba(8,10,10,0.38)'); g.addColorStop(1, 'rgba(8,10,10,0)'); ctx.fillStyle = g; ctx.fillRect(x, y, w, l);
+    }
+    for (let i = 0; i < 40; i++) { const x = R() * S, y = R() * S, r = 4 + R() * 16; ctx.fillStyle = 'rgba(30,26,22,0.7)'; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.7, R() * 3, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(150,64,20,0.5)'; ctx.beginPath(); ctx.ellipse(x + 1, y + 1, r * 0.6, r * 0.4, R() * 3, 0, 7); ctx.fill(); }   // łuszcząca się farba
+    crackWalk(ctx, R, S, 10, 26, 'rgba(0,0,0,0.6)', 1, 2.6, 8);
+    return toTex(c, true);
+}
+// Krwiste oko (mapa na sferze: przód patrzy w +Z, czyli u = 0,25): żółtawa twardówka z czerwonymi żyłkami, czerwona tęczówka ze szczeliną źrenicy i odblaskiem
+function _createBloodshotEyeTexture() {
+    const W = 512, H = 256, c = makeCanvas(W, H), x = c.getContext('2d'), R = mkRng(3141), cx = W * 0.25, cy = H / 2;
+    x.fillStyle = '#d8cca8'; x.fillRect(0, 0, W, H);
+    const sh = x.createRadialGradient(cx, cy, 20, cx, cy, 200); sh.addColorStop(0, 'rgba(255,240,210,0)'); sh.addColorStop(1, 'rgba(120,40,30,0.35)'); x.fillStyle = sh; x.fillRect(0, 0, W, H);
+    x.lineCap = 'round';
+    for (let i = 0; i < 46; i++) {   // żyłki od brzegu ku tęczówce, rozgałęzione
+        const a = R() * 6.283, r0 = 110 + R() * 70; let px = cx + Math.cos(a) * r0, py = cy + Math.sin(a) * r0 * 0.9; x.strokeStyle = 'rgba(' + (150 + ((R() * 60) | 0)) + ',10,14,' + (0.5 + R() * 0.4) + ')'; x.lineWidth = 1 + R() * 2.2; x.beginPath(); x.moveTo(px, py);
+        for (let k = 0; k < 6; k++) { const t = 1 - (k + 1) / 7; px = cx + Math.cos(a + (R() - 0.5) * 0.25) * (46 + (r0 - 46) * t); py = cy + Math.sin(a + (R() - 0.5) * 0.25) * (46 + (r0 - 46) * t) * 0.9; x.lineTo(px, py); } x.stroke();
+    }
+    const ir = x.createRadialGradient(cx, cy, 6, cx, cy, 44); ir.addColorStop(0, '#ff5a30'); ir.addColorStop(0.55, '#ff1a0a'); ir.addColorStop(1, '#7a0408'); x.fillStyle = ir; x.beginPath(); x.arc(cx, cy, 44, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(40,0,0,0.9)'; x.lineWidth = 3; x.beginPath(); x.arc(cx, cy, 44, 0, 7); x.stroke();
+    x.fillStyle = '#080000'; x.beginPath(); x.ellipse(cx, cy, 7, 36, 0, 0, 7); x.fill();
+    x.fillStyle = 'rgba(255,255,255,0.85)'; x.beginPath(); x.arc(cx - 14, cy - 18, 5, 0, 7); x.fill();
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
 // Pamięć podręczna tekstur poziomów: przy powrocie do lobby nie rysujemy ich od nowa (szybsze ładowanie)
 const _texCache = new Map();
 function cached(name, fn) {
@@ -399,6 +461,9 @@ function cached(name, fn) {
         return _texCache.get(key);
     };
 }
+export const createFloorWetRoughTexture = cached('createFloorWetRoughTexture', _createFloorWetRoughTexture);
+export const createWallRustTexture = cached('createWallRustTexture', _createWallRustTexture);
+export const createBloodshotEyeTexture = cached('createBloodshotEyeTexture', _createBloodshotEyeTexture);
 export const createSkyBaseTexture = cached('createSkyBaseTexture', _createSkyBaseTexture);
 export const createCloudLayerTexture = cached('createCloudLayerTexture', _createCloudLayerTexture);
 export const createSigilTexture = cached('createSigilTexture', _createSigilTexture);

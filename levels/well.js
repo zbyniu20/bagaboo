@@ -77,7 +77,7 @@ function setGrip(g) { L.obstacles[L.obstacles.length - 1].grip = g; return L.obs
 
 function buildShaft() {
     const root = L.root;
-    addCrispBlock(0, -2.5, 0, 10, 5, 10, 0x8a8478, 0x0a0a08, tex.floor, { rough: tex.floorRough });
+    addCrispBlock(0, -2.5, 0, 10, 5, 10, 0x8a8478, 0x0a0a08, tex.floor, { rough: tex.floorWet });
     // Śliskie ściany: mokry kamień
     const wallC = 0x6a705e;
     addCrispBlock(0, TOP / 2 + 1, -HS - 0.5, HS * 2 + 2, TOP + 6, 1, wallC, 0x0a120a); setGrip(WALL_GRIP);

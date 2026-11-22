@@ -55,7 +55,7 @@ export function build() {
 // ---------- POWŁOKA: podłoga, sufit, ściany z siatki (instancje z osiowymi kolizjami) ----------
 function buildShell(W, D) {
     const cx = GRID.X0 + W / 2, cz = GRID.Z0 + D / 2, R = T.mkRng(7070), tints = [0x6a6258, 0x5e5850, 0x756b60, 0x4e4a44, 0x625a52];
-    addCrispBlock(cx, -0.5, cz, W + 4, 1, D + 4, 0x3a3632, 0x0a0806, tex.floor, { rough: tex.floorRough });
+    addCrispBlock(cx, -0.5, cz, W + 4, 1, D + 4, 0x3a3632, 0x0a0806, tex.floor, { rough: tex.floorWet });
     addCrispBlock(cx, H + 0.5, cz, W + 4, 1, D + 4, 0x1c1a18, 0x0a0806, tex.wall);
     addInstancedBlocks(M.wallBlocks(GRID).map(b => ({ x: b.x, y: H / 2, z: b.z, w: b.w, h: H, d: b.d, color: tints[(R() * tints.length) | 0] })), tex.wall, { uvMeters: 3 });
 }

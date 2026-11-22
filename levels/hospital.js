@@ -56,7 +56,7 @@ export function build() {
 // ---------- BUDOWA ----------
 function buildShell() {
     const wallC = 0xb8c4c0, edge = 0x202828;
-    addCrispBlock(0, -0.5, (Z0 + Z1) / 2, X1 * 2 + 2, 1, Z0 - Z1 + 2, 0x7a8480, 0x101818, tex.floor, { rough: tex.floorRough });
+    addCrispBlock(0, -0.5, (Z0 + Z1) / 2, X1 * 2 + 2, 1, Z0 - Z1 + 2, 0x7a8480, 0x101818, tex.floor, { rough: tex.floorWet, physical: true });   // mokra, błyszcząca podłoga (kałuże odbijają światło)
     addCrispBlock(0, H + 0.5, (Z0 + Z1) / 2, X1 * 2 + 2, 1, Z0 - Z1 + 2, 0x6a7470, 0x101818);
     for (const s of [-1, 1]) addCrispBlock(s * (X1 + 0.3), H / 2, (Z0 + Z1) / 2, 0.6, H, Z0 - Z1 + 1, wallC, edge, tex.wall);   // ściany zewnętrzne
     addCrispBlock(0, H / 2, Z0 + 0.3, X1 * 2 + 1, H, 0.6, wallC, edge, tex.wall);

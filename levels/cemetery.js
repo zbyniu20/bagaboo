@@ -71,7 +71,7 @@ function buildSky() {
 }
 function buildYard() {
     buildSky();
-    addCrispBlock(0, -0.5, (Z0 + Z1) / 2, X * 2 + 2, 1, Z0 - Z1 + 2, 0x3a4a3a, 0x0a100a, tex.floor, { rough: tex.floorRough });
+    addCrispBlock(0, -0.5, (Z0 + Z1) / 2, X * 2 + 2, 1, Z0 - Z1 + 2, 0x3a4a3a, 0x0a100a, tex.floor, { rough: tex.floorWet });   // błoto i kałuże
     const stone = 0x6a7270;
     for (const s of [-1, 1]) addCrispBlock(s * (X + 0.3), 1.6, (Z0 + Z1) / 2, 0.6, 3.2, Z0 - Z1 + 1, stone, 0x101414, tex.wall);
     addCrispBlock(0, 1.6, Z0 + 0.3, X * 2 + 1, 3.2, 0.6, stone, 0x101414, tex.wall);

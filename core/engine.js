@@ -6,6 +6,7 @@ import * as CANNON from 'cannon-es';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GFX, LP } from './config.js';
 import * as T from './textures.js';
+import { aoFor } from './gfxlogic.js';
 import { SETTINGS } from './settings.js';
 
 export { THREE, CANNON };
@@ -79,7 +80,9 @@ export const GROUP = { ENV: 1, PLAYER: 2, BALL: 4, ROPE: 8 };
 export const tex = {
     wall: T.createWallTexture(), floor: T.createFloorTexture(), floorRough: T.createFloorRoughTexture(),
     plaster: T.createPlasterTexture(), skin: T.createSkinTexture(), wood: T.createWoodTexture(),
-    eye: T.createEyeballTexture(), dot: T.createDotTexture(), camo: T.createCamoTexture(), bandage: T.createBandageTexture()
+    eye: T.createEyeballTexture(), dot: T.createDotTexture(), camo: T.createCamoTexture(), bandage: T.createBandageTexture(),
+    // rysowane dopiero przy pierwszym użyciu (poziomy z mokrą podłogą, zardzewiałymi ścianami i potworami)
+    get floorWet() { return T.createFloorWetRoughTexture(); }, get wallRust() { return T.createWallRustTexture(); }, get eyeBloodshot() { return T.createBloodshotEyeTexture(); }
 };
 
 // Stan bieżącego poziomu. Wszystko, co poziom tworzy, trafia tutaj, żeby dało się go wyczyścić przy zmianie poziomu.
@@ -156,16 +159,24 @@ export function addCollider(minX, minY, minZ, maxX, maxY, maxZ) {
 // Teksturowany blok z kolizją. opts: { rough, physical, uvMeters }
 // Krawędzie bloku rysowane w fragment shaderze (wcześniej osobny LineSegments na każdy blok = podwójna liczba wywołań rysowania).
 // Punkt leży na krawędzi, gdy jest blisko dwóch ścian jednocześnie; obwódka porusza się i chowa razem z blokiem.
-function addShaderEdges(mat, w, h, d, edgeColor) {
-    const half = new THREE.Vector3(w / 2, h / 2, d / 2), col = new THREE.Color(edgeColor), op = LP.edgeOpacity;
+// Wypalone w shaderze ambient occlusion (bez dodatkowych siatek): decyzje w czystym core/gfxlogic.js (aoFor), tu tylko uniformy i kod shadera.
+function addShaderEdges(mat, w, h, d, edgeColor, ao) {
+    const half = new THREE.Vector3(w / 2, h / 2, d / 2), col = new THREE.Color(edgeColor), op = LP.edgeOpacity, aov = new THREE.Vector4(ao ? ao.b : 0, ao ? ao.t : 0, ao ? ao.f : 0, ao ? ao.c : 0);
+    mat.userData.ao = aov;   // do odczytu w testach (tests/gfx.mjs)
     mat.onBeforeCompile = (sh) => {
-        sh.uniforms.uEdgeHalf = { value: half }; sh.uniforms.uEdgeCol = { value: col }; sh.uniforms.uEdgeOp = { value: op };
+        sh.uniforms.uEdgeHalf = { value: half }; sh.uniforms.uEdgeCol = { value: col }; sh.uniforms.uEdgeOp = { value: op }; sh.uniforms.uAO = { value: aov };
         sh.vertexShader = 'varying vec3 vEdgeP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvEdgeP = position;');
-        sh.fragmentShader = 'uniform vec3 uEdgeHalf; uniform vec3 uEdgeCol; uniform float uEdgeOp; varying vec3 vEdgeP;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+        sh.fragmentShader = 'uniform vec3 uEdgeHalf; uniform vec3 uEdgeCol; uniform float uEdgeOp; uniform vec4 uAO; varying vec3 vEdgeP;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
             vec3 eD = uEdgeHalf - abs(vEdgeP);
             float e1 = 1.0 - smoothstep(0.0, 0.016, eD.x), e2 = 1.0 - smoothstep(0.0, 0.016, eD.y), e3 = 1.0 - smoothstep(0.0, 0.016, eD.z);
             float edge = max(max(e1 * e2, e2 * e3), e1 * e3);
-            diffuseColor.rgb = mix(diffuseColor.rgb, uEdgeCol, clamp(edge * uEdgeOp * 2.0, 0.0, 0.85));`);
+            diffuseColor.rgb = mix(diffuseColor.rgb, uEdgeCol, clamp(edge * uEdgeOp * 2.0, 0.0, 0.85));
+            float aoF = mix(1.0 - uAO.x, 1.0, smoothstep(0.0, 0.9, vEdgeP.y + uEdgeHalf.y));
+            aoF *= mix(1.0 - uAO.y, 1.0, smoothstep(0.0, 0.5, uEdgeHalf.y - vEdgeP.y));
+            float aoE = min(uEdgeHalf.x - abs(vEdgeP.x), uEdgeHalf.z - abs(vEdgeP.z));
+            aoF *= mix(1.0, mix(1.0 - uAO.z, 1.0, smoothstep(0.0, 0.9, aoE)), step(uEdgeHalf.y - 0.002, vEdgeP.y) * step(0.001, uAO.z));
+            aoF *= mix(1.0, mix(1.0 - uAO.w, 1.0, smoothstep(0.0, 0.9, aoE)), step(vEdgeP.y, 0.002 - uEdgeHalf.y) * step(0.001, uAO.w));
+            diffuseColor.rgb *= aoF;`);
     };
     mat.customProgramCacheKey = () => 'crispEdge';
 }
@@ -181,7 +192,7 @@ export function addCrispBlock(x, y, z, w, h, d, color, edgeColor, texture, opts)
     scaleBoxUVs(geo, w, h, d, opts.uvMeters || 4);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true;
-    addShaderEdges(mat, w, h, d, edgeColor);   // obwódka krawędzi w shaderze: bez osobnego obiektu (połowa wywołań rysowania)
+    addShaderEdges(mat, w, h, d, edgeColor, aoFor(x, y, z, w, h, d, opts));   // obwódka krawędzi i AO w shaderze: bez osobnego obiektu (połowa wywołań rysowania)
     L.root.add(mesh);
     addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)), mesh, false);
     return mesh;

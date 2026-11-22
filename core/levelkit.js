@@ -139,6 +139,10 @@ function buildMaw() {
     }
     const upM = new THREE.Mesh(mergeGeometries(up), tooth), loM = new THREE.Mesh(mergeGeometries(lo), tooth); g.add(upM); g.userData.jaw = new THREE.Group(); g.userData.jaw.add(loM, mouth); g.add(g.userData.jaw);
     for (const sx of [-1, 1]) { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.002, 0.06, 5), blood); d.position.set(sx * 0.04, 0.115, 0.105); g.add(d); }
+    // nitki śliny między górnymi a dolnymi zębami: wydłużają się razem z otwarciem szczęki (update); krwiste oczy z żyłkami za poświatą
+    const spit = new THREE.MeshBasicMaterial({ color: 0xcfeee4, transparent: true, opacity: 0.45 }); g.userData.strands = [];
+    for (const sx of [-0.04, -0.012, 0.016, 0.044]) { const s = new THREE.Mesh(new THREE.CylinderGeometry(0.0018, 0.001, 1, 5), spit); s.position.set(sx, 0.05, 0.108); g.add(s); g.userData.strands.push(s); }
+    for (const sx of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.022, 14, 12), new THREE.MeshBasicMaterial({ map: tex.eyeBloodshot })); e.position.set(sx * 0.04, 0.152, 0.098); g.add(e); }
     return g;
 }
 let VIGNETTE = null;
@@ -202,7 +206,7 @@ export function createJumpscare(o) {
                 head.position.set(j(0.05 * shake), y + j(0.035 * shake), z + j(0.025 * shake));
                 head.rotation.set((o.tilt || 0) + j(0.22 * shake), j(0.3 * shake), (V.tilt || 0) + j(0.5 * shake));
             }
-            const maw = head.userData.maw; if (maw) maw.userData.jaw.position.y = -0.028 * Math.abs(Math.sin(t * 17));   // szczęka kłapie
+            const maw = head.userData.maw; if (maw) { const jy = -0.028 * Math.abs(Math.sin(t * 17)); maw.userData.jaw.position.y = jy; for (const s of maw.userData.strands) { const len = 0.057 - jy; s.scale.y = len; s.position.y = 0.075 - len / 2; } }   // szczęka kłapie, ślina się napina
             if (head.userData.eyes) for (const e of head.userData.eyes) e.scale.setScalar(0.17 + 0.06 * Math.abs(Math.sin(t * 25)));
             const ph = Math.floor(t / 0.04) % 4;
             white.material.opacity = t < 0.07 ? 0.85 : (t < 0.4 && ph === 3 ? 0.35 : (big && t > 1.3 && t < 1.36 ? 0.8 : 0));   // biały błysk na starcie, krótkie rozbłyski (i przy drugim skoku)
