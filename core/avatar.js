@@ -144,7 +144,7 @@ export function createRealHand(isLeft, look) {
             if (k > 0) { j.position.z = -f.len[k - 1]; parent.add(j); joints.push(j); }
             add(fingerSeg(r, f.len[k]), skin, j);
             if (k === 2 && nailMat) { const n = add(NAIL_GEO, nailMat, j); n.position.set(0, r * 0.62, -f.len[2] * 0.6); n.scale.set(r * 0.8, r * 0.25, f.len[2] * 0.33); }
-            if (k === 2 && SCARY) claw(j, r, f.len[2], 0.03);
+            if (k === 2 && SCARY) claw(j, r, f.len[2], 0.044);
             parent = j; r *= 0.88;
         }
         fingers.push(joints);
@@ -156,7 +156,7 @@ export function createRealHand(isLeft, look) {
         if (k > 0) { j.position.z = -tl[k - 1]; tp.add(j); thumb.push(j); }
         add(fingerSeg(tr, tl[k]), skin, j);
         if (k === 2 && nailMat) { const n = add(NAIL_GEO, nailMat, j); n.position.set(0, tr * 0.62, -tl[2] * 0.6); n.scale.set(tr * 0.8, tr * 0.25, tl[2] * 0.33); }
-        if (k === 2 && SCARY) claw(j, tr, tl[2], 0.022);
+        if (k === 2 && SCARY) claw(j, tr, tl[2], 0.032);
         tp = j; tr *= 0.88;
     }
     outer.userData.rig = { fingers: fingers, thumb: thumb, grip: 0.22, target: 0.22 };
@@ -437,7 +437,17 @@ function addScaryFace(head, mouth, k) {
     }
     const red = new THREE.MeshStandardMaterial({ color: 0x8a0f0f, roughness: 0.5, emissive: 0x300000 }), pale = new THREE.MeshStandardMaterial({ color: 0x6a4a44, roughness: 0.7 });
     const slash = (x, y, rot, len, mat) => { const m = meshAt(new THREE.BoxGeometry(len, 0.004, 0.006), mat, x, y, -0.132); m.rotation.z = rot; head.add(m); };
-    for (let i = 0; i < 3; i++) slash(-0.048 + i * 0.008, -0.022 - i * 0.012, 0.95, 0.045, red);   // trzy ślady pazurów na policzku
+    for (let i = 0; i < 3; i++) {   // trzy krzywe ślady pazurów (rurki) na policzku
+        const c = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.07 + i * 0.008, 0.004 - i * 0.004, zAt(-0.06) + 0.012), new THREE.Vector3(-0.056 + i * 0.008, -0.018 - i * 0.006, zAt(-0.05) + 0.008), new THREE.Vector3(-0.036 + i * 0.008, -0.04 - i * 0.008, zAt(-0.036) + 0.012));
+        head.add(new THREE.Mesh(new THREE.TubeGeometry(c, 8, 0.0017, 5), red));
+    }
+    const gum = new THREE.MeshStandardMaterial({ color: 0x5a0c18, roughness: 0.4 });   // dziąsła, nozdrza i fałdy policzków
+    head.add(ellMesh([ellGeo(0.046, 0.0028, 0.008, 0, -0.0795, zAt(0) + 0.003)], gum));
+    for (const s of [-1, 1]) {
+        const fold = meshAt(new THREE.SphereGeometry(1, 10, 6), dark, s * 0.056, -0.062, -0.143); fold.scale.set(0.0035, 0.015, 0.006); fold.rotation.z = s * 0.45; head.add(fold);
+        const flare = meshAt(new THREE.SphereGeometry(1, 10, 8), dark, s * 0.02, -0.052, -0.168); flare.scale.set(0.011, 0.007, 0.006); flare.rotation.z = -s * 0.5; head.add(flare);
+    }
+    for (const s of [-1, 1]) { const ridge = meshAt(new THREE.SphereGeometry(1, 12, 8), dark, s * 0.045, 0.036, -0.14); ridge.scale.set(0.04, 0.008, 0.016); ridge.rotation.z = s * 0.35; head.add(ridge); }   // mocniejszy łuk brwiowy   // trzy ślady pazurów na policzku
     for (let i = 0; i < 5; i++) slash(0.05 + (i % 2) * 0.004, 0.058 - i * 0.012, 1.57, 0.012, pale);   // szwy na czole: poprzeczne ściegi
     slash(0.052, 0.03, 1.57, 0.07, pale);
     for (const x of [-0.03, 0.004, 0.034]) { const d = meshAt(new THREE.CylinderGeometry(0.0022, 0.0009, 0.014 + Math.abs(x) * 0.3, 5), red, x, -0.1, zAt(x) - 0.003); head.add(d); }   // krew spływająca z pyska
@@ -470,11 +480,12 @@ export function createHead(look, withName) {
         const mouth = meshAt(new THREE.SphereGeometry(0.035, 14, 8), new THREE.MeshBasicMaterial({ color: 0x1a0606 }), 0, -0.085, -0.145);
         mouth.scale.set(1, 0.12, 0.35); head.add(mouth); head.userData.face.mouth = mouth;
         if (SCARY) addScaryFace(head, mouth, k);
-        const eyeMat = (k.glowEyes || SCARY) ? new THREE.MeshBasicMaterial({ color: 0xff1a0a }) : new THREE.MeshPhysicalMaterial({ map: eyeTexture(), color: 0xffffff, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 2.2, reflectivity: 0.9 });
+        const eyeMat = k.glowEyes ? new THREE.MeshBasicMaterial({ color: 0xff1a0a }) : SCARY ? new THREE.MeshStandardMaterial({ map: tex.eyeBloodshot, roughness: 0.15, emissive: 0x2a0000 }) : new THREE.MeshPhysicalMaterial({ map: eyeTexture(), color: 0xffffff, roughness: 0.04, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 2.2, reflectivity: 0.9 });
         const spark = new THREE.MeshBasicMaterial({ color: 0xfff4e8 });
         for (const s of [-1, 1]) {
             const e = meshAt(new THREE.SphereGeometry(0.0165, 16, 12), eyeMat, s * 0.045, 0.02, -0.136); head.add(e); head.userData.face.eyes.push(e);
-            if (SCARY && !k.glowEyes) { const pu = meshAt(new THREE.SphereGeometry(0.01, 8, 8), new THREE.MeshBasicMaterial({ color: 0x120000 }), 0, 0, -0.015); pu.scale.set(0.3, 1.2, 0.5); e.add(pu); }   // szczelinowa źrenica
+            if (SCARY && !k.glowEyes) e.rotation.y = Math.PI;   // przekrwione oko: tekstura patrzy w +Z, głowa w -Z
+            if (false) { const pu = meshAt(new THREE.SphereGeometry(0.01, 8, 8), new THREE.MeshBasicMaterial({ color: 0x120000 }), 0, 0, -0.015); pu.scale.set(0.3, 1.2, 0.5); e.add(pu); }   // szczelinowa źrenica
             else if (!k.glowEyes) { const c = new THREE.Mesh(new THREE.SphereGeometry(0.0042, 8, 6), spark); c.position.set(-0.0055, 0.0062, -0.0135); e.add(c); }   // odblask: oko wygląda na żywe
         }
     }
@@ -545,6 +556,8 @@ export function createGorillaTorso(look) {
     // Grzywa: kępki sierści na karku, barkach i plecach (sylwetka nie jest gładką bryłą)
     for (let i = 0; i < 7; i++) { const a = (i / 6 - 0.5) * 2.2; bodyGeos.push(tuftGeo(Math.sin(a) * 0.17, 0.235 + Math.cos(a) * 0.02, 0.03, Math.sin(a) * 0.6, 1, 0.5, 0.024, 0.016)); }
     for (const sx of [-1, 1]) for (let i = 0; i < 5; i++) { const a = 0.4 + i * 0.5; bodyGeos.push(tuftGeo(sx * (0.215 + Math.sin(a) * 0.08), 0.14 + Math.cos(a) * 0.08, 0, sx * Math.sin(a), Math.cos(a), 0.2, 0.022, 0.016)); }
+    for (let i = 0; i < 12; i++) { const a = (i / 11 - 0.5) * 2.4; for (const dy of [0.2, 0.12]) bodyGeos.push(tuftGeo(Math.sin(a) * 0.2, dy, 0.1 + Math.cos(a) * 0.03, Math.sin(a) * 0.5, 0.9, 0.7, 0.04, 0.018)); }   // grzywa na barkach i łopatkach
+    for (let i = 0; i < 6; i++) bodyGeos.push(tuftGeo(0, 0.26 - i * 0.07, 0.14, 0, 0.5, 1, 0.045 - i * 0.003, 0.018));   // grzbiet
     for (let i = 0; i < 8; i++) { const a = (i / 7 - 0.5) * 2.0; bodyGeos.push(tuftGeo(Math.sin(a) * 0.19, -0.08 - (i % 3) * 0.06, 0.12, Math.sin(a) * 0.5, -0.2, 1, 0.022, 0.016)); }   // plecy
     // Cieniowanie: pachy i dół brzucha ciemniejsze, barki i kark jaśniejsze (głębia futra)
     bodyGeos.forEach(gm => bakeShade(gm, (x, y, z) => 0.78 + 0.32 * smooth(-0.3, 0.22, y) - 0.18 * smooth(0.12, 0.2, Math.abs(x)) * (1 - smooth(0.05, 0.18, y)) + 0.05 * (z < 0 ? 1 : 0)));
@@ -552,7 +565,10 @@ export function createGorillaTorso(look) {
     g.userData.chest = ellMesh(bodyGeos, fur);
     g.add(g.userData.chest);
     // Łysy placek na piersi (dwa mięśnie piersiowe) i brzuchu
-    g.add(ellMesh([ellGeo(0.075, 0.085, 0.022, -0.062, -0.035, -0.125), ellGeo(0.075, 0.085, 0.022, 0.062, -0.035, -0.125), ellGeo(0.1, 0.1, 0.02, 0, -0.19, -0.125)], face));
+    g.add(ellMesh([ellGeo(0.08, 0.075, 0.026, -0.064, -0.02, -0.123), ellGeo(0.08, 0.075, 0.026, 0.064, -0.02, -0.123), ellGeo(0.05, 0.03, 0.02, -0.04, -0.125, -0.126), ellGeo(0.05, 0.03, 0.02, 0.04, -0.125, -0.126), ellGeo(0.06, 0.03, 0.02, -0.04, -0.19, -0.126), ellGeo(0.06, 0.03, 0.02, 0.04, -0.19, -0.126), ellGeo(0.06, 0.03, 0.018, -0.04, -0.25, -0.12), ellGeo(0.06, 0.03, 0.018, 0.04, -0.25, -0.12)], face));   // piersiowe, kratka brzucha
+    for (const sx of [-1, 1]) { const cb = meshAt(new THREE.SphereGeometry(1, 10, 6), new THREE.MeshStandardMaterial({ color: 0x120a08, roughness: 1 }), sx * 0.07, 0.1, -0.13); cb.scale.set(0.07, 0.007, 0.012); cb.rotation.z = -sx * 0.18; g.add(cb); }   // obojczyki
+    g.add(meshAt(new THREE.BoxGeometry(0.006, 0.2, 0.006), new THREE.MeshStandardMaterial({ color: 0x120a08, roughness: 1 }), 0, -0.1, -0.15));   // rowek mostka
+    g.add(ellMesh([ellGeo(0.1, 0.045, 0.05, -0.1, 0.17, -0.05), ellGeo(0.1, 0.045, 0.05, 0.1, 0.17, -0.05)], fur));   // mięśnie czworoboczne
     if (k.back) g.add(meshAt(ellGeo(0.17, 0.17, 0.02, 0, -0.02, 0.138), new THREE.MeshStandardMaterial({ map: furTexture(), color: k.back, roughness: 0.9 }), 0, 0, 0));
     const badge = buildBadge(look.badge);
     if (badge) { badge.position.set(0.11, 0.09, -0.112); g.add(badge); }
@@ -592,7 +608,7 @@ export function createGorillaTorso(look) {
 }
 // Ramię goryla: cylinder od barku do nadgarstka, ustawiany co klatkę
 // Profil ramienia (promień wg wysokości 0 = bark .. 1 = nadgarstek): masywna ręka, zwężenie w łokciu, mocne przedramię
-const ARM_GEO = new THREE.LatheGeometry([[0.07, 0], [0.088, 0.1], [0.09, 0.28], [0.066, 0.5], [0.074, 0.68], [0.062, 0.88], [0.05, 1]].map(p => new THREE.Vector2(p[0], p[1])), 14);
+const ARM_GEO = new THREE.LatheGeometry([[0.07, 0], [0.092, 0.06], [0.1, 0.16], [0.094, 0.3], [0.07, 0.46], [0.062, 0.52], [0.08, 0.64], [0.084, 0.74], [0.066, 0.9], [0.052, 1]].map(p => new THREE.Vector2(p[0], p[1])), 20);
 export function createGorillaArm(look) { const m = new THREE.Mesh(ARM_GEO, furMat(look)); m.castShadow = true; return m; }
 const _Y = new THREE.Vector3(0, 1, 0), _sh = new THREE.Vector3(), _hp = new THREE.Vector3(), _dir = new THREE.Vector3();
 export function placeArm(arm, torso, side, hand) {
@@ -750,6 +766,6 @@ export function animateFace(head, level, pitch, dt) {
     if (f.brow) f.brow.position.y = (f.browY || 0.058) + L * 0.018 + (p - 0.5) * 0.008;
     // Mruganie co 2-5 s (powieka: oko spłaszcza się na ułamek sekundy)
     f.blinkT -= dt; if (f.blinkT <= 0) { f.blink = 0.13; f.blinkT = 2 + Math.random() * 3.5; }
-    let lid = 1; if (f.blink > 0) { f.blink -= dt; lid = Math.max(0.08, Math.abs(f.blink / 0.13 - 0.5) * 2); }
+    let lid = 1; if (f.blink > 0) { f.blink -= dt; lid = Math.max(0.08, Math.min(1, Math.abs(f.blink / 0.13 - 0.5) * 2)); }   // lid nigdy większe od 1: przy przerwie w klatkach oczy nie rosną
     for (const e of f.eyes) { const sc = 1 + L * 0.35; e.scale.set(sc, sc * lid, sc); }
 }

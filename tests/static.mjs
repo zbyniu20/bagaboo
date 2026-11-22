@@ -123,4 +123,10 @@ for (const [id, c] of Object.entries(LC.CARDS)) {
     check('games calm: both the jumpscare face and its sound are suppressed by the flag', /trigger\(\) \{ if \(t >= 0 \|\| GAMES_CALM\.on\) return false;/.test(kit) && /if \(!ctx \|\| GAMES_CALM\.on\) return;/.test(aud));
 }
 
+// ---------- awatar: przekrwione oczy i mięśnie ----------
+const avSrc = read('core/avatar.js');
+check('avatar: bloodshot eyeballs use tex.eyeBloodshot turned toward -Z', /tex\.eyeBloodshot/.test(avSrc) && /e\.rotation\.y = Math\.PI/.test(avSrc));
+check('avatar: blink lid factor is clamped', /lid = Math\.max\(0\.08, Math\.min\(1,/.test(avSrc));
+check('avatar: muscular arm profile (>= 9 points)', (/const ARM_GEO = new THREE\.LatheGeometry\(\[(.*?)\]\.map/.exec(avSrc)?.[1].match(/\[/g) || []).length >= 10);
+
 done('static');

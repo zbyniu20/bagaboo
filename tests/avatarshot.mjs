@@ -31,7 +31,7 @@ await page.evaluate(async ([skin, color, extra]) => {
     av.handL.position.set(-0.5, -0.3, -0.3); av.handR.position.set(0.5, -0.3, -0.3); av.handL.rotation.set(0.3, 0, 0); av.handR.rotation.set(0.3, 0, 0);
     A.placeArm(av.armL, av.torso, -1, av.handL); A.placeArm(av.armR, av.torso, 1, av.handR);
     const cam = new THREE.PerspectiveCamera(30, 900 / 1100, 0.05, 50);
-    window.__shot = (pos, tgt, fov, mouth) => { cam.position.set(...pos); cam.fov = fov; cam.updateProjectionMatrix(); cam.lookAt(...tgt); A.animateFace(av.head, mouth || 0, 0.5, 1); r.render(scene, cam); return r.domElement.toDataURL('image/png'); };
+    window.__shot = (pos, tgt, fov, mouth) => { cam.position.set(...pos); cam.fov = fov; cam.updateProjectionMatrix(); cam.lookAt(...tgt); A.animateFace(av.head, mouth || 0, 0.5, 0.016); r.render(scene, cam); return r.domElement.toDataURL('image/png'); };
 }, [SKIN, COLOR, EXTRA]);
 const views = { front: [[0, 0.15, -2.6], [0, 0.0, 0], 34, 0], front_snarl: [[0, 0.15, -2.6], [0, 0.0, 0], 34, 1], three_quarter: [[-1.7, 0.4, -2.0], [0, 0.0, 0], 34, 0.5], side: [[-2.6, 0.2, 0], [0, 0.05, -0.1], 34, 0.3], head: [[0.25, 0.42, -0.62], [0, 0.36, -0.1], 30, 0], head_snarl: [[0, 0.40, -0.55], [0, 0.34, -0.1], 28, 1] };
 for (const [name, [pos, tgt, fov, mouth]] of Object.entries(views)) {
