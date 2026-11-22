@@ -12,7 +12,7 @@ import { GAMES_CALM } from './settings.js';
 
 // loops: stałe źródła [typ, [[x,y,z], ...]], rand: losowe odgłosy { t: typ, e: [min,max] s między, d: [min,max] m od gracza, v: głośność }
 const DEFS = Object.fromEntries(LEVEL_DEFS.filter(d => d.ambience).map(d => [d.id, d.ambience]));   // z core/registry.js
-export const DREAD = { hush: false, near: 99, tension: 0, apps: 0, scared: 0 };   // stan reżysera grozy (dreadUpdate): odległość do najbliższego potwora i napięcie 0..1
+export const DREAD = { hush: false, near: 99, tension: 0, apps: 0, scared: 0, fogMul: 1 };   // fogMul: mnożnik gęstości mgły ustawiany przez tryb (np. Final Hunt w Become the Monster)   // stan reżysera grozy (dreadUpdate): odległość do najbliższego potwora i napięcie 0..1
 let cur = null, loops = [], timers = [], pending = true;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const _p = { x: 0, y: 0, z: 0 };
@@ -84,7 +84,7 @@ setInterval(tick, 250);
 let dread = null;
 const _dp = new THREE.Vector3(), _fw = new THREE.Vector3(), dst = { scaredT: 0, blackT: 0, hideFn: null, stepT: [], last: [], breathT: 3, growlT: 6, whisperT: 8, stutter: 0, mul: 1, lampDirty: false, fogDirty: false };
 // opts: { hide(on): chowa/pokazuje potwory (znikają na czas jumpscare'a), apparitions: false wyłącza zjawy (Memory, Cisza, Room 000 mają własne) }
-export function setDread(fn, opts) { dread = fn ? { id: L.levelId, fn: fn, hide: opts && opts.hide, app: !(opts && opts.apparitions === false) } : null; }
+export function setDread(fn, opts) { dread = fn ? { id: L.levelId, fn: fn, hide: opts && opts.hide, app: !(opts && opts.apparitions === false), calm: !!(opts && opts.calm) } : null; }   // calm: true = działa też w BagaBoo Games (kroki, oddech, latarka, mgła; bez jumpscare'ów i zjaw)
 // Wołane przez createJumpscare().trigger(): potwory znikają na ok. 2,8 s, latarka gaśnie na pół sekundy, a ambient milknie (cisza po ataku)
 export function dreadScared() {
     if (!dread || dread.id !== L.levelId || GAMES_CALM.on) return;
@@ -118,7 +118,7 @@ export function dreadAppear(kind) {   // też dla testów: wymusza zjawę
 export function dreadUpdate(dt) {
     dt = Math.min(0.1, dt);
     let list = null;
-    if (dread && dread.id === L.levelId && !GAMES_CALM.on) { try { list = dread.fn(); } catch (e) { dread = null; } }
+    if (dread && dread.id === L.levelId && (!GAMES_CALM.on || dread.calm)) { try { list = dread.fn(); } catch (e) { dread = null; } }
     camera.getWorldPosition(_dp);
     let near = 99, nearM = null;
     if (list) for (let i = 0; i < list.length; i++) {
@@ -163,7 +163,7 @@ export function dreadUpdate(dt) {
     }
     // mgła gęstnieje wraz z napięciem
     if (P && scene.fog) {
-        if (a > 0) { scene.fog.density = P.fogDensity * (1 + 0.6 * a); dst.fogDirty = true; }
+        if (a > 0 || DREAD.fogMul !== 1) { scene.fog.density = P.fogDensity * DREAD.fogMul * (1 + 0.6 * a); dst.fogDirty = true; }
         else if (dst.fogDirty) { scene.fog.density = P.fogDensity; dst.fogDirty = false; }
     }
 }

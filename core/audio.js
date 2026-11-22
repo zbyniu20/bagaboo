@@ -304,7 +304,7 @@ function thump(t0, vol) {
 // Bicie serca: intensywność 0..1 (im bliżej potwór, tym szybciej i głośniej). Wołać co klatkę.
 // Oddech potwora (głęboki wdech i wydech szumu przez filtr; vol 0..1, pos = {x,y,z}): słychać go przestrzennie, gdy potwór jest blisko
 export function breath(pos, vol) {
-    if (!ctx || GAMES_CALM.on) return;
+    if (!ctx) return;
     const t0 = ctx.currentTime, dst = pos ? outAt(pos) : shaper, v = Math.max(0.02, Math.min(1, vol || 0.4));
     const n = ctx.createBufferSource(); n.buffer = noiseBuffer(2.2);
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(380, t0); bp.frequency.linearRampToValueAtTime(620, t0 + 0.7); bp.frequency.linearRampToValueAtTime(300, t0 + 1.7); bp.Q.value = 1.2;

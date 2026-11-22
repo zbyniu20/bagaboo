@@ -7,7 +7,9 @@
 // LOBBY: po wejściu (i po każdej rundzie) wszyscy trafiają do sali z trzema polami, po jednym na każdą z 3 LOSOWYCH map (z sześciu, bez ostatnio granej). Gracz głosuje, stając na polu; host (albo gracz solo) liczy głosy z pozycji głów (lobbylogic.js: padOf, countVotes, gateStep),
 // a wygrana mapa (remis losuje) ładuje się dla wszystkich. Przycisk START NOW na tablicy (tylko host) kończy głosowanie od razu. Przez sieć idą liczniki głosów (cleanVotes), numer mapy i ziarno (cleanMapPick).
 // ==========================================
-import { THREE, L, tex, camera, addCrispBlock, world } from '../core/engine.js';
+import { THREE, L, tex, camera, addCrispBlock, world, lighting, scene } from '../core/engine.js';
+import { setDread, DREAD } from '../core/ambience.js';
+import { HUNT, pulseAt, finalHunt, monsterBoost, botBoost, fearLevel } from '../core/huntlogic.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { levelReward } from '../core/economy.js';
@@ -36,7 +38,7 @@ let S = null;
 const _p = new THREE.Vector3(), _h = new THREE.Vector3();
 
 export function build() {
-    S = { clock: 0, phase: 'lobby', t: 0, gate: { ph: 'open', t: 0 }, opts: pickOptions(-1, Math.random), lastMap: -1, votes: [0, 0, 0], win: -1, mon: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, tinted: false, bot: null, map: -1, seed: 0, md: null, mapGroup: null, mapObs: [], mapBodies: [], mapPortals: [], dm: Object.create(null), dmApplied: new Set(), localDm: 0, tearT: 0, flashA: 0 };
+    S = { clock: 0, phase: 'lobby', t: 0, gate: { ph: 'open', t: 0 }, opts: pickOptions(-1, Math.random), lastMap: -1, votes: [0, 0, 0], win: -1, mon: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, tinted: false, bot: null, map: -1, seed: 0, md: null, mapGroup: null, mapObs: [], mapBodies: [], mapPortals: [], dm: Object.create(null), dmApplied: new Set(), localDm: 0, tearT: 0, flashA: 0, final: false, pulseWarn: -1, pulseN: -1, pulseActive: false, marks: [], fear: null, fogBase: null, hemiBase: 0 };
     // Wszyscy zaczynają w lobby; mapa ładuje się po głosowaniu (gość: po wiadomości od hosta)
     applyLobby(false);
     S.board = mapBoard.createMesh(6, 3.75); L.root.add(S.board); placeBoard();
@@ -46,6 +48,10 @@ export function build() {
     mx.font = 'bold 48px sans-serif'; mx.textAlign = 'center'; mx.textBaseline = 'middle'; mx.fillStyle = '#ff3a2a'; mx.shadowColor = '#ff0000'; mx.shadowBlur = 16; mx.fillText('MONSTER', 128, 34);
     S.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.toTex(mc, false), transparent: true, depthWrite: false })); S.tag.scale.set(1.2, 0.3, 1); S.tag.visible = false; L.root.add(S.tag);
     S.flash = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: 0x8a0000, transparent: true, opacity: 0, depthTest: false })); S.flash.position.z = -0.3; S.flash.renderOrder = 1004; S.flash.visible = false; camera.add(S.flash);
+    // Czerwona winieta strachu (uciekinier, gdy potwór jest blisko) i reżyser grozy w trybie spokojnym (kroki, oddech, latarka, mgła; bez jumpscare'ów i zjaw)
+    { const c = T.makeCanvas(256, 256), x = c.getContext('2d'), gr = x.createRadialGradient(128, 128, 50, 128, 128, 150); gr.addColorStop(0, 'rgba(120,0,0,0)'); gr.addColorStop(0.65, 'rgba(120,0,0,0.5)'); gr.addColorStop(1, 'rgba(30,0,0,0.95)'); x.fillStyle = gr; x.fillRect(0, 0, 256, 256);
+      S.fear = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, opacity: 0, depthTest: false })); S.fear.position.z = -0.32; S.fear.renderOrder = 1003; S.fear.visible = false; camera.add(S.fear); }
+    setDread(() => { if (S.phase !== 'play' || !S.mon || S.mon === 'me') return []; if (S.mon === 'bot') return S.bot ? [{ x: S.bot.x, y: S.bot.y, z: S.bot.z }] : []; const h = headOf(S.mon); return h ? [{ x: h.x, y: h.y - 1.5, z: h.z }] : []; }, { calm: true, apparitions: false });
     S.aura = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1a00, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.7 })); S.aura.scale.set(2.2, 2.2, 1); S.aura.visible = false; L.root.add(S.aura);
     S.auraLight = new THREE.PointLight(0xff2010, 0, 8, 2); L.root.add(S.auraLight);
     // Bot (gdy grasz sam)
@@ -260,6 +266,7 @@ function startedRound() {
     else { const sp = md.survivors[(Math.random() * md.survivors.length) | 0]; setPlayerPosition(sp[0] + (Math.random() - 0.5) * jit, sp[1], sp[2] + (Math.random() - 0.5) * jit); }
     // Start potwora: jumpscare u wszystkich uciekających (potwór dostaje ryk i wibrację)
     if (S.mon !== 'me' && S.scare) S.scare.trigger();
+    if (S.mon !== 'me' && S.md && S.md.monster) SFX.roar(0.55, { x: S.md.monster[0], y: S.md.monster[1] + 1.5, z: S.md.monster[2] });   // uciekinierzy słyszą ryk z miejsca startu potwora
     if (S.mon === 'me') { toast('You are the MONSTER! Catch everyone!', '#ff4a2a'); SFX.roar(0.8); buzz('both', 0.8, 400); }
     else if (S.mon === 'bot') toast('The mannequin is hunting you. Survive 2 minutes!', '#ff6a4a');
     else toast('Run! Do not let the monster touch you!', '#ff6a4a');
@@ -360,6 +367,9 @@ function tickLocalTear(dt) {
 }
 // Hak dla testu w przeglądarce (tests/gore.mjs): ustawia urwane kończyny TEGO gracza tak, jakby potwór go złapał (0 = przywróć). Nie zmienia przebiegu rundy.
 export function debugDismember(code) { if (!S) return false; S.dm = code ? Object.assign(Object.create(null), { [N.myId()]: code }) : Object.create(null); return true; }
+// Haki dla testu w przeglądarce (tests/hunt.mjs): wymuszają rundę z botem na zadanym czasie i podają stan polowania. Nie są używane w grze.
+export function debugPlay(timeLeft, botDx) { if (!S) return false; S.phase = 'play'; S.mon = 'bot'; S.t = timeLeft; S.caught = new Set(); S.dm = Object.create(null); camera.getWorldPosition(_p); S.bot = { x: _p.x + (botDx === undefined ? 40 : botDx), y: 0, z: _p.z, vy: 0, speed: BOT_SPEED, ground: true, stuck: 0, lastD: 99, side: 0 }; return true; }
+export function debugHunt() { return S ? { phase: S.phase, final: S.final, pulse: S.pulseActive, fogMul: DREAD.fogMul, fear: S.fear.material.opacity, fearVisible: S.fear.visible, marks: S.marks.length } : null; }
 function syncDismember() {
     const on = !!SETTINGS.gore, seen = new Set();
     for (const k of Object.keys(S.dm)) { const id = fromNet(k); seen.add(id); const c = on ? S.dm[k] : 0; if (id === 'me') localDismember(c); else N.setDismember(id, c); }
@@ -377,7 +387,8 @@ function moveBot(dt, p) {
     if (dg > 0.05) { dx /= dg; dz /= dg; } else { dx = 0; dz = 0; }
     if (b.side) { const sx = -dz * b.side, sz = dx * b.side; dx = dx * 0.4 + sx; dz = dz * 0.4 + sz; b.sideT -= dt; if (b.sideT <= 0) b.side = 0; }   // obejście, gdy utknie
     const ox = b.x, oz = b.z;
-    b.x += dx * b.speed * dt; b.z += dz * b.speed * dt;
+    const sp = b.speed * botBoost(S.t, S.pulseActive);   // Final Hunt i puls węchu: bot jest szybszy
+    b.x += dx * sp * dt; b.z += dz * sp * dt;
     b.vy -= BOT_GRAVITY * dt; b.y += b.vy * dt;
     let blockedTop = null; b.ground = false;
     for (const o of L.obstacles) {
@@ -404,7 +415,7 @@ function moveBot(dt, p) {
     }
     // Utknął (nie zbliża się): obejście w bok
     const moved = Math.hypot(b.x - ox, b.z - oz);
-    if (moved < b.speed * dt * 0.3 && b.ground) { b.stuck += dt; if (b.stuck > 0.8) { b.stuck = 0; b.side = Math.random() < 0.5 ? -1 : 1; b.sideT = 1.0; b.vy = Math.sqrt(2 * BOT_GRAVITY * 1.2); b.ground = false; } } else b.stuck = 0;
+    if (moved < sp * dt * 0.3 && b.ground) { b.stuck += dt; if (b.stuck > 0.8) { b.stuck = 0; b.side = Math.random() < 0.5 ? -1 : 1; b.sideT = 1.0; b.vy = Math.sqrt(2 * BOT_GRAVITY * 1.2); b.ground = false; } } else b.stuck = 0;
     if (!S.caught.has('me') && Math.hypot(p.x - b.x, p.z - b.z) < 1.0 && Math.abs(p.y - (b.y + 1.0)) < 1.5) catchPlayer('me');
 }
 
@@ -423,6 +434,7 @@ export function update(dt, t, ctx) {
             'The monster catches you by touching your head or body with a hand.',
             'Not caught after 2 minutes = 200 Bagabucks. The monster wins 200 if it catches everyone.',
             'Playing alone? A fast mannequin hunts you instead. It can jump, so keep moving!',
+            'Every ~20 s the monster smells you: a warning first, then it sees you through walls for 2.5 s. The last 30 s are the FINAL HUNT: it gets faster.',
             'Before every round you vote for 1 of 3 random maps by standing on a pad in the lobby. The GAMES door takes you back.'], 'This closes in ' + sec + ' s', { bg: 'rgba(16,4,4,0.9)', border: '#ff4a4a', title: '#ffd0c8', text: '#f4e0dc', footer: '#ffb030', size: 30 }); }
         S.intro.mesh.visible = S.introT > 0 && !S.introSkip;
     }
@@ -447,12 +459,42 @@ export function update(dt, t, ctx) {
     S.auraLight.intensity = mpos && mon !== 'me' ? 5 : 0;
     if (mpos) { S.tag.position.copy(mpos).y += 0.55; S.aura.position.copy(mpos); S.auraLight.position.copy(mpos); }
     setTint(mon === 'me');
-    L.moveScale = mon === 'me' ? MONSTER_BOOST : 1;
+    L.moveScale = mon === 'me' ? monsterBoost(MONSTER_BOOST, S.t) : 1;
+    tickHunt(dt, t, mon, mpos, p);
     if (mpos && mon !== 'me' && !S.caught.has('me')) { _h.copy(mpos); SFX.heartbeat(Math.max(0, 1 - _h.distanceTo(p) / 12)); }
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.15; drawHud(); }
     if (S.board) S.board.visible = S.phase === 'lobby';
     drawPadLabels();
     const bs = S.phase + ':' + Math.ceil(S.t) + ':' + S.map + ':' + S.gate.ph + ':' + S.opts.join(',') + ':' + S.votes.join(',') + ':' + S.win; if (bs !== S.boardSig) { S.boardSig = bs; mapBoard.dirty = true; }
+}
+// Polowanie (core/huntlogic.js): pulsy węchu, Final Hunt i strach. Każdy klient liczy to sam z zsynchronizowanego czasu rundy.
+function survivorsAlive() {
+    const ids = ['me']; for (const id in N.playersState) { const st = N.playersState[id]; if (id !== N.myId() && st && st.lvl === 'monster' && st.head) ids.push(id); }
+    return ids.filter(id => id !== S.mon && !S.caught.has(id));
+}
+function setFinalLook(on) {
+    if (on) { S.hemiBase = lighting.hemi.intensity; S.fogBase = scene.fog.color.clone(); scene.fog.color.lerp(new THREE.Color(0x4a0808), 0.6); DREAD.fogMul = 1.35; }
+    else { if (S.fogBase) { scene.fog.color.copy(S.fogBase); lighting.hemi.intensity = S.hemiBase; S.fogBase = null; } DREAD.fogMul = 1; }
+}
+function tickHunt(dt, t, mon, mpos, p) {
+    const playing = S.phase === 'play', alive = playing ? survivorsAlive() : [], pu = playing ? pulseAt(HUNT.ROUND - S.t, alive.length) : { active: false, warn: false, n: -1 }, fin = playing && finalHunt(S.t);
+    S.pulseActive = pu.active;
+    if (fin !== S.final) { S.final = fin; setFinalLook(fin); if (fin) { toast('FINAL HUNT: the monster is faster!', '#ff3a2a'); SFX.bell && SFX.bell(); } }
+    if (S.final && S.fogBase) lighting.hemi.intensity = S.hemiBase * (Math.random() < 0.05 ? 0.25 : 1);   // światło miga
+    if (pu.warn && S.pulseWarn !== pu.n && mon !== 'me' && !S.caught.has('me')) { S.pulseWarn = pu.n; SFX.whisper(); toast('The monster is sniffing the air...', '#ff8a6a'); }
+    if (pu.active && S.pulseN !== pu.n) { S.pulseN = pu.n; if (mon === 'me') { toast('You smell them! The survivors glow for a moment.', '#ff4a2a'); SFX.roar(0.35); } else if (!S.caught.has('me')) { toast('The monster senses you!', '#ff3a2a'); buzz('both', 0.8, 300); } }
+    // znaczniki uciekinierów (tylko dla potwora-gracza, przez ściany)
+    const show = pu.active && mon === 'me', ids = show ? alive.filter(id => id !== 'me') : [];
+    for (let i = 0; i < Math.max(ids.length, S.marks.length); i++) {
+        let mk = S.marks[i];
+        if (!mk && i < ids.length) { mk = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2a10, transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending })); mk.scale.set(0.7, 0.7, 1); mk.renderOrder = 999; L.root.add(mk); S.marks[i] = mk; }
+        if (!mk) continue;
+        const h = i < ids.length ? headOf(ids[i]) : null; mk.visible = !!h; if (h) { mk.position.copy(h); mk.material.opacity = 0.6 + 0.4 * Math.sin(t * 10); }
+    }
+    // strach: czerwona winieta tym mocniejsza, im bliżej potwór (uciekinier; wyłączana razem z komfortową winietą)
+    let fear = 0;
+    if (playing && mpos && mon !== 'me' && !S.caught.has('me') && SETTINGS.vignette) { camera.getWorldPosition(_p); fear = fearLevel(Math.hypot(mpos.x - _p.x, mpos.z - _p.z)); }
+    S.fear.material.opacity = fear * (0.45 + 0.15 * Math.sin(t * 9)); S.fear.visible = fear > 0.02;
 }
 // Czerwone, świecące dłonie gdy jesteś potworem
 function setTint(on) {
@@ -523,7 +565,7 @@ function randomScares(dt, t, p) {
     SFX.stinger({ x: x, y: 1.5, z: z });
 }
 export function dispose() {
-    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
+    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); camera.remove(S.fear); if (S.final || S.fogBase) setFinalLook(false); DREAD.fogMul = 1; for (const mk of S.marks) L.root.remove(mk); setDread(null); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
     if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); S.board = null; }
     L.moveScale = 1;
     N.onLevelMsg(null);
