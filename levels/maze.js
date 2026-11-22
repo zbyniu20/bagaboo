@@ -18,7 +18,8 @@ import { toast } from '../core/terminal.js';
 import * as SFX from '../core/audio.js';
 import * as NET from '../core/network.js';
 import { ARRIVAL_FROM_MAZE as ARRIVAL } from './levels.js';
-import { buildDoor, createJumpscare, takeRespawn } from '../core/levelkit.js';
+import { buildDoor, createJumpscare, takeRespawn, addStoryProps } from '../core/levelkit.js';
+import { setDread } from '../core/ambience.js';
 
 const NP = LIGHT_PRESETS.night;
 const N = 25, CELL = 4, HALF = 50, WT = 0.6, H = 20;   // 25 x 25 komórek po 4 m = 100 x 100 m
@@ -129,7 +130,9 @@ export function build() {
     if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name + (S.df.checkpoints ? '' : ' (no checkpoints)'), S.df.color);
     if (isDaily('maze')) toast('Daily Run %s: same layout for everyone' % dailyDate(), '#7fe8ff');
     buildPhantom();
+    setDread(() => { const r = []; if (S.mq && S.mq.group.visible) r.push(S.mq.group.position); if (S.ph && S.ph.active) r.push(S.ph.group.position); if (S.tw) r.push(S.tw.group.position); return r; });
     buildDecor();
+    addStoryProps({ seed: 108, count: 60, corpses: 5 });   // krew, ślady, napisy i ciała (core/levelkit.js)
 }
 
 // Podpowiedzi (strzałki na ważnych skrzyżowaniach, znaki X przed ślepymi odnogami) i światła

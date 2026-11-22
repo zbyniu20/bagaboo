@@ -16,7 +16,8 @@ import { buzz } from '../core/haptics.js';
 import { createGhost } from '../core/runkit.js';
 import { createEvents } from '../core/events.js';
 import { ARRIVAL_FROM_HOSPITAL } from './levels.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
+import { setDread } from '../core/ambience.js';
 
 const X0 = -11, X1 = 11, Z0 = 5, Z1 = -52, H = 3.4, CORR = 2.5;       // budynek 22 x 57 m, korytarz 5 m szerokości
 const ROOM_Z = [0, -12, -24, -36, -48];                               // granice sal wzdłuż korytarza
@@ -42,12 +43,14 @@ export function build() {
     buildCards();
     buildGate();
     buildStatues();
+    setDread(() => S.st.map(st => st.m.group.position));
     buildGrid();
     buildDoor({ x: 0, z: Z0 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#bfe8ff', wood: 0x5a6a72, portal: { target: 'levels', spawn: ARRIVAL_FROM_HOSPITAL, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     S.scare = createJumpscare({ seed: 6161 });
     if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints, 4 patients at the start)'), df.color);
+    addStoryProps({ seed: 104, count: 26, corpses: 3 });   // krew, ślady, napisy i ciała (core/levelkit.js)
 }
 
 // ---------- BUDOWA ----------

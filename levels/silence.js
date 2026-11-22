@@ -17,7 +17,8 @@ import { setPlayerPosition, releaseRope, isOnRope, hands } from '../core/player.
 import * as N from '../core/network.js';
 import * as SFX from '../core/audio.js';
 import { ARRIVAL_FROM_SILENCE as ARRIVAL_SILENCE } from './levels.js';
-import { buildDoor, addDoorPortal, createJumpscare, cameraPanel, panelBg, drawInstructions , introSeen } from '../core/levelkit.js';
+import { buildDoor, addDoorPortal, createJumpscare, cameraPanel, panelBg, drawInstructions , introSeen, addStoryProps } from '../core/levelkit.js';
+import { setDread } from '../core/ambience.js';
 
 // ---------- USTAWIENIA ----------
 const NP = LIGHT_PRESETS.night;
@@ -71,6 +72,7 @@ export function build() {
     buildExitDoor();
     buildWellDoor();
     S.mon = buildMonster();
+    setDread(() => S.mon ? [S.mon.root.position] : []);
     buildScare();
     buildHud();
     if (S.df.id !== 'normal') toast('Difficulty: ' + S.df.name, S.df.color);
@@ -83,6 +85,7 @@ export function build() {
     N.onLevelMsg(onNet);
     if (N.voice.stream) SFX.attachMic(N.voice.stream);
     if (quickStart) toast('Back on your feet. Stay quiet...', '#9fc8ff');
+    addStoryProps({ seed: 106, count: 26, corpses: 3 });   // krew, ślady, napisy i ciała (core/levelkit.js)
 }
 
 function buildRoom() {

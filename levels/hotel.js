@@ -22,6 +22,7 @@ import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_HOTEL } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
+import { setDread } from '../core/ambience.js';
 
 const RW = 12, H = 3.4, HALF = RW / 2, DOOR_W = 1.7, DOOR_H = 2.6, WALL_T = 0.4;   // szerokość zwykłego pokoju 12 m, wysokość 3,4 m
 const N_ROOMS = 100, LEN_NORMAL = 12, LEN_HUB = 20, LEN_BIG = 40;                  // liczba pokoi (drzwi 100 = wyjście) i długości: zwykły, hol z kluczem, wielki pokój 50
@@ -125,6 +126,7 @@ export function build() {
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     S.scare = createJumpscare({ seed: 1313 });
+    setDread(() => { const r = []; for (const rm of S.rooms.values()) { if (rm.weeper) r.push(rm.weeper.m.group.position); if (rm.figure) r.push(rm.figure.m.group.position); } return r; });
     S.rushMesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: faceTexture('rush'), transparent: true, depthWrite: false, fog: false })); S.rushMesh.scale.set(5.5, 5.5, 1); S.rushMesh.visible = false; L.root.add(S.rushMesh);
     S.screechMesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: faceTexture('screech'), transparent: true, depthWrite: false, fog: false })); S.screechMesh.scale.set(1.3, 1.3, 1); S.screechMesh.visible = false; L.root.add(S.screechMesh);
     if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints)'), df.color);

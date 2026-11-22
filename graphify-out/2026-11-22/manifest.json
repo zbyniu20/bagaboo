@@ -204,9 +204,9 @@
     "semantic_hash": ""
   },
   "core/network.js": {
-    "mtime": 1795367144.5958612,
-    "seen": 1795367193.9927366,
-    "ast_hash": "22b0659adb280e75dc015b9df588b03e",
+    "mtime": 1795367795.2032096,
+    "seen": 1795368218.6381857,
+    "ast_hash": "712167f3ea7f4019633b4f51a444e857",
     "semantic_hash": ""
   },
   "core/pause.js": {
@@ -408,9 +408,9 @@
     "semantic_hash": "9b63f5b0c4493d19f7a4abc75c19917a"
   },
   "levels/monster.js": {
-    "mtime": 1795367158.459686,
-    "seen": 1795367193.9928124,
-    "ast_hash": "1d750741ff81f1c9716b45511d54c25c",
+    "mtime": 1795367273.72349,
+    "seen": 1795368218.6382554,
+    "ast_hash": "4992f52f7e46bfd2120fe5d3606c6da3",
     "semantic_hash": ""
   },
   "levels/nursery.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795367158.4617543,
-    "seen": 1795367193.9931316,
-    "ast_hash": "319b2469bb0a0381d4ea063daffc8f03",
+    "mtime": 1795368210.624455,
+    "seen": 1795368218.63853,
+    "ast_hash": "8350dd23f73498a178ca5ca6ab06f19b",
     "semantic_hash": ""
   },
   "README.md": {
@@ -9996,9 +9996,9 @@
     "semantic_hash": ""
   },
   "tests/modes/monster.mjs": {
-    "mtime": 1795367166.0081642,
-    "seen": 1795367193.9928453,
-    "ast_hash": "079163b8abd65cc6373298edff9d72c6",
+    "mtime": 1795368210.604226,
+    "seen": 1795368218.6382875,
+    "ast_hash": "22ccbaac6ed581518a0599451b305b68",
     "semantic_hash": ""
   },
   "core/room000map.js": {
@@ -10149,6 +10149,12 @@
     "mtime": 1795367166.0273015,
     "seen": 1795367193.9928346,
     "ast_hash": "4ad77aca92f2dd834c8116e6dc7b9e61",
+    "semantic_hash": ""
+  },
+  "tests/gore.mjs": {
+    "mtime": 1795368006.912962,
+    "seen": 1795368218.6382751,
+    "ast_hash": "e03aa34e6a9b14ade6eddfb7b8c30359",
     "semantic_hash": ""
   },
   "package-lock.json": {

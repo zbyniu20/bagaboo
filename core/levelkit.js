@@ -214,3 +214,96 @@ export function takeRespawn(S) {
 // Samouczek tylko za pierwszym razem: po przegranej (restart) albo ponownym wejściu instrukcji już nie ma
 const seenIntros = new Set();
 export function introSeen(id) { const seen = seenIntros.has(id); seenIntros.add(id); return seen; }
+
+// ---------- ŚLADY HORRORU W POZIOMACH (krew, ślady wleczenia, odciski dłoni, ślady pazurów, napisy na ścianach, ciała) ----------
+// addStoryProps({ seed, count, corpses, y, area }) na końcu build() poziomu: losuje wolne miejsca na podłodze i ściany z L.obstacles (omija start, L.reserved i portale)
+// i scala wszystko w 6 siatek (budżet rysowania). Poziomy w trybie spokojnym (BagaBoo Games) go nie wołają.
+const STORY_PHRASES = ['RUN', 'HE IS HERE', "DON'T LOOK BACK", 'NO EXIT', 'HELP ME', 'IT WATCHES', 'BEHIND YOU', 'I SEE YOU'];
+let STORY_TEX = null;
+function storyTextures() {
+    if (STORY_TEX) return STORY_TEX;
+    const R = T.mkRng(606), mk = (w, h, draw) => { const c = T.makeCanvas(w, h), x = c.getContext('2d'); draw(x, w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+    const red = (a) => 'rgba(' + (70 + ((R() * 40) | 0)) + ',6,8,' + a + ')';
+    const pool = mk(256, 256, (x) => {   // kałuża: nachodzące się plamy, kropelki, połysk
+        for (let i = 0; i < 9; i++) { x.fillStyle = red(0.55 + R() * 0.3); x.beginPath(); x.ellipse(128 + (R() - 0.5) * 70, 128 + (R() - 0.5) * 70, 30 + R() * 50, 24 + R() * 40, R() * 3, 0, 7); x.fill(); }
+        for (let i = 0; i < 22; i++) { x.fillStyle = red(0.8); x.beginPath(); x.arc(R() * 256, R() * 256, 1 + R() * 5, 0, 7); x.fill(); }
+        x.fillStyle = 'rgba(255,170,170,0.14)'; x.beginPath(); x.ellipse(108, 100, 22, 9, -0.6, 0, 7); x.fill();
+    });
+    const drag = mk(512, 128, (x) => {   // smuga wleczenia: zwęża się ku końcowi, z palcami
+        x.fillStyle = red(0.8); x.beginPath(); x.moveTo(20, 64);
+        for (let i = 0; i <= 20; i++) x.lineTo(20 + i * 24, 64 - (36 - i * 1.4) - R() * 10); for (let i = 20; i >= 0; i--) x.lineTo(20 + i * 24, 64 + (36 - i * 1.4) + R() * 10); x.fill();
+        x.strokeStyle = red(0.7); x.lineWidth = 6; for (let i = 0; i < 4; i++) { x.beginPath(); x.moveTo(500, 40 + i * 16); x.lineTo(430 + R() * 20, 44 + i * 14); x.stroke(); }
+    });
+    const hands = mk(256, 256, (x) => {   // odciski zakrwawionych dłoni
+        for (const [cx, cy, s] of [[70, 150, 1], [175, 110, 0.9], [150, 205, 0.7]]) {
+            x.save(); x.translate(cx, cy); x.rotate((R() - 0.5) * 0.7); x.scale(s, s); x.fillStyle = red(0.85);
+            x.beginPath(); x.ellipse(0, 20, 26, 30, 0, 0, 7); x.fill();
+            for (let f = 0; f < 5; f++) { const a = -0.9 + f * 0.45; x.beginPath(); x.ellipse(Math.sin(a) * 30 + (f === 0 ? -8 : 0), -22 - Math.cos(a) * 20 + (f === 0 ? 20 : 0), 6, 19, a, 0, 7); x.fill(); }
+            x.restore();
+        }
+        for (let i = 0; i < 3; i++) { x.fillStyle = red(0.8); x.fillRect(40 + i * 70, 180, 4, 40 + R() * 36); }   // zacieki
+    });
+    const claws = mk(256, 256, (x) => {   // ślady pazurów: cztery równoległe rysy
+        for (let k = 0; k < 2; k++) for (let i = 0; i < 4; i++) {
+            const ox = 40 + k * 90 + i * 15, len = 150 + R() * 70;
+            x.strokeStyle = 'rgba(15,10,8,0.9)'; x.lineWidth = 6; x.beginPath(); x.moveTo(ox, 20 + R() * 20); x.lineTo(ox + 36, 20 + len); x.stroke();
+            x.strokeStyle = 'rgba(210,200,185,0.6)'; x.lineWidth = 2; x.beginPath(); x.moveTo(ox + 2, 22); x.lineTo(ox + 38, 22 + len); x.stroke();
+        }
+    });
+    const text = mk(1024, 1024, (x, w) => {   // atlas napisów: osiem wierszy po 128 px, czerwone litery z zaciekami
+        x.textAlign = 'center'; x.textBaseline = 'middle';
+        STORY_PHRASES.forEach((p, i) => {
+            const y = i * 128 + 54; x.font = 'bold 86px "Courier New", monospace'; x.fillStyle = red(0.95); x.fillText(p, w / 2, y);
+            for (let k = 0; k < 7; k++) { x.fillStyle = red(0.85); const dx = w / 2 + (R() - 0.5) * x.measureText(p).width * 0.9; x.fillRect(dx, y + 20, 3 + R() * 3, 12 + R() * 40); }
+        });
+    });
+    return (STORY_TEX = { pool: pool, drag: drag, hands: hands, claws: claws, text: text });
+}
+export function addStoryProps(o) {
+    o = o || {};
+    const R = T.mkRng(o.seed || 1), A = o.area || L.bounds, fy = o.y !== undefined ? o.y : (L.floorY || 0), n = o.count || 24, X = storyTextures(), g = new THREE.Group();
+    const obs = L.obstacles.filter(b => b.box3), sp = L.spawn || [0, 1, 0];
+    const free = (x, z, r) => { for (const b of obs) { const q = b.box3; if (q.max.y > fy + 0.25 && q.min.y < fy + 1.6 && x > q.min.x - r && x < q.max.x + r && z > q.min.z - r && z < q.max.z + r) return false; } return true; };
+    const clear = (x, z) => Math.hypot(x - sp[0], z - sp[2]) > 5 && !L.reserved.some(r => Math.hypot(x - r[0], z - r[1]) < (r[2] || 2) + 1) && !L.portals.some(p => p.box3 && x > p.box3.min.x - 2 && x < p.box3.max.x + 2 && z > p.box3.min.z - 2 && z < p.box3.max.z + 2);
+    const floorSpot = (r) => { for (let i = 0; i < 80; i++) { const x = A.minX + 1 + R() * (A.maxX - A.minX - 2), z = A.minZ + 1 + R() * (A.maxZ - A.minZ - 2); if (clear(x, z) && free(x, z, r)) return [x, z]; } return null; };
+    const tall = obs.filter(b => b.box3.max.y - b.box3.min.y >= 1.8 && b.box3.min.y <= fy + 0.6);
+    const wallSpot = () => {
+        for (let i = 0; i < 60 && tall.length; i++) {
+            const q = tall[(R() * tall.length) | 0].box3, f = (R() * 4) | 0, t = 0.12 + R() * 0.76, y = fy + 1.0 + R() * 0.9;
+            const x = f < 2 ? q.min.x + (q.max.x - q.min.x) * t : (f === 2 ? q.min.x - 0.02 : q.max.x + 0.02), z = f < 2 ? (f === 0 ? q.min.z - 0.02 : q.max.z + 0.02) : q.min.z + (q.max.z - q.min.z) * t;
+            const nx = f === 2 ? -1 : (f === 3 ? 1 : 0), nz = f === 0 ? -1 : (f === 1 ? 1 : 0);
+            if (x > A.minX && x < A.maxX && z > A.minZ && z < A.maxZ && clear(x, z) && free(x + nx * 0.7, z + nz * 0.7, 0.25)) return { x: x, y: y, z: z, ry: Math.atan2(nx, nz) };
+        }
+        return null;
+    };
+    const buckets = { pool: [], drag: [], hands: [], claws: [], text: [] }, m4 = new THREE.Matrix4(), e4 = new THREE.Euler(), q4 = new THREE.Quaternion(), s4 = new THREE.Vector3(1, 1, 1), p4 = new THREE.Vector3();
+    const put = (key, geo, x, y, z, rx, ry, rz) => { e4.set(rx, ry, rz, 'YXZ'); q4.setFromEuler(e4); m4.compose(p4.set(x, y, z), q4, s4); geo.applyMatrix4(m4); buckets[key].push(geo); };
+    const floorDecal = (key, w, h) => { const s = floorSpot(0.6); if (s) put(key, new THREE.PlaneGeometry(w, h), s[0], fy + 0.012 + R() * 0.006, s[1], -Math.PI / 2, R() * 6.28, 0); return s; };
+    const wallDecal = (key, w, h, uv) => { const s = wallSpot(); if (!s) return; const gm = new THREE.PlaneGeometry(w, h); if (uv) { const a = gm.attributes.uv; for (let i = 0; i < a.count; i++) a.setXY(i, a.getX(i), uv[0] + a.getY(i) * (uv[1] - uv[0])); } put(key, gm, s.x, s.y, s.z, 0, s.ry, 0); };
+    for (let i = 0; i < n; i++) {
+        const r = R();
+        if (r < 0.28) floorDecal('pool', 1 + R() * 1.4, 1 + R() * 1.4);
+        else if (r < 0.42) floorDecal('drag', 2.2 + R() * 2, 0.7);
+        else if (r < 0.58) wallDecal('hands', 1 + R() * 0.6, 1 + R() * 0.6);
+        else if (r < 0.72) wallDecal('claws', 1.1, 1.1);
+        else { const k = (R() * STORY_PHRASES.length) | 0; wallDecal('text', 2.4, 0.3, [1 - (k + 1) / 8, 1 - k / 8]); }
+    }
+    const mat = (map) => new THREE.MeshStandardMaterial({ map: map, transparent: true, depthWrite: false, roughness: 0.42, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, envMapIntensity: 0.4 });
+    for (const k of Object.keys(buckets)) if (buckets[k].length) { const m = new THREE.Mesh(mergeGeometries(buckets[k]), mat(X[k])); m.frustumCulled = false; m.renderOrder = 2; g.add(m); }
+    // ciała: leżące postacie w brudnych ubraniach z kałużą pod spodem (jedna siatka z kolorami w wierzchołkach)
+    const bodies = [];
+    const tint = (geo, col) => { const c = new THREE.Color(col), arr = new Float32Array(geo.attributes.position.count * 3); for (let i = 0; i < arr.length; i += 3) { arr[i] = c.r; arr[i + 1] = c.g; arr[i + 2] = c.b; } geo.setAttribute('color', new THREE.BufferAttribute(arr, 3)); return geo; };
+    const part = (geo, col, x, y, z, rx, ry, rz, by, bx, bz, yaw) => { const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(1, 1, 1)), w = new THREE.Matrix4().compose(new THREE.Vector3(bx, by, bz), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0)), new THREE.Vector3(1, 1, 1)); geo.applyMatrix4(m).applyMatrix4(w); return tint(geo, col); };
+    const poolG = [];
+    for (let i = 0; i < (o.corpses === undefined ? 3 : o.corpses); i++) {
+        const s = floorSpot(1.0); if (!s) continue; const yaw = R() * 6.28, cloth = [0x2a2a30, 0x3a2a22, 0x22302a, 0x40343a][(R() * 4) | 0], y0 = fy;
+        const P = (geo, col, x, y, z, rx, ry, rz) => bodies.push(part(geo, col, x, y, z, rx, ry, rz, y0, s[0], s[1], yaw));
+        P(new THREE.BoxGeometry(0.42, 0.2, 0.6), cloth, 0, 0.12, 0, 0, 0, 0); P(new THREE.SphereGeometry(0.11, 10, 8), 0xc8b8a8, 0, 0.13, -0.42, 0, 0, 0);
+        P(new THREE.CylinderGeometry(0.05, 0.045, 0.6, 7), cloth, 0.33, 0.07, -0.1, Math.PI / 2, 0, 0.3 + R() * 0.6); P(new THREE.CylinderGeometry(0.05, 0.045, 0.55, 7), cloth, -0.3, 0.07, -0.12, Math.PI / 2, 0, -0.4 - R() * 0.8);
+        P(new THREE.CylinderGeometry(0.075, 0.06, 0.7, 7), cloth, 0.12, 0.08, 0.62, Math.PI / 2, 0, 0.1); P(new THREE.CylinderGeometry(0.075, 0.06, 0.7, 7), cloth, -0.14, 0.08, 0.6, Math.PI / 2, 0, -0.25);
+        const pg = new THREE.PlaneGeometry(1.6, 1.6); pg.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(s[0], fy + 0.014, s[1]), new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, R() * 6.28, 0)), new THREE.Vector3(1, 1, 1))); poolG.push(pg);
+    }
+    if (bodies.length) { const m = new THREE.Mesh(mergeGeometries(bodies), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 })); m.castShadow = false; g.add(m); }
+    if (poolG.length) { const m = new THREE.Mesh(mergeGeometries(poolG), mat(X.pool)); m.frustumCulled = false; m.renderOrder = 2; g.add(m); }
+    g.name = 'storyProps'; L.root.add(g); return g;
+}

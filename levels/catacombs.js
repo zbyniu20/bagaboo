@@ -18,7 +18,8 @@ import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_CATACOMBS } from './levels.js';
 import { createGridMaze } from '../core/gridmaze.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
+import { setDread } from '../core/ambience.js';
 
 const N = 8, P = 5.5, WT = 0.8, H = 3.4, X = N * P / 2;              // siatka 8 x 8 komórek po 5,5 m (44 x 44 m), ściany 0,8 m
 const SEE_DIST = 14, HEAR_RUN = 10, HEAR_BONE = 22, LOSE_TIME = 8, SMELL_TIME = 4, CATCH_DIST = 1.0, KEYS = 4;   // SMELL_TIME: kilka sekund po utracie wzroku wciąż czuje, mniej więcej gdzie jesteś
@@ -58,11 +59,13 @@ export function build() {
     buildKeys();
     buildGate();
     buildWardens();
+    setDread(() => S.bots.map(b => b.m.group.position));
     buildDoor({ x: cx(0), z: -WT / 2 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#bfe8ff', wood: 0x3a3228, portal: { target: 'levels', spawn: ARRIVAL_FROM_CATACOMBS, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     S.scare = createJumpscare({ seed: 8181 });
     if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints, 2 wardens, a 3rd after 3 keys)'), df.color);
+    addStoryProps({ seed: 102, count: 30, corpses: 3 });   // krew, ślady, napisy i ciała (core/levelkit.js)
 }
 
 // ---------- BUDOWA ----------

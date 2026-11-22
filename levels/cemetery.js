@@ -17,7 +17,8 @@ import { createGhost } from '../core/runkit.js';
 import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_CEMETERY } from './levels.js';
-import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
+import { setDread } from '../core/ambience.js';
 
 const X = 24, Z0 = 4, Z1 = -62;                                       // cmentarz 48 x 66 m
 const AISLES_Z = [-4, -12, -20, -28, -36, -44, -52], AISLES_X = [-21, 0, 21];   // alejki (poziome i pionowe), tędy patrolują grabarze
@@ -45,11 +46,13 @@ export function build() {
     buildRelics();
     buildGate();
     buildDiggers();
+    setDread(() => S.bots.filter(b => b.active).map(b => b.m.group.position));
     buildDoor({ x: 0, z: Z0 - 0.03, rotY: Math.PI, label: 'LEVELS', color: '#bfe8ff', wood: 0x4a5a52, portal: { target: 'levels', spawn: ARRIVAL_FROM_CEMETERY, onEnter: () => toast('Back to the levels') } });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     S.intro = cameraPanel(1280, 820, 1.0, 0.64, -0.04, -1.05, 995); S.intro.last = -1;
     S.scare = createJumpscare({ seed: 7171 });
     if (df.id !== 'normal') toast('Difficulty: ' + df.name + (df.checkpoints ? '' : ' (no checkpoints, 2 gravediggers)'), df.color);
+    addStoryProps({ seed: 101, count: 34, corpses: 3 });   // krew, ślady, napisy i ciała (core/levelkit.js)
 }
 
 // ---------- BUDOWA ----------

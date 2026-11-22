@@ -295,6 +295,17 @@ function thump(t0, vol) {
     env(g, t0, Math.max(0.001, vol), 0.012, 0.22); o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + 0.3);
 }
 // Bicie serca: intensywność 0..1 (im bliżej potwór, tym szybciej i głośniej). Wołać co klatkę.
+// Oddech potwora (głęboki wdech i wydech szumu przez filtr; vol 0..1, pos = {x,y,z}): słychać go przestrzennie, gdy potwór jest blisko
+export function breath(pos, vol) {
+    if (!ctx || GAMES_CALM.on) return;
+    const t0 = ctx.currentTime, dst = pos ? outAt(pos) : shaper, v = Math.max(0.02, Math.min(1, vol || 0.4));
+    const n = ctx.createBufferSource(); n.buffer = noiseBuffer(2.2);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(380, t0); bp.frequency.linearRampToValueAtTime(620, t0 + 0.7); bp.frequency.linearRampToValueAtTime(300, t0 + 1.7); bp.Q.value = 1.2;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(v * 0.5, t0 + 0.55); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.85);   // wdech
+    g.gain.exponentialRampToValueAtTime(v * 0.42, t0 + 1.25); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.0);   // wydech, niżej i dłużej
+    n.connect(bp); bp.connect(g); g.connect(dst); n.start(t0); n.stop(t0 + 2.1);
+}
 export function heartbeat(intensity) {
     if (!ctx || intensity <= 0.02) return;
     const now = ctx.currentTime;
