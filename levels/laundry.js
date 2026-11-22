@@ -271,6 +271,8 @@ function buildMask() {
     x.strokeStyle = 'rgba(40,30,30,0.7)'; x.lineWidth = 2;
     for (let i = 0; i < 7; i++) { x.beginPath(); let px = 60 + Math.random() * 140, py = 30 + Math.random() * 60; x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (Math.random() - 0.5) * 40; py += 15 + Math.random() * 15; x.lineTo(px, py); } x.stroke(); }
     x.fillStyle = '#100808'; x.beginPath(); x.moveTo(80, 190); x.quadraticCurveTo(128, 175, 180, 200); x.quadraticCurveTo(128, 186, 80, 190); x.fill();
+    x.fillStyle = '#7a0a0a'; for (const ex of [92, 164]) { x.fillRect(ex - 3, 126, 6, 72); x.beginPath(); x.arc(ex, 198, 6, 0, 7); x.fill(); }   // krwawe łzy
+    x.fillStyle = '#f4efe0'; for (let i = 0; i < 10; i++) { const tx = 82 + i * 10.5; x.beginPath(); x.moveTo(tx, 187); x.lineTo(tx + 6, 189); x.lineTo(tx + 3, 198 + (i % 2) * 7); x.fill(); }   // ostre zęby w szczelinie
     x.fillStyle = 'rgba(120,110,100,0.35)'; for (const ex of [92, 164]) { x.beginPath(); x.ellipse(ex, 120, 22, 12, 0, 0, 7); x.fill(); }   // płytkie wgłębienia zamiast oczu
     const g = new THREE.Group();
     const face = new THREE.Mesh(new THREE.SphereGeometry(0.2, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.62), new THREE.MeshPhysicalMaterial({ map: T.toTex(c, false), roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05 }));

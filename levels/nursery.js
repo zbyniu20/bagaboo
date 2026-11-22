@@ -7,7 +7,7 @@
 // ==========================================
 import { THREE, L, tex, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
-import { buildMannequin } from '../core/mannequin.js';
+import { buildMannequin, addMonsterFace } from '../core/mannequin.js';
 import { levelReward, recordTime, diffOf } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import { setPlayerPosition, releaseAll } from '../core/player.js';
@@ -124,6 +124,7 @@ function buildDolls() {
 function addDoll(i) {
     const m = buildMannequin(T.mkRng(2300 + i)); m.group.scale.set(0.95, 0.85, 0.95); L.root.add(m.group);
     m.group.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: 0xe6d8cc, roughness: 0.35 }); });
+    addMonsterFace(m.head, { width: 0.062, open: 0.012, teeth: 13, toothColor: 0xfaf4e8, cavity: 0x300808, tears: 0x120406 });
     const eyes = [];
     for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1808, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })); e.scale.set(0.16, 0.16, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); eyes.push(e); }
     const start = DOLL_START[i], st = createBot(cx(start[0]), cz(start[1])); st.mode = 'asleep'; st.path = [];

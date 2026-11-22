@@ -7,7 +7,7 @@
 // ==========================================
 import { THREE, L, tex, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
-import { buildMannequin } from '../core/mannequin.js';
+import { buildMannequin, addMonsterFace } from '../core/mannequin.js';
 import { levelReward, recordTime, diffOf } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import { setPlayerPosition, releaseAll } from '../core/player.js';
@@ -124,6 +124,7 @@ function buildWardens() {
 function addWarden(start, i) {
     const m = buildMannequin(T.mkRng(1700 + i)); m.group.scale.set(1.25, 1.55, 1.25); L.root.add(m.group);
     m.group.traverse(o => { if (o.isMesh && o.material) o.material = new THREE.MeshStandardMaterial({ color: 0x14100e, roughness: 1 }); });
+    addMonsterFace(m.head, { width: 0.058, open: 0.045, teeth: 11, toothColor: 0xd8d0b8, long: 1.5, horns: 0xcfc6a8 });
     for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1808, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.13, 0.13, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
     const st = createBot(cx(start[0]), cz(start[1])); st.mode = 'patrol'; st.path = []; st.goalCell = null;
     m.group.position.set(st.x, 0, st.z);
