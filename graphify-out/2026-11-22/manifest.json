@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795365185.495881,
-    "seen": 1795365204.5244865,
-    "ast_hash": "1841807747feea5f03b7e029a3f2b374",
+    "mtime": 1795365401.2149208,
+    "seen": 1795365414.0360742,
+    "ast_hash": "86dd5a65068eba7ade06b0c9ee80e904",
     "semantic_hash": ""
   },
   "README.md": {
@@ -9966,9 +9966,9 @@
     "semantic_hash": ""
   },
   "core/petmodel.js": {
-    "mtime": 1795277701.783479,
-    "seen": 1795277723.579304,
-    "ast_hash": "311e237e18d930a4948b8700965f3e59",
+    "mtime": 1795365401.1990287,
+    "seen": 1795365414.0357575,
+    "ast_hash": "5bf3d84c26a91c2f567888872c84ef60",
     "semantic_hash": ""
   },
   "core/petnest.js": {
@@ -10116,9 +10116,15 @@
     "semantic_hash": ""
   },
   "tests/avatarshot.mjs": {
-    "mtime": 1795365066.762986,
-    "seen": 1795365204.5242615,
+    "mtime": 1795365219.944535,
+    "seen": 1795365414.0358326,
     "ast_hash": "8f4692c08f68f579ee6d8a29f95f6bc9",
+    "semantic_hash": ""
+  },
+  "tests/petshot.mjs": {
+    "mtime": 1795365381.4682062,
+    "seen": 1795365414.0358524,
+    "ast_hash": "375ba6db5541371d151737c5912b7521",
     "semantic_hash": ""
   },
   "package-lock.json": {

@@ -238,6 +238,11 @@ export function scare(gooby) {   // gooby: true = głos "gooby", 'noob' = głos 
     const ng = ctx.createGain(); env(ng, t0, 1.0, 0.006, 1.45);
     n.connect(bp); bp.connect(ng); ng.connect(shaper); n.start(t0);
     for (const f of [740, 784, 1046, 1480, 1568]) saw(t0, f, f * 0.42, 1.35, 0.22, shaper);
+    // ryk potwora: szum przez dolnoprzepustowy filtr z drżeniem amplitudy (charczenie) i opadające, rozstrojone wrzaski
+    const gr = ctx.createBufferSource(); gr.buffer = noiseBuffer(1.8); const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520; lp.Q.value = 4;
+    const gg = ctx.createGain(); env(gg, t0, 0.8, 0.02, 1.5); const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 19; lg.gain.value = 0.45; lfo.connect(lg); lg.connect(gg.gain);
+    gr.connect(lp); lp.connect(gg); gg.connect(shaper); gr.start(t0); lfo.start(t0); lfo.stop(t0 + 1.6);
+    for (const f of [210, 333, 497]) saw(t0 + 0.03, f, f * 0.33, 1.3, 0.26, shaper);
     if (gooby === 'noob') { noobVoice(t0 + 0.05, 130, 3.2); noobVoice(t0 + 0.05, 65, 2.4); }   // głośne "noob": męski głos i warstwa o oktawę niżej
     else if (gooby) { goobyVoice(t0 + 0.08, 150, 2.4); goobyVoice(t0 + 0.08, 75, 1.8); }   // "gooby" (tylko jumpscare od Nothing Hammer): wysoki głos i demoniczna warstwa o oktawę niżej
 }

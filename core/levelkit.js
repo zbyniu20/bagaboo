@@ -126,6 +126,29 @@ function noobTexture() {
     x.fillStyle = '#e01010'; x.shadowColor = '#ff0000'; x.shadowBlur = 30; x.fillText('NOOB', 256, 134);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
+// Szczęka z kłami dla domyślnej głowy jumpscare'a (manekin): rozdziawiona, ciemnoczerwona paszcza, dwa rzędy zębów, krew z oczu; porusza się w update()
+function buildMaw() {
+    const g = new THREE.Group(), tooth = new THREE.MeshBasicMaterial({ color: 0xe6dcc0 }), blood = new THREE.MeshBasicMaterial({ color: 0x8a0a0a }), cavity = new THREE.MeshBasicMaterial({ color: 0x200000 });
+    const mouth = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), cavity); mouth.scale.set(0.062, 0.05, 0.02); mouth.position.set(0, 0.045, 0.103); g.add(mouth);
+    const up = [], lo = [];
+    for (let i = -5; i <= 5; i++) {
+        const big = Math.abs(i) === 3, len = big ? 0.034 : 0.019, x = i * 0.0108;
+        const a = new THREE.ConeGeometry(0.0055, len, 5); a.rotateX(Math.PI); a.translate(x, 0.075 - len / 2, 0.108); up.push(a);
+        if (i % 2 === 0 || big) { const b = new THREE.ConeGeometry(0.005, big ? 0.028 : 0.016, 5); b.translate(x * 0.9, 0.018 + (big ? 0.014 : 0.008), 0.108); lo.push(b); }
+    }
+    const upM = new THREE.Mesh(mergeGeometries(up), tooth), loM = new THREE.Mesh(mergeGeometries(lo), tooth); g.add(upM); g.userData.jaw = new THREE.Group(); g.userData.jaw.add(loM, mouth); g.add(g.userData.jaw);
+    for (const sx of [-1, 1]) { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.002, 0.06, 5), blood); d.position.set(sx * 0.04, 0.115, 0.105); g.add(d); }
+    return g;
+}
+let VIGNETTE = null;
+function vignetteTexture() {   // krwawa winieta: przezroczysty środek, czerwono-czarne brzegi, żyłki
+    if (VIGNETTE) return VIGNETTE;
+    const c = T.makeCanvas(256, 256), x = c.getContext('2d'), gr = x.createRadialGradient(128, 128, 40, 128, 128, 150);
+    gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.6, 'rgba(60,0,0,0.55)'); gr.addColorStop(1, 'rgba(0,0,0,0.98)'); x.fillStyle = gr; x.fillRect(0, 0, 256, 256);
+    x.strokeStyle = 'rgba(150,0,0,0.5)'; x.lineWidth = 2; const R = T.mkRng(77);
+    for (let i = 0; i < 26; i++) { let a = R() * 6.283, r = 150, px = 128 + Math.cos(a) * r, py = 128 + Math.sin(a) * r; x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 5; k++) { a += (R() - 0.5) * 0.5; r -= 12 + R() * 14; x.lineTo(128 + Math.cos(a) * r, 128 + Math.sin(a) * r); } x.stroke(); }
+    return (VIGNETTE = new THREE.CanvasTexture(c));
+}
 export function createJumpscare(o) {
     o = o || {};
     const noob = !!o.noob, gooby = !!o.gooby || noob;   // noob: płaski napis NOOB (jak Gooby, tylko z innym obrazem i głosem)
@@ -137,14 +160,16 @@ export function createJumpscare(o) {
         head.scale.setScalar(2.3);
     } else {
         head = o.head;
-        if (!head) { const m = buildMannequin(T.mkRng(o.seed || 4242)); head = m.head; head.parent.remove(head); }
+        let maw = null;
+        if (!head) { const m = buildMannequin(T.mkRng(o.seed || 4242)); head = m.head; head.parent.remove(head); maw = buildMaw(); head.add(maw); head.userData.maw = maw; }
         head.traverse((c) => { if (c.material) { c.material = c.material.clone(); c.material.depthTest = false; c.material.transparent = true; c.renderOrder = 1000; } });
-        if (o.eyes !== false) for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1000, transparent: true, blending: THREE.AdditiveBlending, depthTest: false })); e.scale.set(0.16, 0.16, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 1001; head.add(e); }
+        if (o.eyes !== false) for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1000, transparent: true, blending: THREE.AdditiveBlending, depthTest: false })); e.scale.set(0.17, 0.17, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 1001; head.add(e); (head.userData.eyes = head.userData.eyes || []).push(e); }
         head.scale.setScalar(o.scale || 2.4);
     }
     const plane = (col) => { const p = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, depthTest: false })); p.position.z = -0.25; return p; };
-    const black = plane(0x000000), red = plane(o.flash !== undefined ? o.flash : 0xff0000); black.renderOrder = 998; red.renderOrder = 999;
-    const g = new THREE.Group(); g.add(black, red, head); g.visible = false; camera.add(g);
+    const black = plane(0x000000), red = plane(o.flash !== undefined ? o.flash : 0xff0000), white = plane(0xffffff); black.renderOrder = 998; red.renderOrder = 999; white.renderOrder = 1002;
+    const vig = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({ map: vignetteTexture(), transparent: true, opacity: 0, depthTest: false })); vig.position.z = -0.3; vig.renderOrder = 1003;
+    const g = new THREE.Group(); g.add(black, red, head, white, vig); g.visible = false; camera.add(g);
     // Wszystko przy samych oczach: wyłączamy odrzucanie obiektów poza kadrem (w goglach potrafiło ukryć duże modele tuż przy kamerze)
     g.traverse((c) => { c.frustumCulled = false; });
     const y = gooby ? 0 : (o.y !== undefined ? o.y : -0.36), rest = gooby ? -0.4 : (o.restZ !== undefined ? o.restZ : -0.32), from = gooby ? -2.0 : (o.fromZ !== undefined ? o.fromZ : -1.9);
@@ -156,15 +181,20 @@ export function createJumpscare(o) {
         update(dt) {
             if (t < 0) return;
             t += dt;
-            const j = (a) => (Math.random() - 0.5) * a;
-            let z = t < 0.1 ? from + (rest - from) * (t / 0.1) : rest;
-            if (gooby) { z += Math.min(0.12, t * 0.1); head.scale.setScalar(2.3 + Math.min(0.5, t * 0.45)); }   // Gooby po wyskoczeniu powoli najeżdża na twarz
-            head.position.set(j(0.03), y + j(0.02), z + j(0.015));
-            head.rotation.set((o.tilt || 0) + j(0.15), j(0.2), j(0.35));
-            const ph = Math.floor(t / 0.05) % 3;
-            if (t < 0.8) { red.material.opacity = ph === 0 ? 0.6 : 0; black.material.opacity = ph === 1 ? 0.92 : 0.5; }
-            else { const f = Math.max(0, 1 - (t - 0.8) / 0.6); red.material.opacity = 0.35 * f; black.material.opacity = 0.6 * f; }
-            if (t > 1.4) { g.visible = false; t = -1; }
+            const j = (a) => (Math.random() - 0.5) * a, base = gooby ? 2.3 : (o.scale || 2.4), shake = t < 0.5 ? 1 : Math.max(0.35, 1.5 - t);
+            let z = t < 0.08 ? from + (rest - from) * (t / 0.08) : rest;   // wyskok z ciemności w 0,08 s
+            if (gooby) { z += Math.min(0.12, t * 0.1); head.scale.setScalar(base + Math.min(0.5, t * 0.45)); }   // Gooby po wyskoczeniu powoli najeżdża na twarz
+            else { z += Math.min(0.06, Math.max(0, t - 0.08) * 0.05); head.scale.setScalar(base * (1 + 0.05 * Math.sin(t * 38) + Math.min(0.1, t * 0.08))); }   // reszta: nacieranie na twarz i drżenie rozmiaru
+            head.position.set(j(0.05 * shake), y + j(0.035 * shake), z + j(0.025 * shake));
+            head.rotation.set((o.tilt || 0) + j(0.22 * shake), j(0.3 * shake), j(0.5 * shake));
+            const maw = head.userData.maw; if (maw) maw.userData.jaw.position.y = -0.028 * Math.abs(Math.sin(t * 17));   // szczęka kłapie
+            if (head.userData.eyes) for (const e of head.userData.eyes) e.scale.setScalar(0.17 + 0.06 * Math.abs(Math.sin(t * 25)));
+            const ph = Math.floor(t / 0.04) % 4;
+            white.material.opacity = t < 0.07 ? 0.85 : (t < 0.4 && ph === 3 ? 0.35 : 0);   // biały błysk na starcie i krótkie rozbłyski
+            if (t < 1.1) { red.material.opacity = ph === 0 || ph === 2 ? 0.65 : 0; black.material.opacity = ph === 1 ? 0.95 : 0.5; }
+            else { const f = Math.max(0, 1 - (t - 1.1) / 0.8); red.material.opacity = 0.4 * f; black.material.opacity = 0.65 * f; }
+            vig.material.opacity = Math.min(1, t * 6) * (t < 1.3 ? 1 : Math.max(0, 1 - (t - 1.3) / 0.6)); vig.scale.setScalar(1 - Math.min(0.25, t * 0.2));   // krwawa winieta zaciska się
+            if (t > 1.9) { g.visible = false; t = -1; }
         },
         dispose() { camera.remove(g); }
     };
