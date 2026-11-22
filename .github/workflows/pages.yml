@@ -1,7 +1,11 @@
-# Opcjonalne wdrożenie zbudowanej paczki (Vite, katalog dist/) na GitHub Pages. Uruchamiane RĘCZNIE (Actions > pages > Run workflow).
-# Żeby zadziałało, w Settings > Pages ustaw Source na "GitHub Actions". Dopóki Pages publikuje gałąź main z katalogu głównego (obecnie), strona działa bez budowania i ten workflow nie jest potrzebny.
+# Wdrożenie zbudowanej paczki (Vite, katalog dist/) na GitHub Pages: automatycznie po każdym pushu na main (czyli po zmergowanym PR) i ręcznie (Actions > pages > Run workflow).
+# Wymaga Settings > Pages > Source = "GitHub Actions". Przed publikacją działają testy szybkie; jeśli któryś zawiedzie, nic się nie publikuje i strona zostaje w poprzedniej wersji.
+# Jak wrócić do publikowania gałęzi bez budowania: Settings > Pages > Source > "Deploy from a branch" (main, katalog główny).
 name: pages
-on: workflow_dispatch
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
   pages: write
@@ -20,7 +24,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm ci && npm run build
+      - name: Testy szybkie przed publikacją
+        run: cd tests && npm run fast
+      - name: Budowanie paczki
+        run: npm ci && npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

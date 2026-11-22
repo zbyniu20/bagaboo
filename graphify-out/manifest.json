@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795358355.8776367,
-    "seen": 1795358418.3748927,
-    "ast_hash": "0b325d9726d631f8585a87f25fd525ab",
+    "mtime": 1795362880.4560664,
+    "seen": 1795362896.7312338,
+    "ast_hash": "cba397b070f9532d61ef2b9160d45747",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795358343.6005986,
-    "seen": 1795358418.3746715,
-    "ast_hash": "94d0ddf0a035072a97ad441442c3335f",
+    "mtime": 1795362880.455506,
+    "seen": 1795362896.7309823,
+    "ast_hash": "5b923a80d7fbdefdcf0477189dbe2d8c",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10056,9 +10056,9 @@
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
-    "mtime": 1795358343.5997927,
-    "seen": 1795358418.3744977,
-    "ast_hash": "f542e12eea809eb04614be7a926251f0",
+    "mtime": 1795362880.4542146,
+    "seen": 1795362896.7308176,
+    "ast_hash": "6870ca10523a0403991b928773a8640b",
     "semantic_hash": ""
   },
   "package.json": {
