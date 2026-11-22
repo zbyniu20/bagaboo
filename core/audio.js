@@ -302,6 +302,37 @@ function thump(t0, vol) {
     env(g, t0, Math.max(0.001, vol), 0.012, 0.22); o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + 0.3);
 }
 // Bicie serca: intensywność 0..1 (im bliżej potwór, tym szybciej i głośniej). Wołać co klatkę.
+// ---------- LOBBY: nawiedzone odgłosy (wołane z ambience.js i lobbyplay.js; tylko gdy włączone wydarzenia lobby) ----------
+// Komunikat z głośnika: dwutonowy gong i trzy zniekształcone "sylaby" (piła przez formanty), na końcu trzask
+export function pa(pos, vol) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, dst = pos ? outAt(pos) : shaper, v = Math.max(0.05, Math.min(1, vol || 0.5));
+    for (const [f, d] of [[659, 0], [523, 0.5]]) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; env(g, t0 + d, 0.4 * v, 0.01, 1.3); o.connect(g); g.connect(dst); o.start(t0 + d); o.stop(t0 + d + 1.5); }
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; lp.connect(dst);
+    [[400, 1900], [350, 2100], [700, 1100]].forEach(([f1, f2], i) => {
+        const s = t0 + 1.3 + i * 0.45, o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(112 - i * 7, s); o.frequency.linearRampToValueAtTime(96 - i * 7, s + 0.34);
+        const g = ctx.createGain(); env(g, s, 0.5 * v, 0.03, 0.32);
+        for (const [f, q] of [[f1, 5], [f2, 7]]) { const b = ctx.createBiquadFilter(); b.type = 'bandpass'; b.frequency.value = f; b.Q.value = q; o.connect(b); b.connect(g); }
+        g.connect(lp); o.start(s); o.stop(s + 0.4);
+    });
+    const n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.5); const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1800; const ng = ctx.createGain(); env(ng, t0 + 2.75, 0.35 * v, 0.005, 0.4); n.connect(hp); hp.connect(ng); ng.connect(dst); n.start(t0 + 2.75);
+}
+// Przytłumiony śmiech dziecka z oddali: kilka krótkich "ha" o opadającej wysokości z drżeniem
+export function childLaugh(pos, vol) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, dst = pos ? outAt(pos) : shaper, v = Math.max(0.05, Math.min(1, vol || 0.4)), n = 4 + ((Math.random() * 2) | 0);
+    for (let i = 0; i < n; i++) {
+        const s = t0 + i * 0.2, f0 = 620 - i * 25 + Math.random() * 30, o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(f0, s); o.frequency.exponentialRampToValueAtTime(f0 * 0.72, s + 0.15);
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1300; bp.Q.value = 1.6; const g = ctx.createGain(); env(g, s, 0.35 * v * (1 - i * 0.08), 0.015, 0.14);
+        o.connect(bp); bp.connect(g); g.connect(dst); o.start(s); o.stop(s + 0.2);
+    }
+}
+// Trzask przepalającego się światła: seria krótkich impulsów szumu
+export function crackle(pos) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, dst = pos ? outAt(pos) : shaper, k = 6 + ((Math.random() * 5) | 0);
+    for (let i = 0; i < k; i++) { const s = t0 + Math.random() * 0.6, n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.06); const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2200 + Math.random() * 2000; const g = ctx.createGain(); env(g, s, 0.3 + Math.random() * 0.4, 0.001, 0.04); n.connect(hp); hp.connect(g); g.connect(dst); n.start(s); }
+}
 // Oddech potwora (głęboki wdech i wydech szumu przez filtr; vol 0..1, pos = {x,y,z}): słychać go przestrzennie, gdy potwór jest blisko
 export function breath(pos, vol) {
     if (!ctx) return;

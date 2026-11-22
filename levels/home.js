@@ -5,7 +5,10 @@
 // (tylko do odczytu: układ dostają przez core/leveldata.js i przyjmują go po walidacji, kupować i przestawiać mogą tylko u siebie).
 // Logika i zasady: core/homelogic.js (testy w Node), stan: core/homestore.js (SAVE.home, zakupy przez spendBones).
 // ==========================================
-import { THREE, L, tex, addCrispBlock } from '../core/engine.js';
+import { THREE, L, tex, addCrispBlock, camera } from '../core/engine.js';
+import * as SFX from '../core/audio.js';
+import { SETTINGS } from '../core/settings.js';
+import { HAUNT, nextIn, pickKind } from '../core/hauntlogic.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { Terminal, toast, AMBER, AMBER_DIM, GOLD, OK_COL, BAD_COL } from '../core/terminal.js';
@@ -37,7 +40,7 @@ const MODELS = {
     },
     couch: (g) => { box(g, 2.1, 0.45, 0.9, 0x4a3a6a, 0, 0.3, 0); box(g, 2.1, 0.55, 0.25, 0x3a2a5a, 0, 0.75, -0.35); box(g, 0.25, 0.65, 0.9, 0x3a2a5a, -1.0, 0.5, 0); box(g, 0.25, 0.65, 0.9, 0x3a2a5a, 1.0, 0.5, 0); },
     jukebox: (g) => { box(g, 0.95, 1.5, 0.6, 0x7a3a1a, 0, 0.75, 0); const arch = new THREE.Mesh(new THREE.CylinderGeometry(0.475, 0.475, 0.6, 16, 1, false, 0, Math.PI), mat(0x7a3a1a)); arch.rotation.z = Math.PI / 2; arch.rotation.y = Math.PI / 2; arch.position.y = 1.5; g.add(arch); box(g, 0.7, 0.8, 0.05, 0xffb040, 0, 1.0, 0.31, { emissive: 0xff8020, emissiveIntensity: 0.9 }); },
-    statue: (g) => { box(g, 0.9, 0.5, 0.9, 0x6a6a72, 0, 0.25, 0); const m = buildMannequin(T.mkRng(77)); m.group.scale.setScalar(1.15); m.group.position.y = 0.5; g.add(m.group); }
+    statue: (g) => { box(g, 0.9, 0.5, 0.9, 0x6a6a72, 0, 0.25, 0); const m = buildMannequin(T.mkRng(77)); m.group.scale.setScalar(1.15); m.group.position.y = 0.5; g.add(m.group); g.userData.statue = m; }   // userData: nawiedzenie obraca jego głowę
 };
 
 // ---------- ekran: sklep i miejsca (własny pokój) albo informacja (odwiedziny) ----------
@@ -97,12 +100,14 @@ export function build() {
     const data = LEVEL_DATA.current;   // układ od hosta (odwiedziny), już zwalidowany; null = własny pokój
     const ach = data ? data.ach : achievementCount();
     S = { visit: data || null, home: data ? { owned: [], slots: data.slots } : getHome(), dirty: true, furn: null, plaques: [], cups: null };
+    S.haunt = { t: nextIn([12, 25], Math.random), last: -1, flick: 0, write: -1, writeLen: 6, text: null, mesh: null, tipping: [] };
     S.plaques = plaques(ach, data ? Math.max(ach, ACHIEVEMENTS.length) : ACHIEVEMENTS.length, RECORD_DEFS, data ? {} : SAVE.records);
     UI.sel = null;
     addCrispBlock(0, -0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x6a5848, 0x101010, tex.floor, { rough: tex.floorRough });
     addCrispBlock(0, H + 0.5, 0, W * 2 + 2, 1, D * 2 + 2, 0x3a342e, 0x101010);
     for (const [x, z, w, d] of [[0, -D - 0.5, W * 2 + 2, 1], [0, D + 0.5, W * 2 + 2, 1], [-W - 0.5, 0, 1, D * 2], [W + 0.5, 0, 1, D * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0x9a8a78, 0x201a14, tex.wall);
-    for (const [x, z] of [[-3.5, -2], [3.5, 2]]) { const l = new THREE.PointLight(0xffe0b0, 36, 20, 1.6); l.position.set(x, H - 0.8, z); L.root.add(l); }
+    S.lights = [];
+    for (const [x, z] of [[-3.5, -2], [3.5, 2]]) { const l = new THREE.PointLight(0xffe0b0, 36, 20, 1.6); l.position.set(x, H - 0.8, z); L.root.add(l); S.lights.push({ l: l, base: 36 }); }
     const scr = panel.createMesh(3.6, 2.25); scr.position.set(0, 2.2, -D + 0.12); L.root.add(scr);
     const tr = trophies.createMesh(2.4, 2.0); tr.position.set(-W + 0.12, 2.3, 0); tr.rotation.y = Math.PI / 2; L.root.add(tr);
     // Półka z pucharami pod tablicą
@@ -110,16 +115,55 @@ export function build() {
     const cups = cupsFor(ach); S.cups = new THREE.Group(); L.root.add(S.cups);
     for (let i = 0; i < cups; i++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.08, 0.3, 12), mat(0xffd23a, { metalness: 0.8, roughness: 0.3 })); c.position.set(-W + 0.3, 0.8, -2.2 + i * 0.48); S.cups.add(c); }
     S.furn = new THREE.Group(); L.root.add(S.furn); rebuildFurniture();
+    { const c = T.makeCanvas(512, 160), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;   // napis na wschodniej ścianie (pojawia się przy nawiedzeniu)
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.0), new THREE.MeshBasicMaterial({ map: tx, transparent: true, opacity: 0, depthWrite: false, toneMapped: false })); mesh.position.set(W - 0.02, 2.3, 0); mesh.rotation.y = -Math.PI / 2; mesh.visible = false; L.root.add(mesh);
+      S.haunt.mesh = mesh; S.haunt.ctx = c.getContext('2d'); S.haunt.tex = tx; }
     buildDoor({ x: 0, z: D - 0.03, rotY: Math.PI, label: 'LOBBY', color: '#ffd27a', wood: 0x4a3a30, portal: { target: 'lobby', spawn: ARRIVAL_HOME, onEnter: () => toast('Back to the lobby') } });
     if (S.visit) toast('Visiting the room of ' + S.visit.owner, '#9fc8ff');
     panel.dirty = true; trophies.dirty = true;
 }
+// ---------- nawiedzenie pokoju (lokalne i tylko wizualne; wyłączane razem z Nocną Zmianą: SETTINGS.lobbyEvents) ----------
+const WRITINGS = ['GET OUT', 'WHO IS THAT', 'HE WATCHES', 'BEHIND YOU', 'NOT ALONE'], _hp = new THREE.Vector3();
+function furnitureNodes() { return S.furn ? S.furn.children : []; }
+function startHaunt() {
+    const h = S.haunt, node = furnitureNodes(), cups = S.cups ? S.cups.children : [], hasStatue = node.some(n => n.userData.statue);
+    camera.getWorldPosition(_hp);
+    const kind = HAUNT.HOME.KINDS[pickKind(HAUNT.HOME.KINDS.length, Math.random, h.last)]; h.last = HAUNT.HOME.KINDS.indexOf(kind);
+    if (kind === 'shift' && node.length) { const n = node[(Math.random() * node.length) | 0]; n.rotation.y += (Math.random() < 0.5 ? -1 : 1) * (0.3 + Math.random() * 0.3); SFX.creak(0.12, { x: n.position.x, y: 0.8, z: n.position.z }); return; }
+    if (kind === 'cups' && cups.length) { const c = cups[(Math.random() * cups.length) | 0]; if (!h.tipping.includes(c)) h.tipping.push(c); SFX.bang && SFX.bang({ x: c.position.x, y: 0.8, z: c.position.z }); return; }
+    if (kind === 'statue' && hasStatue) { const m = node.find(n => n.userData.statue).userData.statue; m.head.rotation.z = (Math.random() - 0.5) * 1.4; m.head.rotation.x = (Math.random() - 0.3) * 0.8; SFX.whisper({ x: m.group.parent.position.x, y: 1.6, z: m.group.parent.position.z }); return; }
+    if (kind === 'writing') {
+        const x = h.ctx, text = WRITINGS[(Math.random() * WRITINGS.length) | 0]; x.clearRect(0, 0, 512, 160); x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = 'bold 84px "Courier New", monospace'; x.fillStyle = 'rgba(150,10,14,0.95)'; x.fillText(text, 256, 70);
+        for (let i = 0; i < 9; i++) { x.fillStyle = 'rgba(140,8,12,0.9)'; x.fillRect(40 + Math.random() * 430, 90, 3 + Math.random() * 3, 14 + Math.random() * 50); }
+        h.tex.needsUpdate = true; h.write = 0; SFX.whisper({ x: W, y: 2, z: 0 }); return;
+    }
+    h.flick = 1.1; SFX.whisper();   // 'lights' (i zapasowo każde zdarzenie bez celu): światła mrugają
+}
+function updateHaunt(dt) {
+    const h = S.haunt; if (!h) return;
+    if (SETTINGS.lobbyEvents !== false) { h.t -= dt; if (h.t <= 0) { h.t = nextIn(HAUNT.HOME.EVERY, Math.random); startHaunt(); } }
+    if (h.flick > 0) { h.flick -= dt; for (const li of S.lights) li.l.intensity = li.base * (h.flick > 0 && Math.random() < 0.55 ? 0.08 : 1); if (h.flick <= 0) for (const li of S.lights) li.l.intensity = li.base; }
+    if (h.write >= 0) {   // napis narasta, trzyma, znika
+        h.write += dt; const a = h.write < 1 ? h.write : (h.write > h.writeLen - 1.2 ? Math.max(0, (h.writeLen - h.write) / 1.2) : 1); h.mesh.material.opacity = a; h.mesh.visible = a > 0.01;
+        if (h.write > h.writeLen) { h.write = -1; h.mesh.visible = false; }
+    }
+    for (let i = h.tipping.length - 1; i >= 0; i--) { const c = h.tipping[i]; c.rotation.z = Math.min(1.45, c.rotation.z + dt * 2.2); if (c.rotation.z >= 1.45) c.position.y = Math.max(0.55, c.position.y - dt * 0.5); if (c.rotation.z >= 1.45 && c.position.y <= 0.55) h.tipping.splice(i, 1); }   // puchar przewraca się na półce
+    // posąg (gdy stoi w pokoju) patrzy na gracza, gdy ten na niego nie patrzy
+    if (SETTINGS.lobbyEvents !== false) for (const n of furnitureNodes()) if (n.userData.statue) {
+        const m = n.userData.statue; camera.getWorldPosition(_hp); const dx = _hp.x - n.position.x, dz = _hp.z - n.position.z, d = Math.hypot(dx, dz) || 1;
+        camera.getWorldDirection(_hv); const seen = (-(_hv.x * dx + _hv.z * dz) / d) > 0.5 && d < 8;
+        if (!seen) { let hd = Math.atan2(dx, dz) - n.rotation.y - m.group.rotation.y; hd = Math.atan2(Math.sin(hd), Math.cos(hd)); hd = Math.max(-2.2, Math.min(2.2, hd)); m.head.rotation.y += Math.max(-2 * dt, Math.min(2 * dt, hd - m.head.rotation.y)); }
+    }
+}
+const _hv = new THREE.Vector3();
+export function debugHomeHaunt(kind) { if (!S || !S.haunt) return null; if (kind !== undefined) { S.haunt.last = -1; const k = HAUNT.HOME.KINDS; const old = Math.random; Math.random = () => (k.indexOf(kind) + 0.5) / k.length; try { startHaunt(); } finally { Math.random = old; } } return { flick: S.haunt.flick, write: S.haunt.write, tipping: S.haunt.tipping.length, lights: S.lights.map(l => l.l.intensity) }; }
 export function update(dt, t, ctx) {
     if (!S) return;
     if (S.dirty) { S.dirty = false; panel.dirty = true; trophies.dirty = true; }
+    updateHaunt(dt);
     void ctx; void t;
 }
-export function dispose() { S = null; }
+export function dispose() { if (S && S.lights) for (const li of S.lights) li.l.intensity = li.base; S = null; }
 // Dla testów w przeglądarce: kliknięcie przycisku po identyfikatorze i odczyt stanu
 export function _press(id) { if (!S) return false; panel.redraw(); const b = panel.buttons.find(x => x.id === id); if (!b) return false; b.action(); panel.redraw(); return true; }
 export function debug() { return S ? { visiting: !!S.visit, owner: S.visit ? S.visit.owner : null, owned: S.home.owned.slice(), slots: S.home.slots.slice(), wallet: SAVE.wallet, furniture: S.furn ? S.furn.children.length : -1, cups: S.cups ? S.cups.children.length : -1, plaques: S.plaques.slice(), msg: UI.msg, ok: UI.ok, sel: UI.sel } : null; }

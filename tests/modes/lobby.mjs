@@ -79,3 +79,29 @@ check(T('layout: the hoop and the target sit on the west wall inside the lobby, 
     check(T('arcade: the extra balls have fixed ids, so guests build the same objects as the host'), (lg.match(/mgball' \+ \(i \+ 1\)/g) || []).length === 1 && /\[-9, 1, 8\.4\], \[-9, 1, 9\.6\], \[-9, 1, 10\.8\]/.test(lg));
 }
 
+
+
+// ---------- nawiedzone lobby i Mój Pokój (core/hauntlogic.js, lobby.js, graffiti.js, pet.js, petmodel.js, home.js, audio.js, ambience.js) ----------
+const HL = await import(pathToFileURL(path.join(ROOT, 'core/hauntlogic.js')).href);
+const rngH = (seed) => { let s = seed >>> 0; return () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) >>> 0) / 4294967296); };
+check('haunt: a mannequin step goes one step toward the player and only within range, drift, the hall and clear of other mannequins', (() => {
+    const home = { x: 0, z: 0 }, pl = { x: 8, z: 0 }, s = HL.manStep({ x: 0, z: 0 }, home, pl, []);
+    return s && Math.abs(s.x - HL.HAUNT.MAN.STEP) < 1e-9 && s.z === 0
+        && HL.manStep({ x: 0, z: 0 }, home, { x: 1.5, z: 0 }, []) === null && HL.manStep({ x: 0, z: 0 }, home, { x: 40, z: 0 }, []) === null
+        && HL.manStep({ x: 3.0, z: 0 }, home, { x: 12, z: 0 }, []) === null && HL.manStep({ x: 12.8, z: 0 }, { x: 12.8, z: 0 }, { x: 20, z: 0 }, []) === null && HL.manStep({ x: 12.8, z: 0 }, { x: 12.8, z: 0 }, { x: 12.8, z: 9 }, []) !== null
+        && HL.manStep({ x: 0, z: 0 }, home, pl, [{ x: 1.5, z: 0 }]) === null && HL.manStep({ x: 0, z: 0 }, home, pl, [{ x: 0, z: 0 }]) !== null;
+})());
+check('haunt: bad input never gives a step, a pose or a fear', [null, undefined, { x: NaN, z: 0 }, 'x'].every(v => HL.manStep(v, { x: 0, z: 0 }, { x: 5, z: 0 }, []) === null && HL.manStep({ x: 0, z: 0 }, v, { x: 5, z: 0 }, []) === null && HL.petFear(v, { x: 0, z: 0 }) === 0 && HL.hideSpot(v, { x: 0, z: 0 }, 1) === null));
+check('haunt: a new pose stays within the ranges used when mannequins are built, and the head is sometimes extremely tilted', (() => {
+    const R = rngH(5); let extreme = 0;
+    for (let i = 0; i < 500; i++) { const p = HL.poseVariant(R); if (Math.abs(p.leanZ) > 0.11 + 1e-9 || Math.abs(p.leanX) > 0.1 + 1e-9 || p.headX < -0.21 - 1e-9 || p.headX > 0.49 + 1e-9 || Math.abs(p.headZ) > 1.6 + 1e-9) return false; if (Math.abs(p.headZ) > 0.5) extreme++; }
+    return extreme > 40 && extreme < 200;
+})());
+check('haunt: pickKind never repeats the last event and covers all of them', (() => { const R = rngH(9), seen = new Set(); let last = -1; for (let i = 0; i < 400; i++) { const k = HL.pickKind(5, R, last); if (k === last || k < 0 || k > 4) return false; seen.add(k); last = k; } return seen.size === 5 && HL.pickKind(1, R, 0) === 0 && HL.pickKind(0, R, -1) === -1; })());
+check('haunt: the pet fear is 0 without a monster or beyond 14 m, 1 within 4 m, and grows as the monster gets closer', HL.petFear(null, { x: 0, z: 0 }) === 0 && HL.petFear({ x: 15, z: 0 }, { x: 0, z: 0 }) === 0 && HL.petFear({ x: 3, z: 0 }, { x: 0, z: 0 }) === 1 && HL.petFear({ x: 8, z: 0 }, { x: 0, z: 0 }) > HL.petFear({ x: 10, z: 0 }, { x: 0, z: 0 }) && HL.petFear({ x: 8, z: 0 }, { x: 0, z: 0 }) > 0 && HL.petFear({ x: 8, z: 0 }, { x: 0, z: 0 }) < 1);
+check('haunt: the pet hides on the line monster -> player, behind the player', (() => { const s = HL.hideSpot({ x: 0, z: 0 }, { x: 4, z: 0 }, 0.9); return Math.abs(s.x - 4.9) < 1e-9 && Math.abs(s.z) < 1e-9 && HL.hideSpot({ x: 2, z: 2 }, { x: 2, z: 2 }, 1) !== null; })());
+check('haunt: the mural drawing fades in over 1.2 s, holds, flickers away at the end and is invisible outside its time', HL.grafAlpha(0, 8) === 0 && HL.grafAlpha(0.6, 8) === 0.5 && HL.grafAlpha(3, 8) === 1 && HL.grafAlpha(-1, 8) === 0 && HL.grafAlpha(9, 8) === 0 && HL.grafAlpha(NaN, 8) === 0 && (() => { let lo = 1; for (let t = 6.6; t < 8; t += 0.01) lo = Math.min(lo, HL.grafAlpha(t, 8)); return lo < 0.3; })());
+check('haunt: the schedules are sane (mural every 2.5-5 min, room every 18-40 s, mannequins every 9-18 s) and fixed lists have the right kinds', HL.HAUNT.GRAF.EVERY[0] >= 120 && HL.HAUNT.HOME.EVERY[0] >= 15 && HL.HAUNT.MAN.EVERY[0] >= 8 && HL.HAUNT.GRAF.KINDS.length === 6 && HL.HAUNT.HOME.KINDS.join() === 'shift,lights,writing,cups,statue' && HL.nextIn([10, 20], () => 0.5) === 15);
+const srcOf = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8'), LOB = srcOf('levels/lobby.js'), GRF = srcOf('core/graffiti.js'), PET = srcOf('core/pet.js'), HOM = srcOf('levels/home.js'), AMB = srcOf('core/ambience.js'), REG = srcOf('core/registry.js'), PLY = srcOf('core/lobbyplay.js'), PMD = srcOf('core/petmodel.js'), PAU = srcOf('core/pause.js');
+check('haunt: every effect is gated by the lobby events option (the Haunt button in the pause menu)', /SETTINGS\.lobbyEvents !== false\) \{ m\.hauntT/.test(LOB) && /o\.enabled !== false && o\.night === 'calm'/.test(GRF) && /SETTINGS\.lobbyEvents !== false\) \{ h\.t -= dt/.test(HOM) && /r\.t === 'pa' \|\| r\.t === 'laugh'\) && SETTINGS\.lobbyEvents === false/.test(AMB) && /SETTINGS\.lobbyEvents !== false\) \{[^\n]*\n\s*S\.crackT/.test(PLY) && /'Haunt on' : 'Haunt off'/.test(PAU));
+check('haunt: the mural overlay is local only (no network call in its code), the pet reads the night from the shared state and the lobby sounds are registered', !/N\.send[\s\S]{0,40}haunt/i.test(GRF) && /HAUNT_STATE\.monster/.test(PET) && /HAUNT_STATE\.monster = S\.night\.ph === 'night'/.test(PLY) && /fear: p\.fear/.test(PET) && /expr === 'scared'/.test(PMD) && /t: 'pa'/.test(REG) && /t: 'laugh'/.test(REG));

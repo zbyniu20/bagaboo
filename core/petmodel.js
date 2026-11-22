@@ -76,6 +76,7 @@ function drawScaryFace(g, expr, look) {
     else if (expr === 'eat') { eye(EYES[0], 0.9); eye(EYES[1], 0.9); brows(0); mouth(26, 64); g.fillStyle = '#7a1424'; g.beginPath(); g.ellipse(128, 112, 18, 9, 0, 0, Math.PI); g.fill(); drip(100, 100, 18); }
     else if (expr === 'sleep') { closed(); g.strokeStyle = '#140309'; g.lineWidth = 3; for (const [dx, dy] of [[-8, -8], [8, -8], [-8, 8], [8, 8]]) { g.beginPath(); g.moveTo(EYES[0], EYE_Y + 4); g.lineTo(EYES[0] + dx, EYE_Y + 4 + dy); g.stroke(); } brows(4); mouth(0, 52); }
     else if (expr === 'sad') { eye(EYES[0], 0.85); eye(EYES[1], 0.85); g.strokeStyle = '#140309'; g.lineWidth = 7; for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(128 + sx * 64, EYE_Y - 20); g.lineTo(128 + sx * 20, EYE_Y - 36); g.stroke(); } drip(EYES[0] - 4, EYE_Y + 22, 24); mouth(-6, 40); }
+    else if (expr === 'scared') { eye(EYES[0], 1.25); eye(EYES[1], 1.25); g.strokeStyle = '#140309'; g.lineWidth = 7; for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(128 + sx * 64, EYE_Y - 24); g.lineTo(128 + sx * 20, EYE_Y - 44); g.stroke(); } g.fillStyle = '#9fd8ff'; g.beginPath(); g.moveTo(206, 38); g.quadraticCurveTo(218, 58, 206, 64); g.quadraticCurveTo(194, 58, 206, 38); g.fill(); mouth(-4, 34); }
     else if (expr === 'hungry') { eye(EYES[0], 1.12); eye(EYES[1], 1.12); brows(-2); mouth(20, 56); drip(112, 106, 22); drip(150, 106, 12); }
     else { eye(EYES[0], 1); eye(EYES[1], 1); brows(0); mouth(6, 66); }
     scar(); g.restore();
@@ -232,8 +233,10 @@ export function createPetModel(look, opts) {
         shadow.scale.setScalar(sc * b * (1 - hop * 1.4)); shadow.material.opacity = 0.3 * (1 - hop * 2);
         // ogon, uszy, łapki
         tailWag = st.sleeping ? 0.05 : (st.sad ? 0.12 : (0.35 + 0.45 * (st.petted || 0)));
-        tailP.rotation.y = Math.sin(t * (st.petted > 0 ? 16 : 4.2)) * tailWag; tailP.rotation.x = st.sad ? 0.5 : (st.sleeping ? 0.3 : -0.1 + Math.sin(t * 2) * 0.04);
-        const earBase = st.sad || st.sleeping ? 0.95 : (st.petted > 0 ? 0.15 : 0.38), wig = st.sleeping ? 0 : Math.sin(t * 3.1 + 1) * 0.06 + (moving ? Math.sin(phase) * 0.14 : 0);
+        tailP.rotation.y = Math.sin(t * (st.petted > 0 ? 16 : 4.2)) * tailWag; tailP.rotation.x = st.sad || st.fear > 0.3 ? 0.5 : (st.sleeping ? 0.3 : -0.1 + Math.sin(t * 2) * 0.04);
+        const fear = st.fear || 0;   // potwór Nocnej Zmiany blisko: drżenie, uszy płasko, ogon pod siebie
+        if (fear > 0.05) { root.rotation.z = Math.sin(t * 38) * 0.05 * fear; root.rotation.x = Math.sin(t * 31 + 1) * 0.035 * fear; } else if (root.rotation.z !== 0) { root.rotation.z = 0; root.rotation.x = 0; }
+        const earBase = st.sad || st.sleeping || fear > 0.3 ? 0.95 : (st.petted > 0 ? 0.15 : 0.38), wig = st.sleeping ? 0 : Math.sin(t * 3.1 + 1) * 0.06 + (moving ? Math.sin(phase) * 0.14 : 0);
         earL.rotation.z = earBase + wig; earR.rotation.z = -(earBase + wig);
         const step = moving ? Math.sin(phase) : 0, fy = st.sitting || st.sleeping ? -0.235 : -0.245;
         footL.position.set(-0.1, fy + Math.max(0, step) * 0.05, st.sitting ? 0.12 : 0.07); footR.position.set(0.1, fy + Math.max(0, -step) * 0.05, st.sitting ? 0.12 : 0.07);
@@ -245,7 +248,7 @@ export function createPetModel(look, opts) {
         sparks.forEach((sp, i) => { const a = t * (1.2 + i * 0.4) + i * 2.1; sp.position.set(Math.cos(a) * 0.36, 0.1 + Math.sin(a * 1.7) * 0.25, Math.sin(a) * 0.36); sp.material.opacity = 0.35 + 0.65 * Math.abs(Math.sin(t * 3 + i * 1.3)); });
         // mina
         blinkIn -= dt; if (blinkIn <= 0) { blinkT = 0.13; blinkIn = 2 + Math.random() * 3.5; } if (blinkT > 0) blinkT -= dt;
-        setExpr(st.sleeping ? 'sleep' : (st.eating > 0 ? 'eat' : (st.petted > 0 ? 'happy' : (blinkT > 0 ? 'blink' : (st.hungry ? 'hungry' : (st.sad ? 'sad' : 'open'))))));
+        setExpr(fear > 0.3 ? 'scared' : st.sleeping ? 'sleep' : (st.eating > 0 ? 'eat' : (st.petted > 0 ? 'happy' : (blinkT > 0 ? 'blink' : (st.hungry ? 'hungry' : (st.sad ? 'sad' : 'open'))))));
         if (st.sleeping) { zeeIn -= dt; if (zeeIn <= 0) { zeeIn = 1.1; emit('zee', 1); } }
         tag.visible = born >= 1 && st.tag !== false && !GAMES_CALM.on;   // BagaBoo Games: bez nametagów, także nad stworkami
     }

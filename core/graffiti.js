@@ -12,7 +12,8 @@
 //   na polach przed ścianą (głosy z pozycji głów liczy host, własne pole się nie liczy), nagroda dla zwycięzcy, plakat do Galerii. Potem wraca ściana sprzed konkursu.
 //   Wyłączany razem z wydarzeniami lobby (SETTINGS.lobbyEvents) i nie startuje podczas Nocnej Zmiany.
 // ==========================================
-import { THREE, L } from './engine.js';
+import { THREE, L, camera } from './engine.js';
+import { HAUNT, nextIn, pickKind, grafAlpha } from './hauntlogic.js';
 import * as T from './textures.js';
 import { Terminal, terminals, pointerHit, toast, wrapText, AMBER, AMBER_DIM, GOLD } from './terminal.js';
 import * as N from './network.js';
@@ -45,6 +46,7 @@ export function buildGraffiti() {
     load();
     const t = new Terminal(draw, 1024, 640), gt = new Terminal(drawGallery, 640, 560); G.term = t; G.gterm = gt;
     G.group = mount(t, 6.0, 3.75, POS, 6.2, 3.95);
+    buildHaunt();
     G.ggroup = mount(gt, 3.2, 2.8, GPOS, 3.4, 3.0);
     L.reserved.push([POS.x - 1.3, POS.z, 3.4], [GPOS.x - 1.3, GPOS.z, 2.2]);
     buildPads();
@@ -55,6 +57,58 @@ function mount(term, w, h, pos, fw, fh) {
     const screen = term.createMesh(w, h); screen.position.z = 0.055; g.add(screen);
     return g;
 }
+// ---------- nawiedzony mural: nie nasz rysunek na kilka sekund (tylko wizualny i lokalny, nic nie idzie przez sieć ani do zapisu ściany) ----------
+function buildHaunt() {
+    const c = T.makeCanvas(640, 320), tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(5.625, 2.8125), new THREE.MeshBasicMaterial({ map: tx, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+    mesh.position.set(0, 0.14, 0.062); mesh.renderOrder = 3; mesh.visible = false; G.group.add(mesh);
+    G.haunt = { mesh: mesh, ctx: c.getContext('2d'), tex: tx, t: -1, len: 8, kind: -1, next: nextIn([40, 90], Math.random) };
+}
+function drawHaunt(kind) {
+    const x = G.haunt.ctx, W = 640, H = 320, R = Math.random, red = (a) => 'rgba(' + (120 + ((R() * 60) | 0)) + ',8,12,' + a + ')';
+    x.clearRect(0, 0, W, H); x.lineCap = 'round'; x.lineJoin = 'round';
+    const drip = (px, py, len) => { x.fillStyle = red(0.9); x.fillRect(px - 2, py, 4, len); x.beginPath(); x.arc(px, py + len, 4.5, 0, 7); x.fill(); };
+    if (kind === 'eye') {   // wielkie oko z żyłkami i szczeliną źrenicy
+        x.fillStyle = 'rgba(235,225,205,0.95)'; x.beginPath(); x.ellipse(W / 2, H / 2, 210, 105, 0, 0, 7); x.fill();
+        x.strokeStyle = red(0.8); x.lineWidth = 2.5; for (let i = 0; i < 34; i++) { const a = R() * 6.283, r0 = 90 + R() * 30; x.beginPath(); x.moveTo(W / 2 + Math.cos(a) * 200, H / 2 + Math.sin(a) * 95); x.lineTo(W / 2 + Math.cos(a) * r0, H / 2 + Math.sin(a) * r0 * 0.5); x.stroke(); }
+        x.fillStyle = '#b01018'; x.beginPath(); x.arc(W / 2, H / 2, 70, 0, 7); x.fill(); x.fillStyle = '#0a0000'; x.beginPath(); x.ellipse(W / 2, H / 2, 9, 62, 0, 0, 7); x.fill();
+        x.strokeStyle = '#1a0408'; x.lineWidth = 7; x.beginPath(); x.ellipse(W / 2, H / 2, 210, 105, 0, 0, 7); x.stroke();
+    } else if (kind === 'see') {   // napis z zaciekami
+        x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = 'bold 120px "Courier New", monospace'; x.fillStyle = red(0.95); x.fillText('I SEE YOU', W / 2, H / 2 - 10);
+        for (let i = 0; i < 12; i++) drip(70 + R() * 500, H / 2 + 40, 15 + R() * 70);
+    } else if (kind === 'tally') {   // kreski zliczające
+        x.strokeStyle = red(0.9); x.lineWidth = 5;
+        for (let g = 0; g < 12; g++) { const bx = 40 + (g % 6) * 100, by = 50 + Math.floor(g / 6) * 140; for (let i = 0; i < 4; i++) { x.beginPath(); x.moveTo(bx + i * 14, by); x.lineTo(bx + i * 14 + (R() - 0.5) * 6, by + 90); x.stroke(); } x.beginPath(); x.moveTo(bx - 8, by + 70); x.lineTo(bx + 58, by + 15); x.stroke(); }
+    } else if (kind === 'hands') {   // odciski dłoni
+        for (let h = 0; h < 14; h++) { x.save(); x.translate(50 + R() * 540, 60 + R() * 200); x.rotate((R() - 0.5) * 1.2); x.scale(0.7 + R() * 0.5, 0.7 + R() * 0.5); x.fillStyle = red(0.85); x.beginPath(); x.ellipse(0, 12, 18, 22, 0, 0, 7); x.fill(); for (let f = 0; f < 5; f++) { const a = -0.9 + f * 0.45; x.beginPath(); x.ellipse(Math.sin(a) * 22, -14 - Math.cos(a) * 14, 4.5, 14, a, 0, 7); x.fill(); } x.restore(); }
+    } else if (kind === 'face') {   // krzywa twarz z szerokim uśmiechem
+        x.strokeStyle = red(0.95); x.lineWidth = 9; x.beginPath(); x.ellipse(W / 2, H / 2, 130, 140, 0, 0, 7); x.stroke();
+        x.beginPath(); x.moveTo(W / 2 - 70, H / 2 - 50); x.lineTo(W / 2 - 30, H / 2 - 20); x.moveTo(W / 2 - 30, H / 2 - 50); x.lineTo(W / 2 - 70, H / 2 - 20); x.moveTo(W / 2 + 30, H / 2 - 50); x.lineTo(W / 2 + 70, H / 2 - 20); x.moveTo(W / 2 + 70, H / 2 - 50); x.lineTo(W / 2 + 30, H / 2 - 20); x.stroke();
+        x.beginPath(); x.moveTo(W / 2 - 90, H / 2 + 30); for (let i = 0; i <= 12; i++) x.lineTo(W / 2 - 90 + i * 15, H / 2 + 30 + Math.sin(i * 1.4) * 14 + 28); x.stroke();
+        for (let i = 0; i < 6; i++) drip(W / 2 - 60 + i * 24, H / 2 + 75, 20 + R() * 40);
+    } else {   // spirala
+        x.strokeStyle = red(0.9); x.lineWidth = 7; x.beginPath();
+        for (let a = 0; a < 38; a += 0.1) { const r = 6 + a * 4.2, px = W / 2 + Math.cos(a) * r * 1.35, py = H / 2 + Math.sin(a) * r * 0.8; if (a === 0) x.moveTo(px, py); else x.lineTo(px, py); }
+        x.stroke();
+    }
+    G.haunt.tex.needsUpdate = true;
+}
+function tickHaunt(dt, o) {
+    const h = G.haunt; if (!h) return;
+    if (h.t >= 0) {   // trwa pokaz
+        h.t += dt; const a = grafAlpha(h.t, h.len); h.mesh.material.opacity = a; h.mesh.visible = a > 0.01;
+        if (h.t > h.len) { h.t = -1; h.mesh.visible = false; h.next = nextIn(HAUNT.GRAF.EVERY, Math.random); }
+        return;
+    }
+    h.next -= dt; if (h.next > 0) return;
+    camera.getWorldPosition(_hv);
+    const ok = o.enabled !== false && o.night === 'calm' && G.contest.ph === 'idle' && !G.cell && Math.hypot(_hv.x - POS.x, _hv.z - POS.z) < HAUNT.GRAF.MAX_PLAYER_DIST;
+    if (!ok) { h.next = 10; return; }
+    h.kind = pickKind(HAUNT.GRAF.KINDS.length, Math.random, h.kind); h.len = nextIn(HAUNT.GRAF.LEN, Math.random); h.t = 0; drawHaunt(HAUNT.GRAF.KINDS[h.kind]);
+    SFX.whisper({ x: POS.x - 1, y: POS.y, z: POS.z });
+}
+const _hv = new THREE.Vector3();
+export function debugGrafHaunt(kind, len) { if (!G || !G.haunt) return null; if (kind !== undefined) { G.haunt.kind = kind; G.haunt.len = len || 8; G.haunt.t = 0; drawHaunt(HAUNT.GRAF.KINDS[kind]); } return { t: G.haunt.t, alpha: G.haunt.mesh.material.opacity, visible: G.haunt.mesh.visible, kind: G.haunt.kind }; }
 export function disposeGraffiti() {
     if (!G) return;
     if (G.saved) { G.wall = G.saved; G.saveDirty = true; }   // wyjście w trakcie konkursu: zapisujemy ścianę sprzed konkursu
@@ -383,7 +437,7 @@ export function updateGraffiti(dt, auth, o) {
     const k = G.contest, sec = k.ph === 'idle' ? -1 : Math.ceil(k.t);
     if (sec !== G.sec) { G.sec = sec; t.dirty = true; }
     if (N.NET.mode === 'guest' && k.ph !== 'idle' && G.clock - G.lastGc > 3) { G.contest = newContest(false); G.term.dirty = true; }   // host zniknął w trakcie konkursu
-    updatePads();
+    updatePads(); tickHaunt(dt, o);
     if (!auth || N.NET.mode === 'guest') return;
     contestHost(dt, o);
     G.dayT -= dt;

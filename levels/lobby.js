@@ -12,6 +12,9 @@ import { computer, shop, board, dailyBoard } from '../core/ui.js';
 import { machine, attachGorillaMachine, detachGorillaMachine, updateGorillaMachine } from '../core/gorillamachine.js';
 import { track } from '../core/economy.js';
 import { buildLobbyPlay, updateLobbyPlay, disposeLobbyPlay, lobbyDim, debugLobbyPlay } from '../core/lobbyplay.js';
+import { SETTINGS } from '../core/settings.js';
+import * as SFX from '../core/audio.js';
+import { HAUNT, nextIn, manStep, poseVariant } from '../core/hauntlogic.js';
 import { buildPetNest, updatePetNest, disposePetNest } from '../core/petnest.js';   // gniazdo Stworka: jajo, wykluwanie i panel opieki
 
 export const info = { id: 'lobby', name: 'Lobby', spawn: [0, 2, 0] };
@@ -481,7 +484,7 @@ function buildMannequin(R) {
     head.rotation.z = extreme ? (R() < 0.5 ? -1 : 1) * (1.0 + R() * 0.6) : (R() - 0.5) * 0.9;
     head.rotation.x = (R() - 0.3) * 0.7;
     lean.rotation.z = (R() - 0.5) * 0.22; lean.rotation.x = (R() - 0.5) * 0.2;
-    return { group: g, head: head };
+    return { group: g, head: head, lean: lean };
 }
 function buildMannequins() {
     const zones = [[0, 0, 3], [0, 5, 3.2], [-7, -7, 7.5], [8, 3, 7], [2, -2, 1.8], [-2, -2, 1.8]].concat(L.reserved), placed = [];
@@ -495,11 +498,35 @@ function buildMannequins() {
         const m = buildMannequin(Math.random);
         m.group.position.set(x, 0, z); m.group.rotation.y = Math.random() * 6.283; L.root.add(m.group);
         addStaticBody(x, 0.95, z, new CANNON.Box(new CANNON.Vec3(0.26, 0.95, 0.26)), m.group, false);
+        m.ob = L.obstacles[L.obstacles.length - 1]; m.home = { x: x, z: z }; m.hauntT = nextIn(HAUNT.MAN.EVERY, Math.random);   // nawiedzenie: zmiana pozy i ciche kroki, gdy nie patrzysz
         addBlobAO(x, z, 1.5);
         fx.mannequins.push(m);
     }
 }
 const _cp = new THREE.Vector3(), _cd = new THREE.Vector3(), _tm = new THREE.Vector3();
+// Nawiedzenie manekina (tylko gdy nikt na niego nie patrzy): albo nowa poza, albo cichy krok w stronę gracza (ruch zawiera kolizję i fizykę, dryf od miejsca startu ograniczony)
+function hauntMannequin(m) {
+    m.hauntT = nextIn(HAUNT.MAN.EVERY, Math.random);
+    const pos = m.group.position;
+    if (Math.random() < HAUNT.MAN.STEP_CHANCE) {
+        const n = manStep(pos, m.home, { x: _cp.x, z: _cp.z }, fx.mannequins.map(o => o.group.position));
+        if (n) {
+            const dx = n.x - pos.x, dz = n.z - pos.z; pos.x = n.x; pos.z = n.z;
+            if (m.ob) { m.ob.body.position.x += dx; m.ob.body.position.z += dz; m.ob.body.aabbNeedsUpdate = true; for (const k of ['min', 'max']) { m.ob.box3[k].x += dx; m.ob.box3[k].z += dz; } }
+            SFX.creak(0.06, { x: pos.x, y: 1, z: pos.z }); return;
+        }
+    }
+    const p = poseVariant(Math.random);
+    m.lean.rotation.z = p.leanZ; m.lean.rotation.x = p.leanX; m.head.rotation.z = p.headZ; m.head.rotation.x = p.headX;
+    SFX.creak(0.05, { x: pos.x, y: 1.2, z: pos.z });
+}
+// Hak dla testu w przeglądarce (tests/haunt.mjs): wymusza nawiedzenie manekina i podaje jego stan (step = true: cichy krok, false: nowa poza)
+export function debugHauntMannequin(i, step) {
+    const m = fx.mannequins[i]; if (!m) return null; camera.getWorldPosition(_cp);
+    const before = { x: m.group.position.x, z: m.group.position.z, box: m.ob.box3.min.x, body: m.ob.body.position.x, head: m.head.rotation.z }, old = Math.random;
+    Math.random = () => step ? 0 : 0.99; try { hauntMannequin(m); } finally { Math.random = old; }
+    return { count: fx.mannequins.length, before: before, after: { x: m.group.position.x, z: m.group.position.z, box: m.ob.box3.min.x, body: m.ob.body.position.x, head: m.head.rotation.z }, home: m.home };
+}
 function updateMannequins(dt) {
     camera.getWorldPosition(_cp); camera.getWorldDirection(_cd);
     for (const m of fx.mannequins) {
@@ -508,6 +535,7 @@ function updateMannequins(dt) {
         if (dist < 0.001 || dist > 16) continue;
         _tm.multiplyScalar(1 / dist);
         if (_cd.dot(_tm) > 0.42) continue;   // widzisz go: stoi nieruchomo
+        if (SETTINGS.lobbyEvents !== false) { m.hauntT -= dt; if (m.hauntT <= 0) hauntMannequin(m); }
         const target = Math.atan2(_cp.x - m.group.position.x, _cp.z - m.group.position.z);
         let d = target - m.group.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d));
         const rate = (dist < 5 ? 1.6 : 0.7) * dt;

@@ -12,7 +12,7 @@
 //   rec (nazwa rekordu w tabeli; brak = bez rekordu), score (rekord to wynik, nie czas), diff (ma trudność Easy/Normal/Nightmare).
 // ==========================================
 export const LEVEL_DEFS = [
-    { id: 'lobby', name: 'Lobby', kind: 'hub', light: '@mode', extras: ['./levels/lobby-door.js'], theme: 'calm', room: { sec: 1.5, wet: 0.12 } },
+    { id: 'lobby', name: 'Lobby', kind: 'hub', light: '@mode', extras: ['./levels/lobby-door.js'], theme: 'calm', room: { sec: 1.5, wet: 0.12 }, ambience: { rand: [{ t: 'pa', e: [150, 300], d: [8, 15], v: 0.22 }, { t: 'laugh', e: [210, 420], d: [10, 18], v: 0.2 }, { t: 'creak', e: [25, 50], d: [4, 10], v: 0.1 }] } },
     { id: 'levels', name: 'Levels', kind: 'hub', light: 'levels', theme: 'dread', room: { sec: 1.6, wet: 0.16 }, ambience: { rand: [{ t: 'creak', e: [12, 24], d: [5, 12], v: 0.12 }] } },
     { id: 'games', name: 'BagaBoo Games', kind: 'hub', light: 'arcade', theme: 'arcade', room: { sec: 1.8, wet: 0.13 }, ambience: { rand: [{ t: 'blip', e: [0.5, 1.8], d: [4, 22], v: 0.16 }] } },
     { id: 'staff', name: 'Staff room', kind: 'hub', light: 'staff', theme: 'calm' },

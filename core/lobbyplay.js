@@ -13,6 +13,7 @@ import { THREE, L, tex, applyLighting } from './engine.js';
 import * as T from './textures.js';
 import { LP, LIGHT_PRESETS } from './config.js';
 import { SETTINGS } from './settings.js';
+import { HAUNT_STATE } from './hauntlogic.js';
 import { levelReward } from './economy.js';
 import { toast } from './terminal.js';
 import { setPlayerPosition } from './player.js';
@@ -44,7 +45,7 @@ export function buildLobbyPlay() {
 export function disposeLobbyPlay() {
     if (S && S.hud) S.hud.dispose();
     if (S && S.light) applyLighting(LP);
-    disposeGraffiti(); disposeLobbyGames(); dimNow = 1; N.onLevelMsg(null); S = null;
+    disposeGraffiti(); disposeLobbyGames(); dimNow = 1; N.onLevelMsg(null); HAUNT_STATE.night = 'calm'; HAUNT_STATE.monster = null; S = null;
 }
 
 // ---------- NOC: budowa ----------
@@ -158,6 +159,11 @@ function hostNight(dt, ids, heads, ctx) {
     }
     const prev = S.night.ph, r = nightStep(S.night, dt, { enabled: SETTINGS.lobbyEvents !== false, present: ids.length, allFuses: night && gateOpen(S.fuse) }, Math.random);
     S.night = { ph: r.ph, t: r.t }; if (r.outcome) S.outcome = r.outcome;
+    HAUNT_STATE.night = S.night.ph; HAUNT_STATE.monster = S.night.ph === 'night' && S.bot ? { x: S.bot.x, z: S.bot.z } : null;   // czytają pet.js i lobby.js
+    if (S.night.ph === 'warn' && SETTINGS.lobbyEvents !== false) {   // przed Nocną Zmianą światła trzaskają
+        S.crackT = (S.crackT || 0) - dt;
+        if (S.crackT <= 0) { S.crackT = 0.5 + Math.random() * 1.4; const a = Math.random() * 6.283, rr = 3 + Math.random() * 10; SFX.crackle({ x: Math.cos(a) * rr, y: 3.4, z: Math.sin(a) * rr }); }
+    }
     if (r.event === 'warn' || r.event === 'start') {
         if (r.event === 'start') { S.fuse = NIGHT.FUSES.map(() => 0); S.contrib = {}; S.hits = {}; S.imm = {}; S.noise = {}; S.pos = {}; S.bot = createBot(NIGHT.MONSTER_START[0], NIGHT.MONSTER_START[1]); S.bot.stun = 6; S.botSeen = false; S.myHits = 0; }
         nightEvent(prev, r.ph, null);
