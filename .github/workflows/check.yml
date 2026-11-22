@@ -19,6 +19,15 @@ jobs:
       - name: Kontrola zmian (brak testów, rejestracji, odświeżonego grafu)
         if: github.event_name == 'pull_request'
         run: cd tests && node changed.mjs
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Budowanie paczki produkcyjnej (Vite)
+        run: npm ci && npm run build
   types:
     runs-on: ubuntu-latest
     steps:

@@ -18,7 +18,7 @@
     "cannon-es": "0.20.0",
     "peerjs": "1.5.2",
     "playwright": "^1.45.0",
-    "three": "0.160.0",
+    "three": "0.187.0",
     "typescript": "^5.9.3"
   }
 }

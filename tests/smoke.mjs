@@ -45,8 +45,8 @@ const ctx = await browser.newContext({ viewport: { width: 1000, height: 640 } })
 await ctx.route(/unpkg\.com/, (route) => {
     const u = route.request().url();
     let f = null;
-    if (u.includes('three@0.160.0/build/three.module.js')) f = DEPS + '/three/build/three.module.js';
-    else if (u.includes('three@0.160.0/examples/jsm/')) f = DEPS + '/three/examples/jsm/' + u.split('examples/jsm/')[1].split('?')[0];
+    const tm = u.split('?')[0].match(/three@[\d.]+\/(.*)$/);   // każda wersja three: build/three.module.js, build/three.core.js (od r17x) i examples/jsm/... z lokalnego pakietu
+    if (tm) f = DEPS + '/three/' + tm[1];
     else if (u.includes('cannon-es')) f = DEPS + '/cannon-es/dist/cannon-es.js';
     else if (u.includes('peerjs')) f = DEPS + '/peerjs/dist/peerjs.min.js';
     if (f && fs.existsSync(f)) route.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(f) });
@@ -169,7 +169,7 @@ for (const lv of LEVELS) {
         await run(`const N = await import('./core/network.js'); N.setInvitedToStaff(${lv === 'staff'}); return 1;`);
         await run(`const M = await import('./main.js'); const PL = await import('./core/player.js'); await M.loadLevel('${lv}'); if ('${lv}' === 'wardrobe') PL.setPlayerPosition(-5, 1.0, 0); return 1;`);
         await waitFrames(2);
-        const r = await run(`const ENG = await import('./core/engine.js'), I = ENG.renderer.info; let pl = 0; ENG.scene.traverse(o => { if (o.isPointLight && o.visible) pl++; }); return { calls: I.render.calls, tris: I.render.triangles, pl: pl };`);
+        const r = await run(`const ENG = await import('./core/engine.js'), R = ENG.renderer, I = R.info; let pl = 0; ENG.scene.traverse(o => { if (o.isPointLight && o.visible) pl++; }); const sm = R.shadowMap.enabled; R.shadowMap.enabled = false; I.reset(); R.render(ENG.scene, ENG.camera); const calls = I.render.calls, tris = I.render.triangles; R.shadowMap.enabled = sm; return { calls: calls, tris: tris, pl: pl };   /* tylko główny przebieg: od r161 licznik three.js wlicza też przebieg cieni, który (tak samo kosztowny) był wcześniej poza licznikiem, więc budżet 260 zostaje porównywalny */`);
         // level-specific rules fixed in the last round
         const rules = await run(`const E = await import('./core/engine.js'), A = await import('./core/avatar.js'); return { floorY: E.L.floorY, moveScale: E.L.moveScale, tagsHidden: A.TAGS.hidden, maxZ: E.L.bounds.maxZ, minZ: E.L.bounds.minZ, minX: E.L.bounds.minX, maxX: E.L.bounds.maxX };`);
         if (lv === 'lasttile' && !(rules.floorY < -5)) fail(`${lv}: no pit floor (floorY=${rules.floorY}): players cannot fall`);

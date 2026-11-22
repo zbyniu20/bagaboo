@@ -306,7 +306,7 @@ export function extraHat(id) {
 
 // ---------- OKULARY ----------
 export function extraGlasses(id) {
-    const g = new THREE.Group();
+    const g = new THREE.Group(), d = dark();
     if (id === 'monocle') {
         const gold = mat({ color: 0xd4a640, metalness: 1, roughness: 0.25 });
         g.add(at(new THREE.TorusGeometry(0.036, 0.004, 6, 22), gold, 0.045, 0.02, -0.13));

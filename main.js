@@ -43,6 +43,10 @@ const LEVELS = Object.fromEntries(LEVEL_DEFS.filter(d => d.kind !== 'virtual').m
 let level = null, extras = [], levelId = null, started = false, switching = false;
 
 const cfgKind = (id) => (LEVEL_DEFS.find(d => d.id === id) || {}).kind;
+// Poziomy ładują się dynamicznie. W buildzie Vite (npm run build, stała __BAGABOO_BUNDLED__) ścieżka ze zmiennej nie przejdzie przez bundler, więc bierzemy mapę ładowarek z import.meta.glob;
+// w zwykłej przeglądarce (strona z repozytorium) GLOB jest null i działa dotychczasowy import(ścieżka).
+const GLOB = typeof __BAGABOO_BUNDLED__ !== 'undefined' ? import.meta.glob('./levels/*.js') : null;
+const loadModule = (p) => (GLOB && GLOB[p]) ? GLOB[p]() : import(p);
 export async function loadLevel(id, spawn) {
     const cfg = LEVELS[id];
     releaseAll();
@@ -52,9 +56,9 @@ export async function loadLevel(id, spawn) {
     disposePet();   // stworek zostaje w starym poziomie, w nowej sali powstaje od nowa
     clearLevel();
     applyLighting(LIGHT_PRESETS[cfg.light]);
-    level = await import(cfg.path);
+    level = await loadModule(cfg.path);
     extras = [];
-    for (const e of cfg.extras) extras.push(await import(e));
+    for (const e of cfg.extras) extras.push(await loadModule(e));
     L.levelId = id;   // poziom może to nadpisać (labirynt ma osobne id dla każdego układu)
     for (const e of extras) if (e.prebuild) e.prebuild();
     level.build();
@@ -383,3 +387,5 @@ loadLevel('lobby').then(() => {
     if (ban) { lobbyButtons(false); $('btnJoin').disabled = false; }   // zbanowany może tylko dołączyć do pokoju (host może go odbanować)
 })
     .catch((e) => { console.error(e); $('status').innerText = 'Could not load the level: ' + e.message; });
+// Uchwyt dla testów w przeglądarce (tests/smoke-dist.mjs sprawdza nim zbudowaną paczkę): ładowanie poziomu i licznik rysowania
+window.BAGABOO_DEBUG = { loadLevel: loadLevel, renderer: renderer };

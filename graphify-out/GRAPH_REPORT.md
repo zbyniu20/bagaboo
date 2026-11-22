@@ -1,17 +1,17 @@
 # Graph Report - bagaboo  (2026-11-22)
 
 ## Corpus Check
-- 438 files · ~1,240,555 words
+- 444 files · ~1,242,509 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 87 file(s) not represented in the graph (top: .css 84, (none) 3)
 
 ## Summary
-- 5257 nodes · 13818 edges · 215 communities (194 shown, 21 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 449 edges (avg confidence: 0.85)
+- 5333 nodes · 13909 edges · 221 communities (200 shown, 21 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 450 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e0ef2c97`
+- Built from commit: `9c25d932`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -27,13 +27,13 @@
 - player.js
 - lib
 - Tests & Module Imports
-- cemetery.js
+- buildDoor
 - pause.js
 - main.js
 - maze.js
 - auth.js
 - toast
-- terminal.js
+- wardrobe.js
 - petnest.js
 - hotel.js
 - dodgeball.js
@@ -58,7 +58,7 @@
 - lobbyplay.js
 - hideseek.js
 - well.js
-- toast
+- engine.js
 - build.js
 - workshop.js
 - fx.js
@@ -69,9 +69,9 @@
 - petstore.js
 - Docs: Accounts & Rules
 - xrperf.js
-- pick.mjs
+- setPlayerPosition
 - poolCap
-- graffitiround.js
+- nursery.js
 - gate.mjs
 - petstore.js
 - bake.mjs
@@ -91,7 +91,7 @@
 - rounds.mjs
 - place
 - logic.mjs
-- onGraffitiMsg
+- levels.js
 - line-engraving/effect.js
 - split-reveal/object.js
 - kit.js
@@ -100,10 +100,10 @@
 - static.mjs
 - lobby.mjs
 - monster.js
-- updateGraffiti
+- toast
 - moments/lib.js
 - _demo/shoot.mjs
-- trainingdummy.js
+- goobyTexture
 - rng
 - scripts/shoot.mjs
 - backgrounds/check.mjs
@@ -205,16 +205,22 @@
 - Performance budget
 - Closes
 - opt
-- buildGraffiti
+- pages.yml
 - photo-chapters/moment.js
-- guestContest
+- package.json
 - silk-folds/effect.js
 - room000.mjs
 - word-highlight/moment.js
 - { color, normalizePalette, readPalette, GLSL_LIB }
 - runSweep
 - shaderLint
+- vrmenu.js
 - _print-core/demo.js
+- smoke-dist.mjs
+- shots.mjs
+- drawScreen
+- wrapText
+- extraGlasses
 
 ## God Nodes (most connected - your core abstractions)
 1. `toast()` - 225 edges
@@ -248,43 +254,43 @@
 - **Identity verification chain** — claude_bagaboo_api, claude_reserved_nicks, claude_host_proof [EXTRACTED 1.00]
 - **Page boot: importmap loader, libs, and lobby UI start the game** — index_files, index_libs, index_auth_screen, index_menu_stage [INFERRED 0.75]
 
-## Communities (215 total, 21 thin omitted)
+## Communities (221 total, 21 thin omitted)
 
 ### Community 0 - "network.js"
-Cohesion: 0.05
-Nodes (91): getAudioContext(), vouch(), animateFace(), lookKey(), BANS_CLEARED, isModMenuUser(), animateFaces(), answerCall() (+83 more)
+Cohesion: 0.04
+Nodes (99): getAudioContext(), account(), randomNonce(), animateFace(), canPunish(), isModMenuUser(), isReservedNick(), setProfile() (+91 more)
 
 ### Community 1 - "toast"
 Cohesion: 0.05
-Nodes (74): activeRoleTags(), ACTIVITY, buyItem(), capped(), checkCounters(), claimLoginReward(), CURRENCY, DAILY_LEVELS (+66 more)
+Nodes (87): activeRoleTags(), ACTIVITY, bumpStat(), buyItem(), capped(), checkCompletionist(), checkCounters(), checkStatAchievements() (+79 more)
 
 ### Community 2 - "textures.js"
 Cohesion: 0.07
-Nodes (70): eyeTexture(), faceTexture(), hammerTextures(), roleLabel(), rustDoorTexture(), emit(), heartTex(), zeeTex() (+62 more)
+Nodes (70): burntTexture(), faceTexture(), jacketTexture(), noobTexture(), rustDoorTexture(), createMural(), emit(), heartTex() (+62 more)
 
 ### Community 3 - "silence.js"
-Cohesion: 0.09
-Nodes (47): attachMic(), micLevel(), rewardActivity(), isOnRope(), releaseRope(), avoidObstacles(), BALLS, broadcast() (+39 more)
+Cohesion: 0.08
+Nodes (46): attachMic(), addDoorPortal(), isOnRope(), ARRIVAL_FROM_SILENCE, avoidObstacles(), BALLS, build(), buildBalls() (+38 more)
 
 ### Community 4 - "config.js"
-Cohesion: 0.08
-Nodes (61): buildHammer(), ADMIN_NAMES, canPunish(), COADMIN_NAMES, FURAS_NAMES, isAdminName(), isCoAdminName(), isFurasName() (+53 more)
+Cohesion: 0.09
+Nodes (52): ADMIN_NAMES, BANS_CLEARED, COADMIN_NAMES, FURAS_NAMES, isAdminName(), isCoAdminName(), isFurasName(), isModName() (+44 more)
 
 ### Community 5 - "addCrispBlock"
-Cohesion: 0.04
-Nodes (85): bell(), fuse(), addCrispBlock(), drawInstructions(), introSeen(), takeRespawn(), takeRelic(), update() (+77 more)
+Cohesion: 0.08
+Nodes (45): addCrispBlock(), addShaderEdges(), addPortal(), animateMonster(), bag(), build(), buildCeiling(), buildDryer() (+37 more)
 
 ### Community 6 - "pet.js"
 Cohesion: 0.11
-Nodes (33): buildPet(), carryStep(), _dir, disposePet(), _f, flatForward(), _fq, lookFor() (+25 more)
+Nodes (35): squeak(), buildPet(), carryStep(), _dir, disposePet(), _f, flatForward(), _fq (+27 more)
 
 ### Community 7 - "banana.js"
-Cohesion: 0.13
-Nodes (29): applyEvent(), BASES, botThink(), broadcast(), build(), buildArena(), buildBanana(), carrying() (+21 more)
+Cohesion: 0.09
+Nodes (39): panelBg(), onLevelMsg(), dispose(), BASES, botThink(), broadcast(), build(), buildArena() (+31 more)
 
 ### Community 8 - "player.js"
-Cohesion: 0.05
-Nodes (48): poseHand(), cross, DESKTOP, help, keyHooks, keys, _o, onDesktopKey() (+40 more)
+Cohesion: 0.04
+Nodes (59): cross, DESKTOP, help, keyHooks, keys, _o, onDesktopKey(), _q (+51 more)
 
 ### Community 9 - "lib"
 Cohesion: 0.06
@@ -292,67 +298,67 @@ Nodes (135): lib(), add(), arrive(), audit(), backdrop(), barRoot(), beneath(), 
 
 ### Community 10 - "Tests & Module Imports"
 Cohesion: 0.06
-Nodes (32): ./core/audio.js, ./core/avatar.js, ./core/economy.js, ./core/emotes.js, ./core/engine.js, ./core/gorillamachine.js, ./core/highfive.js, ./core/leveldata.js (+24 more)
+Nodes (31): ./core/audio.js, ./core/avatar.js, ./core/economy.js, ./core/emotes.js, ./core/engine.js, ./core/gorillamachine.js, ./core/highfive.js, ./core/leveldata.js (+23 more)
 
-### Community 11 - "cemetery.js"
-Cohesion: 0.08
-Nodes (26): addInstancedBlocks(), AISLES_X, AISLES_Z, animate(), buildCrypts(), buildDecor(), buildDiggers(), buildRelics() (+18 more)
+### Community 11 - "buildDoor"
+Cohesion: 0.06
+Nodes (51): dailyDate(), diffOf(), addInstancedBlocks(), createEvents(), near(), startEvent(), buildDoor(), createJumpscare() (+43 more)
 
 ### Community 12 - "pause.js"
-Cohesion: 0.15
-Nodes (20): applyVolumes(), CATALOG, applyBrightness(), bDownAt, changed(), closePause(), _d, mesh (+12 more)
+Cohesion: 0.08
+Nodes (39): applyVolumes(), CATALOG, SAVE, close(), closeEmotePanel(), _d, doEmote(), mesh (+31 more)
 
 ### Community 13 - "main.js"
 Cohesion: 0.04
-Nodes (72): updateListener(), errorText(), LIGHT_MODE, box, c, errors, mesh, origError (+64 more)
+Nodes (64): updateListener(), errorText(), box, c, errors, mesh, origError, tx (+56 more)
 
 ### Community 14 - "maze.js"
-Cohesion: 0.13
-Nodes (32): buildMannequin(), addLamp(), bfs(), build(), buildCage(), buildCheckpoints(), buildDecor(), buildHintsAndLights() (+24 more)
+Cohesion: 0.12
+Nodes (32): ARRIVAL_FROM_MAZE, addLamp(), bfs(), build(), buildCage(), buildCheckpoints(), buildDecor(), buildHintsAndLights() (+24 more)
 
 ### Community 15 - "auth.js"
-Cohesion: 0.09
-Nodes (34): account(), API_URL, b64uToBytes(), call(), finish(), isLoggedIn(), listeners, login() (+26 more)
+Cohesion: 0.14
+Nodes (22): API_URL, b64uToBytes(), call(), finish(), isLoggedIn(), listeners, login(), logout() (+14 more)
 
 ### Community 16 - "toast"
 Cohesion: 0.06
-Nodes (91): aroundPlayer(), DEFS, last, loops, oneShot(), _p, _q, rnd() (+83 more)
+Nodes (69): aroundPlayer(), DEFS, last, loops, oneShot(), _p, _q, rnd() (+61 more)
 
-### Community 17 - "terminal.js"
-Cohesion: 0.04
-Nodes (89): LOBBY_MOVE_SCALE, bumpStat(), checkStatAchievements(), confirmGift(), findItem(), receiveGift(), close(), closeEmotePanel() (+81 more)
+### Community 17 - "wardrobe.js"
+Cohesion: 0.07
+Nodes (37): LOBBY_MOVE_SCALE, _e, EMOTE, emotePose(), EMOTES, _pq, _q, attachGorillaMachine() (+29 more)
 
 ### Community 18 - "petnest.js"
-Cohesion: 0.19
-Nodes (19): hatchBegin(), hatchPop(), posOf(), reactFeed(), reactPat(), bar(), buildPetNest(), doFeed() (+11 more)
+Cohesion: 0.24
+Nodes (15): hatchBegin(), reactFeed(), reactPat(), bar(), buildPetNest(), doFeed(), doHatch(), doPat() (+7 more)
 
 ### Community 19 - "hotel.js"
-Cohesion: 0.07
-Nodes (45): stepBot(), addCollider(), setFlashHolder(), box(), buildFlashlight(), buildRoom(), buildWardrobe(), dispose() (+37 more)
+Cohesion: 0.06
+Nodes (72): beep(), fuse(), heartbeat(), stinger(), stepBot(), addCollider(), buzz(), releaseAll() (+64 more)
 
 ### Community 20 - "dodgeball.js"
-Cohesion: 0.06
-Nodes (64): createBot(), recordScore(), camera, L, panelBg(), broadcast(), onLevelMsg(), sendLevelMsg() (+56 more)
+Cohesion: 0.14
+Nodes (28): camera, myId(), fromNet(), isAuthority(), _p, participants(), toNet(), aliveIn() (+20 more)
 
 ### Community 21 - "engine.js"
-Cohesion: 0.05
-Nodes (55): LP, addShaderEdges(), blobAOMat, GROUP, headLamp, hemi, physicsMat, sun (+47 more)
+Cohesion: 0.08
+Nodes (32): createGridMaze(), addWarden(), animate(), BONES, build(), buildDecor(), buildGate(), buildKeys() (+24 more)
 
 ### Community 22 - "room000map.js"
 Cohesion: 0.13
 Nodes (23): AVOID_R, buildPlan(), cellPoint(), cellProps(), cellX(), cellYaw(), cellZ(), corners() (+15 more)
 
 ### Community 23 - "engine.js"
-Cohesion: 0.07
-Nodes (45): boxAt(), buildComputerDesk(), buildMachineTerminal(), addBlobAO(), addBody(), addConstraint(), flashlight, PIPE_CYL (+37 more)
+Cohesion: 0.10
+Nodes (40): addBlobAO(), addBody(), addConstraint(), addStaticBody(), detachGorillaMachine(), debugLobbyPlay(), lobbyDim(), disposePetNest() (+32 more)
 
 ### Community 24 - "graffiti.js"
-Cohesion: 0.14
-Nodes (22): apply(), AREA, castVote(), GPOS, MSG, mySlot(), nameOf(), notice() (+14 more)
+Cohesion: 0.06
+Nodes (85): isMouseDown(), addPoster(), apply(), AREA, buildGraffiti(), buildPads(), canClear(), castVote() (+77 more)
 
 ### Community 25 - "setPlayerPosition"
-Cohesion: 0.12
-Nodes (43): clampScore(), elapsedSince(), nearTarget(), num(), pastFinishLine(), TOL, validHead(), myId() (+35 more)
+Cohesion: 0.11
+Nodes (44): clampScore(), elapsedSince(), nearTarget(), num(), pastFinishLine(), TOL, validHead(), outcomeReward() (+36 more)
 
 ### Community 26 - "scenes/lib.js"
 Cohesion: 0.07
@@ -364,7 +370,7 @@ Nodes (11): args, files, gameFiles, info, lines, ROOT, stat, strict (+3 more)
 
 ### Community 28 - "avatar.js"
 Cohesion: 0.07
-Nodes (62): addRoleTag(), ARM_GEO, BADGES, badgeTex, bakeShade(), buildBadge(), buildBunnyEars(), buildCarrot() (+54 more)
+Nodes (54): ARM_GEO, BADGES, badgeTex, bakeShade(), buildBadge(), buildBunnyEars(), buildCarrot(), buildGlasses() (+46 more)
 
 ### Community 29 - "photos.mjs"
 Cohesion: 0.06
@@ -375,16 +381,16 @@ Cohesion: 0.03
 Nodes (56): argv, asJson, AUDIENCE, BANNED, BUSY_EDGE, BUSY_RNG, CATEGORY, CHECKS (+48 more)
 
 ### Community 31 - "range.js"
-Cohesion: 0.14
-Nodes (25): BOOTHS, build(), buildGun(), clearTargets(), _d, drawBoard(), drawHud(), endRound() (+17 more)
+Cohesion: 0.13
+Nodes (27): shot(), safeName(), ARRIVAL_FROM_RANGE, BOOTHS, build(), buildGun(), buildRoom(), clearTargets() (+19 more)
 
 ### Community 32 - "dotted-globe/effect.js"
 Cohesion: 0.08
 Nodes (54): CITIES, earthSampler(), easeInOut(), easeOut(), fib(), hueIn(), LAKES, LAND (+46 more)
 
 ### Community 33 - "hospital.js"
-Cohesion: 0.10
-Nodes (30): addStatue(), animate(), bfsFrom(), build(), buildCards(), buildGate(), buildGrid(), buildRooms() (+22 more)
+Cohesion: 0.09
+Nodes (31): addStatue(), animate(), bfsFrom(), build(), buildCards(), buildGate(), buildGrid(), buildRooms() (+23 more)
 
 ### Community 34 - "icons.mjs"
 Cohesion: 0.08
@@ -395,32 +401,32 @@ Cohesion: 0.07
 Nodes (50): atlas, CELL, clamp(), colMajor(), COMMON_PARAMS, config, cross(), cssHex() (+42 more)
 
 ### Community 36 - "games.js"
-Cohesion: 0.04
-Nodes (85): IS_QUEST, dailyOn(), DIFF_ORDER, DIFFS, setDailyMode(), setDiff(), addComputers(), AMB (+77 more)
+Cohesion: 0.09
+Nodes (28): drawEcg(), drawEye(), makeDread(), CARDS, AR, ARRIVAL_FROM_BANANA, ARRIVAL_FROM_DODGEBALL, ARRIVAL_FROM_LAVA (+20 more)
 
 ### Community 37 - "modmenu.js"
 Cohesion: 0.13
 Nodes (25): bPressed(), buildXray(), closeMenu(), _d, draw(), ensureMenu(), nameTexture(), openMenu() (+17 more)
 
 ### Community 38 - "lobby-door.js"
-Cohesion: 0.09
-Nodes (24): placeArm(), ULTIMATE_SCALE, onLookChange(), unlockItem(), emoteState(), ARRIVAL, ARRIVAL_GAMES, ARRIVAL_LAUNDRY (+16 more)
+Cohesion: 0.08
+Nodes (31): addRoleTag(), createGorillaArm(), placeArm(), poseHand(), roleLabel(), ULTIMATE_SCALE, GFX, onLookChange() (+23 more)
 
 ### Community 39 - "lobbyplay.js"
 Cohesion: 0.07
-Nodes (44): applyLighting(), A, canCatch(), clamp01(), GATE_Z, gateOpen(), GENS, hearRadius() (+36 more)
+Nodes (40): createBot(), applyLighting(), A, canCatch(), clamp01(), GATE_Z, gateOpen(), GENS (+32 more)
 
 ### Community 40 - "hideseek.js"
-Cohesion: 0.13
-Nodes (24): BOT, botSees(), botThink(), broadcast(), buildArena(), catchPlayer(), drawHud(), fmt() (+16 more)
+Cohesion: 0.12
+Nodes (29): TAGS, ARRIVAL_FROM_HIDESEEK, BOT, botSees(), botThink(), broadcast(), catchPlayer(), drawHud() (+21 more)
 
 ### Community 41 - "well.js"
-Cohesion: 0.08
-Nodes (44): addStaticBody(), lighting, scaleBoxUVs(), KINDS, _p, signTexture(), makeOozeMaterial(), hostState() (+36 more)
+Cohesion: 0.10
+Nodes (38): ballHit(), scaleBoxUVs(), cameraPanel(), signTexture(), makeOozeMaterial(), hostState(), broadcast(), build() (+30 more)
 
-### Community 42 - "toast"
-Cohesion: 0.06
-Nodes (89): addBones(), checkCompletionist(), dailyDate(), dailyKey(), diffOf(), fmtDuration(), getDiff(), isDaily() (+81 more)
+### Community 42 - "engine.js"
+Cohesion: 0.05
+Nodes (61): boxAt(), buildComputerDesk(), LP, cache, blobAOMat, flashlight, GROUP, headLamp (+53 more)
 
 ### Community 43 - "build.js"
 Cohesion: 0.07
@@ -428,7 +434,7 @@ Nodes (52): add(), AXES, axisAngle(), axisOf(), build(), BUILTIN, checkSpec(), c
 
 ### Community 44 - "workshop.js"
 Cohesion: 0.07
-Nodes (60): wrapText(), atFinish(), blockError(), canGo(), centre(), copy(), covers(), decodeMap() (+52 more)
+Nodes (60): atFinish(), blockError(), canGo(), centre(), copy(), covers(), decodeMap(), demoMap() (+52 more)
 
 ### Community 45 - "fx.js"
 Cohesion: 0.07
@@ -448,11 +454,11 @@ Nodes (43): FLAT, inks(), mount(), params, analyse(), analyses, BASE, bestSrc() 
 
 ### Community 49 - "room000.js"
 Cohesion: 0.09
-Nodes (30): addMarks(), animate(), buildDecor(), buildHangers(), buildItems(), DOORS, drawHud(), fmt() (+22 more)
+Nodes (29): ARRIVAL_FROM_ROOM000, addMarks(), animate(), buildDecor(), buildHangers(), buildItems(), DOORS, drawHud() (+21 more)
 
 ### Community 50 - "petstore.js"
-Cohesion: 0.17
-Nodes (25): saveGame(), spendBones(), petPage(), canHatch(), canPat(), colorChoices(), cycleColor(), cycleSpecies() (+17 more)
+Cohesion: 0.16
+Nodes (27): equipItem(), saveGame(), spendBones(), petPage(), canPat(), colorChoices(), cycleColor(), cycleSpecies() (+19 more)
 
 ### Community 51 - "Docs: Accounts & Rules"
 Cohesion: 0.11
@@ -462,25 +468,25 @@ Nodes (19): Player accounts and host identity verification, bagaboo-api account 
 Cohesion: 0.18
 Nodes (17): BASE, desktopPerfInfo(), resetDesktopPerf(), st, updateDesktopPerf(), clampFrame(), DESKTOP_STEPS, desktopRatio() (+9 more)
 
-### Community 53 - "pick.mjs"
-Cohesion: 0.19
-Nodes (11): DARK, deal(), FLAT_TYPES, HERE, OWN_LOUD, random(), roleOf(), strHash() (+3 more)
+### Community 53 - "setPlayerPosition"
+Cohesion: 0.11
+Nodes (40): micLevel(), step(), drawInstructions(), introSeen(), takeRespawn(), sendLevelMsg(), setPlayerPosition(), broadcast() (+32 more)
 
 ### Community 54 - "poolCap"
 Cohesion: 0.24
 Nodes (7): acquire(), LiveSet, poolCap(), tpAdd(), tpHeld(), tpMax(), unwait()
 
-### Community 55 - "graffitiround.js"
-Cohesion: 0.16
-Nodes (19): addPoster(), contestHost(), newContest(), restoreWall(), encodeRle(), assignSlots(), contestStep(), countVotes() (+11 more)
+### Community 55 - "nursery.js"
+Cohesion: 0.09
+Nodes (31): ARRIVAL_FROM_NURSERY, addDoll(), animate(), build(), buildDecor(), buildDolls(), buildGate(), buildKeys() (+23 more)
 
 ### Community 56 - "gate.mjs"
 Cohesion: 0.05
 Nodes (37): args, base, children, dot, FAMILY, files, fp, gateDir (+29 more)
 
 ### Community 57 - "petstore.js"
-Cohesion: 0.20
-Nodes (24): canFeed(), clamp(), dayOf(), feed(), feedsLeft(), hatch(), hours(), intIn() (+16 more)
+Cohesion: 0.19
+Nodes (26): canFeed(), canHatch(), CARRY, clamp(), dayOf(), feed(), feedsLeft(), hatch() (+18 more)
 
 ### Community 58 - "bake.mjs"
 Cohesion: 0.07
@@ -508,7 +514,7 @@ Nodes (50): ACHIEVEMENTS, acceptVisit(), buy(), canBuy(), cleanOwner(), cleanSlo
 
 ### Community 64 - "steps"
 Cohesion: 0.12
-Nodes (19): runs-on, steps, jobs, fast, types, name, on, pull_request (+11 more)
+Nodes (22): runs-on, steps, runs-on, steps, jobs, build, fast, types (+14 more)
 
 ### Community 65 - "loop"
 Cohesion: 0.09
@@ -520,7 +526,7 @@ Nodes (42): addPause(), AGAIN, bakeDpr(), bakeDraw(), bakeOne(), bakeQueue, BASE
 
 ### Community 67 - "three"
 Cohesion: 0.09
-Nodes (25): cannon-es, peerjs, playwright, typescript, devDependencies, cannon-es@0.20.0, peerjs@1.5.2, playwright@^1.45.0 (+17 more)
+Nodes (26): playwright, typescript, devDependencies, cannon-es@0.20.0, peerjs@1.5.2, playwright@^1.45.0, three@0.187.0, typescript@^5.9.3 (+18 more)
 
 ### Community 68 - "bag"
 Cohesion: 0.17
@@ -531,8 +537,8 @@ Cohesion: 0.10
 Nodes (35): mount(), params, tones(), uniforms(), violet(), lit(), mount(), params (+27 more)
 
 ### Community 70 - "Terminal"
-Cohesion: 0.21
-Nodes (8): canClear(), clearWall(), draw(), drawGallery(), isPrivate(), mmss(), viewWall(), Terminal
+Cohesion: 0.25
+Nodes (5): ensureAssets(), Terminal, build(), buildWallScreens(), buildWarnings()
 
 ### Community 71 - "perf.mjs"
 Cohesion: 0.08
@@ -543,16 +549,16 @@ Cohesion: 0.08
 Nodes (21): defs, HERE, num(), range(), ROOT, check(), done(), GEN (+13 more)
 
 ### Community 73 - "place"
-Cohesion: 0.24
-Nodes (18): place(), seg(), V3(), buildArm(), jit(), buildArm(), buildLeg(), buildMannequin() (+10 more)
+Cohesion: 0.18
+Nodes (24): place(), seg(), UNIT_BOX, UNIT_SPHERE, V3(), ARM_POSES, buildArm(), buildLeg() (+16 more)
 
 ### Community 74 - "logic.mjs"
 Cohesion: 0.08
 Nodes (17): b64u(), bad, forge(), gfx, html, ids, keys, lines (+9 more)
 
-### Community 75 - "onGraffitiMsg"
-Cohesion: 0.21
-Nodes (15): load(), loadPrivate(), onGraffitiMsg(), spray(), cleanCells(), decodeRle(), decodeWall(), makeBucket() (+7 more)
+### Community 75 - "levels.js"
+Cohesion: 0.10
+Nodes (26): buildMachineTerminal(), IS_QUEST, addComputers(), AMB, AMBD, BEAT, BLOOD, BONE (+18 more)
 
 ### Community 76 - "line-engraving/effect.js"
 Cohesion: 0.32
@@ -579,16 +585,16 @@ Cohesion: 0.12
 Nodes (18): code(), EXP, exportsOf(), files, gameIds, gamesSrc, graph, importedBy (+10 more)
 
 ### Community 82 - "lobby.mjs"
-Cohesion: 0.18
-Nodes (6): IN, lob, N(), p3(), ROOT, wallBall()
+Cohesion: 0.20
+Nodes (5): IN, lob, p3(), ROOT, wallBall()
 
 ### Community 83 - "monster.js"
-Cohesion: 0.06
-Nodes (78): gateStep(), winnerOf(), aisles(), box(), cleanMapPick(), cleanOptions(), cleanVotes(), free() (+70 more)
+Cohesion: 0.05
+Nodes (83): countVotes(), GATE, gateStep(), NIGHT, num(), padOf(), winnerOf(), aisles() (+75 more)
 
-### Community 84 - "updateGraffiti"
-Cohesion: 0.21
-Nodes (13): isMouseDown(), disposeGraffiti(), flush(), save(), saveGallery(), savePoster(), savePrivate(), sendContest() (+5 more)
+### Community 84 - "toast"
+Cohesion: 0.17
+Nodes (30): addBones(), isDaily(), levelReward(), pruneDaily(), recordScore(), recordTime(), unlockAchievement(), toast() (+22 more)
 
 ### Community 85 - "moments/lib.js"
 Cohesion: 0.08
@@ -598,9 +604,9 @@ Nodes (22): clamp(), ease, inCard(), phone(), reduced(), scrub(), still(), still
 Cohesion: 0.12
 Nodes (31): argv, buildIndex(), chrome(), cmdMake(), cmdProbe(), cmdShoot(), COSTS, decodePNG() (+23 more)
 
-### Community 87 - "trainingdummy.js"
-Cohesion: 0.24
-Nodes (12): CROP, drawFace(), GOOBY_EYES, GOOBY_IMAGE, goobyTexture(), scareUp(), triggerGooby(), buildTrainingDummy() (+4 more)
+### Community 87 - "goobyTexture"
+Cohesion: 0.38
+Nodes (6): CROP, drawFace(), GOOBY_EYES, GOOBY_IMAGE, goobyTexture(), scareUp()
 
 ### Community 88 - "rng"
 Cohesion: 0.13
@@ -624,15 +630,15 @@ Nodes (26): args, buildIndex(), checkFilters(), commands, ENUMS, FX, gallery(), 
 
 ### Community 93 - "visuals.js"
 Cohesion: 0.18
-Nodes (18): LIQUID_TIME, addDetail(), addHalos(), buildEnvironment(), buildFlashBeam(), buildMist(), buildMotes(), _cam (+10 more)
+Nodes (18): addDetail(), addHalos(), buildEnvironment(), buildFlashBeam(), buildMist(), buildMotes(), _cam, disposeFx() (+10 more)
 
 ### Community 94 - "system.js"
 Cohesion: 0.14
 Nodes (26): actionbar(), DAY_NAMES, DAYS, daySet(), faq(), forms(), glowOnHover(), GROUNDS (+18 more)
 
 ### Community 95 - "ref_node_fs"
-Cohesion: 0.09
-Nodes (14): files, here, files, here, MUST_CATCH, MUST_PASS, OBJECTS, fragments (+6 more)
+Cohesion: 0.06
+Nodes (25): DARK, deal(), FLAT_TYPES, HERE, OWN_LOUD, random(), roleOf(), strHash() (+17 more)
 
 ### Community 96 - "color"
 Cohesion: 0.18
@@ -691,8 +697,8 @@ Cohesion: 0.22
 Nodes (14): cropTo(), deadIoPass(), glFallbackPass(), hiddenNow(), hiddenWalk(), lose(), narrowPass(), reducedPass() (+6 more)
 
 ### Community 110 - "presence.js"
-Cohesion: 0.38
-Nodes (11): apply(), cleanup(), connectClient(), getInfo(), members, onChange(), retry(), sendHello() (+3 more)
+Cohesion: 0.19
+Nodes (18): apply(), cleanup(), connectClient(), getInfo(), members, onChange(), PRESENCE, retry() (+10 more)
 
 ### Community 111 - "still"
 Cohesion: 0.20
@@ -723,8 +729,8 @@ Cohesion: 0.21
 Nodes (14): apply(), ATTRS, cache, claimed, json(), mountAll(), optsOf(), placeOf() (+6 more)
 
 ### Community 118 - "monsterskins.js"
-Cohesion: 0.36
-Nodes (11): ball(), blind(), box(), cyl(), glowEye(), lavaBeast(), lavaTex(), mannequin() (+3 more)
+Cohesion: 0.32
+Nodes (12): ball(), blind(), box(), cyl(), glowEye(), lavaBeast(), lavaTex(), mannequin() (+4 more)
 
 ### Community 119 - "stage"
 Cohesion: 0.33
@@ -783,8 +789,8 @@ Cohesion: 0.27
 Nodes (9): CDP, die(), findChrome(), inProject(), launch(), perf(), serve(), shot() (+1 more)
 
 ### Community 133 - "murals.js"
-Cohesion: 0.27
-Nodes (15): GFX, bezPt(), bloodText(), createMural(), drawShadowPerson(), glowEye(), monsterCrowd(), monsterDemon() (+7 more)
+Cohesion: 0.33
+Nodes (13): bezPt(), bloodText(), drawShadowPerson(), glowEye(), monsterCrowd(), monsterDemon(), monsterEldritch(), monsterScream() (+5 more)
 
 ### Community 134 - "tone"
 Cohesion: 0.25
@@ -859,12 +865,12 @@ Cohesion: 0.22
 Nodes (9): app-frame, bento, chapter, Features, features-2x2, product-statement, split-text-left, steps (+1 more)
 
 ### Community 153 - "think"
-Cohesion: 0.19
-Nodes (17): clearLine(), decoySpot(), distField(), doorSpots(), isOpen(), isOpenCell(), placeOnWall(), stepToward() (+9 more)
+Cohesion: 0.21
+Nodes (16): clearLine(), decoySpot(), distField(), doorSpots(), isOpen(), isOpenCell(), placeOnWall(), stepToward() (+8 more)
 
 ### Community 154 - "furas.js"
 Cohesion: 0.07
-Nodes (45): addBot(), ADJ, animateFuras(), blob(), buildDecor(), buildDividers(), buildFish(), buildFuras() (+37 more)
+Nodes (49): purr(), addBot(), ADJ, animateFuras(), blob(), build(), buildDecor(), buildDividers() (+41 more)
 
 ### Community 155 - "buildDecoys"
 Cohesion: 0.67
@@ -998,13 +1004,13 @@ Nodes (4): close-photo, close-type, close-word, Closes
 Cohesion: 0.33
 Nodes (6): freshProfile(), inProject(), opt(), profileBase(), roundsArg(), str()
 
-### Community 189 - "buildGraffiti"
-Cohesion: 0.40
-Nodes (6): buildGraffiti(), buildPads(), mount(), dayKey(), emptyWall(), weekKey()
+### Community 189 - "pages.yml"
+Cohesion: 0.09
+Nodes (22): concurrency, cancel-in-progress, group, environment, runs-on, steps, name, url (+14 more)
 
-### Community 191 - "guestContest"
-Cohesion: 0.70
-Nodes (5): drawColumns(), guestContest(), slotName(), updatePads(), idOfSlot()
+### Community 191 - "package.json"
+Cohesion: 0.11
+Nodes (19): dependencies, cannon-es@0.20.0, peerjs@1.5.2, three@0.187.0, description, devDependencies, vite@^8.3.8, cannon-es (+11 more)
 
 ### Community 192 - "silk-folds/effect.js"
 Cohesion: 0.52
@@ -1022,29 +1028,53 @@ Nodes (4): bySev(), clean(), lostFindings(), runSweep()
 Cohesion: 0.50
 Nodes (4): glslIn(), isGLSL(), lintGLSL(), shaderLint()
 
+### Community 214 - "vrmenu.js"
+Cohesion: 0.23
+Nodes (13): COLORS, drawKeyboard(), field(), KEYS, label(), menu, pageBtn(), setField() (+5 more)
+
 ### Community 215 - "_print-core/demo.js"
 Cohesion: 0.40
 Nodes (3): EFFECT_LABEL, PAPERS, EFFECTS
 
+### Community 216 - "smoke-dist.mjs"
+Cohesion: 0.15
+Nodes (9): cdn, DIST, errors, failures, HERE, LEVELS, MIME, ROOT (+1 more)
+
+### Community 217 - "shots.mjs"
+Cohesion: 0.17
+Nodes (10): ./main.js, DEPS, DIRS, HERE, LEVELS, MIME, ROOT, server (+2 more)
+
+### Community 218 - "drawScreen"
+Cohesion: 0.24
+Nodes (11): dailyKey(), dailyOn(), getDiff(), recordKey(), setDailyMode(), setDiff(), topTimes(), mmss() (+3 more)
+
+### Community 219 - "wrapText"
+Cohesion: 0.28
+Nodes (9): drawCard(), drawGlass(), sp(), stepDread(), tx(), wrapText(), update(), drawWall() (+1 more)
+
+### Community 220 - "extraGlasses"
+Cohesion: 0.60
+Nodes (6): at(), dark(), extraGlasses(), extraHat(), extraMask(), mat()
+
 ## Knowledge Gaps
-- **29 isolated node(s):** `./core/economy.js`, `./core/emotes.js`, `./core/avatar.js`, `./core/gorillamachine.js`, `./core/network.js` (+24 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1722 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **28 isolated node(s):** `./core/economy.js`, `./core/emotes.js`, `./core/avatar.js`, `./core/gorillamachine.js`, `./core/network.js` (+23 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 1768 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **21 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `f()` connect `build.js` to `ref_url`, `logic.mjs`, `workshop.js`, `copy-lint.mjs`, `static.mjs`, `gate.mjs`, `changed.mjs`, `ref_node_fs`?**
-  _High betweenness centrality (0.424) - this node is a cross-community bridge._
+  _High betweenness centrality (0.430) - this node is a cross-community bridge._
 - **Are the 51 inferred relationships involving `lib()` (e.g. with `arrive()` and `audit()`) actually correct?**
   _`lib()` has 51 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `./core/economy.js`, `./core/emotes.js`, `./core/avatar.js` to the rest of the system?**
-  _29 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _28 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `network.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.045622209279751504 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.04220183486238532 - nodes in this community are weakly interconnected._
 - **Why does `mode` connect `workshop.js` to `build.js`?**
-  _High betweenness centrality (0.381) - this node is a cross-community bridge._
+  _High betweenness centrality (0.376) - this node is a cross-community bridge._
 - **Should `toast` be split into smaller, more focused modules?**
-  _Cohesion score 0.050580997949419004 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.04622063329928498 - nodes in this community are weakly interconnected._
 - **Why does `sub()` connect `build.js` to `init`?**
-  _High betweenness centrality (0.059) - this node is a cross-community bridge._
+  _High betweenness centrality (0.058) - this node is a cross-community bridge._
