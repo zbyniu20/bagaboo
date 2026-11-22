@@ -36,7 +36,7 @@ let S = null;
 const _p = new THREE.Vector3(), _h = new THREE.Vector3();
 
 export function build() {
-    S = { clock: 0, phase: 'lobby', t: 0, gate: { ph: 'open', t: 0 }, opts: pickOptions(-1, Math.random), lastMap: -1, votes: [0, 0, 0], win: -1, mon: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, tinted: false, bot: null, map: -1, seed: 0, md: null, mapGroup: null, mapObs: [], mapBodies: [], mapPortals: [], dm: Object.create(null), dmApplied: new Set(), localDm: 0 };
+    S = { clock: 0, phase: 'lobby', t: 0, gate: { ph: 'open', t: 0 }, opts: pickOptions(-1, Math.random), lastMap: -1, votes: [0, 0, 0], win: -1, mon: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, tinted: false, bot: null, map: -1, seed: 0, md: null, mapGroup: null, mapObs: [], mapBodies: [], mapPortals: [], dm: Object.create(null), dmApplied: new Set(), localDm: 0, tearT: 0, flashA: 0 };
     // Wszyscy zaczynają w lobby; mapa ładuje się po głosowaniu (gość: po wiadomości od hosta)
     applyLobby(false);
     S.board = mapBoard.createMesh(6, 3.75); L.root.add(S.board); placeBoard();
@@ -45,6 +45,7 @@ export function build() {
     const mc = T.makeCanvas(256, 64), mx = mc.getContext('2d');
     mx.font = 'bold 48px sans-serif'; mx.textAlign = 'center'; mx.textBaseline = 'middle'; mx.fillStyle = '#ff3a2a'; mx.shadowColor = '#ff0000'; mx.shadowBlur = 16; mx.fillText('MONSTER', 128, 34);
     S.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.toTex(mc, false), transparent: true, depthWrite: false })); S.tag.scale.set(1.2, 0.3, 1); S.tag.visible = false; L.root.add(S.tag);
+    S.flash = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: 0x8a0000, transparent: true, opacity: 0, depthTest: false })); S.flash.position.z = -0.3; S.flash.renderOrder = 1004; S.flash.visible = false; camera.add(S.flash);
     S.aura = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1a00, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.7 })); S.aura.scale.set(2.2, 2.2, 1); S.aura.visible = false; L.root.add(S.aura);
     S.auraLight = new THREE.PointLight(0xff2010, 0, 8, 2); L.root.add(S.auraLight);
     // Bot (gdy grasz sam)
@@ -335,12 +336,27 @@ function catchPlayer(id) {
     if (id === 'me') localCaught();
     if (S.mon === 'me') { SFX.stinger(); buzz('both', 0.7, 150); toast('Caught one!', '#ff6a4a'); }
 }
-// Urwane kończyny: pokazujemy je tylko, gdy gracz włączył Gore w menu pauzy; własne ręce chowamy lokalnie, cudze robi network.js (setDismember)
+// Urwane kończyny: pokazujemy je tylko, gdy gracz ma włączone Gore (menu pauzy; domyślnie włączone). Własne ręce chowamy lokalnie, cudze robi network.js (setDismember).
+// Animacja u ofiary: przez TEAR_TIME s drżą kontrolery i narasta czerwony błysk, potem ręce znikają (głowa: tylko błysk i krew), a to trwa do nowej rundy albo lobby.
+const TEAR_TIME = 0.6;
 function localDismember(code) {
     if (code === S.localDm) return;
     const prev = S.localDm; S.localDm = code;
-    if (hands.L) hands.L.visible = !lostLeft(code); if (hands.R) hands.R.visible = !lostRight(code);
-    if (code && !prev) { SFX.stinger(); buzz('both', 0.9, 300); toast('The monster tore off ' + dismemberText(code) + '!', '#ff3a2a'); }
+    if (!code) { S.tearT = 0; S.flashA = 0; if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; return; }
+    if (!prev) { S.tearT = TEAR_TIME; toast('The monster grabs you...', '#ff3a2a'); }
+}
+function tickLocalTear(dt) {
+    const code = S.localDm;
+    if (S.tearT > 0) {
+        S.tearT -= dt; const k = 1 - Math.max(0, S.tearT) / TEAR_TIME;
+        buzz('both', 0.4 + 0.6 * k, 60); S.flashA = Math.max(S.flashA, 0.12 + 0.25 * k);
+        if (S.tearT <= 0) {   // urwane: ręce znikają, krew tryska z miejsca odcięcia
+            for (const [h, lost] of [[hands.L, lostLeft(code)], [hands.R, lostRight(code)]]) if (h && lost) { h.visible = false; N.bloodBurst(h.position, 26); }
+            if (lostHead(code)) { camera.getWorldPosition(_p); _p.y -= 0.25; N.bloodBurst(_p, 30); }
+            SFX.stinger(); buzz('both', 1, 400); S.flashA = 0.8; toast('The monster tore off ' + dismemberText(code) + '!', '#ff3a2a');
+        }
+    } else S.flashA = Math.max(0, S.flashA - dt * 0.9);
+    S.flash.material.opacity = S.flashA; S.flash.visible = S.flashA > 0.01;
 }
 function syncDismember() {
     const on = !!SETTINGS.gore, seen = new Set();
@@ -412,7 +428,7 @@ export function update(dt, t, ctx) {
         think(dt, p);
         if (N.NET.mode === 'host') { S.netT -= dt; if (S.netT <= 0) { S.netT = 0.2; broadcast(); } }
     }
-    syncDismember();
+    syncDismember(); tickLocalTear(dt);
     // Potwór: czerwona poświata nad głową, u siebie czerwone dłonie i szybszy ruch
     const mon = S.phase === 'play' ? S.mon : null;
     let mpos = null;
@@ -505,7 +521,7 @@ function randomScares(dt, t, p) {
     SFX.stinger({ x: x, y: 1.5, z: z });
 }
 export function dispose() {
-    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
+    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
     if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); S.board = null; }
     L.moveScale = 1;
     N.onLevelMsg(null);

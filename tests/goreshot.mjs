@@ -34,6 +34,8 @@ await page.evaluate(async () => {
     const cam = new THREE.PerspectiveCamera(30, 900 / 1100, 0.05, 50);
     window.__shot = (pos, tgt, fov) => { cam.position.set(...pos); cam.fov = fov; cam.updateProjectionMatrix(); cam.lookAt(...tgt); r.render(scene, cam); return r.domElement.toDataURL('image/png'); };
 });
+await page.evaluate(() => window.__tick(0.3));
+{ const url = await page.evaluate(([p, t, f]) => window.__shot(p, t, f), [[0, 1.5, -8.5], [0, 1.1, 0], 40]); fs.writeFileSync(path.join(OUT, 'gore-tear.png'), Buffer.from(url.split(',')[1], 'base64')); console.log('shot tear'); }
 await page.evaluate(() => window.__tick(2));
 const views = { gore: [[0, 1.5, -8.5], [0, 1.1, 0], 40], head: [[2.6, 1.5, -3.2], [2.6, 1.4, 0], 32] };
 for (const [name, [pos, tgt, fov]] of Object.entries(views)) {

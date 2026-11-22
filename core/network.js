@@ -12,7 +12,7 @@ import { petLookNet, petCarryNet } from './petstore.js';
 import { markAllDirty, toast } from './terminal.js';
 import { rankOf, setLocalMod, isStaffName, isOwnerName, isUltimateName, isReservedNick, canPunish, BANS_CLEARED, isModMenuUser } from './config.js';
 import { MOD } from './modstate.js';
-import { getAudioContext } from './audio.js';
+import { getAudioContext, stinger } from './audio.js';
 import { GAMES_CALM } from './settings.js';
 import { account as myAccount, vouch, verifyProof, randomNonce } from './auth.js';
 import { lostLeft, lostRight, lostHead } from './dismemberlogic.js';
@@ -356,7 +356,7 @@ function updateRemote(id, st) {
     p.head.position.fromArray(st.head.p); p.head.quaternion.fromArray(st.head.q);
     p.handL.position.fromArray(st.h1.p); p.handL.quaternion.fromArray(st.h1.q);
     p.handR.position.fromArray(st.h2.p); p.handR.quaternion.fromArray(st.h2.q);
-    applyDismember(p, dismembered[id] || 0);
+    applyDismember(p, tears[id] ? 0 : (dismembered[id] || 0));   // w trakcie animacji urywania części jeszcze są na miejscu
     if (st.h1.g !== undefined) p.handL.userData.rig.target = st.h1.g;
     if (st.h2.g !== undefined) p.handR.userData.rig.target = st.h2.g;
     if (st.em && typeof st.em.id === 'string' && typeof st.em.t === 'number') emotePose(p, st.em.id, st.em.t);   // emotka nadpisuje pozę dłoni i głowy
@@ -385,31 +385,50 @@ function applyDismember(p, c) {
     if (c && !p.stumps) p.stumps = makeStumps(p);
     if (p.stumps) { p.stumps.l.visible = lostLeft(c); p.stumps.r.visible = lostRight(c); p.stumps.neck.visible = lostHead(c); }
 }
-function spawnBlood(pos, n) {
-    for (let i = 0; i < n && blood.length < 60; i++) {
+function spawnBlood(pos, n, k) {
+    k = k || 1;
+    for (let i = 0; i < n && blood.length < 90; i++) {
         const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xa80000, transparent: true, depthWrite: false }));
         sp.scale.setScalar(0.06 + Math.random() * 0.06); sp.position.copy(pos); scene.add(sp);
-        blood.push({ sp: sp, v: new THREE.Vector3((Math.random() - 0.5) * 2.4, 0.8 + Math.random() * 2.2, (Math.random() - 0.5) * 2.4), life: 0 });
+        blood.push({ sp: sp, v: new THREE.Vector3((Math.random() - 0.5) * 2.4 * k, (0.8 + Math.random() * 2.2) * k, (Math.random() - 0.5) * 2.4 * k), life: 0 });
     }
 }
+export function bloodBurst(pos, n) { spawnBlood(pos, n, 1.4); }   // dla własnych rąk ofiary (levels/monster.js)
 function throwPart(src, id, floor) {   // kopia urwanego elementu (ręka, głowa) leci łukiem i leży na ziemi
     const c = src.clone(true); c.traverse(o => { if (o.isSprite) o.visible = false; });
     c.visible = true; c.position.copy(src.position); c.quaternion.copy(src.quaternion); scene.add(c);
     const d = { obj: c, id: id, v: new THREE.Vector3((Math.random() - 0.5) * 2.2, 1.8 + Math.random() * 1.6, (Math.random() - 0.5) * 2.2), spin: new THREE.Vector3(Math.random() * 6, Math.random() * 6, Math.random() * 6), floor: floor, rest: false };
     debris.push(d); while (debris.length > 14) { const o = debris.shift(); scene.remove(o.obj); }
-    spawnBlood(c.position, 14);
+    spawnBlood(c.position, 24, 1.5);
 }
-// code 0 = przywróć ciało. Tylko przy pierwszym przejściu 0 -> kod powstają odcięte części i krew.
+// Animacja urywania: przez TEAR_TIME s część drży i puchnie, spod niej tryska krew, potem odpada. Stan (kod) jest od razu zapamiętany, więc przebudowany awatar wygląda już po urwaniu.
+const TEAR_TIME = 0.6, tears = Object.create(null);
+const tornParts = (p, c) => [lostLeft(c) && p.handL, lostRight(c) && p.handR, lostHead(c) && p.head].filter(Boolean);
+function restoreScale(p) { const b = (p.base || 1) * (p.sz || 1); for (const o of [p.head, p.handL, p.handR]) o.scale.setScalar(b); }
+// code 0 = przywróć ciało (nowa runda, lobby, wyjście z trybu)
 export function setDismember(id, code) {
     const prev = dismembered[id] || 0; if (prev === code) return;
-    if (code) dismembered[id] = code; else { delete dismembered[id]; clearDebris(id); }
-    const p = remoteAvatars[id]; if (!p) return;
-    applyDismember(p, code);
-    if (code && !prev) { const floor = p.head.position.y - 1.6; if (lostLeft(code)) throwPart(p.handL, id, floor); if (lostRight(code)) throwPart(p.handR, id, floor); if (lostHead(code)) throwPart(p.head, id, floor + 0.12); }
+    if (!code) { delete dismembered[id]; delete tears[id]; clearDebris(id); const p = remoteAvatars[id]; if (p) { applyDismember(p, 0); restoreScale(p); } return; }
+    dismembered[id] = code;
+    if (!prev && remoteAvatars[id]) tears[id] = { t: 0, code: code, drip: 0 };   // animacja, dopiero potem urywamy
+}
+function finishTear(id, p, code) {
+    restoreScale(p); applyDismember(p, code);
+    const floor = p.head.position.y - 1.6;
+    if (lostLeft(code)) throwPart(p.handL, id, floor); if (lostRight(code)) throwPart(p.handR, id, floor); if (lostHead(code)) throwPart(p.head, id, floor + 0.12);
+    try { stinger(p.head.position); } catch (e) {}
 }
 function clearDebris(id) { for (let i = debris.length - 1; i >= 0; i--) if (!id || debris[i].id === id) { scene.remove(debris[i].obj); debris.splice(i, 1); } }
-export function clearDismember() { for (const id in dismembered) { delete dismembered[id]; const p = remoteAvatars[id]; if (p) applyDismember(p, 0); } clearDebris(); for (const b of blood) { scene.remove(b.sp); b.sp.material.dispose(); } blood.length = 0; }
+export function clearDismember() { for (const id in dismembered) { delete dismembered[id]; delete tears[id]; const p = remoteAvatars[id]; if (p) { applyDismember(p, 0); restoreScale(p); } } clearDebris(); for (const b of blood) { scene.remove(b.sp); b.sp.material.dispose(); } blood.length = 0; }
 export function tickDismember(dt) {
+    for (const id in tears) {
+        const tr = tears[id], p = remoteAvatars[id]; if (!p) { delete tears[id]; continue; }
+        tr.t += dt; tr.drip -= dt;
+        if (tr.t >= TEAR_TIME) { delete tears[id]; finishTear(id, p, tr.code); continue; }
+        const k = tr.t / TEAR_TIME, base = (p.base || 1) * (p.sz || 1), s = base * (1 + (0.1 + 0.35 * k) * Math.sin(tr.t * 60));   // coraz mocniejsze drżenie i puchnięcie
+        for (const o of tornParts(p, tr.code)) { o.scale.setScalar(s); if (tr.drip <= 0) spawnBlood(o.position, 2, 0.5); }
+        if (tr.drip <= 0) tr.drip = 0.06;
+    }
     for (const d of debris) {
         if (d.rest) continue;
         d.v.y -= 9.8 * dt; d.obj.position.addScaledVector(d.v, dt); d.obj.rotation.x += d.spin.x * dt; d.obj.rotation.y += d.spin.y * dt; d.obj.rotation.z += d.spin.z * dt;
