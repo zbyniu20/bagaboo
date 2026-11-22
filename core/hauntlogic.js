@@ -56,3 +56,21 @@ export function grafAlpha(t, len) {
     if (left < 1.5) return up * (Math.sin(t * 40) > -0.3 ? Math.min(1, left / 1.5 + 0.2) : 0.1);
     return up;
 }
+
+// ---------- STAFF ROOM: pokój, który z czasem "psuje się" (levels/staff.js) ----------
+// Im dłużej gracz tam jest, tym większe napięcie (staffDread 0..1) i tym częstsze zdarzenia; przy szczycie raz zgasną wszystkie światła, a czerwone oczy zbliżą się z ciemności.
+// Wszystko lokalne i wizualne (drzwi, telewizor, komputer i młotki działają bez zmian), wyłączane przyciskiem Haunt (SETTINGS.lobbyEvents).
+export const STAFF = {
+    RAMP: 240, EVERY: [14, 26], MIN_FACTOR: 0.4, BLACKOUT_AT: 0.85, BLACKOUT_LEN: 6, AFTER_BLACKOUT: 0.4,
+    EVENTS: ['whisper', 'flicker', 'tv', 'writing', 'drip', 'slam', 'step'],
+    CREEP: { EVERY: [3, 6], STEP: 0.35, DRIFT: 6, MIN_DIST: 1.8, MAX_DIST: 12, SEP: 1.4, BOUND: 5.2, STEP_CHANCE: 1 },
+    EYES: { START: 7, END: 1.6, DEFAULT_HEIGHT: 1.5 }
+};
+export const staffDread = (elapsed) => num(elapsed) ? Math.max(0, Math.min(1, elapsed / STAFF.RAMP)) : 0;
+export const staffGap = (dread, rand) => nextIn(STAFF.EVERY, rand) * (1 - (1 - STAFF.MIN_FACTOR) * Math.max(0, Math.min(1, num(dread) ? dread : 0)));
+// Czy właśnie teraz ma nastąpić zaciemnienie: przy szczycie napięcia i tylko raz (done = już było)
+export const staffBlackoutDue = (dread, done) => !done && num(dread) && dread >= STAFF.BLACKOUT_AT;
+// Odległość czerwonych oczu od gracza w czasie zaciemnienia: od START do END m liniowo w ciągu BLACKOUT_LEN s
+export function eyesDistance(t) { if (!num(t) || t <= 0) return STAFF.EYES.START; if (t >= STAFF.BLACKOUT_LEN) return STAFF.EYES.END; return STAFF.EYES.START + (STAFF.EYES.END - STAFF.EYES.START) * (t / STAFF.BLACKOUT_LEN); }
+// Przesunięcie źrenicy portretu (-1..1 w obu osiach) w stronę gracza: dir = wektor do gracza w układzie obrazu (x w prawo, y w górę, z przed obraz); zero, gdy gracz jest za obrazem
+export function pupilOffset(dir) { if (!dir || !num(dir.x) || !num(dir.y) || !num(dir.z) || dir.z <= 0.05) return { x: 0, y: 0 }; return { x: Math.max(-1, Math.min(1, dir.x / dir.z)), y: Math.max(-1, Math.min(1, dir.y / dir.z)) }; }
