@@ -16,6 +16,7 @@
   },
   "files": [
     "../core/lobbylogic.js",
+    "../core/dismemberlogic.js",
     "../core/minigames.js",
     "../core/monstermaps.js",
     "../core/room000map.js",

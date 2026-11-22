@@ -204,15 +204,15 @@
     "semantic_hash": ""
   },
   "core/network.js": {
-    "mtime": 1795281726.7429497,
-    "seen": 1795281878.9614317,
-    "ast_hash": "915fb4895da60fc2b31cc9f510146b72",
+    "mtime": 1795367795.2032096,
+    "seen": 1795368218.6381857,
+    "ast_hash": "712167f3ea7f4019633b4f51a444e857",
     "semantic_hash": ""
   },
   "core/pause.js": {
-    "mtime": 1795274239.2153687,
-    "seen": 1795275190.7333064,
-    "ast_hash": "565b4516eb278742e42d87d9a2105982",
+    "mtime": 1795366194.2101097,
+    "seen": 1795366384.214075,
+    "ast_hash": "5514f4907da97be5e85dc0e6b27424d8",
     "semantic_hash": ""
   },
   "core/player.js": {
@@ -252,9 +252,9 @@
     "semantic_hash": "5dff5d507848ca2a0de7035c9d733172"
   },
   "core/settings.js": {
-    "mtime": 1795276636.1818352,
-    "seen": 1795276814.7571437,
-    "ast_hash": "7cff54518fd3a5c2488660cbcb6914a8",
+    "mtime": 1795367158.4602911,
+    "seen": 1795367193.9927652,
+    "ast_hash": "c6fad1661b59402a4078c7e5edf58108",
     "semantic_hash": ""
   },
   "core/terminal.js": {
@@ -408,9 +408,9 @@
     "semantic_hash": "9b63f5b0c4493d19f7a4abc75c19917a"
   },
   "levels/monster.js": {
-    "mtime": 1795281680.1889737,
-    "seen": 1795281878.9615028,
-    "ast_hash": "2af138af4a2cb72b2c973cd9d4dc4a74",
+    "mtime": 1795367273.72349,
+    "seen": 1795368218.6382554,
+    "ast_hash": "4992f52f7e46bfd2120fe5d3606c6da3",
     "semantic_hash": ""
   },
   "levels/nursery.js": {
@@ -456,9 +456,9 @@
     "semantic_hash": "d2969ca6591f6efdd00476b182e9a5b0"
   },
   "main.js": {
-    "mtime": 1795357173.8214397,
-    "seen": 1795358418.3746636,
-    "ast_hash": "56aa5c714db66aad4aa5c53bda96df92",
+    "mtime": 1795366236.2497869,
+    "seen": 1795366384.214155,
+    "ast_hash": "42c1790aa6742927b0d727a90c0ddacb",
     "semantic_hash": ""
   },
   "tests/package.json": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795365988.613622,
-    "seen": 1795365997.3496163,
-    "ast_hash": "4df87e32e23fe5291f540ec23a89bb4f",
+    "mtime": 1795368210.624455,
+    "seen": 1795368218.63853,
+    "ast_hash": "8350dd23f73498a178ca5ca6ab06f19b",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795355519.7608616,
-    "seen": 1795358418.374897,
-    "ast_hash": "d8f793452b6ac0576c4d47d2d801c2e7",
+    "mtime": 1795366194.208688,
+    "seen": 1795366384.2144403,
+    "ast_hash": "f9f98c2c30371c6f31e2ded666ce96b3",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -9996,9 +9996,9 @@
     "semantic_hash": ""
   },
   "tests/modes/monster.mjs": {
-    "mtime": 1795281680.1889737,
-    "seen": 1795281878.961528,
-    "ast_hash": "127a7b4b9821c8c70be635817359aab5",
+    "mtime": 1795368210.604226,
+    "seen": 1795368218.6382875,
+    "ast_hash": "22ccbaac6ed581518a0599451b305b68",
     "semantic_hash": ""
   },
   "core/room000map.js": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795354284.6598926,
-    "seen": 1795358418.3746915,
-    "ast_hash": "6f734c7a8041ab957a2151269bb22fdb",
+    "mtime": 1795366194.209298,
+    "seen": 1795366384.2141933,
+    "ast_hash": "60d44a932e90285038186d4d7c4901e0",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10137,6 +10137,24 @@
     "mtime": 1795365975.997317,
     "seen": 1795365997.3494005,
     "ast_hash": "cdd6b256de73a6a7a49c8681317b45aa",
+    "semantic_hash": ""
+  },
+  "core/dismemberlogic.js": {
+    "mtime": 1795366194.1787384,
+    "seen": 1795366384.214012,
+    "ast_hash": "84da6d4eb8459767273e23a6a3d801e9",
+    "semantic_hash": ""
+  },
+  "tests/goreshot.mjs": {
+    "mtime": 1795367166.0273015,
+    "seen": 1795367193.9928346,
+    "ast_hash": "4ad77aca92f2dd834c8116e6dc7b9e61",
+    "semantic_hash": ""
+  },
+  "tests/gore.mjs": {
+    "mtime": 1795368006.912962,
+    "seen": 1795368218.6382751,
+    "ast_hash": "e03aa34e6a9b14ade6eddfb7b8c30359",
     "semantic_hash": ""
   },
   "package-lock.json": {

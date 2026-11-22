@@ -4,7 +4,7 @@
 // zostać hostem tego samego pokoju, a gość nie połączy się, dopóki host nie jest online.
 // ==========================================
 import { emoteState, emotePose } from './emotes.js';
-import { THREE, camera, scene, L, CANNON, containBall, playerRig } from './engine.js';
+import { THREE, camera, scene, L, CANNON, containBall, playerRig, tex } from './engine.js';
 import { createAvatar, poseHand, lookKey, animateFace, TAGS } from './avatar.js';
 import { createVoiceHub } from './voicehub.js';
 import { getLook, SESSION, SAVE } from './economy.js';
@@ -12,9 +12,10 @@ import { petLookNet, petCarryNet } from './petstore.js';
 import { markAllDirty, toast } from './terminal.js';
 import { rankOf, setLocalMod, isStaffName, isOwnerName, isUltimateName, isReservedNick, canPunish, BANS_CLEARED, isModMenuUser } from './config.js';
 import { MOD } from './modstate.js';
-import { getAudioContext } from './audio.js';
+import { getAudioContext, stinger } from './audio.js';
 import { GAMES_CALM } from './settings.js';
 import { account as myAccount, vouch, verifyProof, randomNonce } from './auth.js';
+import { lostLeft, lostRight, lostHead } from './dismemberlogic.js';
 
 /* global Peer */
 export const GAME_PREFIX = 'bagaboo-vr-v3-';
@@ -240,7 +241,8 @@ export function animateFaces(dt) {
     for (const id in remoteAvatars) {
         const a = remoteAvatars[id]; a.head.getWorldPosition(_hw);
         const close = _hw.distanceTo(_cw) < 0.9;   // inny gracz tuż przy tobie: widzisz tylko jego dłonie, a nie wnętrze jego ciała
-        for (const c of a.group.children) if (c !== a.handL && c !== a.handR) c.visible = !close;
+        const dc = tears[id] ? 0 : (dismembered[id] || 0);   // urwane części (core/dismemberlogic.js) zostają ukryte, także gdy gracz stoi przy nas
+        for (const c of a.group.children) if (c !== a.handL && c !== a.handR) c.visible = !close && !((c === a.head && lostHead(dc)) || (c === a.armL && lostLeft(dc)) || (c === a.armR && lostRight(dc)));
     }
     for (const id in remoteAvatars) { const v = mutedPeers.has(id) ? { level: 0, pitch: 0.5 } : (NET.mode === 'guest' ? stateVoice(id) : readVoice(voiceAn[id])); animateFace(remoteAvatars[id].head, v.level, v.pitch, dt); }
 }
@@ -355,6 +357,7 @@ function updateRemote(id, st) {
     p.head.position.fromArray(st.head.p); p.head.quaternion.fromArray(st.head.q);
     p.handL.position.fromArray(st.h1.p); p.handL.quaternion.fromArray(st.h1.q);
     p.handR.position.fromArray(st.h2.p); p.handR.quaternion.fromArray(st.h2.q);
+    applyDismember(p, tears[id] ? 0 : (dismembered[id] || 0));   // w trakcie animacji urywania części jeszcze są na miejscu
     if (st.h1.g !== undefined) p.handL.userData.rig.target = st.h1.g;
     if (st.h2.g !== undefined) p.handR.userData.rig.target = st.h2.g;
     if (st.em && typeof st.em.id === 'string' && typeof st.em.t === 'number') emotePose(p, st.em.id, st.em.t);   // emotka nadpisuje pozę dłoni i głowy
@@ -368,6 +371,74 @@ function updateRemote(id, st) {
     } else { p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -drop, 0)); p.torso.rotation.set(0, e.y, 0); }
     if (p.head.userData.tags) for (const tg of p.head.userData.tags) tg.visible = !TAGS.hidden && !GAMES_CALM.on;   // Hide and Seek i cały BagaBoo Games: bez nazw nad głowami
     p.group.visible = (st.lvl || 'lobby') === L.levelId && !(NET.mode === 'host' && isHiddenFrom(id, st, myPeerId));   // widać tylko graczy na tym samym poziomie, bez niewidzialnych adminów (goście dostają stan już przefiltrowany przez hosta)
+}
+// --- Become the Monster: urwane ręce i głowa (kod z core/dismemberlogic.js; wołane tylko, gdy gracz włączył opcję Gore) ---
+const dismembered = Object.create(null), debris = [], blood = [];
+const STUMP_MAT = new THREE.MeshStandardMaterial({ color: 0x6a0808, roughness: 0.35, emissive: 0x1a0000 });
+function makeStumps(p) {   // czerwone kikuty na barkach i szyi tułowia (ukryte, dopóki nic nie urwano)
+    const g = new THREE.Group(); p.torso.add(g);
+    const mk = (x, y, z, r) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), STUMP_MAT); m.position.set(x, y, z); m.visible = false; g.add(m); return m; };
+    return { l: mk(-0.3, 0.12, -0.02, 0.07), r: mk(0.3, 0.12, -0.02, 0.07), neck: mk(0, 0.27, -0.01, 0.1) };
+}
+function applyDismember(p, c) {
+    p.handL.visible = !lostLeft(c); p.handR.visible = !lostRight(c); p.head.visible = !lostHead(c);
+    if (p.armL) p.armL.visible = !lostLeft(c); if (p.armR) p.armR.visible = !lostRight(c);
+    if (c && !p.stumps) p.stumps = makeStumps(p);
+    if (p.stumps) { p.stumps.l.visible = lostLeft(c); p.stumps.r.visible = lostRight(c); p.stumps.neck.visible = lostHead(c); }
+}
+function spawnBlood(pos, n, k) {
+    k = k || 1;
+    for (let i = 0; i < n && blood.length < 90; i++) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xa80000, transparent: true, depthWrite: false }));
+        sp.scale.setScalar(0.06 + Math.random() * 0.06); sp.position.copy(pos); scene.add(sp);
+        blood.push({ sp: sp, v: new THREE.Vector3((Math.random() - 0.5) * 2.4 * k, (0.8 + Math.random() * 2.2) * k, (Math.random() - 0.5) * 2.4 * k), life: 0 });
+    }
+}
+export function bloodBurst(pos, n) { spawnBlood(pos, n, 1.4); }   // dla własnych rąk ofiary (levels/monster.js)
+function throwPart(src, id, floor) {   // kopia urwanego elementu (ręka, głowa) leci łukiem i leży na ziemi
+    const c = src.clone(true); c.traverse(o => { if (o.isSprite) o.visible = false; });
+    c.visible = true; c.position.copy(src.position); c.quaternion.copy(src.quaternion); scene.add(c);
+    const d = { obj: c, id: id, v: new THREE.Vector3((Math.random() - 0.5) * 2.2, 1.8 + Math.random() * 1.6, (Math.random() - 0.5) * 2.2), spin: new THREE.Vector3(Math.random() * 6, Math.random() * 6, Math.random() * 6), floor: floor, rest: false };
+    debris.push(d); while (debris.length > 14) { const o = debris.shift(); scene.remove(o.obj); }
+    spawnBlood(c.position, 24, 1.5);
+}
+// Animacja urywania: przez TEAR_TIME s część drży i puchnie, spod niej tryska krew, potem odpada. Stan (kod) jest od razu zapamiętany, więc przebudowany awatar wygląda już po urwaniu.
+const TEAR_TIME = 0.6, tears = Object.create(null);
+const tornParts = (p, c) => [lostLeft(c) && p.handL, lostRight(c) && p.handR, lostHead(c) && p.head].filter(Boolean);
+function restoreScale(p) { const b = (p.base || 1) * (p.sz || 1); for (const o of [p.head, p.handL, p.handR]) o.scale.setScalar(b); }
+// code 0 = przywróć ciało (nowa runda, lobby, wyjście z trybu)
+export function setDismember(id, code) {
+    const prev = dismembered[id] || 0; if (prev === code) return;
+    if (!code) { delete dismembered[id]; delete tears[id]; clearDebris(id); const p = remoteAvatars[id]; if (p) { applyDismember(p, 0); restoreScale(p); } return; }
+    dismembered[id] = code;
+    if (!prev && remoteAvatars[id]) tears[id] = { t: 0, code: code, drip: 0 };   // animacja, dopiero potem urywamy
+}
+function finishTear(id, p, code) {
+    restoreScale(p); applyDismember(p, code);
+    const floor = p.head.position.y - 1.6;
+    if (lostLeft(code)) throwPart(p.handL, id, floor); if (lostRight(code)) throwPart(p.handR, id, floor); if (lostHead(code)) throwPart(p.head, id, floor + 0.12);
+    try { stinger(p.head.position); } catch (e) {}
+}
+function clearDebris(id) { for (let i = debris.length - 1; i >= 0; i--) if (!id || debris[i].id === id) { scene.remove(debris[i].obj); debris.splice(i, 1); } }
+export function clearDismember() { for (const id in dismembered) { delete dismembered[id]; delete tears[id]; const p = remoteAvatars[id]; if (p) { applyDismember(p, 0); restoreScale(p); } } clearDebris(); for (const b of blood) { scene.remove(b.sp); b.sp.material.dispose(); } blood.length = 0; }
+export function tickDismember(dt) {
+    for (const id in tears) {
+        const tr = tears[id], p = remoteAvatars[id]; if (!p) { delete tears[id]; continue; }
+        tr.t += dt; tr.drip -= dt;
+        if (tr.t >= TEAR_TIME) { delete tears[id]; finishTear(id, p, tr.code); continue; }
+        const k = tr.t / TEAR_TIME, base = (p.base || 1) * (p.sz || 1), s = base * (1 + (0.1 + 0.35 * k) * Math.sin(tr.t * 60));   // coraz mocniejsze drżenie i puchnięcie
+        for (const o of tornParts(p, tr.code)) { o.scale.setScalar(s); if (tr.drip <= 0) spawnBlood(o.position, 2, 0.5); }
+        if (tr.drip <= 0) tr.drip = 0.06;
+    }
+    for (const d of debris) {
+        if (d.rest) continue;
+        d.v.y -= 9.8 * dt; d.obj.position.addScaledVector(d.v, dt); d.obj.rotation.x += d.spin.x * dt; d.obj.rotation.y += d.spin.y * dt; d.obj.rotation.z += d.spin.z * dt;
+        if (d.obj.position.y <= d.floor) { d.obj.position.y = d.floor; if (Math.abs(d.v.y) > 1.2) { d.v.y *= -0.3; d.v.x *= 0.6; d.v.z *= 0.6; d.spin.multiplyScalar(0.5); } else d.rest = true; }
+    }
+    for (let i = blood.length - 1; i >= 0; i--) {
+        const b = blood[i]; b.life += dt; b.v.y -= 9 * dt; b.sp.position.addScaledVector(b.v, dt); b.sp.material.opacity = Math.max(0, 1 - b.life / 0.9);
+        if (b.life > 0.9) { scene.remove(b.sp); b.sp.material.dispose(); blood.splice(i, 1); }
+    }
 }
 function removeRemote(id) { if (remoteAvatars[id]) { scene.remove(remoteAvatars[id].group); delete remoteAvatars[id]; } }
 // Tryb Become the Monster: chowa awatar gracza, który wygląda jak wybrany potwór

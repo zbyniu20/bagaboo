@@ -21,7 +21,8 @@ import { buildMonsterSkin } from '../core/monsterskins.js';
 import { ARRIVAL_FROM_MONSTER } from './games.js';
 import { MAPS, generateMap, pickMap, cleanMapPick, lobbyMap, cleanVotes, cleanOptions, pickOptions, LOBBY } from '../core/monstermaps.js';
 import { GATE, countVotes, winnerOf, gateStep } from '../core/lobbylogic.js';
-import { GAMES_CALM } from '../core/settings.js';
+import { GAMES_CALM, SETTINGS } from '../core/settings.js';
+import { pickDismember, cleanDismember, lostLeft, lostRight, lostHead, dismemberText } from '../core/dismemberlogic.js';
 
 const WAIT = 10, WAIT_AFTER_VOTE = 6, ROUND = 120, RESULTS = 8, REWARD = 200;
 const CATCH_DIST = 0.5;                     // dłoń potwora tak blisko głowy lub tułowia = złapany
@@ -35,7 +36,7 @@ let S = null;
 const _p = new THREE.Vector3(), _h = new THREE.Vector3();
 
 export function build() {
-    S = { clock: 0, phase: 'lobby', t: 0, gate: { ph: 'open', t: 0 }, opts: pickOptions(-1, Math.random), lastMap: -1, votes: [0, 0, 0], win: -1, mon: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, tinted: false, bot: null, map: -1, seed: 0, md: null, mapGroup: null, mapObs: [], mapBodies: [], mapPortals: [] };
+    S = { clock: 0, phase: 'lobby', t: 0, gate: { ph: 'open', t: 0 }, opts: pickOptions(-1, Math.random), lastMap: -1, votes: [0, 0, 0], win: -1, mon: null, caught: new Set(), surv: [], lastHostMsg: -10, netT: 0, introT: 10, hudT: 0, rewarded: false, tinted: false, bot: null, map: -1, seed: 0, md: null, mapGroup: null, mapObs: [], mapBodies: [], mapPortals: [], dm: Object.create(null), dmApplied: new Set(), localDm: 0, tearT: 0, flashA: 0 };
     // Wszyscy zaczynają w lobby; mapa ładuje się po głosowaniu (gość: po wiadomości od hosta)
     applyLobby(false);
     S.board = mapBoard.createMesh(6, 3.75); L.root.add(S.board); placeBoard();
@@ -44,6 +45,7 @@ export function build() {
     const mc = T.makeCanvas(256, 64), mx = mc.getContext('2d');
     mx.font = 'bold 48px sans-serif'; mx.textAlign = 'center'; mx.textBaseline = 'middle'; mx.fillStyle = '#ff3a2a'; mx.shadowColor = '#ff0000'; mx.shadowBlur = 16; mx.fillText('MONSTER', 128, 34);
     S.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.toTex(mc, false), transparent: true, depthWrite: false })); S.tag.scale.set(1.2, 0.3, 1); S.tag.visible = false; L.root.add(S.tag);
+    S.flash = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: 0x8a0000, transparent: true, opacity: 0, depthTest: false })); S.flash.position.z = -0.3; S.flash.renderOrder = 1004; S.flash.visible = false; camera.add(S.flash);
     S.aura = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff1a00, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.7 })); S.aura.scale.set(2.2, 2.2, 1); S.aura.visible = false; L.root.add(S.aura);
     S.auraLight = new THREE.PointLight(0xff2010, 0, 8, 2); L.root.add(S.auraLight);
     // Bot (gdy grasz sam)
@@ -235,20 +237,20 @@ function onNet(msg) {
         const vt = cleanVotes(msg.vt); if (vt) S.votes = vt;
         S.gate = { ph: msg.gp === 'counting' || msg.gp === 'launching' ? msg.gp : 'open', t: Number.isFinite(msg.t) ? Math.max(0, Math.min(60, msg.t)) : 0 };
         S.win = Number.isInteger(msg.wn) && msg.wn >= 0 && msg.wn < LOBBY.OPTIONS ? msg.wn : -1;
-        S.phase = 'lobby'; S.t = S.gate.t; S.mon = null; S.caught = new Set(); S.surv = [];
+        S.phase = 'lobby'; S.t = S.gate.t; S.mon = null; S.caught = new Set(); S.surv = []; S.dm = cleanDismember(null);
         return;
     }
     if (pk && (pk.i !== S.map || pk.seed !== S.seed)) applyMap(pk.i, pk.seed, true);
     const prev = S.phase;
     S.phase = msg.ph; S.t = msg.t; S.mon = msg.mon ? fromNet(msg.mon) : null;
     const wasCaught = S.caught.has('me');
-    S.caught = new Set((msg.caught || []).map(fromNet)); S.surv = (msg.surv || []).map(fromNet);
+    S.caught = new Set((msg.caught || []).map(fromNet)); S.surv = (msg.surv || []).map(fromNet); S.dm = cleanDismember(msg.dm);   // urwane kończyny od hosta (tylko poprawne kody)
     if (!wasCaught && S.caught.has('me')) localCaught();
     if (msg.ph === 'play' && prev !== 'play') startedRound();
     if (msg.ph === 'results' && prev !== 'results') roundOver();
 }
 function broadcast() {
-    N.sendLevelMsg({ k: 'st', mp: S.map, sd: S.seed, op: S.opts, vt: S.votes, gp: S.gate.ph, wn: S.win, ph: S.phase, t: S.t, mon: S.mon && S.mon !== 'bot' ? toNet(S.mon) : null, caught: [...S.caught].map(toNet), surv: S.surv.map(toNet) });
+    N.sendLevelMsg({ k: 'st', mp: S.map, sd: S.seed, op: S.opts, vt: S.votes, gp: S.gate.ph, wn: S.win, ph: S.phase, t: S.t, mon: S.mon && S.mon !== 'bot' ? toNet(S.mon) : null, caught: [...S.caught].map(toNet), surv: S.surv.map(toNet), dm: Object.assign({}, S.dm) });
 }
 function startedRound() {
     S.rewarded = false;
@@ -297,7 +299,7 @@ function think(dt, p) {
         if (S.t <= 0) {
             const parts = participants();
             S.mon = parts.length >= 2 ? parts[(Math.random() * parts.length) | 0] : 'bot';
-            S.caught = new Set(); S.surv = []; S.phase = 'play'; S.t = ROUND;
+            S.caught = new Set(); S.surv = []; S.dm = Object.create(null); S.phase = 'play'; S.t = ROUND;
             if (S.mon === 'bot') { S.bot = { x: S.md.monster[0], y: 0, z: S.md.monster[2], vy: 0, speed: BOT_SPEED, ground: true, stuck: 0, lastD: 99, side: 0 }; }
             startedRound();
         }
@@ -309,7 +311,7 @@ function think(dt, p) {
             S.surv = parts.filter(id => !S.caught.has(id)); S.phase = 'results'; S.t = RESULTS; roundOver();
         }
     } else if (S.phase === 'results' && S.t <= 0) {
-        S.phase = 'lobby'; S.gate = { ph: 'open', t: 0 }; S.opts = pickOptions(S.lastMap, Math.random); S.votes = [0, 0, 0]; S.win = -1; S.t = 0; S.mon = null; S.bot = null;   // po rundzie wszyscy wracają do lobby na nowe głosowanie
+        S.phase = 'lobby'; S.gate = { ph: 'open', t: 0 }; S.opts = pickOptions(S.lastMap, Math.random); S.votes = [0, 0, 0]; S.win = -1; S.t = 0; S.mon = null; S.bot = null; S.dm = Object.create(null);   // po rundzie wszyscy wracają do lobby na nowe głosowanie
         applyLobby(true);
         S.netT = 0; mapBoard.dirty = true;
     }
@@ -330,9 +332,39 @@ function touched(id) {
     return handsOf(S.mon).some(h => h.distanceTo(hd) < CATCH_DIST || h.distanceTo(body) < CATCH_DIST + 0.05);
 }
 function catchPlayer(id) {
-    S.caught.add(id);
+    S.caught.add(id); S.dm[toNet(id)] = pickDismember(Math.random);   // los: lewa ręka, prawa ręka, obie albo głowa (widoczne dla graczy z włączoną opcją Gore)
     if (id === 'me') localCaught();
     if (S.mon === 'me') { SFX.stinger(); buzz('both', 0.7, 150); toast('Caught one!', '#ff6a4a'); }
+}
+// Urwane kończyny: pokazujemy je tylko, gdy gracz ma włączone Gore (menu pauzy; domyślnie włączone). Własne ręce chowamy lokalnie, cudze robi network.js (setDismember).
+// Animacja u ofiary: przez TEAR_TIME s drżą kontrolery i narasta czerwony błysk, potem ręce znikają (głowa: tylko błysk i krew), a to trwa do nowej rundy albo lobby.
+const TEAR_TIME = 0.6;
+function localDismember(code) {
+    if (code === S.localDm) return;
+    const prev = S.localDm; S.localDm = code;
+    if (!code) { S.tearT = 0; S.flashA = 0; if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; return; }
+    if (!prev) { S.tearT = TEAR_TIME; toast('The monster grabs you...', '#ff3a2a'); }
+}
+function tickLocalTear(dt) {
+    const code = S.localDm;
+    if (S.tearT > 0) {
+        S.tearT -= dt; const k = 1 - Math.max(0, S.tearT) / TEAR_TIME;
+        buzz('both', 0.4 + 0.6 * k, 60); S.flashA = Math.max(S.flashA, 0.12 + 0.25 * k);
+        if (S.tearT <= 0) {   // urwane: ręce znikają, krew tryska z miejsca odcięcia
+            for (const [h, lost] of [[hands.L, lostLeft(code)], [hands.R, lostRight(code)]]) if (h && lost) { h.visible = false; N.bloodBurst(h.position, 26); }
+            if (lostHead(code)) { camera.getWorldPosition(_p); _p.y -= 0.25; N.bloodBurst(_p, 30); }
+            SFX.stinger(); buzz('both', 1, 400); S.flashA = 0.8; toast('The monster tore off ' + dismemberText(code) + '!', '#ff3a2a');
+        }
+    } else S.flashA = Math.max(0, S.flashA - dt * 0.9);
+    S.flash.material.opacity = S.flashA; S.flash.visible = S.flashA > 0.01;
+}
+// Hak dla testu w przeglądarce (tests/gore.mjs): ustawia urwane kończyny TEGO gracza tak, jakby potwór go złapał (0 = przywróć). Nie zmienia przebiegu rundy.
+export function debugDismember(code) { if (!S) return false; S.dm = code ? Object.assign(Object.create(null), { [N.myId()]: code }) : Object.create(null); return true; }
+function syncDismember() {
+    const on = !!SETTINGS.gore, seen = new Set();
+    for (const k of Object.keys(S.dm)) { const id = fromNet(k); seen.add(id); const c = on ? S.dm[k] : 0; if (id === 'me') localDismember(c); else N.setDismember(id, c); }
+    for (const id of S.dmApplied) if (!seen.has(id)) { if (id === 'me') localDismember(0); else N.setDismember(id, 0); }
+    S.dmApplied = seen;
 }
 function localCaught() { SFX.scare(); toast('You were caught! Watch the others.', '#e0533f'); }
 // Bot: biegnie prosto do gracza, wpada na przeszkody, wskakuje na nie (perony, wagony, schody, szyby)
@@ -398,6 +430,7 @@ export function update(dt, t, ctx) {
         think(dt, p);
         if (N.NET.mode === 'host') { S.netT -= dt; if (S.netT <= 0) { S.netT = 0.2; broadcast(); } }
     }
+    syncDismember(); tickLocalTear(dt);
     // Potwór: czerwona poświata nad głową, u siebie czerwone dłonie i szybszy ruch
     const mon = S.phase === 'play' ? S.mon : null;
     let mpos = null;
@@ -490,7 +523,7 @@ function randomScares(dt, t, p) {
     SFX.stinger({ x: x, y: 1.5, z: z });
 }
 export function dispose() {
-    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); }
+    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
     if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); S.board = null; }
     L.moveScale = 1;
     N.onLevelMsg(null);
