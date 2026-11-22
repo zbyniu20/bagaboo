@@ -18,9 +18,9 @@
     "semantic_hash": "7d0b0caf69591d61cf1e070633871556"
   },
   "core/avatar.js": {
-    "mtime": 1795281743.9286995,
-    "seen": 1795281878.9613574,
-    "ast_hash": "45fc32008405c1bc39cbff8aba9b5cf1",
+    "mtime": 1795364913.8000946,
+    "seen": 1795364945.4813466,
+    "ast_hash": "f224a27836304ca53af9eb14163ecd51",
     "semantic_hash": ""
   },
   "core/botkit.js": {
@@ -10089,6 +10089,36 @@
     "mtime": 1795357196.5815687,
     "seen": 1795358418.374694,
     "ast_hash": "7dbda80e91f3328a6bea950334459afa",
+    "semantic_hash": ""
+  },
+  "tools/blender/common.py": {
+    "mtime": 1795364579.984621,
+    "seen": 1795364945.4815366,
+    "ast_hash": "cc4644a3bf36f218a766ff024f72ffcc",
+    "semantic_hash": ""
+  },
+  "tools/blender/gorilla_head.py": {
+    "mtime": 1795364240.173859,
+    "seen": 1795364392.147095,
+    "ast_hash": "c10c142d3a00a45eab449628762d461a",
+    "semantic_hash": ""
+  },
+  "tools/blender/sdf.py": {
+    "mtime": 1795364579.980621,
+    "seen": 1795364945.4815443,
+    "ast_hash": "b278464056ce2c470b0809f68dc78944",
+    "semantic_hash": ""
+  },
+  "tools/blender/README.md": {
+    "mtime": 1795364384.9139538,
+    "seen": 1795364392.1473265,
+    "ast_hash": "b007a5c078c51bab926fa71ac88d226c",
+    "semantic_hash": ""
+  },
+  "tests/avatarshot.mjs": {
+    "mtime": 1795364913.804561,
+    "seen": 1795364945.48149,
+    "ast_hash": "883d74e8017e1239bc89531da3fa5539",
     "semantic_hash": ""
   },
   "package-lock.json": {
