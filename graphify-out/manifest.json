@@ -1,14 +1,14 @@
 {
   "core/ambience.js": {
-    "mtime": 1795375621.3619103,
-    "seen": 1795376188.2604299,
-    "ast_hash": "99634cf69d1455b1d651e736908548f2",
+    "mtime": 1795474612.8524427,
+    "seen": 1795474971.0496027,
+    "ast_hash": "32af99c0e1fac8b76473d22e12bc3ea8",
     "semantic_hash": ""
   },
   "core/audio.js": {
-    "mtime": 1795381898.1587358,
-    "seen": 1795382682.4989407,
-    "ast_hash": "634b3cbe8c3e683d344f6bccc99b0d5f",
+    "mtime": 1795474606.34977,
+    "seen": 1795474971.0496066,
+    "ast_hash": "c7aa713533b62df1a9c08daa152300ae",
     "semantic_hash": ""
   },
   "core/auth.js": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795467741.425004,
-    "seen": 1795471245.23503,
-    "ast_hash": "c68f45768fcc3b2ebd035af85b8d520e",
+    "mtime": 1795474606.3503156,
+    "seen": 1795474971.050083,
+    "ast_hash": "d90e1c4cec645defb2fddfc9dffe6a59",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795467798.423679,
-    "seen": 1795471245.2347732,
-    "ast_hash": "b6467bd850fee3a6219f4227a7d30b90",
+    "mtime": 1795474612.8659282,
+    "seen": 1795474971.049802,
+    "ast_hash": "c0dab430ea3727b60312dfa923c747cd",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795467741.4252925,
-    "seen": 1795471245.234804,
-    "ast_hash": "9289e8d1f2906c0ed7dca80d8cf790c5",
+    "mtime": 1795474606.3509681,
+    "seen": 1795474971.049852,
+    "ast_hash": "bf9c019e01f627718ba20c352fe709d8",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10371,6 +10371,12 @@
     "mtime": 1795468471.267625,
     "seen": 1795471245.2348056,
     "ast_hash": "4f107bdd5f4912e597eb471c1b3ca8d1",
+    "semantic_hash": ""
+  },
+  "core/musiclogic.js": {
+    "mtime": 1795474606.2914438,
+    "seen": 1795474971.049691,
+    "ast_hash": "e98db74dfbc96419c381662cdf4274e5",
     "semantic_hash": ""
   },
   "package-lock.json": {

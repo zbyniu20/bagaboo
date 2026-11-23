@@ -7,7 +7,8 @@ import { SETTINGS, GAMES_CALM } from './settings.js';
 import { buzz } from './haptics.js';
 import { LEVEL_DEFS } from './registry.js';
 import { occludedFilter, occludedGain } from './acousticlogic.js';
-let ctx = null, master = null, droneGain = null, scareBus = null, shaper = null;
+import { tensionSmooth, tensionParams, hushMul } from './musiclogic.js';
+let ctx = null, master = null, droneGain = null, scareBus = null, shaper = null, droneLp = null, tensGain = null, tensLfoG = null, tensLfo = null, tens = 0;
 const DRONE = 0.07;
 const hb = { next: 0 };
 // Haki dla muzyki i ambientu (music.js, ambience.js): zmiana głośności, wyciszenie przy jumpscare'ie, poziom zagrożenia
@@ -35,13 +36,28 @@ export function initAudio() {
     // Niskie, pulsujące tło
     droneGain = ctx.createGain(); droneGain.gain.value = DRONE * SETTINGS.music;
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220;
-    droneGain.connect(lp); lp.connect(master);
+    droneGain.connect(lp); lp.connect(master); droneLp = lp;
     for (const f of [41, 41.6, 61.7]) { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(droneGain); o.start(); }
     const lfo = ctx.createOscillator(), lfoG = ctx.createGain(); lfo.frequency.value = 0.07; lfoG.gain.value = 120;
     lfo.connect(lfoG); lfoG.connect(lp.frequency); lfo.start();
+    // Warstwa napięcia: dysonans (tryton nad basem) i puls, cicha do czasu zbliżenia się potwora (setTension)
+    tensGain = ctx.createGain(); tensGain.gain.value = 0; tensGain.connect(lp);
+    for (const f of [58.3, 82.4, 116.5]) { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(tensGain); o.start(); }
+    tensLfo = ctx.createOscillator(); tensLfoG = ctx.createGain(); tensLfo.frequency.value = 0.07; tensLfoG.gain.value = 0; tensLfo.connect(tensLfoG); tensLfoG.connect(tensGain.gain); tensLfo.start();
     // Co jakiś czas odległe skrzypienie
     setInterval(() => { if (Math.random() < 0.35) creak(0.25); }, 9000);
 }
+// Muzyka napięcia: target 0..1 (z reżysera grozy), hush = potwór tuż obok. Wołane co klatkę, wygładza się samo.
+export function setTension(target, dt, hush) {
+    if (!ctx || !droneLp) return;
+    tens = tensionSmooth(tens, target, dt);
+    const p = tensionParams(tens), t = ctx.currentTime, hm = hushMul(hush, tens), m = SETTINGS.music;
+    droneLp.frequency.setTargetAtTime(p.cutoff, t, 0.4);
+    droneGain.gain.setTargetAtTime(DRONE * m * p.droneMul * hm, t, 0.5);
+    tensGain.gain.setTargetAtTime(0.05 * p.dissonant * m * hm, t, 0.5);
+    tensLfo.frequency.setTargetAtTime(p.pulse, t, 0.5); tensLfoG.gain.setTargetAtTime(0.03 * p.dissonant * m, t, 0.5);
+}
+export function tensionNow() { return tens; }
 export function setDrone(level) { if (droneGain) droneGain.gain.setTargetAtTime(level * SETTINGS.music, ctx.currentTime, 0.8); }
 // Zastosuj głośności z ustawień (muzyka, efekty, jumpscare'y)
 export function applyVolumes() {
