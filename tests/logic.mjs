@@ -491,4 +491,14 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     check('bake: blocks always carry an aBake attribute (zeros) so unbaked ones never read stale defaults, the shader adds baked light times albedo, the palette grades block colors', /geo\.setAttribute\('aBake'/.test(EN) && /attribute vec3 aBake/.test(EN) && /totalEmissiveRadiance \+= vBake \* diffuseColor\.rgb/.test(EN) && /gradeColor\(color, familyFor\(L\.levelId\)\)/.test(EN) && /bakeList: \[\]/.test(EN) && /'bakeList'\]\) L\[k\]\.length = 0/.test(EN));
     check('bake: the level loader applies the palette and bakes BEFORE the light pool hides lights, and ?bake=0 switches it off', /applyArt\(L\.levelId\);[\s\S]*bakeLevel\(\);[\s\S]*registerLevelLights\(L\.root\)/.test(MJ2) && /bake=0/.test(LB) && /userData\.noBake/.test(LB));
 }
+// ---------- modele potworów z plików GLB (core/glblogic.js) ----------
+{
+    const G = await import(url('core/glblogic.js'));
+    check('glb: clips are picked by role from names in any case, with sensible fallbacks, and null for a model without animations', G.pickClip(['Armature|Idle', 'Armature|Walk', 'Armature|Run'], 'run') === 'Armature|Run' && G.pickClip(['IDLE', 'WALK'], 'run') === 'WALK' && G.pickClip(['Walk_Cycle'], 'idle') === 'Walk_Cycle' && G.pickClip(['Bite'], 'attack') === 'Bite' && G.pickClip(['Dance'], 'walk') === 'Dance' && G.pickClip([], 'walk') === null && G.pickClip(null, 'walk') === null);
+    check('glb: the motion role follows the speed (still, creeping, running) and a chase always runs', G.stateRole(0, false) === 'idle' && G.stateRole(1.5, false) === 'walk' && G.stateRole(4.2, false) === 'run' && G.stateRole(1.5, true) === 'run' && G.stateRole(NaN, true) === 'idle');
+    check('glb: the scale fits the target height and ignores broken sizes', Math.abs(G.fitScale(1.15, 2.3) - 2) < 1e-9 && G.fitScale(0, 2.3) === 1 && G.fitScale(NaN, 2.3) === 1 && G.fitScale(1, -1) === 1 && G.fitScale(1e-9, 2.3) === 1 && G.fitScale(0.02, 2.3) === 100);
+    check('glb: the budget limits file size and triangles, addresses cover the repo and the Vite bundle', G.withinBudget(1000, 1000) && !G.withinBudget(G.MAX_BYTES + 1, 10) && !G.withinBudget(10, G.MAX_TRIS + 1) && G.candidateUrls('monster.glb')[0] === 'assets/monsters/monster.glb' && G.candidateUrls('monster.glb')[1] === 'monsters/monster.glb' && G.MONSTERS.monster.height > 1);
+    const MN2 = fs.readFileSync(path.join(ROOT, 'levels/monster.js'), 'utf8'), VC = fs.readFileSync(path.join(ROOT, 'vite.config.js'), 'utf8');
+    check('glb: Become the Monster loads the model asynchronously (a level change during loading disposes it), animates it in play and disposes it on exit; Vite copies assets', /loadGlbMonster\('monster'\)/.test(MN2) && /if \(S !== lvl\) \{ g\.dispose\(\)/.test(MN2) && /S\.glb\.update\(dt, b\.speed, true\)/.test(MN2) && /S\.glb\.dispose\(\)/.test(MN2) && /publicDir: 'assets'/.test(VC));
+}
 done('logic');
