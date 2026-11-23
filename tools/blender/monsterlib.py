@@ -68,7 +68,7 @@ def cloth_cone(top, bottom_z, r_top, r_bot, seg=10, jag=0.0, rng=None, ry=1.0):
 # ---------- model ----------
 class Monster:
     def __init__(self, name, seed=1):
-        self.name = name; self.rng = random.Random(seed); self.bones = {}; self.order = []; self.shapes = []; self.mats = {}; self.mat_ids = {}; self.dirt = 0.5; self.blood = 0.0; self.skin_mat = 'skin'
+        self.name = name; self.rng = random.Random(seed); self.bones = {}; self.order = []; self.shapes = []; self.mats = {}; self.mat_ids = {}; self.dirt = 0.5; self.blood = 0.0; self.bruise = 0.0; self.skin_mat = 'skin'
     # material: kolor bazowy, chropowatość, emisja
     def material(self, key, color, rough=0.6, emit=None, strength=0.0, metal=0.0):
         self.mats[key] = dict(color=color, rough=rough, emit=emit, strength=strength, metal=metal); return key
@@ -81,11 +81,11 @@ class Monster:
         v, f = shape; self.shapes.append(dict(v=[Vector(p) for p in v], f=f, bone=bone, mat=mat, tint=tint))
     # --- gotowe dodatki ---
     def eye(self, bone, c, r, mat='eye'): self.add(ellipsoid(c, (r, r * 0.8, r), 8, 5), bone, mat)
-    def teeth(self, bone, center, width, n, length, row_y=0.0, down=True, mat='tooth', lean=0.0, rr=0.008, smile=0.0):
+    def teeth(self, bone, center, width, n, length, row_y=0.0, down=True, mat='tooth', lean=0.0, rr=0.008, smile=0.0, ycb=None):
         for i in range(n):
             t = i / max(1, n - 1) - 0.5; x = center[0] + t * width * 2; curve = (abs(t) * 2) ** 2 * 0.02
             big = 1.0 + (0.9 if i % 3 == 1 else 0.0) + self.rng.random() * 0.4; ln = length * big * (1 - abs(t) * 0.5)
-            b = Vector((x, center[1] - curve + row_y, center[2] + (abs(t) * 2) ** 2 * smile)); tip = b + Vector((0, lean, -ln if down else ln))
+            zz = center[2] + (abs(t) * 2) ** 2 * smile; yy = (ycb(x, zz) if ycb else None); b = Vector((x, (yy if yy is not None else center[1] - curve) + row_y, zz)); tip = b + Vector((0, lean, -ln if down else ln))
             self.add(frustum(b, tip, rr, 0.0, 4), bone, mat)
     def claws(self, bone, base, n, spread, length, mat='claw', fwd=(0, 0.6, -0.8)):
         for i in range(n):
@@ -96,10 +96,10 @@ class Monster:
     def joint(self, bone, c, r, mat='joint'): self.add(ellipsoid(c, (r, r, r), 7, 4), bone, mat)
 
     # --- budowa ---
-    def build(self, subsurf=1, smooth=0.9):
-        import bmesh
-        # 1) szkielet krawędziowy do modyfikatora Skin: wierzchołek na końcu każdej kości (kolejność = order)
-        names = [n for n in self.order if self.bones[n]['skin']]; vert_of = {}; verts = []; edges = []; radii = []
+    def skin(self, subsurf=1, smooth=0.9):
+        """siatka ze Skin + wagi + kolory skóry; po wywołaniu można pytać o powierzchnię (front) i dopasowywać do niej dodatki."""
+        if getattr(self, '_skin', None): return
+        names = [n for n in self.order if self.bones[n]['skin']]; verts = []; edges = []; radii = []
         def vid(p):
             for i, q in enumerate(verts):
                 if (q - p).length < 1e-5: return i
@@ -118,34 +118,80 @@ class Monster:
         for i in roots: sv[i].use_root = True
         ss = ob.modifiers.new('sub', 'SUBSURF'); ss.levels = subsurf; ss.render_levels = subsurf
         dg = bpy.context.evaluated_depsgraph_get(); ev = ob.evaluated_get(dg); em = ev.to_mesh()
-        sk_v = [v.co.copy() for v in em.vertices]; sk_f = [tuple(p.vertices) for p in em.polygons]
+        sk_v = [v.co.copy() for v in em.vertices]; sk_f = [tuple(p.vertices) for p in em.polygons]; sk_n = [v.normal.copy() for v in em.vertices]
         ev.to_mesh_clear(); bpy.data.objects.remove(ob); bpy.data.meshes.remove(me)
-        # 2) wagi dla siatki ze Skin: dwie najbliższe kości (odległość do odcinka)
         segs = [(n, P(*self.bones[n]['head']), P(*self.bones[n]['tail'])) for n in self.order if self.bones[n]['skin']]
         def dist_seg(p, a, b):
             ab = b - a; t = max(0.0, min(1.0, (p - a).dot(ab) / max(ab.length_squared, 1e-9))); return (p - (a + ab * t)).length
         weights = []
         for p in sk_v:
-            ds = sorted(((dist_seg(p, a, b), n) for n, a, b in segs))[:2]; w = [1.0 / (d + 0.02) ** 2 for d, _ in ds]; s = sum(w); weights.append([(ds[i][1], w[i] / s) for i in range(len(ds)) if w[i] / s > 0.04])
-        # 3) kolory wierzchołków skóry: brud (wartość) i krew (czerwień) z szumu
-        rng = self.rng; ph = [rng.random() * 6 for _ in range(6)]
-        def noise(p):
-            return (math.sin(p.x * 17 + ph[0]) * math.sin(p.y * 13 + ph[1]) + math.sin(p.z * 21 + ph[2]) * math.sin(p.x * 9 + ph[3]) + math.sin((p.y + p.z) * 29 + ph[4]) * 0.6) / 2.6 * 0.5 + 0.5
+            ds = sorted(((dist_seg(p, a, b), n) for n, a, b in segs))[:2]; w = [1.0 / (d + 0.02) ** 2 for d, _ in ds]; sm = sum(w); weights.append([(ds[i][1], w[i] / sm) for i in range(len(ds)) if w[i] / sm > 0.04])
+        rng = self.rng; ph = [rng.random() * 6 for _ in range(10)]
+        def noise(p, k=1.0, o=0):
+            return (math.sin(p.x * 17 * k + ph[o]) * math.sin(p.y * 13 * k + ph[o + 1]) + math.sin(p.z * 21 * k + ph[o + 2]) * math.sin(p.x * 9 * k + ph[o + 3]) + math.sin((p.y + p.z) * 29 * k + ph[o + 4]) * 0.6) / 2.6 * 0.5 + 0.5
         cols = []
-        for p in sk_v:
-            n1 = noise(p); n2 = noise(Vector((p.x * 2.1 + 3, p.y * 2.1, p.z * 2.1 + 5))); dirt = 1.0 - self.dirt * (0.35 * n1 + 0.25 * max(0, 0.5 - p.z * 0.25)); c = [dirt, dirt, dirt]
-            if self.blood > 0 and n2 > 1.0 - self.blood: k = min(1, (n2 - (1 - self.blood)) / 0.12); c = [dirt * (1 - 0.35 * k), dirt * (1 - 0.8 * k), dirt * (1 - 0.8 * k)]
+        for i, p in enumerate(sk_v):
+            n1 = noise(p); n2 = noise(Vector((p.x * 2.1 + 3, p.y * 2.1, p.z * 2.1 + 5)), 1.0, 5); n3 = noise(p, 1.7, 0)
+            ao = 0.72 + 0.28 * max(0.0, min(1.0, sk_n[i].z * 0.5 + 0.55))   # spody i zagłębienia ciemniejsze
+            dirt = (1.0 - self.dirt * (0.45 * n1 + 0.3 * max(0, 0.55 - p.z * 0.25))) * ao; c = [dirt, dirt, dirt]
+            if self.bruise > 0 and n3 > 1.0 - self.bruise:   # siniaki: fioletowo-zielone plamy
+                k = min(1, (n3 - (1 - self.bruise)) / 0.1); c = [c[0] * (1 - 0.25 * k), c[1] * (1 - 0.45 * k), c[2] * (1 - 0.1 * k)]
+            if self.blood > 0 and n2 > 1.0 - self.blood: k = min(1, (n2 - (1 - self.blood)) / 0.1); c = [c[0] * (1 - 0.3 * k), c[1] * (1 - 0.85 * k), c[2] * (1 - 0.85 * k)]
             cols.append(c)
-        # 4) skład końcowy: skóra + dodatki w jednej siatce
+        self._skin = dict(v=sk_v, f=sk_f, w=weights, c=cols, n=sk_n)
+    def front(self, x, z, r=0.035, bone='head'):
+        """współrzędna Y (przepisu, przód = +Y) powierzchni skóry bone w pobliżu (x, z); None gdy brak siatki w pobliżu."""
+        for rr in (r, r * 1.6, r * 2.4, r * 3.4):   # rzadka siatka: poszerzamy okno, aż coś znajdziemy
+            best = None
+            for p, w in zip(self._skin['v'], self._skin['w']):
+                if not w or max(w, key=lambda q: q[1])[0] != bone: continue
+                y = -p.y
+                if abs(p.x - x) < rr and abs(p.z - z) < rr and (best is None or y > best): best = y
+            if best is not None: return best
+        return None
+    def at(self, bone, t, off=(0, 0, 0)):
+        b = self.bones[bone]; return b['head'].lerp(b['tail'], t) + Vector(off)
+    # --- dodatki grozy ---
+    def spikes(self, bone, n, length, mat='bone', side=(0, -1, 0.25), r=0.014, t0=0.15, t1=0.95):
+        """kolce (kręgosłup, grzbiet, stawy) wzdłuż kości, skierowane w stronę side."""
+        b = self.bones[bone]; d = Vector(side).normalized()
+        for i in range(n):
+            t = t0 + (t1 - t0) * i / max(1, n - 1); base = self.at(bone, t) + Vector((d.x * b['r'][0], d.y * b['r'][1], d.z * b['r'][0])) * 0.9
+            self.add(frustum(base, base + d * length * (0.7 + self.rng.random() * 0.6), r, 0.0, 4), bone, mat)
+    def wound(self, bone, t, dirv, size=0.03, mat='dark', rim='blood'):
+        """otwarta rana: ciemna wnęka z czerwoną obwódką na powierzchni kości."""
+        b = self.bones[bone]; d = Vector(dirv).normalized(); c = self.at(bone, t) + Vector((d.x * b['r'][0], d.y * b['r'][1], d.z * b['r'][0])) * 0.88
+        sx, sz = (size * 1.4, size * 1.4); self.add(ellipsoid(c, (sx, 0.011, sz), 8, 4), bone, rim); self.add(ellipsoid(c + d * 0.006, (size, 0.009, size * 0.9), 8, 4), bone, mat)   # płaska rana: nie wystaje jak guz
+    def stitches(self, bone, t, dirv, length=0.12, n=5, mat='thread', vertical=True):
+        """zszycie: wzdłużna nić z poprzecznymi ściegami."""
+        b = self.bones[bone]; d = Vector(dirv).normalized(); c = self.at(bone, t) + Vector((d.x * b['r'][0], d.y * b['r'][1], d.z * b['r'][0])) * 0.97
+        ax = Vector((0, 0, 1)) if vertical else Vector((1, 0, 0)); pe = d.cross(ax).normalized()
+        self.add(tube([c - ax * length / 2, c + ax * length / 2], 0.0035, 0.0035, 3), bone, mat)
+        for i in range(n):
+            q = c + ax * (length * (i / max(1, n - 1) - 0.5)); self.add(tube([q - pe * 0.02, q + pe * 0.02], 0.0032, 0.0032, 3), bone, mat)
+    def tongue(self, bone, base, length, mat='blood', curl=0.25, width=0.012):
+        pts = [Vector(base) + Vector((0, 0.0 + curl * (i / 4) ** 2 * 0.4, -length * i / 4 * (1.0 if i < 4 else 1.0))) for i in range(5)]
+        self.add(tube(pts, width, width * 0.5, 4), bone, mat)
+    def crack(self, bone, t, dirv, length=0.2, mat='crack', along=(0, 0, 1), r=0.0035, segs=6):
+        """pęknięcie (zygzak rurką) na powierzchni kości."""
+        b = self.bones[bone]; d = Vector(dirv).normalized(); c = self.at(bone, t) + Vector((d.x * b['r'][0], d.y * b['r'][1], d.z * b['r'][0])) * 0.99
+        ax = Vector(along).normalized(); pe = d.cross(ax).normalized(); pts = []
+        for i in range(segs):
+            q = c + ax * (length * (i / (segs - 1) - 0.5)) + pe * ((self.rng.random() - 0.5) * length * 0.35); pts.append(q)
+        self.add(tube(pts, r, r * 0.6, 3), bone, mat)
+    def drips(self, bone, base, n, spread, length, mat='blood'):
+        for i in range(n):
+            x = base[0] + (i / max(1, n - 1) - 0.5) * spread; ln = length * (0.5 + self.rng.random()); b = Vector((x, base[1], base[2]))
+            self.add(tube([b, b + Vector((0, 0.005, -ln))], 0.0035, 0.002, 3), bone, mat)
+
+    def build(self, subsurf=1, smooth=0.9):
+        self.skin(subsurf, smooth); sk = self._skin; sk_v, sk_f, weights, cols = sk['v'], sk['f'], sk['w'], sk['c']
         V, F, M, C, W = [], [], [], [], []
-        def addpart(verts, faces, mat, color, wts):
-            o = len(V); V.extend(verts); F.extend(tuple(o + i for i in fc) for fc in faces); M.extend([mat] * len(faces)); C.extend([color] * len(verts)); W.extend([wts] * len(verts))
         for i, p in enumerate(sk_v): V.append(p); C.append(cols[i]); W.append(weights[i])
         F.extend(sk_f); M.extend([self.skin_mat] * len(sk_f))
         for s in self.shapes:
             vv = [P(*p) for p in s['v']]; col = s['tint'] or [1, 1, 1]; o = len(V); V.extend(vv); C.extend([col] * len(vv)); W.extend([[(s['bone'], 1.0)]] * len(vv))
             F.extend(tuple(o + i for i in fc) for fc in s['f']); M.extend([s['mat']] * len(s['f']))
-        # siatka Blendera
         mkeys = list(dict.fromkeys(M)); me = bpy.data.meshes.new(self.name); me.from_pydata([tuple(v) for v in V], [], F); me.update()
         for k in mkeys:
             d = self.mats[k]; m = bpy.data.materials.new(self.name + '_' + k); m.use_nodes = True; b = m.node_tree.nodes['Principled BSDF']
@@ -157,8 +203,7 @@ class Monster:
         ca = me.color_attributes.new('Col', 'FLOAT_COLOR', 'POINT')
         for i, c in enumerate(C): ca.data[i].color = (c[0], c[1], c[2], 1.0)
         ob = bpy.data.objects.new(self.name, me); bpy.context.collection.objects.link(ob)
-        for n in self.order:
-            if self.bones[n]['deform'] if 'deform' in self.bones[n] else True: ob.vertex_groups.new(name=n)
+        for n in self.order: ob.vertex_groups.new(name=n)
         for i, w in enumerate(W):
             for n, wt in w: ob.vertex_groups[n].add([i], wt, 'REPLACE')
         self.mesh_ob = ob; self.tris = sum(len(f) - 2 for f in F)
