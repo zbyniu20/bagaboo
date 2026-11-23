@@ -86,7 +86,7 @@ export function cameraPanel(cw, ch, w, h, y, z, order) {
     const canvas = T.makeCanvas(cw, ch), tx = new THREE.CanvasTexture(canvas); tx.colorSpace = THREE.SRGBColorSpace;
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthTest: false, toneMapped: false }));
     mesh.position.set(0, y, z); mesh.renderOrder = order || 990; camera.add(mesh);
-    return { canvas: canvas, ctx: canvas.getContext('2d'), tex: tx, mesh: mesh, update() { tx.needsUpdate = true; }, dispose() { camera.remove(mesh); } };
+    return { canvas: canvas, ctx: canvas.getContext('2d'), tex: tx, mesh: mesh, update() { tx.needsUpdate = true; }, dispose() { camera.remove(mesh); tx.dispose(); mesh.material.dispose(); mesh.geometry.dispose(); } };   // zwalnia też teksturę, materiał i geometrię (wcześniej każdy panel HUD zostawał w pamięci GPU)
 }
 // Tło panelu: zaokrąglony prostokąt
 export function panelBg(p, fill, stroke) {

@@ -150,9 +150,9 @@
     "semantic_hash": ""
   },
   "core/levelkit.js": {
-    "mtime": 1795377494.1157837,
-    "seen": 1795377979.4040945,
-    "ast_hash": "fae7ae3d08fa81c4137ccb749287c73b",
+    "mtime": 1795459922.951559,
+    "seen": 1795461052.4210572,
+    "ast_hash": "50015186baeb7e02953ae3e006326b68",
     "semantic_hash": ""
   },
   "core/lightpool.js": {
@@ -468,15 +468,15 @@
     "semantic_hash": ""
   },
   "tests/smoke.mjs": {
-    "mtime": 1795357010.2584453,
-    "seen": 1795358418.3746881,
-    "ast_hash": "cbf72411f726b07e76c9605952918b31",
+    "mtime": 1795460680.5778315,
+    "seen": 1795461052.4213607,
+    "ast_hash": "ddcdb216c047bc2d052d807fb2c5f213",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795455046.0026023,
-    "seen": 1795455055.1477072,
-    "ast_hash": "b95d2fa5bb90bdfb84dacc295c740935",
+    "mtime": 1795461042.7032382,
+    "seen": 1795461052.4217083,
+    "ast_hash": "69e0c86d124b2705585f4a9bae95f07a",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795455046.0019023,
-    "seen": 1795455055.147444,
-    "ast_hash": "b427bfd5acd42c1fb80850468c68c24a",
+    "mtime": 1795460680.5768042,
+    "seen": 1795461052.4212859,
+    "ast_hash": "de2c8f99595f1cd80ecdafbafcf35968",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "tests/static.mjs": {
-    "mtime": 1795380926.566265,
-    "seen": 1795381185.150167,
-    "ast_hash": "95f56bec751ac9d59bd99c90d265aeb4",
+    "mtime": 1795460680.5757267,
+    "seen": 1795461052.4213655,
+    "ast_hash": "c061083d63c98cdad99da20809288b9f",
     "semantic_hash": ""
   },
   "tests/changed.mjs": {
@@ -10290,9 +10290,9 @@
     "semantic_hash": ""
   },
   "core/glbmonster.js": {
-    "mtime": 1795451128.182752,
-    "seen": 1795452817.6043072,
-    "ast_hash": "d59c1f1831c37e5463df23a8183c021d",
+    "mtime": 1795458865.5091524,
+    "seen": 1795461052.421014,
+    "ast_hash": "6bdf37221bd4dcd8f396dec6ca5617af",
     "semantic_hash": ""
   },
   "tests/glb.mjs": {

@@ -201,7 +201,7 @@ const CYCLE = ['maze', 'well', 'hospital', 'cemetery', 'lobby'];
 const memAfterCycle = async () => { for (const lv of CYCLE) { await run(`const M = await import('./main.js'); await M.loadLevel('${lv}'); return 1;`); await waitFrames(1); } return run(`const I = (await import('./core/engine.js')).renderer.info.memory; return { geo: I.geometries, tex: I.textures };`); };
 const m1 = await memAfterCycle(), m2 = await memAfterCycle(), m3 = await memAfterCycle();
 console.log('     memory after cycles:', JSON.stringify([m1, m2, m3]));
-if (m3.tex > m2.tex + 30 || m3.geo > m2.geo + 100) fail(`memory: resources keep growing across level changes (${JSON.stringify(m2)} -> ${JSON.stringify(m3)})`); else ok('memory: textures/geometries stable across level cycles');
+if (m3.tex > m2.tex + 6 || m3.geo > m2.geo + 40) fail(`memory: resources keep growing across level changes (${JSON.stringify(m2)} -> ${JSON.stringify(m3)})`); else ok('memory: textures/geometries stable across level cycles');
 }
 
 // ---- new game modes: simulate rounds by stepping each level's update() ----

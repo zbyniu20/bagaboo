@@ -36,7 +36,8 @@ export async function loadGlbMonster(name) {
     return {
         group: group, clips: names, tris: tris,
         update(dt, speed, chasing) { if (!mixer) return; play(stateRole(speed, chasing)); mixer.update(dt); },
-        dispose() { if (mixer) mixer.stopAllAction(); inner.traverse(o => { if (o.isMesh) { if (o.geometry) o.geometry.dispose(); const m = o.material; for (const mm of Array.isArray(m) ? m : [m]) if (mm) { for (const k2 in mm) if (mm[k2] && mm[k2].isTexture) mm[k2].dispose(); mm.dispose(); } } }); }
+        // szkielet trzyma teksturę kości: bez skeleton.dispose() każde wejście do poziomu zostawiało ją w pamięci GPU
+        dispose() { if (mixer) { mixer.stopAllAction(); mixer.uncacheRoot(inner); } inner.traverse(o => { if (o.isSkinnedMesh && o.skeleton) o.skeleton.dispose(); if (o.isMesh) { if (o.geometry) o.geometry.dispose(); const m = o.material; for (const mm of Array.isArray(m) ? m : [m]) if (mm) { for (const k2 in mm) if (mm[k2] && mm[k2].isTexture) mm[k2].dispose(); mm.dispose(); } } }); }
     };
 }
 

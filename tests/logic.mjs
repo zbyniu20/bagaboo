@@ -515,4 +515,10 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     check('mirror: the reflection camera of the mirror sees the mirror layer (three.js r16x+ Reflector has no mirror.camera, it clones the render camera)', /mirror\.getReflectionCamera/.test(LD) && /rc\.layers\.enable\(MIRROR_LAYER\)/.test(LD));
     check('account: the VR menu can log out and pick guest play without the start page, the pause menu logs out after a confirming second tap, main.js switches to guest and leaves online rooms', /Log out \(play as guest\)/.test(VM) && /Play as guest/.test(VM) && /btnLogout'\)\.click\(\)/.test(VM) && /PAUSE\.onLogout/.test(PS) && /logoutArmed/.test(PS) && /PAUSE\.onLogout = \(\) =>/.test(MJ3) && /location\.reload\(\)/.test(MJ3));
 }
+// ---------- zwalnianie zasobów GPU (wycieki znalezione w audycie) ----------
+{
+    const GM = fs.readFileSync(path.join(ROOT, 'core/glbmonster.js'), 'utf8'), LK = fs.readFileSync(path.join(ROOT, 'core/levelkit.js'), 'utf8');
+    check('leaks: a GLB monster disposes its skeleton (bone texture), mixer cache, geometry, materials and textures', /o\.skeleton\.dispose\(\)/.test(GM) && /mixer\.uncacheRoot\(inner\)/.test(GM) && /geometry\.dispose\(\)/.test(GM));
+    check('leaks: a camera panel (HUD) disposes its texture, material and geometry, not just the mesh', /dispose\(\) \{ camera\.remove\(mesh\); tx\.dispose\(\); mesh\.material\.dispose\(\); mesh\.geometry\.dispose\(\); \}/.test(LK));
+}
 done('logic');
