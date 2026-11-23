@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795452806.0600247,
-    "seen": 1795452817.605098,
-    "ast_hash": "b285118d4e496bd22d35a87fd330fae4",
+    "mtime": 1795453813.1210508,
+    "seen": 1795453821.8098304,
+    "ast_hash": "8a76d58164998e9ece5282f1f7234fd3",
     "semantic_hash": ""
   },
   "README.md": {
@@ -10308,9 +10308,9 @@
     "semantic_hash": ""
   },
   "tests/glbshot.mjs": {
-    "mtime": 1795450762.8287764,
-    "seen": 1795452817.6046097,
-    "ast_hash": "f514a32a636d8eeda48a40897b0e9b8a",
+    "mtime": 1795453757.4070451,
+    "seen": 1795453821.809571,
+    "ast_hash": "ed1b519971da06881aa3a08c34b52af1",
     "semantic_hash": ""
   },
   "tests/monsterview.mjs": {
@@ -10320,15 +10320,15 @@
     "semantic_hash": ""
   },
   "tools/blender/monsterlib.py": {
-    "mtime": 1795450819.5955248,
-    "seen": 1795452817.6047006,
-    "ast_hash": "3fb30537a2821fb3a7dba0259aa2ec63",
+    "mtime": 1795453786.3479583,
+    "seen": 1795453821.809623,
+    "ast_hash": "39a58cfc98b8e03769c7f507d8c01fc8",
     "semantic_hash": ""
   },
   "tools/blender/monsters.py": {
-    "mtime": 1795450937.1209943,
-    "seen": 1795452817.6047034,
-    "ast_hash": "951d05c17d77fc04fc12e1d19420e5d4",
+    "mtime": 1795453786.3485112,
+    "seen": 1795453821.809625,
+    "ast_hash": "43461740c9aa7b966db29cb05537b797",
     "semantic_hash": ""
   },
   "package-lock.json": {

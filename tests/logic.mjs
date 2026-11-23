@@ -509,4 +509,10 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     const MN2 = fs.readFileSync(path.join(ROOT, 'levels/monster.js'), 'utf8'), VC = fs.readFileSync(path.join(ROOT, 'vite.config.js'), 'utf8');
     check('glb: Become the Monster loads the model asynchronously (a level change during loading disposes it), animates it in play and disposes it on exit; Vite copies assets', /loadGlbMonster\(kind\)/.test(MN2) && /BOT_KINDS/.test(MN2) && /if \(S !== lvl\) \{ g\.dispose\(\)/.test(MN2) && /S\.glb\.update\(dt, b\.speed, true\)/.test(MN2) && /S\.glb\.dispose\(\)/.test(MN2) && /publicDir: 'assets'/.test(VC));
 }
+// ---------- lustro i wylogowanie w grze ----------
+{
+    const LD = fs.readFileSync(path.join(ROOT, 'levels/lobby-door.js'), 'utf8'), VM = fs.readFileSync(path.join(ROOT, 'core/vrmenu.js'), 'utf8'), PS = fs.readFileSync(path.join(ROOT, 'core/pause.js'), 'utf8'), MJ3 = fs.readFileSync(path.join(ROOT, 'main.js'), 'utf8');
+    check('mirror: the reflection camera of the mirror sees the mirror layer (three.js r16x+ Reflector has no mirror.camera, it clones the render camera)', /mirror\.getReflectionCamera/.test(LD) && /rc\.layers\.enable\(MIRROR_LAYER\)/.test(LD));
+    check('account: the VR menu can log out and pick guest play without the start page, the pause menu logs out after a confirming second tap, main.js switches to guest and leaves online rooms', /Log out \(play as guest\)/.test(VM) && /Play as guest/.test(VM) && /btnLogout'\)\.click\(\)/.test(VM) && /PAUSE\.onLogout/.test(PS) && /logoutArmed/.test(PS) && /PAUSE\.onLogout = \(\) =>/.test(MJ3) && /location\.reload\(\)/.test(MJ3));
+}
 done('logic');
