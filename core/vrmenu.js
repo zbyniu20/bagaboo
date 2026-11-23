@@ -73,8 +73,16 @@ const menu = new Terminal((t) => {
     if (acc || reserved) {
         c.font = '24px sans-serif'; c.textAlign = 'center';
         c.fillStyle = acc ? '#9aff60' : '#ff8a70';
-        wrap(c, acc ? 'Signed in as ' + acc.nick + '. Log out on the start page to change it.' : 'This nickname is reserved for the staff. Log in on the start page (outside VR) or pick another nickname.', W / 2, y + 6, 860, 30);
+        wrap(c, acc ? 'Signed in as ' + acc.nick + '.' : 'This nickname is reserved for the staff. Log in on the start page (outside VR) or pick another nickname.', W / 2, y + 6, 860, 30);
+        y += 56;
+    }
+    // Wylogowanie i gra jako gość z poziomu gogli (strona startowa jest poza zasięgiem, gdy masz je na głowie)
+    if (acc) {
+        pageBtn(t, 'logout', 312, y, 400, 52, 'Log out (play as guest)', () => { $('btnLogout').click(); $('btnGuest').click(); }, { bg: 'transparent', border: '#8a5a4a', color: '#f2c8a8', size: 24 });
         y += 66;
+    } else if ($('authStage').style.display !== 'none') {   // jeszcze nie wybrano konta ani gry jako gość
+        pageBtn(t, 'guest', 312, y, 400, 60, 'Play as guest', () => { $('btnGuest').click(); }, { bg: '#3a4058', border: '#4b5270', size: 28 });
+        y += 72;
     }
     if (ui.edit) { drawKeyboard(t, y + 10); return; }
     // Kolor ciała: próbki zamiast okienka wyboru koloru

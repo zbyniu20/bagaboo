@@ -11,8 +11,10 @@ import { SAVE, CATALOG, isOwned, equipItem } from './economy.js';
 import { isStaffName } from './config.js';
 import { petStatus, cycleColorPet, cycleName, cycleSpeciesPet, toggleNameStylePet } from './petstore.js';
 import { PET, colorChoices } from './petlogic.js';
+import { account } from './auth.js';
 
-export const PAUSE = { on: false, onLobby: null, inLobby: true };
+export const PAUSE = { on: false, onLobby: null, onLogout: null, inLobby: true };
+let logoutArmed = 0;   // czas pierwszego dotknięcia przycisku wylogowania (drugie w ciągu 4 s potwierdza)
 const prev = new Map();
 let page = 'main';   // 'main' albo 'pet' (wybór stworka)
 const _p = new THREE.Vector3(), _d = new THREE.Vector3();
@@ -89,7 +91,15 @@ export const pauseMenu = new Terminal((t) => {
         t.btn('hKick', 520, 556, 200, 48, 'Kick', () => equipItem(item('kick')), { size: 24, tone: 'gold', active: tool === 'kick', disabled: !isOwned(item('kick')) });
         t.btn('hBan', 740, 556, 220, 48, isOwned(item('ban')) ? 'Ban' : 'Ban (staff room)', () => equipItem(item('ban')), { size: isOwned(item('ban')) ? 24 : 18, tone: 'bad', active: tool === 'ban', disabled: !isOwned(item('ban')) });
     } else t.text('Vignette darkens the edges when you move fast. Snap turn rotates in 30° steps.', 60, 580, 19, AMBER_DIM, 'left');
-    t.text('Graphics: ' + SETTINGS.quality + ' (main menu).  Press Y, B or the stick again to resume.', 60, 622, 19, OK_COL, 'left');
+    t.text('Press Y, B or the stick to resume.  Graphics: ' + SETTINGS.quality + '.', 60, 622, 19, OK_COL, 'left');
+    const acc = account();   // wylogowanie z poziomu gry: grasz dalej jako gość (w pokoju online gra przeładuje się i opuścisz pokój)
+    if (acc) {
+        const armed = performance.now() - logoutArmed < 4000;
+        t.btn('logout', 690, 606, 280, 36, armed ? 'Tap again: log out' : 'Log out (guest)', () => {
+            if (!armed) { logoutArmed = performance.now(); pauseMenu.dirty = true; setTimeout(() => { pauseMenu.dirty = true; }, 4100); return; }
+            logoutArmed = 0; closePause(); if (PAUSE.onLogout) PAUSE.onLogout();
+        }, { size: 20, tone: armed ? 'bad' : undefined });
+    }
     t.scanlines();
 });
 const mesh = pauseMenu.createMesh(0.96, 0.6);

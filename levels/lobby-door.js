@@ -80,7 +80,10 @@ function buildMirror() {
     back.position.set(0, y0 + H / 2, 0.02); g.add(back);
     mirror = new Reflector(new THREE.PlaneGeometry(W, H), { textureWidth: GFX.mirror, textureHeight: Math.round(GFX.mirror * 1.44), color: 0xb0b0b0, clipBias: 0.003 });
     mirror.position.set(0, y0 + H / 2, 0.03); g.add(mirror);
+    // Warstwa lustra (twoja postać) musi być włączona na kamerze odbicia. Od three.js r16x Reflector nie ma już mirror.camera: kamera odbicia to klon kamery renderu,
+    // tworzony przy pierwszym użyciu (getReflectionCamera), więc włączamy warstwę na każdym takim klonie (także na starszych wersjach: mirror.camera).
     if (mirror.camera) mirror.camera.layers.enable(MIRROR_LAYER);
+    if (mirror.getReflectionCamera) { const grc = mirror.getReflectionCamera; mirror.getReflectionCamera = function (cam) { const rc = grc.call(this, cam); rc.layers.enable(MIRROR_LAYER); return rc; }; }
     // Twoje prawdziwe dłonie znikają tylko na czas renderu lustra (zamiast nich widać kopie, które potrafią wykonywać emotki)
     const mirrorRender = mirror.onBeforeRender;
     mirror.onBeforeRender = function () {

@@ -137,6 +137,15 @@ async function goToLevel(id, spawn, opts) {
     switching = false;
 }
 PAUSE.onLobby = () => goToLevel('lobby');
+// Wylogowanie z poziomu gry (menu pauzy): konto -> gość. W solo od razu, w pokoju online zmiana tożsamości = wyjście z pokoju (przeładowanie strony)
+PAUSE.onLogout = () => {
+    if (!AUTH.account()) return;
+    const online = NETM.NET.mode !== 'solo';
+    $('btnLogout').click(); $('btnGuest').click();   // te same przyciski co na stronie startowej: wyloguj, potem graj jako gość
+    readProfile();                                    // nick gościa (zastrzeżony nick ekipy zamienia się na zwykły)
+    if (online) { setTimeout(() => location.reload(), 400); return; }
+    toast('Logged out. You play as a guest now.', '#ffd27a');
+};
 // Gość: host przeszedł przez drzwi, idziemy za nim (ten sam poziom i układ)
 let pendingFollow = null;
 NETM.onFollow((level, data) => {
