@@ -19,6 +19,7 @@ import * as SFX from '../core/audio.js';
 import { ARRIVAL_FROM_SILENCE as ARRIVAL_SILENCE } from './levels.js';
 import { buildDoor, addDoorPortal, createJumpscare, cameraPanel, panelBg, drawInstructions , introSeen, addStoryProps } from '../core/levelkit.js';
 import { setDread } from '../core/ambience.js';
+import { swapRoot } from '../core/glbmonster.js';
 
 // ---------- USTAWIENIA ----------
 const NP = LIGHT_PRESETS.night;
@@ -71,7 +72,7 @@ export function build() {
     buildClockBoard();
     buildExitDoor();
     buildWellDoor();
-    S.mon = buildMonster();
+    S.mon = buildMonster(); swapRoot(S.mon.root, 'blind', { height: 2.6 });   // Ślepy z Blendera (assets/monsters/blind.glb)
     setDread(() => S.mon ? [S.mon.root.position] : [], { apparitions: false });   // Cisza ma własny, dźwiękowy horror
     buildScare();
     buildHud();

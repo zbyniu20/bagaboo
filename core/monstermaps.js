@@ -204,7 +204,7 @@ function temple(seed) {
 // ---------- LOBBY: sala przed rundą, w której gracze głosują na mapę, stając na polach (po jednym polu na mapę z MAPS) ----------
 // Pola są dwoma rzędami po trzy na środku sali, tablica z wynikami wisi na północnej ścianie, wejście (i drzwi GAMES) jest przy południowej.
 // Host liczy głosy z pozycji głów (padOf z lobbylogic.js), przez sieć idą tylko liczniki (cleanVotes).
-export const LOBBY = { A: 14, H: 6.5, R: 1.5, PAD_SIZE: 2.7, BOARD: [0, 3.4, -13.9], MAX_VOTES: 16, OPTIONS: 3 };   // OPTIONS: tyle losowych map jest w każdym głosowaniu
+export const LOBBY = { A: 14, H: 6.5, R: 1.5, PAD_SIZE: 2.7, BOARD: [0, 3.4, -13.9], MAX_VOTES: 16, OPTIONS: 3, LIGHT: 28, HEMI: 2.2 };   // LIGHT: moc lamp (była 11), HEMI: mnożnik światła otoczenia w lobby   // OPTIONS: tyle losowych map jest w każdym głosowaniu
 const LOBBY_PADS = [[-7, -3], [0, -3], [7, -3]];
 export function lobbyMap() {
     const A = LOBBY.A, boxes = [];
@@ -212,8 +212,8 @@ export function lobbyMap() {
     for (const [x, z, w, d] of [[-12.4, 8, 2, 1.2], [12.4, 8, 2, 1.2], [-12.4, -2, 1.2, 2.2], [12.4, -2, 1.2, 2.2]]) boxes.push(gbox(x, z, w, 1.1, d, 0x5a4630, 'wood'));   // skrzynie pod ścianami
     for (let i = 0; i < LOBBY.OPTIONS; i++) boxes.push(box(LOBBY_PADS[i][0], 0.03, LOBBY_PADS[i][1], LOBBY.PAD_SIZE, 0.06, LOBBY.PAD_SIZE, [0xa83a3a, 0x3a7ab8, 0xc89a2a, 0x4a9a4a, 0x8a4a9a, 0x9a8a6a][i % 6], 'step'));   // płyty pól (niskie: da się na nie wejść)
     return { id: 'lobby', name: 'Lobby', A: A, H: LOBBY.H, boxes: boxes, pads: LOBBY_PADS.map(p => p.slice()), board: LOBBY.BOARD.slice(),
-        lights: [[-8, 5.4, -5], [0, 5.4, -5], [8, 5.4, -5], [-8, 5.4, 3], [0, 5.4, 3], [8, 5.4, 3], [0, 5.4, 10]], lightColor: 0xffc890, lightPower: 11,
-        entry: [0, 1.0, A - 2], monster: [0, 1.0, -A + 2], survivors: [], botJump: 4.2, floor: 0x2a2420, wall: 0x3a2e28, ceil: 0x0a0806 };
+        lights: [[-8, 5.4, -5], [0, 5.4, -5], [8, 5.4, -5], [-8, 5.4, 3], [0, 5.4, 3], [8, 5.4, 3], [0, 5.4, 10]], lightColor: 0xffd4a8, lightPower: LOBBY.LIGHT, hemiMul: LOBBY.HEMI,   // jasne lobby: mocniejsze lampy, jaśniejsze powierzchnie i światło otoczenia
+        entry: [0, 1.0, A - 2], monster: [0, 1.0, -A + 2], survivors: [], botJump: 4.2, floor: 0x4a4038, wall: 0x6a5848, ceil: 0x241e1a };
 }
 // Losowe 3 różne mapy do głosowania (numery z MAPS); unika ostatnio granej, o ile jest z czego wybierać. rnd: funkcja 0..1
 export function pickOptions(prev, rnd) {

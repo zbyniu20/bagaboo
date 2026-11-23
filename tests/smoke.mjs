@@ -42,6 +42,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 // (wykrywanie Questa i lekka strona startowa są sprawdzane w logic.mjs, w czystym Node: drugi render software-GL obok pierwszego wieszał wolne runnery CI)
 let phase = 'boot';
 const ctx = await browser.newContext({ viewport: { width: 1000, height: 640 } });
+await ctx.addInitScript(() => { try { localStorage.setItem('bagaboo_settings', JSON.stringify({ ver: 2, quality: 'medium' })); } catch (e) {} });   // budżety poniżej są dla jakości medium (domyślna jest High, ale budżety Questa mierzymy na medium)
 await ctx.route(/unpkg\.com/, (route) => {
     const u = route.request().url();
     let f = null;
@@ -201,7 +202,7 @@ const CYCLE = ['maze', 'well', 'hospital', 'cemetery', 'lobby'];
 const memAfterCycle = async () => { for (const lv of CYCLE) { await run(`const M = await import('./main.js'); await M.loadLevel('${lv}'); return 1;`); await waitFrames(1); } return run(`const I = (await import('./core/engine.js')).renderer.info.memory; return { geo: I.geometries, tex: I.textures };`); };
 const m1 = await memAfterCycle(), m2 = await memAfterCycle(), m3 = await memAfterCycle();
 console.log('     memory after cycles:', JSON.stringify([m1, m2, m3]));
-if (m3.tex > m2.tex + 30 || m3.geo > m2.geo + 100) fail(`memory: resources keep growing across level changes (${JSON.stringify(m2)} -> ${JSON.stringify(m3)})`); else ok('memory: textures/geometries stable across level cycles');
+if (m3.tex > m2.tex + 6 || m3.geo > m2.geo + 40) fail(`memory: resources keep growing across level changes (${JSON.stringify(m2)} -> ${JSON.stringify(m3)})`); else ok('memory: textures/geometries stable across level cycles');
 }
 
 // ---- new game modes: simulate rounds by stepping each level's update() ----

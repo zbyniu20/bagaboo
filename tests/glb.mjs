@@ -76,13 +76,29 @@ console.log('generated glb bytes', glb.length);
 // 4) uszkodzony plik
 { const r = await run('bad', Buffer.from('this is not a glb file at all')); ok('a broken file is ignored and the mannequin stays', r.info && r.info.loaded === false, r.info); ok('broken: no page errors', r.errs.length === 0, r.errs); await r.page.close(); }
 // 5) prawdziwe pliki z assets/monsters w poziomach z manekinami
-for (const [lvl, min] of [['cemetery', 1], ['nursery', 1], ['hospital', 2]]) {
+for (const [lvl, min] of [['cemetery', 1], ['nursery', 1], ['hospital', 2], ['laundry', 1], ['furas', 1], ['room000', 1], ['silence', 1]]) {
     const r = await run('real', null); await r.page.evaluate(async (l) => { const M = await import('./main.js'); await M.loadLevel(l); }, lvl); await r.page.waitForTimeout(4000);
     const n = await r.page.evaluate(async () => (await import('./core/glbmonster.js')).glbMonstersLive());
     ok(lvl + ': at least ' + min + ' mannequin(s) were replaced by models from files', n >= min, n);
     await r.page.evaluate(async () => { const M = await import('./main.js'); await M.loadLevel('lobby'); }); await r.page.waitForTimeout(1500);
     const n2 = await r.page.evaluate(async () => { await new Promise(res => setTimeout(res, 500)); return (await import('./core/glbmonster.js')).glbMonstersLive(); });
     ok(lvl + ': leaving the level removes the models', n2 === 0, n2); ok(lvl + ': no page errors', r.errs.length === 0, r.errs); await r.page.close();
+}
+// 6) głowa i oczy modeli: poświata oczu na kości głowy, obrót głowy z kodu poziomu wokół osi pionowej
+{
+    const r = await run('real', null);
+    const res = await r.page.evaluate(async () => {
+        const G = await import('./core/glbmonster.js'), E = await import('./core/engine.js'), T = E.THREE, out = {};
+        for (const kind of ['mannequin', 'warden', 'furas', 'ghost', 'threadman', 'lavabeast', 'blind']) {
+            const g = await G.loadGlbMonster(kind); E.scene.add(g.group); const sp = []; g.headBone.traverse(o => { if (o.isSprite) sp.push(o); });
+            const ang = (yaw) => { g.update(0.016, 0, false, yaw); g.group.updateMatrixWorld(true); const hp = g.headBone.getWorldPosition(new T.Vector3()), m = new T.Vector3(); sp.forEach(s => m.add(s.getWorldPosition(new T.Vector3()))); m.multiplyScalar(1 / Math.max(1, sp.length)); return Math.atan2(m.x - hp.x, m.z - hp.z); };
+            out[kind] = { sprites: sp.length, d: sp.length ? +(ang(0.8) - ang(0)).toFixed(2) : null }; E.scene.remove(g.group); g.dispose();
+        }
+        return out;
+    });
+    ok('model eyes glow: a sprite pair on the head bone for every monster with eyes, none for the eyeless Blind', ['mannequin', 'warden', 'furas', 'ghost', 'threadman', 'lavabeast'].every(k => res[k].sprites === 2) && res.blind.sprites === 0, res);
+    ok('the head turns by the level code about the vertical axis (0.8 rad asked, 0.6-1.0 measured) for every monster with eyes', ['mannequin', 'warden', 'furas', 'ghost', 'threadman', 'lavabeast'].every(k => res[k].d > 0.6 && res[k].d < 1.0), res);
+    ok('no page errors (head and eyes)', r.errs.length === 0, r.errs); await r.page.close();
 }
 await browser.close(); server.close();
 console.log(fails ? 'glb: FAILED ' + fails : 'glb: all checks passed'); process.exit(fails ? 1 : 0);

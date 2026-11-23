@@ -3,8 +3,8 @@
 // Bez THREE: testy w tests/logic.mjs. Stan SPEC czyta core/player.js (nadpisuje pozycję ciała gracza), rysuje core/spectate.js.
 // ==========================================
 import { rayBox } from './acousticlogic.js';
-export const SPEC = { on: false, x: 0, y: 0, z: 0, next: null };   // next: ustawia core/spectate.js (spust kontrolera przełącza cel)   // docelowa pozycja KAMERY (świat); player.js ustawia pod nią ciało
-export const CAM = { dist: 2.4, up: 0.55, speed: 4, teleport: 18, margin: 0.35, minDist: 0.6 };
+export const SPEC = { on: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, next: null };   // v*: prędkość kamery (m/s), z niej liczy się komfortowa winieta w VR   // next: ustawia core/spectate.js (spust kontrolera przełącza cel)   // docelowa pozycja KAMERY (świat); player.js ustawia pod nią ciało
+export const CAM = { dist: 2.4, up: 0.55, speed: 4, teleport: 18, margin: 0.35, minDist: 0.6, maxSpeed: 7 };   // maxSpeed: wolniejszy lot kamery = mniej choroby lokomocyjnej w VR
 // Kierunek patrzenia (poziomy, jednostkowy) z kwaternionu [x, y, z, w]: obrót wektora (0, 0, -1)
 export function forwardFromQuat(q) {
     if (!Array.isArray(q) || q.length < 4 || q.some(v => typeof v !== 'number' || !isFinite(v))) return { fx: 0, fz: -1 };
@@ -26,7 +26,10 @@ export function clipSpot(from, want, boxes) {
 export function followStep(cur, want, dt) {
     if (!cur || Math.hypot(want.x - cur.x, want.y - cur.y, want.z - cur.z) > CAM.teleport) return { x: want.x, y: want.y, z: want.z };
     const a = Math.min(1, Math.max(0, dt) * CAM.speed);
-    return { x: cur.x + (want.x - cur.x) * a, y: cur.y + (want.y - cur.y) * a, z: cur.z + (want.z - cur.z) * a };
+    let dx = (want.x - cur.x) * a, dy = (want.y - cur.y) * a, dz = (want.z - cur.z) * a;
+    const len = Math.hypot(dx, dy, dz), cap = CAM.maxSpeed * Math.max(0, dt);   // nigdy szybciej niż maxSpeed
+    if (len > cap && len > 0) { const k = cap / len; dx *= k; dy *= k; dz *= k; }
+    return { x: cur.x + dx, y: cur.y + dy, z: cur.z + dz };
 }
 // Następny cel z listy identyfikatorów: dir 1 = dalej, -1 = wstecz, 0 = zostań (jeśli cel zniknął, pierwszy z listy); null gdy lista pusta
 export function cycleTarget(ids, cur, dir) {

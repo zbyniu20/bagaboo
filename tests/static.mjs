@@ -129,4 +129,13 @@ check('avatar: bloodshot eyeballs use tex.eyeBloodshot turned toward -Z', /tex\.
 check('avatar: blink lid factor goes through the clamped lidFactor', /lidFactor\(f\.blink/.test(avSrc) && /Math\.max\(0\.08, Math\.min\(1,/.test(read('core/avatarfxlogic.js')));
 check('avatar: muscular arm profile (>= 9 points)', (/const ARM_GEO = new THREE\.LatheGeometry\(\[(.*?)\]\.map/.exec(avSrc)?.[1].match(/\[/g) || []).length >= 10);
 
+// ---------- składnia wszystkich plików JS (moduły z three.js nie ładują się w czystym Node, więc literówka mogła przejść niezauważona do przeglądarki) ----------
+{
+    const { execFile } = await import('node:child_process'), files = [];
+    for (const d of ['core', 'levels']) for (const f of fs.readdirSync(path.join(ROOT, d))) if (f.endsWith('.js')) files.push(path.join(d, f));
+    files.push('main.js', 'vite-entry.js', 'vite.config.js');
+    const bad = [];
+    await Promise.all(files.map(f => new Promise(res => execFile(process.execPath, ['--check', path.join(ROOT, f)], (err, so, se) => { if (err) bad.push(f + ': ' + String(se).split('\n').find(l => /Error/.test(l))); res(); }))));
+    check('syntax: every game file parses (node --check): ' + files.length + ' files', bad.length === 0, bad);
+}
 done('static');

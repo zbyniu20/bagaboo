@@ -162,13 +162,14 @@ export function addCollider(minX, minY, minZ, maxX, maxY, maxZ) {
 // Krawędzie bloku rysowane w fragment shaderze (wcześniej osobny LineSegments na każdy blok = podwójna liczba wywołań rysowania).
 // Punkt leży na krawędzi, gdy jest blisko dwóch ścian jednocześnie; obwódka porusza się i chowa razem z blokiem.
 // Wypalone w shaderze ambient occlusion (bez dodatkowych siatek): decyzje w czystym core/gfxlogic.js (aoFor), tu tylko uniformy i kod shadera.
+export const BAKE_U = { value: 1 };   // wspólny mnożnik wypalonego światła (core/lightbake.js, updateBake): gaśnie razem ze światłami w zaciemnieniach
 function addShaderEdges(mat, w, h, d, edgeColor, ao) {
     const half = new THREE.Vector3(w / 2, h / 2, d / 2), col = new THREE.Color(edgeColor), op = LP.edgeOpacity, aov = new THREE.Vector4(ao ? ao.b : 0, ao ? ao.t : 0, ao ? ao.f : 0, ao ? ao.c : 0);
     mat.userData.ao = aov;   // do odczytu w testach (tests/gfx.mjs)
     mat.onBeforeCompile = (sh) => {
-        sh.uniforms.uEdgeHalf = { value: half }; sh.uniforms.uEdgeCol = { value: col }; sh.uniforms.uEdgeOp = { value: op }; sh.uniforms.uAO = { value: aov };
+        sh.uniforms.uEdgeHalf = { value: half }; sh.uniforms.uEdgeCol = { value: col }; sh.uniforms.uEdgeOp = { value: op }; sh.uniforms.uAO = { value: aov }; sh.uniforms.uBakeK = BAKE_U;
         sh.vertexShader = 'varying vec3 vEdgeP; attribute vec3 aBake; varying vec3 vBake;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvEdgeP = position; vBake = aBake;');
-        sh.fragmentShader = 'uniform vec3 uEdgeHalf; uniform vec3 uEdgeCol; uniform float uEdgeOp; uniform vec4 uAO; varying vec3 vEdgeP; varying vec3 vBake;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n    totalEmissiveRadiance += vBake * diffuseColor.rgb;   // wypalone oświetlenie (core/lightbake.js)').replace('#include <color_fragment>', `#include <color_fragment>
+        sh.fragmentShader = 'uniform vec3 uEdgeHalf; uniform vec3 uEdgeCol; uniform float uEdgeOp; uniform vec4 uAO; uniform float uBakeK; varying vec3 vEdgeP; varying vec3 vBake;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n    totalEmissiveRadiance += vBake * diffuseColor.rgb * uBakeK;   // wypalone oświetlenie (core/lightbake.js)').replace('#include <color_fragment>', `#include <color_fragment>
             vec3 eD = uEdgeHalf - abs(vEdgeP);
             float e1 = 1.0 - smoothstep(0.0, 0.016, eD.x), e2 = 1.0 - smoothstep(0.0, 0.016, eD.y), e3 = 1.0 - smoothstep(0.0, 0.016, eD.z);
             float edge = max(max(e1 * e2, e2 * e3), e1 * e3);

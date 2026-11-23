@@ -56,3 +56,9 @@ export function bakeVertex(p, n, lights, self) {
     }
     const c = BAKE.cap; return [Math.min(c, r), Math.min(c, g), Math.min(c, bl)];
 }
+// Mnożnik wypalonego światła z mocy świateł: pary [aktualna, z chwili wypalania]; średnia ważona mocą wypaloną, każde światło 0..1,3 (wzmocnienie nie przekracza 30%)
+export function bakeScale(pairs) {
+    let num = 0, den = 0;
+    for (const [cur, i0] of pairs) { if (!(i0 > 0)) continue; num += Math.max(0, Math.min(1.3 * i0, isFinite(cur) ? cur : 0)); den += i0; }
+    return den > 0 ? num / den : 1;
+}

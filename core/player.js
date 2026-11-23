@@ -10,6 +10,7 @@ import { sendObjectMove } from './network.js';
 import { buzz } from './haptics.js';
 import { MOD, BOOST_MULT, FLY_SPEED, PERSONAL, capMul } from './modstate.js';   // BagaBooModMenu: boost, fly, noclip i size (domyślnie wyłączone)
 import { SPEC } from './spectatelogic.js';
+import { TUT } from './tutoriallogic.js';
 
 const radius = 0.35, gorillaStanceOffset = 0.35;   // widok wyżej, bo długie ręce goryla i tak sięgają podłogi
 const POWER = 1.0;            // siła trampolin i limit prędkości (1.0 = normalnie)
@@ -92,7 +93,7 @@ const ctrlInput = [{ squeeze: false, select: false }, { squeeze: false, select: 
 const hit = { nx: 0, ny: 0, nz: 0, depth: 0 };
 
 controllers.forEach((c, i) => {
-    c.addEventListener('selectstart', () => { ctrlInput[i].select = true; if (SPEC.on) { if (SPEC.next) SPEC.next(1); return; } if (!clickPointer(i) && L.onTrigger) L.onTrigger(i); });   // spust: ekran albo akcja poziomu (np. strzał)
+    c.addEventListener('selectstart', () => { ctrlInput[i].select = true; if (SPEC.on) { if (SPEC.next) SPEC.next(1); return; } if (TUT.on && TUT.next) TUT.next('trigger'); if (!clickPointer(i) && L.onTrigger) L.onTrigger(i); });   // spust: ekran albo akcja poziomu (np. strzał)
     c.addEventListener('selectend', () => { ctrlInput[i].select = false; });
     c.addEventListener('squeezestart', () => { ctrlInput[i].squeeze = true; onSqueezeStart(i); });
     c.addEventListener('squeezeend', () => { ctrlInput[i].squeeze = false; onSqueezeEnd(i); });
@@ -324,7 +325,7 @@ export function updatePlayer(dt, t) {
     }
     if (stepped) { handPushing = false; stepped = false; }
     const bp = playerBody.position, bv = playerBody.velocity, B = L.bounds;   // granice ustawia poziom
-    if (SPEC.on) { bp.x = SPEC.x; bp.z = SPEC.z; bp.y = SPEC.y - camera.position.y * MOD.size + radius + gorillaStanceOffset * MOD.size; bv.set(0, 0, 0); }   // obserwator: kamera podąża za wybranym graczem (core/spectate.js)
+    if (SPEC.on) { bp.x = SPEC.x; bp.z = SPEC.z; bp.y = SPEC.y - camera.position.y * MOD.size + radius + gorillaStanceOffset * MOD.size; bv.set(SPEC.vx, SPEC.vy, SPEC.vz); }   // obserwator: kamera podąża za wybranym graczem (core/spectate.js)
     if (bp.x < B.minX) { bp.x = B.minX; bv.x = 0; } if (bp.x > B.maxX) { bp.x = B.maxX; bv.x = 0; }
     if (bp.z < B.minZ) { bp.z = B.minZ; bv.z = 0; } if (bp.z > B.maxZ) { bp.z = B.maxZ; bv.z = 0; }
     const floorY = L.floorY !== undefined ? L.floorY : radius;   // poziomy z przepaścią (Last Tile) wyłączają twardą podłogę

@@ -21,7 +21,7 @@ export function startSpectate(getCandidates) {
 }
 export function stopSpectate(restore) {
     if (!SPEC.on) return;
-    SPEC.on = false; if (ST.hud) { ST.hud.dispose(); ST.hud = null; }
+    SPEC.on = false; SPEC.vx = SPEC.vy = SPEC.vz = 0; if (ST.hud) { ST.hud.dispose(); ST.hud = null; }
     if (restore !== false && ST.saved) setPlayerPosition(ST.saved.x, ST.saved.y, ST.saved.z);
     ST.fn = null; ST.cur = null; ST.pos = null; ST.saved = null;
 }
@@ -39,7 +39,9 @@ export function updateSpectate(dt) {
     ST.cur = cycleTarget(ST.list.map(c => c.id), ST.cur, 0);
     const i = ST.list.findIndex(c => c.id === ST.cur), t = ST.list[i];
     const want = clipSpot(t, cameraSpot(t), boxes());
-    ST.pos = followStep(ST.pos, want, dt);
+    const fresh = !ST.pos; ST.pos = followStep(ST.pos, want, dt);
+    if (dt > 0) { SPEC.vx = (ST.pos.x - SPEC.x) / dt; SPEC.vy = (ST.pos.y - SPEC.y) / dt; SPEC.vz = (ST.pos.z - SPEC.z) / dt; }
+    if (fresh) { SPEC.vx = SPEC.vy = SPEC.vz = 0; }   // pierwsza klatka albo zmiana celu: skok pozycji to nie ruch kamery
     SPEC.x = ST.pos.x; SPEC.y = ST.pos.y; SPEC.z = ST.pos.z;
     ST.hudT -= dt; if (ST.hud && ST.hudT <= 0) {
         ST.hudT = 0.25; const x = ST.hud.ctx; panelBg(ST.hud, 'rgba(16,4,4,0.7)');

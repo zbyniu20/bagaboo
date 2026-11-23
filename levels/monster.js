@@ -28,7 +28,7 @@ import { GATE, countVotes, winnerOf, gateStep } from '../core/lobbylogic.js';
 import { GAMES_CALM, SETTINGS } from '../core/settings.js';
 import { startSpectate, stopSpectate, isSpectating } from '../core/spectate.js';
 import { forwardFromQuat } from '../core/spectatelogic.js';
-import { pickDismember, cleanDismember, lostLeft, lostRight, lostHead, dismemberText } from '../core/dismemberlogic.js';
+import { pickDismember, cleanDismember, lostLeft, lostRight, lostHead, dismemberText, catchOutcome, GRACE } from '../core/dismemberlogic.js';
 
 const WAIT = 10, WAIT_AFTER_VOTE = 6, ROUND = 120, RESULTS = 8, REWARD = 200;
 const CATCH_DIST = 0.5;                     // dłoń potwora tak blisko głowy lub tułowia = złapany
@@ -62,6 +62,7 @@ export function build() {
     const b = buildMannequin(T.mkRng(666)); b.group.scale.setScalar(1.25); b.group.visible = false; L.root.add(b.group);
     for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.1, 0.1, 1); e.position.set(sx * 0.04, 0.152, 0.11); b.head.add(e); }
     S.botMesh = b; S.mannequin = b;
+    N.setSpectatorCheck((id) => !!(S && S.phase === 'play' && S.caught.has(id)));   // host: flaga sp gracza jest wiarygodna tylko dla złapanych w trwającej rundzie
     // Model z pliku assets/monsters/<rodzaj>.glb (core/glbmonster.js, losowy z BOT_KINDS): gdy jest, zastępuje manekina bota; brak pliku = manekin zostaje
     const lvl = S, kind = BOT_KINDS[(Math.random() * BOT_KINDS.length) | 0]; loadGlbMonster(kind).then((g) => {
         if (!g) return;
@@ -119,6 +120,8 @@ function applyLayout(md, idx, seed, teleport) {
     root0.add(g);
     S.mapGroup = g; S.mapObs = L.obstacles.slice(n.o); S.mapBodies = L.bodies.slice(n.b); S.mapPortals = L.portals.slice(n.p);
     S.md = md; S.map = idx; S.seed = seed; if (!md.pads) S.padLabels = null;
+    if (S.hemi0 === undefined) S.hemi0 = lighting.hemi.intensity;   // światło otoczenia z presetu; lobby ma je mocniejsze (md.hemiMul), mapy rund wracają do wartości z presetu
+    if (!S.final) lighting.hemi.intensity = S.hemi0 * (md.hemiMul || 1);
     L.spawn = md.entry.slice();
     L.bounds = { minX: -md.A + 0.4, maxX: md.A - 0.4, minZ: -md.A + 0.4, maxZ: md.A - 0.4, maxY: md.H - 0.4 };
     if (S.board) placeBoard();
@@ -323,7 +326,7 @@ function think(dt, p) {
     } else if (S.phase === 'play') {
         const parts = participants().filter(id => id !== S.mon);
         if (S.mon === 'bot') moveBot(dt, p);
-        else for (const id of parts) if (!S.caught.has(id) && touched(id)) catchPlayer(id);
+        else for (const id of parts) if (!S.caught.has(id) && !graced(id) && touched(id)) catchPlayer(id);
         if (S.t <= 0 || parts.every(id => S.caught.has(id))) {
             S.surv = parts.filter(id => !S.caught.has(id)); S.phase = 'results'; S.t = RESULTS; roundOver();
         }
@@ -348,19 +351,29 @@ function touched(id) {
     const body = hd.clone(); body.y -= 0.45;
     return handsOf(S.mon).some(h => h.distanceTo(hd) < CATCH_DIST || h.distanceTo(body) < CATCH_DIST + 0.05);
 }
-function catchPlayer(id) {
-    S.caught.add(id); S.dm[toNet(id)] = pickDismember(Math.random);   // los: lewa ręka, prawa ręka, obie albo głowa (widoczne dla graczy z włączoną opcją Gore)
-    if (id === 'me') localCaught();
-    if (S.mon === 'me') { SFX.stinger(); buzz('both', 0.7, 150); toast('Caught one!', '#ff6a4a'); }
+// Złapanie: los (lewa ręka, prawa ręka, obie, głowa) decyduje o życiu (catchOutcome): jedna ręka = gracz żyje i gra dalej z krótką ochroną (GRACE), dwie ręce albo głowa = odpada.
+// Kod urwania idzie do wszystkich w S.dm (wygląd zależy od opcji Gore), a w S.caught ląduje tylko ten, kto odpadł.
+const graced = (id) => !!(S.grace && S.grace[id] > S.clock);
+function catchPlayer(id, forced) {   // forced: tylko testy (debugCatch) wymuszają wylosowany kod
+    const key = toNet(id), out = catchOutcome(S.dm[key] || 0, forced || pickDismember(Math.random));
+    S.dm[key] = out.code;
+    if (out.dead) {
+        S.caught.add(id);
+        if (id === 'me') localCaught();
+        if (S.mon === 'me') { SFX.stinger(); buzz('both', 0.7, 150); toast('Caught one!', '#ff6a4a'); }
+    } else {
+        (S.grace || (S.grace = Object.create(null)))[id] = S.clock + GRACE;   // przeżył: potwór nie urwie mu od razu drugiej ręki
+        if (S.mon === 'me') { SFX.stinger(); buzz('both', 0.5, 120); toast('You tore off a hand! One more grab finishes them.', '#ff8a4a'); }
+    }
 }
 // Urwane kończyny: pokazujemy je tylko, gdy gracz ma włączone Gore (menu pauzy; domyślnie włączone). Własne ręce chowamy lokalnie, cudze robi network.js (setDismember).
 // Animacja u ofiary: przez TEAR_TIME s drżą kontrolery i narasta czerwony błysk, potem ręce znikają (głowa: tylko błysk i krew), a to trwa do nowej rundy albo lobby.
 const TEAR_TIME = 0.6;
 function localDismember(code) {
     if (code === S.localDm) return;
-    const prev = S.localDm; S.localDm = code;
+    const prev = S.localDm || 0; S.localDm = code;
     if (!code) { S.tearT = 0; S.flashA = 0; if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; return; }
-    if (!prev) { S.tearT = TEAR_TIME; toast('The monster grabs you...', '#ff3a2a'); }
+    if (code & ~prev) { S.tearT = TEAR_TIME; toast(prev ? 'It grabs you again...' : 'The monster grabs you...', '#ff3a2a'); }   // także druga ręka po pierwszej dostaje animację
 }
 function tickLocalTear(dt) {
     const code = S.localDm;
@@ -370,7 +383,7 @@ function tickLocalTear(dt) {
         if (S.tearT <= 0) {   // urwane: ręce znikają, krew tryska z miejsca odcięcia
             for (const [h, lost] of [[hands.L, lostLeft(code)], [hands.R, lostRight(code)]]) if (h && lost) { h.visible = false; N.bloodBurst(h.position, 26); }
             if (lostHead(code)) { camera.getWorldPosition(_p); _p.y -= 0.25; N.bloodBurst(_p, 30); }
-            SFX.stinger(); buzz('both', 1, 400); S.flashA = 0.8; toast('The monster tore off ' + dismemberText(code) + '!', '#ff3a2a');
+            SFX.stinger(); buzz('both', 1, 400); S.flashA = 0.8; toast('The monster tore off ' + dismemberText(code) + '!' + (S.caught.has('me') ? '' : ' You live, but the next grab is deadly!'), '#ff3a2a');
         }
     } else S.flashA = Math.max(0, S.flashA - dt * 0.9);
     S.flash.material.opacity = S.flashA; S.flash.visible = S.flashA > 0.01;
@@ -398,6 +411,10 @@ function specCandidates() {
     }
     if (S.mon === 'bot' && S.bot) out.push({ id: 'bot', label: 'Mannequin', x: S.bot.x, y: S.bot.y + 1.5, z: S.bot.z, fx: 0, fz: -1 });
     return out;
+}
+export function debugCatch(id, pick) {   // tylko dla testów (tests/catch.mjs)
+    if (!S) return null; catchPlayer(id, pick);
+    return { dm: S.dm[toNet(id)] || 0, caught: S.caught.has(id), grace: graced(id), localDm: S.localDm || 0 };
 }
 export function debugGlb() {   // tylko dla testów (tests/glb.mjs)
     if (!S) return null; const g = S.glb; if (!g) return { loaded: false, mannequinVisible: S.mannequin.group.visible };
@@ -444,7 +461,7 @@ function moveBot(dt, p) {
     // Utknął (nie zbliża się): obejście w bok
     const moved = Math.hypot(b.x - ox, b.z - oz);
     if (moved < sp * dt * 0.3 && b.ground) { b.stuck += dt; if (b.stuck > 0.8) { b.stuck = 0; b.side = Math.random() < 0.5 ? -1 : 1; b.sideT = 1.0; b.vy = Math.sqrt(2 * BOT_GRAVITY * 1.2); b.ground = false; } } else b.stuck = 0;
-    if (!S.caught.has('me') && Math.hypot(p.x - b.x, p.z - b.z) < 1.0 && Math.abs(p.y - (b.y + 1.0)) < 1.5) catchPlayer('me');
+    if (!S.caught.has('me') && !graced('me') && Math.hypot(p.x - b.x, p.z - b.z) < 1.0 && Math.abs(p.y - (b.y + 1.0)) < 1.5) catchPlayer('me');
 }
 
 // ---------- CO KLATKĘ ----------
@@ -504,7 +521,7 @@ function survivorsAlive() {
 }
 function setFinalLook(on) {
     if (on) { S.hemiBase = lighting.hemi.intensity; S.fogBase = scene.fog.color.clone(); scene.fog.color.lerp(new THREE.Color(0x4a0808), 0.6); DREAD.fogMul = 1.35; }
-    else { if (S.fogBase) { scene.fog.color.copy(S.fogBase); lighting.hemi.intensity = S.hemiBase; S.fogBase = null; } DREAD.fogMul = 1; }
+    else { if (S.fogBase) { scene.fog.color.copy(S.fogBase); lighting.hemi.intensity = S.hemiBase; S.fogBase = null; } DREAD.fogMul = 1; if (S.md && S.hemi0 !== undefined) lighting.hemi.intensity = S.hemi0 * (S.md.hemiMul || 1); }   // po Final Hunt wraca światło aktualnej sali (lobby jest jaśniejsze)
 }
 function tickHunt(dt, t, mon, mpos, p) {
     const playing = S.phase === 'play', alive = playing ? survivorsAlive() : [], pu = playing ? pulseAt(HUNT.ROUND - S.t, alive.length) : { active: false, warn: false, n: -1 }, fin = playing && finalHunt(S.t);
@@ -596,6 +613,7 @@ function randomScares(dt, t, p) {
 }
 export function dispose() {
     stopSpectate(false);
+    N.setSpectatorCheck(null);
     if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); camera.remove(S.fear); if (S.final || S.fogBase) setFinalLook(false); DREAD.fogMul = 1; for (const mk of S.marks) L.root.remove(mk); setDread(null); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
     if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); S.board = null; }
     if (S && S.glb) { L.root.remove(S.glb.group); S.glb.dispose(); S.glb = null; }

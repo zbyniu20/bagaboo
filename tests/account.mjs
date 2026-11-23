@@ -75,6 +75,13 @@ const shown = (p, id) => p.evaluate((id) => { const e = document.getElementById(
     ok('pause menu: the first tap only arms it, the second logs out and the game goes on as a guest', r.afterFirst === true && r.afterSecond === false && /Playing as a guest/.test(r.guestUi) && r.stillThere === false, r);
     await p.close();
 }
+{
+    const p = await openPage(true); await p.click('#btnSolo', { timeout: 90000 }); await p.waitForTimeout(2500);
+    await p.evaluate(() => { window.__marker = 'same-page'; });
+    const r = await p.evaluate(async () => { const N = await import('./core/network.js'), P = await import('./core/pause.js'); N.NET.mode = 'host'; P.PAUSE.onLogout(); await new Promise(res => setTimeout(res, 1500)); return { mode: N.NET.mode, marker: window.__marker }; });
+    ok('logging out in an online room leaves the room and plays solo as a guest WITHOUT reloading the page (the VR session survives)', r.mode === 'solo' && r.marker === 'same-page', r);
+    await p.close();
+}
 ok('no page errors (VR menu and pause)', errs.length === 0, errs);
 await browser.close(); server.close();
 console.log(fails ? 'account: FAILED ' + fails : 'account: all checks passed'); process.exit(fails ? 1 : 0);

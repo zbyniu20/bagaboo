@@ -25,7 +25,7 @@ let fx = null;   // stan animacji tego poziomu
 import { LOBBY_MOVE_SCALE } from '../core/config.js';
 export function build() {
     L.moveScale = LOBBY_MOVE_SCALE;
-    fx = { flickers: [], muralMats: [], trampMats: [], lampSprites: [], shaftMats: [], mist: [], mannequins: [], meatSpots: [], bulbSpots: [], cloudTex: null, };
+    fx = { flickers: [], muralMats: [], lampSprites: [], shaftMats: [], mist: [], mannequins: [], meatSpots: [], bulbSpots: [], cloudTex: null, };
     L.spawn = info.spawn.slice();
     const root = L.root;
     buildLobbyPlay();   // Nocna Zmiana (core/lobbyplay.js)
@@ -71,7 +71,6 @@ export function build() {
         m.position.set(mu[2], mu[3], mu[4]); m.rotation.y = mu[5]; m.receiveShadow = true; root.add(m); fx.muralMats.push(mat);
     }
 
-    buildTrampoline(0, 5);
     for (let i = 0; i < 12; i++) { const a = i * 0.7; addScaryStep(-7 + Math.cos(a) * 5, 1 + i * 1.2, -7 + Math.sin(a) * 5, 1.5, 3 + (i % 5)); }
     addCrispBlock(-7, 1 + 12 * 1.2, -7, 4, 0.3, 4, 0x6a3030, 0xff0000);
     addCrispBlock(8, 6, 8, 0.5, 12, 0.5, 0x555555, 0xff0000);
@@ -89,31 +88,6 @@ export function build() {
     buildMannequins();
     for (const r of [[4, 18, -4, 12], [-4, 18, 4, 12], [0, 15, 0, 10], [6, 15, 6, 10], [-8, 14, -2, 9]]) addGutsRope(r[0], r[1], r[2], r[3]);
     createEyeball('ball1', 2, 1, -2); createEyeball('ball2', -2, 1, -2);
-}
-
-// Okrągła trampolina: stalowa rama, sprężyny, tkana mata i obręcz w pasy ostrzegawcze
-function buildTrampoline(x, z) {
-    const g = new THREE.Group(); g.position.set(x, 0, z); L.root.add(g);
-    const R0 = 1.45;
-    const steel = new THREE.MeshStandardMaterial({ color: 0x1c1d20, metalness: 0.85, roughness: 0.3, envMapIntensity: ENV });
-    const chrome = new THREE.MeshStandardMaterial({ color: 0x9aa0a8, metalness: 1.0, roughness: 0.22, envMapIntensity: Math.max(0.6, ENV) });
-    for (let i = 0; i < 6; i++) {
-        const a = i / 6 * Math.PI * 2, leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.38, 10), steel);
-        leg.position.set(Math.cos(a) * R0 * 0.95, 0.19, Math.sin(a) * R0 * 0.95); leg.castShadow = true; g.add(leg);
-    }
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(R0, 0.045, 10, 64), steel); ring.rotation.x = Math.PI / 2; ring.position.y = 0.38; ring.castShadow = true; g.add(ring);
-    const padTex = T.createHazardTexture();
-    const padMat = new THREE.MeshStandardMaterial({ map: padTex, emissiveMap: padTex, emissive: 0xff2200, emissiveIntensity: LP.trampBase, roughness: 0.6, envMapIntensity: ENV });
-    const pad = new THREE.Mesh(new THREE.TorusGeometry(R0 + 0.02, 0.12, 12, 72), padMat);
-    pad.rotation.x = Math.PI / 2; pad.position.y = 0.41; pad.scale.z = 0.45; pad.castShadow = true; pad.receiveShadow = true; g.add(pad);
-    fx.trampMats.push(padMat);
-    const springs = [];
-    for (let i = 0; i < 36; i++) { const a = i / 36 * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a); springs.push(seg(V3(ca * (R0 - 0.02), 0.385, sa * (R0 - 0.02)), V3(ca * (R0 - 0.15), 0.365, sa * (R0 - 0.15)), 0.012, 0.012, 6)); }
-    const sm = new THREE.Mesh(mergeGeometries(springs), chrome); sm.castShadow = true; g.add(sm);
-    const matMesh = new THREE.Mesh(new THREE.CircleGeometry(R0 - 0.14, 64), new THREE.MeshStandardMaterial({ map: T.createTrampMatTexture(), roughness: 0.45, metalness: 0.1, envMapIntensity: ENV }));
-    matMesh.rotation.x = -Math.PI / 2; matMesh.position.y = 0.36; matMesh.receiveShadow = true; g.add(matMesh);
-    L.tramp = { mat: matMesh, k: 0 };
-    addStaticBody(x, 0.2, z, new CANNON.Box(new CANNON.Vec3(1.5, 0.2, 1.5)), g, true);
 }
 
 function addScaryStep(x, y, z, size, sides) {
@@ -585,12 +559,10 @@ export function update(dt, t, ctx) {
     }
     if (flashlight) flashlight.intensity = LP.flashlight.intensity * (Math.sin(t * 0.37) > 0.992 ? 0.15 : 0.96 + 0.04 * Math.sin(t * 23));
     fx.muralMats.forEach((m, i) => { m.emissiveIntensity = (LP.muralBase + LP.muralPulse * Math.sin(t * 1.1 + i * 1.7)) * dimF; });
-    fx.trampMats.forEach((m) => { m.emissiveIntensity = LP.trampBase + LP.trampPulse * Math.sin(t * 3.0); });
     fx.lampSprites.forEach((s, i) => { s.material.opacity = 0.45 + 0.35 * Math.sin(t * 2.2 + i * 1.3); });
     fx.shaftMats.forEach((m, i) => { m.opacity = m.userData.base * (0.8 + 0.3 * Math.sin(t * 0.5 + i)); });
     if (fx.cloudTex) fx.cloudTex.offset.x = (t * 0.003) % 1;
     for (const ly of fx.mist) { ly.tex.offset.x = (t * ly.sx) % 1; ly.tex.offset.y = (t * ly.sz) % 1; }
-    if (L.tramp) { L.tramp.k = Math.max(0, L.tramp.k - dt * 2.2); L.tramp.mat.position.y = 0.36 - Math.sin(L.tramp.k * Math.PI * 3) * 0.07 * L.tramp.k; }
     const dp = fx.dustPos;
     for (let i = 0; i < fx.dustN; i++) {
         dp[i * 3] += Math.sin(t * 0.4 + fx.dustPh[i]) * 0.12 * dt; dp[i * 3 + 2] += Math.cos(t * 0.35 + fx.dustPh[i]) * 0.12 * dt;

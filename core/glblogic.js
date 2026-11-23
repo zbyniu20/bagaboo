@@ -40,4 +40,5 @@ export function fitScale(height, target) {
 // Czy plik mieści się w budżecie (bajty i trójkąty)
 export function withinBudget(bytes, tris) { return bytes <= MAX_BYTES && tris <= MAX_TRIS; }
 // Adresy do sprawdzenia po kolei (repozytorium serwowane wprost, potem paczka z Vite)
-export function candidateUrls(file) { return ['assets/monsters/' + file, 'monsters/' + file]; }
+// (w paczce Vite `bundled` = true: pliki leżą w monsters/, więc próbujemy ich pierwszych i konsola nie dostaje 404)
+export function candidateUrls(file, bundled) { const a = 'assets/monsters/' + file, b = 'monsters/' + file; return bundled ? [b, a] : [a, b]; }

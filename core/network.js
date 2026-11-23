@@ -36,6 +36,10 @@ const sharedObjectsState = Object.create(null);
 // Wiadomości poziomu (np. stan potwora w trybie Cisza). Poziom rejestruje jeden odbiornik.
 let levelHandler = null;
 export function onLevelMsg(fn) { levelHandler = fn; }
+// Obserwator (core/spectate.js) ukrywa awatar u innych, ale flaga sp pochodzi od klienta: host honoruje ją tylko, gdy poziom potwierdzi, że ten gracz naprawdę odpadł
+// (Become the Monster: złapany w trakcie rundy). Bez tego każdy mógłby być niewidoczny, np. w Hide & Seek.
+let spectatorCheck = null;
+export function setSpectatorCheck(fn) { spectatorCheck = fn; }
 export function sendLevelMsg(payload) {
     if (NET.mode === 'host') clientConnections.forEach(c => { if (c.open) c.send({ type: 'lvl', payload: payload }); });
     else if (NET.mode === 'guest' && hostConnection && hostConnection.open) hostConnection.send({ type: 'lvl', payload: payload });
@@ -242,7 +246,7 @@ export function animateFaces(dt) {
     for (const id in remoteAvatars) {
         const a = remoteAvatars[id]; a.head.getWorldPosition(_hw);
         const close = _hw.distanceTo(_cw) < 0.9;   // inny gracz tuż przy tobie: widzisz tylko jego dłonie, a nie wnętrze jego ciała
-        const dc = tears[id] ? 0 : (dismembered[id] || 0);   // urwane części (core/dismemberlogic.js) zostają ukryte, także gdy gracz stoi przy nas
+        const dc = tears[id] ? (tears[id].from || 0) : (dismembered[id] || 0);   // w trakcie animacji wcześniej urwane części zostają ukryte, nowa jeszcze widoczna   // urwane części (core/dismemberlogic.js) zostają ukryte, także gdy gracz stoi przy nas
         for (const c of a.group.children) if (c !== a.handL && c !== a.handR) c.visible = !close && !((c === a.head && lostHead(dc)) || (c === a.armL && lostLeft(dc)) || (c === a.armR && lostRight(dc)));
     }
     for (const id in remoteAvatars) { const v = mutedPeers.has(id) ? { level: 0, pitch: 0.5 } : (NET.mode === 'guest' ? stateVoice(id) : readVoice(voiceAn[id])); animateFace(remoteAvatars[id].head, v.level, v.pitch, dt); updateAvatarFx(remoteAvatars[id], camera, !!(renderer.xr && renderer.xr.isPresenting), v.level, performance.now() / 1000); }
@@ -413,13 +417,14 @@ export function setDismember(id, code) {
     const prev = dismembered[id] || 0; if (prev === code) return;
     if (!code) { delete dismembered[id]; delete tears[id]; clearDebris(id); const p = remoteAvatars[id]; if (p) { applyDismember(p, 0); restoreScale(p); clearWounds(p); } return; }
     dismembered[id] = code;
-    if (!prev && remoteAvatars[id]) tears[id] = { t: 0, code: code, drip: 0 };
-    if (!prev && SETTINGS.gore && remoteAvatars[id]) addWound(remoteAvatars[id], (id.length * 31 + Date.now() / 1000) | 0);   // rana (ślad krwi) zostaje na futrze do nowej rundy   // animacja, dopiero potem urywamy
+    const fresh = code & ~prev;   // nowo urwane części (druga ręka po pierwszej też dostaje animację)
+    if (fresh && remoteAvatars[id]) tears[id] = { t: 0, code: code, from: prev, drip: 0 };
+    if (fresh && SETTINGS.gore && remoteAvatars[id]) addWound(remoteAvatars[id], (id.length * 31 + Date.now() / 1000) | 0);   // rana (ślad krwi) zostaje na futrze do nowej rundy   // animacja, dopiero potem urywamy
 }
-function finishTear(id, p, code) {
+function finishTear(id, p, code, from) {
     restoreScale(p); applyDismember(p, code);
-    const floor = p.head.position.y - 1.6;
-    if (lostLeft(code)) throwPart(p.handL, id, floor); if (lostRight(code)) throwPart(p.handR, id, floor); if (lostHead(code)) throwPart(p.head, id, floor + 0.12);
+    const floor = p.head.position.y - 1.6, nw = code & ~(from || 0);   // do ziemi lecą tylko nowo urwane części
+    if (lostLeft(nw)) throwPart(p.handL, id, floor); if (lostRight(nw)) throwPart(p.handR, id, floor); if (lostHead(nw)) throwPart(p.head, id, floor + 0.12);
     try { stinger(p.head.position); } catch (e) {}
 }
 function clearDebris(id) { for (let i = debris.length - 1; i >= 0; i--) if (!id || debris[i].id === id) { scene.remove(debris[i].obj); debris.splice(i, 1); } }
@@ -428,9 +433,9 @@ export function tickDismember(dt) {
     for (const id in tears) {
         const tr = tears[id], p = remoteAvatars[id]; if (!p) { delete tears[id]; continue; }
         tr.t += dt; tr.drip -= dt;
-        if (tr.t >= TEAR_TIME) { delete tears[id]; finishTear(id, p, tr.code); continue; }
+        if (tr.t >= TEAR_TIME) { delete tears[id]; finishTear(id, p, tr.code, tr.from); continue; }
         const k = tr.t / TEAR_TIME, base = (p.base || 1) * (p.sz || 1), s = base * (1 + (0.1 + 0.35 * k) * Math.sin(tr.t * 60));   // coraz mocniejsze drżenie i puchnięcie
-        for (const o of tornParts(p, tr.code)) { o.scale.setScalar(s); if (tr.drip <= 0) spawnBlood(o.position, 2, 0.5); }
+        for (const o of tornParts(p, tr.code & ~(tr.from || 0))) { o.scale.setScalar(s); if (tr.drip <= 0) spawnBlood(o.position, 2, 0.5); }
         if (tr.drip <= 0) tr.drip = 0.06;
     }
     for (const d of debris) {
@@ -538,6 +543,7 @@ function handleGuest(conn) {
                 }
             }
             if (!isModMenuUser(conn.vNick)) { pl.inv = 0; pl.sz = 1; }   // niewidzialność i rozmiar z BagaBooModMenu tylko dla zweryfikowanych kont z listy menu
+            pl.sp = pl.sp && spectatorCheck && spectatorCheck(conn.peer) ? 1 : 0;   // obserwator tylko po potwierdzeniu przez poziom (host liczy to z własnego widoku rundy)
             playersState[conn.peer] = pl; updateRemote(conn.peer, pl); checkIntruder(conn.peer, pl);
         } else if (data.type === 'objectMove') { if (typeof data.id !== 'string' || data.id.length > 64) return; sharedObjectsState[data.id] = data.payload; syncObject(data.id, data.payload); }
         else if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, conn.peer); }

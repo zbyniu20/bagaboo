@@ -12,6 +12,7 @@ import { isStaffName } from './config.js';
 import { petStatus, cycleColorPet, cycleName, cycleSpeciesPet, toggleNameStylePet } from './petstore.js';
 import { PET, colorChoices } from './petlogic.js';
 import { account } from './auth.js';
+import { TUT, tutorialButton } from './tutoriallogic.js';
 
 export const PAUSE = { on: false, onLobby: null, onLogout: null, inLobby: true };
 let logoutArmed = 0;   // czas pierwszego dotknięcia przycisku wylogowania (drugie w ciągu 4 s potwierdza)
@@ -68,9 +69,12 @@ export const pauseMenu = new Terminal((t) => {
     t.background();
     if (page === 'pet') { petPage(t); return; }
     t.header('Paused', 'BagaBoo VR', AMBER_DIM);
-    t.btn('resume', 60, 92, 300, 72, 'Resume', () => closePause(), { tone: 'ok' });
-    t.btn('lobby', 380, 92, 300, 72, 'Back to lobby', () => { closePause(); if (PAUSE.onLobby) PAUSE.onLobby(); }, { disabled: PAUSE.inLobby });
-    t.btn('pet', 700, 92, 260, 72, 'Choose pet', () => { page = 'pet'; pauseMenu.dirty = true; }, { tone: 'gold' });
+    // Czwarty przycisk: samouczek. Ekipa (moderatorzy i admini) może go włączyć w każdej chwili, każdy może przerwać trwający.
+    const tb = tutorialButton(isStaffName(SAVE.profile.name), TUT.on), w = tb ? 215 : 300;
+    t.btn('resume', 60, 92, w, 72, 'Resume', () => closePause(), { tone: 'ok', size: tb ? 26 : undefined });
+    t.btn('lobby', 60 + w + 15, 92, w, 72, 'Back to lobby', () => { closePause(); if (PAUSE.onLobby) PAUSE.onLobby(); }, { disabled: PAUSE.inLobby, size: tb ? 24 : undefined });
+    t.btn('pet', 60 + 2 * (w + 15), 92, tb ? w : 260, 72, 'Choose pet', () => { page = 'pet'; pauseMenu.dirty = true; }, { tone: 'gold', size: tb ? 26 : undefined });
+    if (tb) t.btn('tut', 60 + 3 * (w + 15), 92, 960 - (60 + 3 * (w + 15)), 72, tb === 'skip' ? 'Skip tutorial' : 'Tutorial', () => { closePause(); if (tb === 'skip') { if (TUT.skip) TUT.skip(); } else if (TUT.start) TUT.start(); }, { tone: tb === 'skip' ? 'bad' : 'ok', size: 22 });
     slider(t, 'mus', 'Music', 'music', 180);
     slider(t, 'fx', 'Effects', 'effects', 240);
     slider(t, 'sc', 'Jumpscares', 'scare', 300);
@@ -107,7 +111,7 @@ mesh.renderOrder = 50;
 
 export function openPause() {
     if (PAUSE.on) return;
-    PAUSE.on = true; page = 'main';
+    PAUSE.on = true; page = 'main'; TUT.pauseSeen = true;   // krok samouczka "menu pauzy"
     camera.getWorldPosition(_p); camera.getWorldDirection(_d); _d.y = 0;
     if (_d.lengthSq() < 0.01) _d.set(0, 0, -1);
     _d.normalize();

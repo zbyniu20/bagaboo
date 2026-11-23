@@ -20,6 +20,7 @@ import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_FURAS } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
 import { setDread, heardVoice } from '../core/ambience.js';
+import { swapRoot } from '../core/glbmonster.js';
 
 const X = 20, Z0 = 4, Z1 = -64, WALL_H = 4.6;                         // legowisko 40 x 68 m
 const DIV_H = 4.0, DIV_T = 0.7;                                       // ścianki z kartonów: za wysokie, by Furas je przeskoczył (skacze do 3,6 m)
@@ -253,7 +254,7 @@ function buildFurasBots() {
 // Furas na węźle. Uśpiony stoi poza mapą z ukrytą siatką; jego światło zostaje w scenie
 function addBot(idx, on) {
     const n = STARTS[idx], f = buildFuras(true); if (idx) f.root.scale.setScalar(1.1);
-    L.root.add(f.root);
+    L.root.add(f.root); swapRoot(f.root, 'furas', { height: 1.9 });   // model z Blendera (assets/monsters/furas.glb)
     const x = on ? NODES[n][0] : DORMANT[0], z = on ? NODES[n][1] : DORMANT[1];
     const st = createBot(x, z); st.mode = 'patrol'; st.listen = true;   // czasem staje i nasłuchuje
     f.root.position.set(st.x, 0, st.z);
