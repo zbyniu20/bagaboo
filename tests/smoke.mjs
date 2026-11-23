@@ -42,6 +42,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 // (wykrywanie Questa i lekka strona startowa są sprawdzane w logic.mjs, w czystym Node: drugi render software-GL obok pierwszego wieszał wolne runnery CI)
 let phase = 'boot';
 const ctx = await browser.newContext({ viewport: { width: 1000, height: 640 } });
+await ctx.addInitScript(() => { try { localStorage.setItem('bagaboo_settings', JSON.stringify({ ver: 2, quality: 'medium' })); } catch (e) {} });   // budżety poniżej są dla jakości medium (domyślna jest High, ale budżety Questa mierzymy na medium)
 await ctx.route(/unpkg\.com/, (route) => {
     const u = route.request().url();
     let f = null;

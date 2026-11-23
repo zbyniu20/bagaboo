@@ -23,7 +23,9 @@ import { swapRoot } from '../core/glbmonster.js';
 
 const PLAN = M.buildPlan(), GRID = M.rasterize(PLAN), DOORS = M.doorSpots(PLAN, GRID), H = M.GEO.H, G = M.GEO.CELL;
 const SEE_DIST = 17, HEAR_RUN = 13, LOSE_TIME = 9, MEMORY_TIME = 5, CATCH_DIST = 1.0, ITEMS = 5;
-const WALK = 1.9, INVESTIGATE = 3.2, CHASE = 4.6, ITEM_BOOST = 0.06;   // każdy przedmiot przyspiesza Ducha o 6%
+// Prędkości Ducha (m/s) dopasowane do gracza: pościg nigdy nie przekracza GHOST_MAX_CHASE (bot w Become the Monster ma 4,2-5,4), więc da się mu uciec biegiem; wyszukiwanie ma osobny, niższy limit.
+const WALK = 1.9, INVESTIGATE = 3.0, CHASE = 3.5, ITEM_BOOST = 0.03;   // każdy przedmiot przyspiesza Ducha o 3%
+const GHOST_MAX_CHASE = 4.2, GHOST_MAX_SEARCH = 3.5;
 const PICK_R = 0.8, CUE_DIST = 7, GHOST_SHOW = 10;   // przedmiot zbierasz z 0,8 m; z 7 m w linii prostej dostajesz wskazówkę; duch poza 10 m pokazuje się tylko błyskami
 const REWARD_FIRST = 4000, REWARD_REPEAT = 400, INTRO_TIME = 10, DECOR_SEED = 31337;
 const NAMES = { book: 'a book', pistol: 'the pistol', knife: 'the knife' };
@@ -499,12 +501,12 @@ function think(dt, ctx) {
     else if (speedXZ > 3.4 && d < HEAR_RUN * (S.df.id === 'nightmare' ? 1.3 : 1) && M.isOpenCell(GRID, pc[0], pc[1])) setGoal(m, pc, 'investigate');
     let speed = WALK * mul;
     if (m.mode === 'chase') {
-        speed = Math.min(CHASE * mul, 7.0); m.repath -= dt;   // nawet na Nightmare nie szybciej niż najszybszy bieg gracza
+        speed = Math.min(CHASE * mul, GHOST_MAX_CHASE); m.repath -= dt;   // nawet na Nightmare i z kompletem przedmiotów wolniej niż bieg gracza
         
         const tgt = seesMe || !m.last ? [p.x, p.z] : m.last, tc = M.toCell(GRID, tgt[0], tgt[1]);
         if ((m.repath <= 0 || !m.dist) && M.isOpenCell(GRID, tc[0], tc[1])) { m.goal = tc; m.dist = M.distField(GRID, tc[0], tc[1]); m.repath = 0.3; }
     } else if (m.mode === 'investigate') {
-        speed = INVESTIGATE * mul;
+        speed = Math.min(INVESTIGATE * mul, GHOST_MAX_SEARCH);
         if (Math.hypot(M.cellX(GRID, m.goal[0]) - m.x, M.cellZ(GRID, m.goal[1]) - m.z) < 1.5) { m.mode = 'patrol'; m.goal = null; m.dist = null; }
     } else if (!m.goal || Math.hypot(M.cellX(GRID, m.goal[0]) - m.x, M.cellZ(GRID, m.goal[1]) - m.z) < 1.5) {
         const near = Math.random() < (S.df.id === 'nightmare' ? 0.5 : (S.df.id === 'easy' ? 0.1 : 0.3)), base = near ? pc : [((Math.random() * GRID.GW) | 0), ((Math.random() * GRID.GH) | 0)];

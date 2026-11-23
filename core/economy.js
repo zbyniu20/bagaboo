@@ -330,7 +330,6 @@ export const SLOTS = [{ id: 'skin', name: 'Skins' }, { id: 'badge', name: 'Badge
 
 // Pula zadań dziennych: każdego dnia losowane są 3 (takie same dla wszystkich graczy danego dnia)
 export const QUEST_POOL = [
-    { id: 'tramp', text: 'Bounce on the trampoline 15 times', target: 15, reward: 80 },
     { id: 'height', text: 'Climb 12 m above the floor', target: 12, reward: 100 },
     { id: 'rope', text: 'Grab the guts ropes 5 times', target: 5, reward: 60 },
     { id: 'throw', text: 'Throw an eyeball 8 times', target: 8, reward: 50 },
@@ -765,7 +764,16 @@ function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h
 export function msToMidnight() { const n = new Date(), m = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1); return m - n; }
 export function ensureDaily() {
     const k = todayKey();
-    if (SAVE.daily && SAVE.daily.date === k) return SAVE.daily;
+    if (SAVE.daily && SAVE.daily.date === k) {
+        // zadanie wycofane z puli (np. trampolina z lobby) w dzisiejszym zapisie: podmieniamy na inne, jeszcze niewylosowane
+        const retired = SAVE.daily.quests.filter(q => !QUEST_POOL.some(x => x.id === q.id));
+        if (retired.length) {
+            const free = QUEST_POOL.filter(x => !SAVE.daily.quests.some(q => q.id === x.id));
+            for (const q of retired) { const n = free.shift(); if (n) { q.id = n.id; q.p = 0; q.done = false; } }
+            SAVE.daily.quests = SAVE.daily.quests.filter(q => QUEST_POOL.some(x => x.id === q.id)); saveGame();
+        }
+        return SAVE.daily;
+    }
     let h = hashStr(k);
     const pool = QUEST_POOL.slice(), picks = [];
     while (picks.length < 3) { h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; picks.push(pool.splice(h % pool.length, 1)[0]); }

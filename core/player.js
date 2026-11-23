@@ -10,6 +10,7 @@ import { sendObjectMove } from './network.js';
 import { buzz } from './haptics.js';
 import { MOD, BOOST_MULT, FLY_SPEED, PERSONAL, capMul } from './modstate.js';   // BagaBooModMenu: boost, fly, noclip i size (domyślnie wyłączone)
 import { SPEC } from './spectatelogic.js';
+import { TUT } from './tutoriallogic.js';
 
 const radius = 0.35, gorillaStanceOffset = 0.35;   // widok wyżej, bo długie ręce goryla i tak sięgają podłogi
 const POWER = 1.0;            // siła trampolin i limit prędkości (1.0 = normalnie)
@@ -92,7 +93,7 @@ const ctrlInput = [{ squeeze: false, select: false }, { squeeze: false, select: 
 const hit = { nx: 0, ny: 0, nz: 0, depth: 0 };
 
 controllers.forEach((c, i) => {
-    c.addEventListener('selectstart', () => { ctrlInput[i].select = true; if (SPEC.on) { if (SPEC.next) SPEC.next(1); return; } if (!clickPointer(i) && L.onTrigger) L.onTrigger(i); });   // spust: ekran albo akcja poziomu (np. strzał)
+    c.addEventListener('selectstart', () => { ctrlInput[i].select = true; if (SPEC.on) { if (SPEC.next) SPEC.next(1); return; } if (TUT.on && TUT.next) TUT.next('trigger'); if (!clickPointer(i) && L.onTrigger) L.onTrigger(i); });   // spust: ekran albo akcja poziomu (np. strzał)
     c.addEventListener('selectend', () => { ctrlInput[i].select = false; });
     c.addEventListener('squeezestart', () => { ctrlInput[i].squeeze = true; onSqueezeStart(i); });
     c.addEventListener('squeezeend', () => { ctrlInput[i].squeeze = false; onSqueezeEnd(i); });

@@ -23,6 +23,7 @@
     "../core/acousticlogic.js",
     "../core/spectatelogic.js",
     "../core/bakelogic.js",
+    "../core/tutoriallogic.js",
     "../core/glblogic.js",
     "../core/artlogic.js",
     "../core/huntlogic.js",
