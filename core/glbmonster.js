@@ -5,6 +5,7 @@
 // ==========================================
 import { THREE } from './engine.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';   // modele z meshopt (mniejsze pliki)
 import { MONSTERS, candidateUrls, pickClip, stateRole, fitScale, withinBudget } from './glblogic.js';
 
 export async function loadGlbMonster(name) {
@@ -15,7 +16,7 @@ export async function loadGlbMonster(name) {
     }
     if (!buf) return null;
     let gltf;
-    try { gltf = await new GLTFLoader().parseAsync(buf, ''); } catch (e) { return null; }
+    try { const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder); gltf = await loader.parseAsync(buf, ''); } catch (e) { return null; }
     let tris = 0; gltf.scene.traverse(o => { if (o.isMesh && o.geometry) tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
     if (!withinBudget(buf.byteLength, tris)) return null;
     const inner = gltf.scene, box = new THREE.Box3().setFromObject(inner), size = box.getSize(new THREE.Vector3()), k = fitScale(size.y, cfg.height), c = box.getCenter(new THREE.Vector3());
