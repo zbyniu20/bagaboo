@@ -9,7 +9,7 @@ import { buildMannequin, addMonsterFace } from './mannequin.js';
 import { voiceLevel, voiceSmooth, voiceHeard } from './hauntlogic.js';
 import { toast } from './terminal.js';
 import { LEVEL_DEFS } from './registry.js';
-import { audioBus, spatial, noiseBuf, creak, bang, whisper, setRoom, breath, growl, step, stinger, pa, childLaugh, micLevel } from './audio.js';
+import { audioBus, spatial, noiseBuf, creak, bang, whisper, setRoom, breath, growl, step, stinger, pa, childLaugh, micLevel, setTension } from './audio.js';
 import { GAMES_CALM, SETTINGS } from './settings.js';
 
 // loops: stałe źródła [typ, [[x,y,z], ...]], rand: losowe odgłosy { t: typ, e: [min,max] s między, d: [min,max] m od gracza, v: głośność }
@@ -143,7 +143,7 @@ export function dreadUpdate(dt) {
     }
     const a = near < 16 ? 1 - near / 16 : 0;
     if (dst.scaredT > 0) { dst.scaredT -= dt; if (dst.scaredT <= 0 && dst.hideFn) { try { dst.hideFn(false); } catch (e) {} dst.hideFn = null; } }
-    DREAD.near = near; DREAD.tension = a; DREAD.hush = near < 9 || dst.scaredT > 0;
+    DREAD.near = near; DREAD.tension = a; try { setTension(dread && dread.id === L.levelId ? Math.max(a, dst.scaredT > 0 ? 1 : 0) : 0, dt, near < 9); } catch (e) {} DREAD.hush = near < 9 || dst.scaredT > 0;
     // zjawy: tylko gdy poziom je dopuszcza, nic nie goni i nie trwa jumpscare
     if (dread && dread.id === L.levelId && dread.app && !GAMES_CALM.on) {
         if (app.id !== dread.id) { app.id = dread.id; app.fig = null; app.t = 30 + Math.random() * 30; app.live = 0; }

@@ -549,4 +549,12 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     check('tutorial: staff can start it any time, everybody can skip a running one, others see no button', TL.tutorialButton(true, false) === 'start' && TL.tutorialButton(false, false) === null && TL.tutorialButton(true, true) === 'skip' && TL.tutorialButton(false, true) === 'skip');
     check('tutorial: wired in (pause button for staff, trigger only on info steps, Enter, auto start in the lobby, panel per frame, saved flag)', /tutorialButton\(isStaffName\(SAVE\.profile\.name\), TUT\.on\)/.test(PS2) && /TUT\.pauseSeen = true/.test(PS2) && /TUT\.next\('trigger'\)/.test(PL2) && /autoStartTutorial\(L\.levelId\)/.test(MJ5) && /updateTutorial\(dt\)/.test(MJ5) && /SAVE\.tutorialDone = true/.test(TU) && /kind !== 'next'\) return/.test(TU) && /e\.key === 'Enter'/.test(TU));
 }
+    {
+        const ML = await import('../core/musiclogic.js');
+        const AU = fs.readFileSync(new URL('../core/audio.js', import.meta.url), 'utf8'), AM = fs.readFileSync(new URL('../core/ambience.js', import.meta.url), 'utf8');
+        check('music: tension rises fast, falls slowly and stays in 0..1', ML.tensionSmooth(0, 1, 0.5) > 0.5 && ML.tensionSmooth(1, 0, 0.5) > 0.85 && ML.tensionSmooth(0.3, 5, 10) <= 1 && ML.tensionSmooth(0.3, -2, 10) >= 0);
+        check('music: filter opens, dissonance and pulse grow only with tension, silent layer at calm', (() => { const a = ML.tensionParams(0), b = ML.tensionParams(0.6), c = ML.tensionParams(1); return a.dissonant === 0 && a.cutoff === ML.TENSION.cutoffLow && b.cutoff > a.cutoff && c.cutoff > b.cutoff && c.dissonant > b.dissonant && c.pulse > b.pulse && c.droneMul > a.droneMul; })());
+        check('music: hush mutes the music only at high tension', ML.hushMul(true, 0.9) < 1 && ML.hushMul(true, 0.2) === 1 && ML.hushMul(false, 1) === 1);
+        check('music: wired (setTension in audio.js and from dreadUpdate, imported)', /export function setTension/.test(AU) && /setTension\(/.test(AM) && /setTension \}/.test(AM) && /musiclogic\.js/.test(AU));
+    }
 done('logic');
