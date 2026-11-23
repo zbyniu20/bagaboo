@@ -16,6 +16,7 @@ import { getAudioContext, stinger } from './audio.js';
 import { GAMES_CALM, SETTINGS } from './settings.js';
 import { account as myAccount, vouch, verifyProof, randomNonce } from './auth.js';
 import { lostLeft, lostRight, lostHead } from './dismemberlogic.js';
+import { SPEC } from './spectatelogic.js';
 
 /* global Peer */
 export const GAME_PREFIX = 'bagaboo-vr-v3-';
@@ -371,7 +372,7 @@ function updateRemote(id, st) {
         p.torso.rotation.set(-lean, e.y, 0);
     } else { p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -drop, 0)); p.torso.rotation.set(0, e.y, 0); }
     if (p.head.userData.tags) for (const tg of p.head.userData.tags) tg.visible = !TAGS.hidden && !GAMES_CALM.on;   // Hide and Seek i cały BagaBoo Games: bez nazw nad głowami
-    p.group.visible = (st.lvl || 'lobby') === L.levelId && !(NET.mode === 'host' && isHiddenFrom(id, st, myPeerId));   // widać tylko graczy na tym samym poziomie, bez niewidzialnych adminów (goście dostają stan już przefiltrowany przez hosta)
+    p.group.visible = (st.lvl || 'lobby') === L.levelId && !st.sp && !(NET.mode === 'host' && isHiddenFrom(id, st, myPeerId));   // widać tylko graczy na tym samym poziomie, bez niewidzialnych adminów (goście dostają stan już przefiltrowany przez hosta)
 }
 // --- Become the Monster: urwane ręce i głowa (kod z core/dismemberlogic.js; wołane tylko, gdy gracz włączył opcję Gore) ---
 const dismembered = Object.create(null), debris = [], blood = [];
@@ -745,6 +746,7 @@ export function networkTick(handL, handR) {
         h2: { p: l2p.toArray(), q: l2q.toArray(), g: handR.userData.rig.grip },
         sb: unbannedNow ? 0 : myBanUntil(),   // ban zapisany na tym urządzeniu (host może go zdjąć, jeśli właściciel odbanował gracza)
         sl: playerRig.userData.sliding ? 1 : 0,   // ślizg na brzuchu
+        sp: SPEC.on ? 1 : 0,                       // obserwator (core/spectate.js): inni nie widzą mojego awatara
         em: emoteState(),                         // trwająca emotka {id, t}
         vl: Math.round(mv.level * 100) / 100, vp: Math.round(mv.pitch * 100) / 100,   // poziom i wysokość mojego głosu (usta u innych)
         s: { h: SESSION.maxH, j: SESSION.jumps, e: (Date.now() - SESSION.since) / 1000 }

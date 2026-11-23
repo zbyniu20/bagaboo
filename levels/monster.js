@@ -24,6 +24,8 @@ import { ARRIVAL_FROM_MONSTER } from './games.js';
 import { MAPS, generateMap, pickMap, cleanMapPick, lobbyMap, cleanVotes, cleanOptions, pickOptions, LOBBY } from '../core/monstermaps.js';
 import { GATE, countVotes, winnerOf, gateStep } from '../core/lobbylogic.js';
 import { GAMES_CALM, SETTINGS } from '../core/settings.js';
+import { startSpectate, stopSpectate, isSpectating } from '../core/spectate.js';
+import { forwardFromQuat } from '../core/spectatelogic.js';
 import { pickDismember, cleanDismember, lostLeft, lostRight, lostHead, dismemberText } from '../core/dismemberlogic.js';
 
 const WAIT = 10, WAIT_AFTER_VOTE = 6, ROUND = 120, RESULTS = 8, REWARD = 200;
@@ -376,7 +378,21 @@ function syncDismember() {
     for (const id of S.dmApplied) if (!seen.has(id)) { if (id === 'me') localDismember(0); else N.setDismember(id, 0); }
     S.dmApplied = seen;
 }
-function localCaught() { SFX.scare(); toast('You were caught! Watch the others.', '#e0533f'); }
+// Obserwator (core/spectate.js): po złapaniu patrzysz za plecami żywych graczy, potwora albo bota
+function specCandidates() {
+    if (!S || S.phase !== 'play') return [];
+    const out = [];
+    for (const id in N.playersState) {
+        const st = N.playersState[id]; if (id === N.myId() || !st || st.lvl !== 'monster' || !st.head || !Array.isArray(st.head.p)) continue;
+        if (id !== S.mon && S.caught.has(id)) continue;
+        const f = forwardFromQuat(st.head.q);
+        out.push({ id: id, label: (id === S.mon ? 'Monster ' : '') + ((st.profile && st.profile.name) || 'Player'), x: +st.head.p[0] || 0, y: +st.head.p[1] || 0, z: +st.head.p[2] || 0, fx: f.fx, fz: f.fz });
+    }
+    if (S.mon === 'bot' && S.bot) out.push({ id: 'bot', label: 'Mannequin', x: S.bot.x, y: S.bot.y + 1.5, z: S.bot.z, fx: 0, fz: -1 });
+    return out;
+}
+export function debugSpectate() { if (!S) return false; S.phase = 'play'; S.caught.add('me'); return startSpectate(specCandidates); }   // tylko dla testów (tests/spectate.mjs)
+function localCaught() { SFX.scare(); toast('You were caught! Watch the others.', '#e0533f'); setTimeout(() => { if (S && S.caught.has('me') && S.phase === 'play') startSpectate(specCandidates); }, 2200); }   // po jumpscare'ie i animacji urywania
 // Bot: biegnie prosto do gracza, wpada na przeszkody, wskakuje na nie (perony, wagony, schody, szyby)
 // i zeskakuje w dół. Stoi na górnych ściankach pudełek kolizji.
 function moveBot(dt, p) {
@@ -462,6 +478,7 @@ export function update(dt, t, ctx) {
     L.moveScale = mon === 'me' ? monsterBoost(MONSTER_BOOST, S.t) : 1;
     tickHunt(dt, t, mon, mpos, p);
     if (mpos && mon !== 'me' && !S.caught.has('me')) { _h.copy(mpos); SFX.heartbeat(Math.max(0, 1 - _h.distanceTo(p) / 12)); }
+    if (isSpectating() && (S.phase !== 'play' || !S.caught.has('me'))) stopSpectate();   // koniec rundy albo nowa runda: wracasz tam, gdzie zostałeś złapany
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.15; drawHud(); }
     if (S.board) S.board.visible = S.phase === 'lobby';
     drawPadLabels();
@@ -565,6 +582,7 @@ function randomScares(dt, t, p) {
     SFX.stinger({ x: x, y: 1.5, z: z });
 }
 export function dispose() {
+    stopSpectate(false);
     if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); camera.remove(S.fear); if (S.final || S.fogBase) setFinalLook(false); DREAD.fogMul = 1; for (const mk of S.marks) L.root.remove(mk); setDread(null); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
     if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); S.board = null; }
     L.moveScale = 1;
