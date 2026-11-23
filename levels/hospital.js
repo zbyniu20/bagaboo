@@ -8,6 +8,7 @@
 import { THREE, L, tex, camera, lighting, addCrispBlock } from '../core/engine.js';
 import * as T from '../core/textures.js';
 import { buildMannequin, addMonsterFace } from '../core/mannequin.js';
+import { swapModel } from '../core/glbmonster.js';
 import { levelReward, recordTime, diffOf } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import { setPlayerPosition, releaseAll } from '../core/player.js';
@@ -112,7 +113,7 @@ function buildStatues() {
 function addStatue(x, z, seed) {
     const m = buildMannequin(T.mkRng(seed)); m.group.scale.setScalar(1.15); L.root.add(m.group);
     m.group.traverse(o => { if (o.isMesh && o.material && o.material.map) o.material = new THREE.MeshStandardMaterial({ color: 0xd8d4cc, roughness: 0.55 }); });
-    addMonsterFace(m.head, { width: 0.052, open: 0.028, teeth: 9, long: 1.3, tears: 0x7a0a0a });
+    addMonsterFace(m.head, { width: 0.052, open: 0.028, teeth: 9, long: 1.3, tears: 0x7a0a0a }); swapModel(m, 'patient');
     for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.08, 0.08, 1); e.position.set(sx * 0.04, 0.152, 0.1); e.renderOrder = 6; m.head.add(e); }
     const st = { m: m, x: x, z: z, home: [x, z], yaw: Math.random() * 6.28, moving: false, stepT: 0 };
     m.group.position.set(x, 0, z); S.st.push(st); return st;

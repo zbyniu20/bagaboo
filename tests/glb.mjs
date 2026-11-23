@@ -40,7 +40,8 @@ async function run(label, body) {
     const page = await ctx.newPage(), errs = [];
     page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
     page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed to load resource/i.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 300)); });
-    if (body) await page.route(/assets\/monsters\/monster\.glb/, (r) => r.fulfill({ status: 200, contentType: 'application/octet-stream', body }));
+    if (body === 'none') await page.route(/assets\/monsters\/\w+\.glb/, (r) => r.fulfill({ status: 404, body: '' }));
+    else if (body) await page.route(/assets\/monsters\/\w+\.glb/, (r) => r.fulfill({ status: 200, contentType: 'application/octet-stream', body }));
     await page.goto(`http://localhost:${port}/?three=${V}`);
     await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
     await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });
@@ -53,12 +54,13 @@ async function run(label, body) {
 const glb = await makeGlb();
 console.log('generated glb bytes', glb.length);
 // 1) brak pliku: zostaje manekin
-{ const r = await run('none', null); ok('no file: the procedural mannequin stays (no model loaded)', r.info && r.info.loaded === false, r.info); ok('no file: no page errors', r.errs.length === 0, r.errs); await r.page.close(); }
+{ const r = await run('none', 'none'); ok('no file: the procedural mannequin stays (no model loaded)', r.info && r.info.loaded === false, r.info); ok('no file: no page errors', r.errs.length === 0, r.errs); await r.page.close(); }
 // 2) poprawny plik
 {
     const r = await run('ok', glb), i = r.info;
     ok('a valid file is loaded and replaces the bot mesh', i && i.loaded === true && i.same === true, i);
-    ok('the model is scaled to the target height (2.3 m) and stands on the floor', i && Math.abs(i.h - 2.3) < 0.05 && Math.abs(i.minY) < 0.05, i);
+    const want = await r.page.evaluate(async (k) => (await import('./core/glblogic.js')).MONSTERS[k].height, i.kind);
+    ok('the model is scaled to the target height of its kind and stands on the floor', i && Math.abs(i.h - want) < 0.1 && Math.abs(i.minY) < 0.05, [i, want]);
     ok('animation clips are found (Idle, Walk, Run)', i && ['Idle', 'Walk', 'Run'].every(n => i.clips.includes(n)), i);
     const play = await r.page.evaluate(async () => {
         const M = await import('./levels/monster.js'), E = await import('./core/engine.js'); M.debugPlay(100, 6); await new Promise(res => setTimeout(res, 2500));
@@ -73,5 +75,14 @@ console.log('generated glb bytes', glb.length);
 { const big = Buffer.concat([glb, Buffer.alloc(7 * 1024 * 1024)]); const r = await run('big', big); ok('an oversized file is refused and the mannequin stays', r.info && r.info.loaded === false, r.info); ok('oversized: no page errors', r.errs.length === 0, r.errs); await r.page.close(); }
 // 4) uszkodzony plik
 { const r = await run('bad', Buffer.from('this is not a glb file at all')); ok('a broken file is ignored and the mannequin stays', r.info && r.info.loaded === false, r.info); ok('broken: no page errors', r.errs.length === 0, r.errs); await r.page.close(); }
+// 5) prawdziwe pliki z assets/monsters w poziomach z manekinami
+for (const [lvl, min] of [['cemetery', 1], ['nursery', 1], ['hospital', 2]]) {
+    const r = await run('real', null); await r.page.evaluate(async (l) => { const M = await import('./main.js'); await M.loadLevel(l); }, lvl); await r.page.waitForTimeout(4000);
+    const n = await r.page.evaluate(async () => (await import('./core/glbmonster.js')).glbMonstersLive());
+    ok(lvl + ': at least ' + min + ' mannequin(s) were replaced by models from files', n >= min, n);
+    await r.page.evaluate(async () => { const M = await import('./main.js'); await M.loadLevel('lobby'); }); await r.page.waitForTimeout(1500);
+    const n2 = await r.page.evaluate(async () => { await new Promise(res => setTimeout(res, 500)); return (await import('./core/glbmonster.js')).glbMonstersLive(); });
+    ok(lvl + ': leaving the level removes the models', n2 === 0, n2); ok(lvl + ': no page errors', r.errs.length === 0, r.errs); await r.page.close();
+}
 await browser.close(); server.close();
 console.log(fails ? 'glb: FAILED ' + fails : 'glb: all checks passed'); process.exit(fails ? 1 : 0);

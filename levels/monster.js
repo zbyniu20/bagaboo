@@ -13,6 +13,7 @@ import { HUNT, pulseAt, finalHunt, monsterBoost, botBoost, fearLevel } from '../
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { loadGlbMonster } from '../core/glbmonster.js';
+import { BOT_KINDS } from '../core/glblogic.js';
 import { levelReward } from '../core/economy.js';
 import { toast, Terminal, AMBER, AMBER_DIM, GOLD, OK_COL } from '../core/terminal.js';
 import { hands, setPlayerPosition } from '../core/player.js';
@@ -61,11 +62,11 @@ export function build() {
     const b = buildMannequin(T.mkRng(666)); b.group.scale.setScalar(1.25); b.group.visible = false; L.root.add(b.group);
     for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.1, 0.1, 1); e.position.set(sx * 0.04, 0.152, 0.11); b.head.add(e); }
     S.botMesh = b; S.mannequin = b;
-    // Model z pliku assets/monsters/monster.glb (core/glbmonster.js): gdy jest, zastępuje manekina bota; brak pliku = manekin zostaje
-    const lvl = S; loadGlbMonster('monster').then((g) => {
+    // Model z pliku assets/monsters/<rodzaj>.glb (core/glbmonster.js, losowy z BOT_KINDS): gdy jest, zastępuje manekina bota; brak pliku = manekin zostaje
+    const lvl = S, kind = BOT_KINDS[(Math.random() * BOT_KINDS.length) | 0]; loadGlbMonster(kind).then((g) => {
         if (!g) return;
         if (S !== lvl) { g.dispose(); return; }   // poziom zdążył się zmienić podczas ładowania
-        g.group.visible = false; L.root.add(g.group); b.group.visible = false; S.glb = g; S.botMesh = g;
+        g.group.visible = false; g.kind = kind; L.root.add(g.group); b.group.visible = false; S.glb = g; S.botMesh = g;
     });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     // Jumpscare'y w losowych chwilach: twarz pod nosem albo postać, która wyskakuje zza rogu i rzuca się na gracza
@@ -400,7 +401,7 @@ function specCandidates() {
 }
 export function debugGlb() {   // tylko dla testów (tests/glb.mjs)
     if (!S) return null; const g = S.glb; if (!g) return { loaded: false, mannequinVisible: S.mannequin.group.visible };
-    const bx = new THREE.Box3().setFromObject(g.group); return { loaded: true, clips: g.clips, tris: g.tris, h: bx.max.y - bx.min.y, minY: bx.min.y, visible: g.group.visible, mannequinVisible: S.mannequin.group.visible, same: S.botMesh === g };
+    const bx = new THREE.Box3().setFromObject(g.group); return { loaded: true, clips: g.clips, tris: g.tris, h: bx.max.y - bx.min.y, minY: bx.min.y, visible: g.group.visible, mannequinVisible: S.mannequin.group.visible, same: S.botMesh === g, kind: g.kind };
 }
 export function debugSpectate() { if (!S) return false; S.phase = 'play'; S.caught.add('me'); return startSpectate(specCandidates); }   // tylko dla testów (tests/spectate.mjs)
 function localCaught() { SFX.scare(); toast('You were caught! Watch the others.', '#e0533f'); setTimeout(() => { if (S && S.caught.has('me') && S.phase === 'play') startSpectate(specCandidates); }, 2200); }   // po jumpscare'ie i animacji urywania

@@ -3,8 +3,15 @@
 // Bez THREE: testy w tests/logic.mjs. Ładowaniem i miksowaniem zajmuje się core/glbmonster.js.
 // Plik modelu: assets/monsters/<nazwa>.glb (w paczce z Vite: monsters/<nazwa>.glb); brak pliku = poziom zostaje przy proceduralnym manekinie.
 // ==========================================
-// Model potwora w trybie Become the Monster: wysokość docelowa (m) i poprawka obrotu (rad), gdy model nie patrzy w +Z
-export const MONSTERS = { monster: { file: 'monster.glb', height: 2.3, yaw: 0 } };
+// Potwory z plików assets/monsters/<nazwa>.glb (powstają w Blenderze: tools/blender/monsters.py). height: docelowa wysokość (m), yaw: poprawka obrotu (rad, przód = +Z)
+export const MONSTERS = {
+    mannequin: { file: 'mannequin.glb', height: 2.2, yaw: 0 }, gravedigger: { file: 'gravedigger.glb', height: 2.1, yaw: 0 }, warden: { file: 'warden.glb', height: 2.7, yaw: 0 },
+    doll: { file: 'doll.glb', height: 1.05, yaw: 0 }, patient: { file: 'patient.glb', height: 1.9, yaw: 0 }, butler: { file: 'butler.glb', height: 2.4, yaw: 0 },
+    blind: { file: 'blind.glb', height: 2.2, yaw: 0 }, threadman: { file: 'threadman.glb', height: 2.3, yaw: 0 }, furas: { file: 'furas.glb', height: 1.7, yaw: 0 },
+    ghost: { file: 'ghost.glb', height: 2.5, yaw: 0 }, lavabeast: { file: 'lavabeast.glb', height: 2.2, yaw: 0 }
+};
+// Potwory, spośród których losowany jest bot w Become the Monster
+export const BOT_KINDS = ['mannequin', 'blind', 'threadman', 'lavabeast', 'warden'];
 export const MAX_BYTES = 6 * 1024 * 1024;   // większy plik to za dużo dla Quest 3S: nie ładujemy
 export const MAX_TRIS = 40000;
 // Role animacji i ich możliwe nazwy w pliku (małe litery, fragment nazwy wystarcza)
@@ -13,8 +20,9 @@ const FALLBACK = { idle: ['idle', 'walk'], walk: ['walk', 'run', 'idle'], run: [
 // Nazwa klipu dla roli: dokładna rola, potem zamienniki; ostatecznie pierwszy klip (null, gdy modelu bez animacji)
 export function pickClip(names, role) {
     if (!Array.isArray(names) || !names.length) return null;
-    const low = names.map(n => String(n).toLowerCase());
+    const low = names.map(n => String(n).toLowerCase()), last = low.map(n => n.split('|').pop());
     for (const r of FALLBACK[role] || [role]) {
+        for (const key of ROLES[r] || [r]) { const e = last.indexOf(key); if (e >= 0) return names[e]; }   // dokładna nazwa (np. "Armature|Walk")
         for (const key of ROLES[r] || [r]) { const i = low.findIndex(n => n.includes(key)); if (i >= 0) return names[i]; }
     }
     return names[0];
