@@ -18,6 +18,7 @@ function bagabooHtml() {
 }
 export default defineConfig({
     base: './',
+    publicDir: 'assets',   // modele .glb (assets/monsters/*.glb) trafiają do dist/monsters/ (patrz core/glblogic.js: candidateUrls)
     plugins: [bagabooHtml()],
     define: { __BAGABOO_BUNDLED__: true, __BAGABOO_BUILD__: JSON.stringify(String(Math.floor(Date.now() / 300000))) },
     build: { outDir: 'dist', target: 'es2022', sourcemap: false, chunkSizeWarningLimit: 2500 }

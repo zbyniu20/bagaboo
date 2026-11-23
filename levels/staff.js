@@ -9,6 +9,7 @@ import { SETTINGS } from '../core/settings.js';
 import { setDread, DREAD } from '../core/ambience.js';
 import { addStoryProps } from '../core/levelkit.js';
 import { buildMannequin, addMonsterFace } from '../core/mannequin.js';
+import { swapModel } from '../core/glbmonster.js';
 import { HAUNT, STAFF, nextIn, pickKind, manStep, staffDread, staffGap, staffBlackoutDue, eyesDistance, pupilOffset } from '../core/hauntlogic.js';
 import { LIGHT_PRESETS, isStaffName, isAdminName, isModName, isUltimateName, MOD_NAMES, localMods, setLocalMod } from '../core/config.js';
 import { SAVE, CATALOG, isOwned, buyItem, equipItem, setHideTag, markCheater } from '../core/economy.js';
@@ -314,7 +315,7 @@ function buildHaunt() {
       h.hang = g; }
     // manekiny w rogach (skradają się, gdy nie patrzysz)
     [[-5.2, -4.0], [4.4, -4.3], [-5.4, 2.4]].forEach(([x, z], i) => {
-        const m = buildMannequin(T.mkRng(9100 + i)); addMonsterFace(m.head, { width: 0.058, open: 0.045, teeth: 11, long: 1.6, tears: 0x7a0a0a });
+        const m = buildMannequin(T.mkRng(9100 + i)); addMonsterFace(m.head, { width: 0.058, open: 0.045, teeth: 11, long: 1.6, tears: 0x7a0a0a }); swapModel(m, 'mannequin');
         m.group.position.set(x, 0, z); m.group.rotation.y = Math.atan2(-x, -z); L.root.add(m.group); h.mans.push({ g: m.group, head: m.head, home: { x: x, z: z }, t: nextIn(STAFF.CREEP.EVERY, Math.random) });
     });
     // widmo w telewizorze (nakładka z szumem i twarzą; sam ekran telewizora zostaje działający)

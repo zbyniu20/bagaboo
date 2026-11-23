@@ -9,3 +9,14 @@ Skrypty budują modele BagaBoo w Blenderze uruchamianym bez okna (moduł `bpy`) 
 - `sdf.py`: modelowanie funkcją odległości (łączenie i wycinanie elipsoid z gładkością, marching cubes).
 - `common.py`: scena, światła, kamera i render podglądu.
 - `gorilla_head.py`: głowa goryla (górna część i osobna żuchwa). Stan: pilotaż kształtu, jeszcze bez zębów, tekstur i futra.
+
+## Potwory (modele GLB do gry)
+
+    /tmp/v/bin/python tools/blender/monsters.py [nazwa ...]     # bez argumentów: wszystkie; wynik: assets/monsters/<nazwa>.glb
+
+- `monsterlib.py`: biblioteka. Szkielet kości -> siatka z modyfikatora Skin (organiczne tuby) -> dodatki (zęby, rogi, oczy, całuny, igły) -> wagi (dwie najbliższe kości) ->
+  kolory wierzchołków (brud i krew) -> szkielet i animacje Idle, Walk, Run, Attack (procedurą) -> eksport GLB (przód potwora = +Z gry).
+- `monsters.py`: przepisy: mannequin, gravedigger, warden, doll, patient, butler, blind, threadman, furas, ghost, lavabeast (2,3-4,8 tys. trójkątów każdy).
+  Nowy potwór = funkcja w `monsters.py` i wpis w `RECIPES`, wpis w `MONSTERS` w `core/glblogic.js` (test pilnuje spójności), a w poziomie `swapModel(m, 'nazwa')` po `buildMannequin`.
+- Podgląd GLB w three.js: `cd tests && CHROMIUM_PATH=... node glbshot.mjs wynik.png Walk ../assets/monsters/a.glb ../assets/monsters/b.glb` (`CAM=head` = zbliżenie), w poziomach: `node monsterview.mjs katalog poziom1,poziom2`.
+

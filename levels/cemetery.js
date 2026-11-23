@@ -8,6 +8,7 @@ import { THREE, L, tex, camera, addCrispBlock, addInstancedBlocks } from '../cor
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as T from '../core/textures.js';
 import { buildMannequin, addMonsterFace } from '../core/mannequin.js';
+import { swapModel } from '../core/glbmonster.js';
 import { levelReward, recordTime, diffOf } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import { setPlayerPosition, releaseAll } from '../core/player.js';
@@ -144,7 +145,7 @@ function buildDiggers() {
     for (let i = 0; i < total; i++) {
         const m = buildMannequin(T.mkRng(1200 + i)); m.group.scale.setScalar(1.25); L.root.add(m.group);
         m.group.traverse(o => { if (o.isMesh && o.material && o.material.map) o.material = new THREE.MeshStandardMaterial({ color: 0x2a2420, roughness: 0.9 }); });
-    addMonsterFace(m.head, { width: 0.05, open: 0.035, toothColor: 0xb8a878, long: 1.2, tears: 0x2a0606 });
+    addMonsterFace(m.head, { width: 0.05, open: 0.035, toothColor: 0xb8a878, long: 1.2, tears: 0x2a0606 }); swapModel(m, 'gravedigger');
         for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffb030, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.09, 0.09, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
         const lamp = new THREE.PointLight(0xffb050, 26, 14, 1.6); lamp.position.set(0.4, 1.3, 0.3); m.group.add(lamp);
         const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xffc070, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.9 })); glow.scale.set(0.8, 0.8, 1); glow.position.set(0.4, 1.3, 0.3); m.group.add(glow);

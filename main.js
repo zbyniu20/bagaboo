@@ -18,6 +18,7 @@ import { setAmbience, dreadUpdate } from './core/ambience.js';
 import { updateAcoustics } from './core/acoustics.js';
 import { bakeLevel, applyArt } from './core/lightbake.js';
 import { updateSpectate } from './core/spectate.js';
+import { updateGlbMonsters } from './core/glbmonster.js';
 import { updateHighFive } from './core/highfive.js';
 import { startXrPerf, stopXrPerf, updateXrPerf } from './core/xrperf.js';
 import { updateDesktopPerf, resetDesktopPerf } from './core/desktopperf.js';   // automatyczna rozdzielczość poza VR
@@ -346,7 +347,7 @@ renderer.setAnimationLoop(() => {
             }
         }
     }
-    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); dreadUpdate(dt); updateAcoustics(dt);
+    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); dreadUpdate(dt); updateAcoustics(dt); updateGlbMonsters(dt);
     NETM.animateFaces(dt);
     if (started && !frozen) {
         ECO.tick(dt, NETM.otherPlayers().length);

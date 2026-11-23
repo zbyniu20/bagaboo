@@ -10,6 +10,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { LIGHT_PRESETS } from '../core/config.js';
 import * as T from '../core/textures.js';
 import { buildMannequin, addMonsterFace } from '../core/mannequin.js';
+import { swapModel } from '../core/glbmonster.js';
 import { levelReward, recordTime, unlockAchievement, diffOf, isDaily, dailyDate } from '../core/economy.js';
 import { createGhost } from '../core/runkit.js';
 import { setPlayerPosition } from '../core/player.js';
@@ -272,7 +273,7 @@ function buildCage() {
     const lock = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.06), new THREE.MeshStandardMaterial({ color: 0x8a6a2a, metalness: 0.9, roughness: 0.3 })); lock.position.set(s + 0.04, 1.2, s * 0.7); cage.add(lock);
     const lamp = new THREE.PointLight(0xff3020, 6, 5, 2); lamp.position.set(cx + 0.6, 2.9, cz); L.root.add(lamp);
     // Manekin w środku (ten sam wygląd co w lobby)
-    const m = buildMannequin(T.mkRng(777)); L.root.add(m.group); addMonsterFace(m.head, { width: 0.058, open: 0.045, teeth: 11, long: 1.6, tears: 0x7a0a0a });
+    const m = buildMannequin(T.mkRng(777)); L.root.add(m.group); addMonsterFace(m.head, { width: 0.058, open: 0.045, teeth: 11, long: 1.6, tears: 0x7a0a0a }); swapModel(m, 'mannequin');
     const eyes = new THREE.Group(); eyes.visible = false; m.head.add(eyes);
     for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.09, 0.09, 1); e.position.set(sx * 0.04, 0.152, 0.11); eyes.add(e); }
     const aura = new THREE.PointLight(0xff1a00, 0, 7, 2); aura.position.set(0, 1.9, 0.3); m.group.add(aura);
@@ -477,7 +478,7 @@ function spawnTwin(p) {
     const dist = bfs(S.M, nodeAt(p.x, p.z)).dist, cands = [];
     for (let n = 0; n < N * N; n++) if (dist[n] >= 14 && dist[n] <= 24) cands.push(n);
     if (!cands.length) { S.tw = null; S.chaseT -= 5; return; }   // za mały dystans (np. mała część labiryntu): spróbuj za chwilę
-    const c = nodeCenter(cands[(Math.random() * cands.length) | 0]), m = buildMannequin(T.mkRng(778)); addMonsterFace(m.head, { width: 0.058, open: 0.04, teeth: 11, long: 1.6, tears: 0x7a0a0a });
+    const c = nodeCenter(cands[(Math.random() * cands.length) | 0]), m = buildMannequin(T.mkRng(778)); addMonsterFace(m.head, { width: 0.058, open: 0.04, teeth: 11, long: 1.6, tears: 0x7a0a0a }); swapModel(m, 'mannequin');
     for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.1, 0.1, 1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
     m.group.position.set(c[0], 0, c[1]); L.root.add(m.group);
     S.tw = { group: m.group, head: m.head, aura: { intensity: 0 }, x: c[0], z: c[1], yaw: 0, target: null, playerNode: -1, dist: null };

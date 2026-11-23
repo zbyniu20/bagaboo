@@ -12,6 +12,8 @@ import { setDread, DREAD } from '../core/ambience.js';
 import { HUNT, pulseAt, finalHunt, monsterBoost, botBoost, fearLevel } from '../core/huntlogic.js';
 import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
+import { loadGlbMonster } from '../core/glbmonster.js';
+import { BOT_KINDS } from '../core/glblogic.js';
 import { levelReward } from '../core/economy.js';
 import { toast, Terminal, AMBER, AMBER_DIM, GOLD, OK_COL } from '../core/terminal.js';
 import { hands, setPlayerPosition } from '../core/player.js';
@@ -59,7 +61,13 @@ export function build() {
     // Bot (gdy grasz sam)
     const b = buildMannequin(T.mkRng(666)); b.group.scale.setScalar(1.25); b.group.visible = false; L.root.add(b.group);
     for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.1, 0.1, 1); e.position.set(sx * 0.04, 0.152, 0.11); b.head.add(e); }
-    S.botMesh = b;
+    S.botMesh = b; S.mannequin = b;
+    // Model z pliku assets/monsters/<rodzaj>.glb (core/glbmonster.js, losowy z BOT_KINDS): gdy jest, zastępuje manekina bota; brak pliku = manekin zostaje
+    const lvl = S, kind = BOT_KINDS[(Math.random() * BOT_KINDS.length) | 0]; loadGlbMonster(kind).then((g) => {
+        if (!g) return;
+        if (S !== lvl) { g.dispose(); return; }   // poziom zdążył się zmienić podczas ładowania
+        g.group.visible = false; g.kind = kind; L.root.add(g.group); b.group.visible = false; S.glb = g; S.botMesh = g;
+    });
     S.hud = cameraPanel(1024, 200, 0.42, 0.082, 0.2, -0.75, 990);
     // Jumpscare'y w losowych chwilach: twarz pod nosem albo postać, która wyskakuje zza rogu i rzuca się na gracza
     S.scare = createJumpscare({ seed: 9911 });
@@ -391,6 +399,10 @@ function specCandidates() {
     if (S.mon === 'bot' && S.bot) out.push({ id: 'bot', label: 'Mannequin', x: S.bot.x, y: S.bot.y + 1.5, z: S.bot.z, fx: 0, fz: -1 });
     return out;
 }
+export function debugGlb() {   // tylko dla testów (tests/glb.mjs)
+    if (!S) return null; const g = S.glb; if (!g) return { loaded: false, mannequinVisible: S.mannequin.group.visible };
+    const bx = new THREE.Box3().setFromObject(g.group); return { loaded: true, clips: g.clips, tris: g.tris, h: bx.max.y - bx.min.y, minY: bx.min.y, visible: g.group.visible, mannequinVisible: S.mannequin.group.visible, same: S.botMesh === g, kind: g.kind };
+}
 export function debugSpectate() { if (!S) return false; S.phase = 'play'; S.caught.add('me'); return startSpectate(specCandidates); }   // tylko dla testów (tests/spectate.mjs)
 function localCaught() { SFX.scare(); toast('You were caught! Watch the others.', '#e0533f'); setTimeout(() => { if (S && S.caught.has('me') && S.phase === 'play') startSpectate(specCandidates); }, 2200); }   // po jumpscare'ie i animacji urywania
 // Bot: biegnie prosto do gracza, wpada na przeszkody, wskakuje na nie (perony, wagony, schody, szyby)
@@ -464,7 +476,8 @@ export function update(dt, t, ctx) {
     let mpos = null;
     if (mon === 'bot') {
         const b = S.bot, m = S.botMesh; m.group.visible = true;
-        m.group.position.set(b.x, b.y + (b.ground ? Math.abs(Math.sin(t * 9)) * 0.06 : 0), b.z); m.group.rotation.y = Math.atan2(p.x - b.x, p.z - b.z);
+        m.group.position.set(b.x, b.y + (b.ground && !S.glb ? Math.abs(Math.sin(t * 9)) * 0.06 : 0), b.z); m.group.rotation.y = Math.atan2(p.x - b.x, p.z - b.z);
+        if (S.glb) S.glb.update(dt, b.speed, true);   // animacja chodu i biegu z pliku
         mpos = new THREE.Vector3(b.x, b.y + 2.3, b.z);
         if (Math.floor(t * 2.2) !== S.step) { S.step = Math.floor(t * 2.2); SFX.step(0.8, { x: b.x, y: 0, z: b.z }); }
     } else S.botMesh.group.visible = false;
@@ -585,6 +598,7 @@ export function dispose() {
     stopSpectate(false);
     if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); camera.remove(S.fear); if (S.final || S.fogBase) setFinalLook(false); DREAD.fogMul = 1; for (const mk of S.marks) L.root.remove(mk); setDread(null); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
     if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); S.board = null; }
+    if (S && S.glb) { L.root.remove(S.glb.group); S.glb.dispose(); S.glb = null; }
     L.moveScale = 1;
     N.onLevelMsg(null);
     S = null;
