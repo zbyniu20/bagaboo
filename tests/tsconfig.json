@@ -20,6 +20,7 @@
     "../core/gfxlogic.js",
     "../core/hauntlogic.js",
     "../core/musiclogic.js",
+    "../core/dustlogic.js",
     "../core/avatarfxlogic.js",
     "../core/acousticlogic.js",
     "../core/spectatelogic.js",

@@ -81,8 +81,8 @@ check(T('lobby: every vote offers 3 different random maps, never the last played
     const draws = Array.from({ length: 300 }, (_, i) => M.pickOptions(i % M.MAPS.length, rng2(i * 7 + 1)));
     return draws.every((o, i) => o.length === 3 && new Set(o).size === 3 && o.every(k => Number.isInteger(k) && k >= 0 && k < M.MAPS.length) && !o.includes(i % M.MAPS.length)) && new Set(draws.map(o => o.join())).size > 20 && M.pickOptions(-1, () => 0.5).length === 3;
 })());
-check(T('lobby: all six maps do show up as options over many draws'), new Set(Array.from({ length: 200 }, (_, i) => M.pickOptions(-1, rng2(i + 99))).flat()).size === M.MAPS.length);
-check(T('lobby: options from the network are range-checked (3 different map numbers)'), JSON.stringify(M.cleanOptions([0, 3, 5])) === '[0,3,5]' && [null, 'x', [], [0, 1], [0, 1, 2, 3], [0, 0, 1], [0, 1, 6], [0, 1, -1], [0, 1, 1.5], [0, 1, '2'], [0, 1, NaN]].every(x => M.cleanOptions(x) === null));
+check(T('lobby: every map does show up as options over many draws'), new Set(Array.from({ length: 200 }, (_, i) => M.pickOptions(-1, rng2(i + 99))).flat()).size === M.MAPS.length);
+check(T('lobby: options from the network are range-checked (3 different map numbers)'), JSON.stringify(M.cleanOptions([0, 3, 5])) === '[0,3,5]' && [null, 'x', [], [0, 1], [0, 1, 2, 3], [0, 0, 1], [0, 1, M.MAPS.length], [0, 1, -1], [0, 1, 1.5], [0, 1, '2'], [0, 1, NaN]].every(x => M.cleanOptions(x) === null));
 
 // ---------- urwane kończyny (core/dismemberlogic.js, levels/monster.js, core/network.js) ----------
 const DM_OK = (c) => [0, 1, 2, 3, 4, 5, 6, 7].includes(c) && (c & 3) !== 0 || c === 4 || c === 0;

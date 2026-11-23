@@ -144,9 +144,9 @@
     "semantic_hash": "b470eeb0c98db5e45c6b7a74131fd80a"
   },
   "core/levelcards.js": {
-    "mtime": 1795467577.5430436,
-    "seen": 1795471245.2346017,
-    "ast_hash": "9440cc5ee66959b111c02974fc5d9230",
+    "mtime": 1795476268.7182376,
+    "seen": 1795476779.0943916,
+    "ast_hash": "d11f5ed5fedce741706fd2d87344b49c",
     "semantic_hash": ""
   },
   "core/levelkit.js": {
@@ -456,9 +456,9 @@
     "semantic_hash": ""
   },
   "main.js": {
-    "mtime": 1795467759.6911113,
-    "seen": 1795471245.2347393,
-    "ast_hash": "bc3ba65354630c034ea1d7df8755c2c9",
+    "mtime": 1795476648.1304467,
+    "seen": 1795476779.09463,
+    "ast_hash": "fa7f7da0770df0e3fd41dae2e77a7af9",
     "semantic_hash": ""
   },
   "tests/package.json": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795468964.1171763,
-    "seen": 1795471245.2350245,
-    "ast_hash": "7a896709a21466468c01077e5320c586",
+    "mtime": 1795476723.8993163,
+    "seen": 1795476779.095101,
+    "ast_hash": "5c0b4ad1c7524315ab8b78ea4293e965",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795474606.3503156,
-    "seen": 1795474971.050083,
-    "ast_hash": "d90e1c4cec645defb2fddfc9dffe6a59",
+    "mtime": 1795476435.263333,
+    "seen": 1795476779.095112,
+    "ast_hash": "d5bcae99308e54043bc76fcc7c9d6716",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795474612.8659282,
-    "seen": 1795474971.049802,
-    "ast_hash": "c0dab430ea3727b60312dfa923c747cd",
+    "mtime": 1795476711.3113155,
+    "seen": 1795476779.0946906,
+    "ast_hash": "40a5721497ac1edb5a62e0ab78bc52ef",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -9984,9 +9984,9 @@
     "semantic_hash": ""
   },
   "core/monstermaps.js": {
-    "mtime": 1795467389.6673036,
-    "seen": 1795471245.2346423,
-    "ast_hash": "3a1296cc6c1f0c4ae6b1b3e49a89bdd3",
+    "mtime": 1795476268.716477,
+    "seen": 1795476779.0944195,
+    "ast_hash": "0b5c8be6cf9b842daad849733d16d6f9",
     "semantic_hash": ""
   },
   "tests/modes/generatorlogic.mjs": {
@@ -9996,9 +9996,9 @@
     "semantic_hash": ""
   },
   "tests/modes/monster.mjs": {
-    "mtime": 1795468973.2048817,
-    "seen": 1795471245.23478,
-    "ast_hash": "4c94740a7210b28e2496828ce0b06d44",
+    "mtime": 1795476275.1075406,
+    "seen": 1795476779.0947018,
+    "ast_hash": "e4161a07e5eb07211e0dfe52c71b7127",
     "semantic_hash": ""
   },
   "core/room000map.js": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795474606.3509681,
-    "seen": 1795474971.049852,
-    "ast_hash": "bf9c019e01f627718ba20c352fe709d8",
+    "mtime": 1795476435.2635655,
+    "seen": 1795476779.0947456,
+    "ast_hash": "ed91aa7ab4822da1909686f7720735c5",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10377,6 +10377,24 @@
     "mtime": 1795474606.2914438,
     "seen": 1795474971.049691,
     "ast_hash": "e98db74dfbc96419c381662cdf4274e5",
+    "semantic_hash": ""
+  },
+  "core/dust.js": {
+    "mtime": 1795476435.248817,
+    "seen": 1795476779.0943317,
+    "ast_hash": "fb26340945aecf5a7f729362f0ba530f",
+    "semantic_hash": ""
+  },
+  "core/dustlogic.js": {
+    "mtime": 1795476435.247184,
+    "seen": 1795476779.0943346,
+    "ast_hash": "2a8ef59f334e6b2e5d127a5581a45af6",
+    "semantic_hash": ""
+  },
+  "tests/dust.mjs": {
+    "mtime": 1795476589.3695054,
+    "seen": 1795476779.0946596,
+    "ast_hash": "cd2a3e0a5cc946568501118119f7bef6",
     "semantic_hash": ""
   },
   "package-lock.json": {

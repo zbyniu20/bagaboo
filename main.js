@@ -17,6 +17,7 @@ import { pollEmoteButtons } from './core/emotepanel.js';
 import { setAmbience, dreadUpdate } from './core/ambience.js';
 import { updateAcoustics } from './core/acoustics.js';
 import { bakeLevel, applyArt, updateBake } from './core/lightbake.js';
+import { updateDust } from './core/dust.js';
 import { updateSpectate } from './core/spectate.js';
 import { updateTutorial, autoStartTutorial } from './core/tutorial.js';
 import { updateGlbMonsters } from './core/glbmonster.js';
@@ -359,7 +360,7 @@ renderer.setAnimationLoop(() => {
             }
         }
     }
-    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); dreadUpdate(dt); updateAcoustics(dt); updateGlbMonsters(dt); updateBake(dt); updateTutorial(dt);
+    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); dreadUpdate(dt); updateAcoustics(dt); updateGlbMonsters(dt); updateBake(dt); updateDust(dt); updateTutorial(dt);
     NETM.animateFaces(dt);
     if (started && !frozen) {
         ECO.tick(dt, NETM.otherPlayers().length);
@@ -406,4 +407,4 @@ loadLevel('lobby').then(() => {
 })
     .catch((e) => { console.error(e); $('status').innerText = 'Could not load the level: ' + e.message; });
 // Uchwyt dla testów w przeglądarce (tests/smoke-dist.mjs sprawdza nim zbudowaną paczkę): ładowanie poziomu i licznik rysowania
-window.BAGABOO_DEBUG = { loadLevel: loadLevel, renderer: renderer };
+window.BAGABOO_DEBUG = { loadLevel: loadLevel, renderer: renderer, scene: scene };
