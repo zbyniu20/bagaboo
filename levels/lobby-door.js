@@ -89,7 +89,9 @@ function buildMirror() {
     mirror.onBeforeRender = function () {
         const hv = [hands.L && hands.L.visible, hands.R && hands.R.visible];
         if (hands.L) hands.L.visible = false; if (hands.R) hands.R.visible = false;
-        try { mirrorRender.apply(this, arguments); } finally { if (hands.L) hands.L.visible = hv[0]; if (hands.R) hands.R.visible = hv[1]; }
+        try { mirrorRender.apply(this, arguments); }
+        catch (e) { mirror.visible = false; console.warn('Mirror disabled after a render error:', e && e.message); }   // błąd w VR nie może przerywać całej klatki
+        finally { if (hands.L) hands.L.visible = hv[0]; if (hands.R) hands.R.visible = hv[1]; }
     };
     addStaticBody(MIRROR.x + 0.05, 1.4, MIRROR.z, new CANNON.Box(new CANNON.Vec3(0.06, 1.4, W / 2 + b)), g, false);
     buildMe(getLook());

@@ -36,6 +36,10 @@ const sharedObjectsState = Object.create(null);
 // Wiadomości poziomu (np. stan potwora w trybie Cisza). Poziom rejestruje jeden odbiornik.
 let levelHandler = null;
 export function onLevelMsg(fn) { levelHandler = fn; }
+// Obserwator (core/spectate.js) ukrywa awatar u innych, ale flaga sp pochodzi od klienta: host honoruje ją tylko, gdy poziom potwierdzi, że ten gracz naprawdę odpadł
+// (Become the Monster: złapany w trakcie rundy). Bez tego każdy mógłby być niewidoczny, np. w Hide & Seek.
+let spectatorCheck = null;
+export function setSpectatorCheck(fn) { spectatorCheck = fn; }
 export function sendLevelMsg(payload) {
     if (NET.mode === 'host') clientConnections.forEach(c => { if (c.open) c.send({ type: 'lvl', payload: payload }); });
     else if (NET.mode === 'guest' && hostConnection && hostConnection.open) hostConnection.send({ type: 'lvl', payload: payload });
@@ -538,6 +542,7 @@ function handleGuest(conn) {
                 }
             }
             if (!isModMenuUser(conn.vNick)) { pl.inv = 0; pl.sz = 1; }   // niewidzialność i rozmiar z BagaBooModMenu tylko dla zweryfikowanych kont z listy menu
+            pl.sp = pl.sp && spectatorCheck && spectatorCheck(conn.peer) ? 1 : 0;   // obserwator tylko po potwierdzeniu przez poziom (host liczy to z własnego widoku rundy)
             playersState[conn.peer] = pl; updateRemote(conn.peer, pl); checkIntruder(conn.peer, pl);
         } else if (data.type === 'objectMove') { if (typeof data.id !== 'string' || data.id.length > 64) return; sharedObjectsState[data.id] = data.payload; syncObject(data.id, data.payload); }
         else if (data.type === 'lvl') { if (levelHandler) levelHandler(data.payload, conn.peer); }

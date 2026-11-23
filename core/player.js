@@ -324,7 +324,7 @@ export function updatePlayer(dt, t) {
     }
     if (stepped) { handPushing = false; stepped = false; }
     const bp = playerBody.position, bv = playerBody.velocity, B = L.bounds;   // granice ustawia poziom
-    if (SPEC.on) { bp.x = SPEC.x; bp.z = SPEC.z; bp.y = SPEC.y - camera.position.y * MOD.size + radius + gorillaStanceOffset * MOD.size; bv.set(0, 0, 0); }   // obserwator: kamera podąża za wybranym graczem (core/spectate.js)
+    if (SPEC.on) { bp.x = SPEC.x; bp.z = SPEC.z; bp.y = SPEC.y - camera.position.y * MOD.size + radius + gorillaStanceOffset * MOD.size; bv.set(SPEC.vx, SPEC.vy, SPEC.vz); }   // obserwator: kamera podąża za wybranym graczem (core/spectate.js)
     if (bp.x < B.minX) { bp.x = B.minX; bv.x = 0; } if (bp.x > B.maxX) { bp.x = B.maxX; bv.x = 0; }
     if (bp.z < B.minZ) { bp.z = B.minZ; bv.z = 0; } if (bp.z > B.maxZ) { bp.z = B.maxZ; bv.z = 0; }
     const floorY = L.floorY !== undefined ? L.floorY : radius;   // poziomy z przepaścią (Last Tile) wyłączają twardą podłogę

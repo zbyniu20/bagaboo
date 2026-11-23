@@ -231,10 +231,12 @@ class Monster:
         """fn(pose_bones, t) ustawia rotacje (radiany) dla t w [0,1); klatki 0..frames, ostatnia = pierwsza (pętla)."""
         ao = self.rig_ob; ao.animation_data_create(); act = bpy.data.actions.new(name); ao.animation_data.action = act
         for pb in ao.pose.bones: pb.rotation_mode = 'XYZ'
-        for f in range(frames + 1):
+        step = max(1, frames // 12)   # klucz co kilka klatek (ok. 12 na cykl): gładkie krzywe, a plik mniejszy o połowę; ostatnia klatka = pierwsza (pętla)
+        fl = list(range(0, frames, step)) + [frames]
+        for f in fl:
             t = (f % frames) / frames; fn(ao.pose.bones, t)
             for pb in ao.pose.bones:
-                pb.keyframe_insert('rotation_euler', frame=f + 1); pb.keyframe_insert('location', frame=f + 1)
+                pb.keyframe_insert('rotation_euler', frame=f + 1)   # położenia kości nie animujemy: kanał 'location' tylko puchł w pliku
             for pb in ao.pose.bones: pb.rotation_euler = (0, 0, 0); pb.location = (0, 0, 0)
         act.use_fake_user = True
         tr = ao.animation_data.nla_tracks.new(); tr.name = name; st = tr.strips.new(name, 1, act); st.name = name
@@ -244,7 +246,8 @@ class Monster:
         for o in bpy.context.scene.objects: o.select_set(False)
         self.mesh_ob.select_set(True); self.rig_ob.select_set(True)
         bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', use_selection=True, export_animations=True, export_animation_mode='NLA_TRACKS', export_skins=True,
-                                  export_yup=True, export_apply=False, export_vertex_color='ACTIVE', export_active_vertex_color_when_no_material=True, export_image_format='NONE')
+                                  export_yup=True, export_apply=False, export_vertex_color='ACTIVE', export_active_vertex_color_when_no_material=True, export_image_format='NONE',
+                                  export_optimize_animation_size=True, export_frame_step=2)
 
 # ---------- standardowe animacje dla humanoidów (kości z rolami; obrót wokół osi X kości = wahnięcie przód/tył, ujemny kąt = do przodu) ----------
 def humanoid_clips(m, walk=0.55, run=1.0, arm_walk=0.35, arm_run=0.9, knee=0.9, lean_run=0.35, idle_sway=0.04, twitch=0.0, head_roll=0.0):

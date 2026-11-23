@@ -62,6 +62,7 @@ export function build() {
     const b = buildMannequin(T.mkRng(666)); b.group.scale.setScalar(1.25); b.group.visible = false; L.root.add(b.group);
     for (const sx of [-1, 1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: 0xff2000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); e.scale.set(0.1, 0.1, 1); e.position.set(sx * 0.04, 0.152, 0.11); b.head.add(e); }
     S.botMesh = b; S.mannequin = b;
+    N.setSpectatorCheck((id) => !!(S && S.phase === 'play' && S.caught.has(id)));   // host: flaga sp gracza jest wiarygodna tylko dla złapanych w trwającej rundzie
     // Model z pliku assets/monsters/<rodzaj>.glb (core/glbmonster.js, losowy z BOT_KINDS): gdy jest, zastępuje manekina bota; brak pliku = manekin zostaje
     const lvl = S, kind = BOT_KINDS[(Math.random() * BOT_KINDS.length) | 0]; loadGlbMonster(kind).then((g) => {
         if (!g) return;
@@ -596,6 +597,7 @@ function randomScares(dt, t, p) {
 }
 export function dispose() {
     stopSpectate(false);
+    N.setSpectatorCheck(null);
     if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); camera.remove(S.fear); if (S.final || S.fogBase) setFinalLook(false); DREAD.fogMul = 1; for (const mk of S.marks) L.root.remove(mk); setDread(null); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
     if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); S.board = null; }
     if (S && S.glb) { L.root.remove(S.glb.group); S.glb.dispose(); S.glb = null; }

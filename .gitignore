@@ -4,3 +4,6 @@ dist/
 
 __pycache__/
 *.pyc
+
+# dzienne migawki grafu wiedzy (każda ok. 5,5 MB): w repozytorium zostaje tylko graphify-out/graph.json, raport i manifest
+graphify-out/20*/

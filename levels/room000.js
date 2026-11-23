@@ -19,6 +19,7 @@ import { ARRIVAL_FROM_ROOM000 } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
 import * as M from '../core/room000map.js';
 import { setDread } from '../core/ambience.js';
+import { swapRoot } from '../core/glbmonster.js';
 
 const PLAN = M.buildPlan(), GRID = M.rasterize(PLAN), DOORS = M.doorSpots(PLAN, GRID), H = M.GEO.H, G = M.GEO.CELL;
 const SEE_DIST = 17, HEAR_RUN = 13, LOSE_TIME = 9, MEMORY_TIME = 5, CATCH_DIST = 1.0, ITEMS = 5;
@@ -348,6 +349,7 @@ function buildGhost() {
     const far = [PLAN.corners[2], PLAN.corners[3], PLAN.corners[1], PLAN.corners[4]][(Math.random() * 4) | 0];
     S.mon = { g: g, mat: white, arms: arms, light: light, aura: aura, x: far[0], z: far[1], y: 0, dir: 0, mode: 'patrol', dist: null, goal: null, repath: 0, lostT: 0, smellT: 0, last: null, start: far.slice(), phase: Math.random() * 9 };
     g.position.set(S.mon.x, 0, S.mon.z);
+    swapRoot(g, 'ghost', { height: 2.7, keep: [aura] });   // model z Blendera (assets/monsters/ghost.glb); światło i aura zostają
 }
 
 // ---------- ZDARZENIA ----------

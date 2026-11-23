@@ -16,7 +16,7 @@ import { setLevelMusic } from './core/music.js';
 import { pollEmoteButtons } from './core/emotepanel.js';
 import { setAmbience, dreadUpdate } from './core/ambience.js';
 import { updateAcoustics } from './core/acoustics.js';
-import { bakeLevel, applyArt } from './core/lightbake.js';
+import { bakeLevel, applyArt, updateBake } from './core/lightbake.js';
 import { updateSpectate } from './core/spectate.js';
 import { updateGlbMonsters } from './core/glbmonster.js';
 import { updateHighFive } from './core/highfive.js';
@@ -137,13 +137,14 @@ async function goToLevel(id, spawn, opts) {
     switching = false;
 }
 PAUSE.onLobby = () => goToLevel('lobby');
-// Wylogowanie z poziomu gry (menu pauzy): konto -> gość. W solo od razu, w pokoju online zmiana tożsamości = wyjście z pokoju (przeładowanie strony)
+// Wylogowanie z poziomu gry (menu pauzy): konto -> gość. Zmiana tożsamości w pokoju online = wyjście z pokoju (leaveNetwork), potem lobby solo jako gość;
+// strona się NIE przeładowuje, więc sesja VR trwa dalej.
 PAUSE.onLogout = () => {
     if (!AUTH.account()) return;
     const online = NETM.NET.mode !== 'solo';
     $('btnLogout').click(); $('btnGuest').click();   // te same przyciski co na stronie startowej: wyloguj, potem graj jako gość
     readProfile();                                    // nick gościa (zastrzeżony nick ekipy zamienia się na zwykły)
-    if (online) { setTimeout(() => location.reload(), 400); return; }
+    if (online) { NETM.leaveNetwork('Logged out. You left the room and play solo as a guest.'); goToLevel('lobby'); }
     toast('Logged out. You play as a guest now.', '#ffd27a');
 };
 // Gość: host przeszedł przez drzwi, idziemy za nim (ten sam poziom i układ)
@@ -356,7 +357,7 @@ renderer.setAnimationLoop(() => {
             }
         }
     }
-    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); dreadUpdate(dt); updateAcoustics(dt); updateGlbMonsters(dt);
+    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); dreadUpdate(dt); updateAcoustics(dt); updateGlbMonsters(dt); updateBake(dt);
     NETM.animateFaces(dt);
     if (started && !frozen) {
         ECO.tick(dt, NETM.otherPlayers().length);

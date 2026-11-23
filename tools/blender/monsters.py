@@ -5,6 +5,7 @@
 import sys, os, math
 sys.path.insert(0, os.path.dirname(__file__))
 from monsterlib import *
+import shrink_glb
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 OUT = os.path.join(ROOT, 'assets', 'monsters')
@@ -304,7 +305,7 @@ RECIPES = {n: g for n, g in globals().items() if n in ('mannequin', 'gravedigger
 def run(names):
     os.makedirs(OUT, exist_ok=True)
     for n in names:
-        reset(); m = RECIPES[n](); path = os.path.join(OUT, n + '.glb'); m.export(path)
+        reset(); m = RECIPES[n](); path = os.path.join(OUT, n + '.glb'); m.export(path); shrink_glb.shrink(path)   # kolory i indeksy kości w bajtach (mniejszy plik)
         print('%-12s tris %5d  %4d KB  -> %s' % (n, m.tris, os.path.getsize(path) // 1024, os.path.relpath(path, ROOT)))
 
 if __name__ == '__main__':

@@ -19,6 +19,7 @@ import { DESKTOP } from '../core/desktop.js';
 import { ARRIVAL_FROM_LAUNDRY as ARRIVAL_LAUNDRY } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare , introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
 import { setDread } from '../core/ambience.js';
+import { swapRoot } from '../core/glbmonster.js';
 
 // ---------- USTAWIENIA ----------
 const X0 = -16, X1 = 16, Z0 = 6, Z1 = -54, H = 9;   // hala 32 x 60 m, 9 m wysokości
@@ -303,6 +304,7 @@ function buildThreadman() {
     const legL = limb(1.65, 0.07), legR = limb(1.65, 0.07); legL.position.set(-0.12, 0, 0); legR.position.set(0.12, 0, 0); hips.add(legL, legR);
     S.tm = { y: 0, climb: false, root: root, hips: hips, torso: torso, armL: armL, armR: armR, legL: legL, legR: legR, x: 0, z: -48, dir: Math.PI, mode: 'patrol', target: null, path: [], pathT: 0, wp: 0, lostT: 0, screechT: -99, investigate: null, stepT: 0, crawl: 0, waitT: 0 };
     root.position.set(0, 0, -48);
+    swapRoot(root, 'threadman', { height: 3.0 });   // model z Blendera zamiast pasm prześcieradła (assets/monsters/threadman.glb); brak pliku = stary wygląd
 }
 
 // ---------- SIATKA DO CHODZENIA (BFS po kratkach 1 m) ----------
