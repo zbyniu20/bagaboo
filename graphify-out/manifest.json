@@ -84,9 +84,9 @@
     "semantic_hash": "cf2aaa4822beaa982090fd4c2f6b5ac4"
   },
   "core/engine.js": {
-    "mtime": 1795377687.816216,
-    "seen": 1795377979.404033,
-    "ast_hash": "cd46d713399da15af4427d3e3bfe0615",
+    "mtime": 1795445009.4684916,
+    "seen": 1795445688.5984826,
+    "ast_hash": "612ba79954d2675da9a37eb008170825",
     "semantic_hash": ""
   },
   "core/envcapture.js": {
@@ -456,9 +456,9 @@
     "semantic_hash": ""
   },
   "main.js": {
-    "mtime": 1795382021.0623755,
-    "seen": 1795382682.4991562,
-    "ast_hash": "70a6cca0cd3ff546946cf5f3671908a5",
+    "mtime": 1795445026.8484478,
+    "seen": 1795445688.5987008,
+    "ast_hash": "9ae0c129961f889eddaa87e3c13f8cb9",
     "semantic_hash": ""
   },
   "tests/package.json": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795382621.7549431,
-    "seen": 1795382682.4994016,
-    "ast_hash": "423cc5ba750922385854e4868a213883",
+    "mtime": 1795445625.0024645,
+    "seen": 1795445688.5990617,
+    "ast_hash": "1c296ba7e93f437f735be632ed19439b",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795382021.0629425,
-    "seen": 1795382682.4994054,
-    "ast_hash": "cf5f63e76225594b3227c03abe5b18f9",
+    "mtime": 1795445026.8490832,
+    "seen": 1795445688.5990677,
+    "ast_hash": "127c5ff6be97a9e7559e0c91bae7fffc",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795382053.0519981,
-    "seen": 1795382682.4991815,
-    "ast_hash": "11965d6c8092e88e272fdfe383ebc68d",
+    "mtime": 1795445611.4213078,
+    "seen": 1795445688.5987413,
+    "ast_hash": "ca2679a7e8928b158a21d31e91afad0f",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795382021.0633643,
-    "seen": 1795382682.4992073,
-    "ast_hash": "65ea0e9d2f362596172b60896feb2c37",
+    "mtime": 1795445026.8499267,
+    "seen": 1795445688.5987883,
+    "ast_hash": "92405c648a07c51c695e052eec65f878",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10257,6 +10257,30 @@
     "mtime": 1795382377.3932712,
     "seen": 1795382682.4991596,
     "ast_hash": "91e1c3db65f763c28b07c60a36eeeb59",
+    "semantic_hash": ""
+  },
+  "core/artlogic.js": {
+    "mtime": 1795444996.255737,
+    "seen": 1795445688.5984502,
+    "ast_hash": "d6ee029972feac853209b56b34382478",
+    "semantic_hash": ""
+  },
+  "core/bakelogic.js": {
+    "mtime": 1795445354.418127,
+    "seen": 1795445688.5984604,
+    "ast_hash": "7a473a86899de88229c65b94ee9634e8",
+    "semantic_hash": ""
+  },
+  "core/lightbake.js": {
+    "mtime": 1795445026.8349273,
+    "seen": 1795445688.598527,
+    "ast_hash": "77b3c952a6536ebecb3534da8bb570de",
+    "semantic_hash": ""
+  },
+  "tests/bake.mjs": {
+    "mtime": 1795445354.421111,
+    "seen": 1795445688.5987122,
+    "ast_hash": "ebb533e485a4b742862663f11f4ef875",
     "semantic_hash": ""
   },
   "package-lock.json": {

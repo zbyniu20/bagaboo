@@ -22,6 +22,8 @@
     "../core/avatarfxlogic.js",
     "../core/acousticlogic.js",
     "../core/spectatelogic.js",
+    "../core/bakelogic.js",
+    "../core/artlogic.js",
     "../core/huntlogic.js",
     "../core/minigames.js",
     "../core/monstermaps.js",

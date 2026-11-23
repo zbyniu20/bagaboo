@@ -7,6 +7,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GFX, LP } from './config.js';
 import * as T from './textures.js';
 import { aoFor } from './gfxlogic.js';
+import { familyFor, gradeColor } from './artlogic.js';
 import { SETTINGS } from './settings.js';
 
 export { THREE, CANNON };
@@ -90,6 +91,7 @@ export const L = {
     root: new THREE.Group(),
     obstacles: [], trampolines: [], ropes: [], throwables: [], bodies: [], constraints: [], reserved: [],
     portals: [],      // przejścia do innych poziomów { box3, target, spawn, onEnter }
+    bakeList: [],     // bloki z addCrispBlock do wypalenia oświetlenia po zbudowaniu poziomu (core/lightbake.js): { mesh, w, h, d, uvMeters }
     hammerTargets: [],   // cele młotków ekipy poza graczami, np. manekin treningowy w lobby { chest: Vector3, r, hit(tool, headPos) }
     tramp: null,      // animacja maty trampoliny { mat, k }
     heldId: null,     // id piłki trzymanej przez lokalnego gracza
@@ -102,7 +104,7 @@ scene.add(L.root);
 export function clearLevel() {
     for (const c of L.constraints) world.removeConstraint(c);
     for (const b of L.bodies) world.removeBody(b);
-    for (const k of ['obstacles', 'trampolines', 'ropes', 'throwables', 'bodies', 'constraints', 'reserved', 'portals', 'hammerTargets']) L[k].length = 0;
+    for (const k of ['obstacles', 'trampolines', 'ropes', 'throwables', 'bodies', 'constraints', 'reserved', 'portals', 'hammerTargets', 'bakeList']) L[k].length = 0;
     L.tramp = null; L.heldId = null; L.floorY = undefined;
     L.bounds = { minX: -14.6, maxX: 14.6, minZ: -14.6, maxZ: 14.6, maxY: 19.6 };
     // Zwolnienie pamięci karty graficznej po starym poziomie
@@ -165,8 +167,8 @@ function addShaderEdges(mat, w, h, d, edgeColor, ao) {
     mat.userData.ao = aov;   // do odczytu w testach (tests/gfx.mjs)
     mat.onBeforeCompile = (sh) => {
         sh.uniforms.uEdgeHalf = { value: half }; sh.uniforms.uEdgeCol = { value: col }; sh.uniforms.uEdgeOp = { value: op }; sh.uniforms.uAO = { value: aov };
-        sh.vertexShader = 'varying vec3 vEdgeP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvEdgeP = position;');
-        sh.fragmentShader = 'uniform vec3 uEdgeHalf; uniform vec3 uEdgeCol; uniform float uEdgeOp; uniform vec4 uAO; varying vec3 vEdgeP;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+        sh.vertexShader = 'varying vec3 vEdgeP; attribute vec3 aBake; varying vec3 vBake;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvEdgeP = position; vBake = aBake;');
+        sh.fragmentShader = 'uniform vec3 uEdgeHalf; uniform vec3 uEdgeCol; uniform float uEdgeOp; uniform vec4 uAO; varying vec3 vEdgeP; varying vec3 vBake;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n    totalEmissiveRadiance += vBake * diffuseColor.rgb;   // wypalone oświetlenie (core/lightbake.js)').replace('#include <color_fragment>', `#include <color_fragment>
             vec3 eD = uEdgeHalf - abs(vEdgeP);
             float e1 = 1.0 - smoothstep(0.0, 0.016, eD.x), e2 = 1.0 - smoothstep(0.0, 0.016, eD.y), e3 = 1.0 - smoothstep(0.0, 0.016, eD.z);
             float edge = max(max(e1 * e2, e2 * e3), e1 * e3);
@@ -183,6 +185,7 @@ function addShaderEdges(mat, w, h, d, edgeColor, ao) {
 export function addCrispBlock(x, y, z, w, h, d, color, edgeColor, texture, opts) {
     texture = texture || tex.wall; opts = opts || {};
     const nm = T.normalFor(texture, 3);   // prawdziwa mapa normalnych (z jasności tekstury) zamiast bump mapy
+    if (!opts.noGrade) color = gradeColor(color, familyFor(L.levelId));   // spójna paleta rodziny poziomu (core/artlogic.js)
     const params = { map: texture, normalMap: nm, normalScale: new THREE.Vector2(1.1, 1.1), color: color, roughness: 0.78, metalness: 0.15, envMapIntensity: LP.envIntensity };
     let mat;
     if (opts.physical) { params.clearcoat = 0.5; params.clearcoatRoughness = 0.3; mat = new THREE.MeshPhysicalMaterial(params); }
@@ -190,9 +193,11 @@ export function addCrispBlock(x, y, z, w, h, d, color, edgeColor, texture, opts)
     if (opts.rough) { mat.roughnessMap = opts.rough; mat.roughness = 1.0; opts.rough.repeat.set(0.25, 0.25); }
     const geo = new THREE.BoxGeometry(w, h, d);
     scaleBoxUVs(geo, w, h, d, opts.uvMeters || 4);
+    geo.setAttribute('aBake', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3), 3));   // zera: bez wypalenia nic nie dodaje (wypala core/lightbake.js)
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true;
-    addShaderEdges(mat, w, h, d, edgeColor, aoFor(x, y, z, w, h, d, opts));   // obwódka krawędzi i AO w shaderze: bez osobnego obiektu (połowa wywołań rysowania)
+    addShaderEdges(mat, w, h, d, edgeColor, aoFor(x, y, z, w, h, d, opts));
+    L.bakeList.push({ mesh: mesh, w: w, h: h, d: d, uvMeters: opts.uvMeters || 4 });   // obwódka krawędzi i AO w shaderze: bez osobnego obiektu (połowa wywołań rysowania)
     L.root.add(mesh);
     addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)), mesh, false);
     return mesh;

@@ -16,6 +16,7 @@ import { setLevelMusic } from './core/music.js';
 import { pollEmoteButtons } from './core/emotepanel.js';
 import { setAmbience, dreadUpdate } from './core/ambience.js';
 import { updateAcoustics } from './core/acoustics.js';
+import { bakeLevel, applyArt } from './core/lightbake.js';
 import { updateSpectate } from './core/spectate.js';
 import { updateHighFive } from './core/highfive.js';
 import { startXrPerf, stopXrPerf, updateXrPerf } from './core/xrperf.js';
@@ -67,6 +68,8 @@ export async function loadLevel(id, spawn) {
     for (const e of extras) e.build();
     buildPet(id);
     onLevelBuilt(cfg.light, LIGHT_PRESETS[cfg.light]);   // warstwa wizualna (odbicia, szczegół, poświaty, cząsteczki)
+    applyArt(L.levelId);                                   // paleta rodziny poziomu (core/artlogic.js): światło otoczenia i mgła
+    bakeLevel();                                           // wypalone światło pośrednie ze wszystkich świateł poziomu (core/lightbake.js), PRZED pulą świateł
     registerLevelLights(L.root);                           // pula świateł: do renderu trafia tylko K najważniejszych
     // Prawdziwe odbicia: jednorazowe zdjęcie poziomu z miejsca startu (światła wybrane dla tego miejsca, latarka wyłączona na czas zdjęcia)
     { const sp = L.spawn || [0, 1, 0], lampOn = lighting.headLamp.visible; updateLightPool(1, new THREE.Vector3(sp[0], sp[1], sp[2])); lighting.headLamp.visible = false;
