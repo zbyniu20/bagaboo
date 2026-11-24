@@ -20,3 +20,10 @@ Skrypty budują modele BagaBoo w Blenderze uruchamianym bez okna (moduł `bpy`) 
   Nowy potwór = funkcja w `monsters.py` i wpis w `RECIPES`, wpis w `MONSTERS` w `core/glblogic.js` (test pilnuje spójności), a w poziomie `swapModel(m, 'nazwa')` po `buildMannequin`.
 - Podgląd GLB w three.js: `cd tests && CHROMIUM_PATH=... node glbshot.mjs wynik.png Walk ../assets/monsters/a.glb ../assets/monsters/b.glb` (`CAM=head` = zbliżenie), w poziomach: `node monsterview.mjs katalog poziom1,poziom2`.
 - `shrink_glb.py`: po eksporcie `monsters.py` przepakowuje wagi kości i kolory wierzchołków na znormalizowane bajty (plik mniejszy o ok. 20%, bez rozszerzeń glTF). Dalsza kompresja (meshopt) jest możliwa zewnętrznym narzędziem, a loader już ją obsługuje (`MeshoptDecoder`).
+
+## Rekwizyty (zestaw do poziomów)
+
+    /tmp/v/bin/python tools/blender/props.py && /tmp/v/bin/python tools/blender/shrink_glb.py assets/props/props.glb    # wynik: assets/props/props.glb (ok. 74 KB)
+
+- `props.py`: 9 rekwizytów budowanych w `bmesh` (prymitywy, kolory wierzchołków, brud od dołu), wynik jest powtarzalny (to samo ziarno z `crc32` nazwy).
+  Nowy rekwizyt = funkcja w `props.py` i wpis w `BUILD`, wpis w `PROPS` w `core/proplogic.js` (test sprawdza zgodność nazw) i w zestawach poziomów `PROP_SETS`.

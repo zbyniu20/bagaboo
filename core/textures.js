@@ -3,6 +3,7 @@ import { IS_QUEST } from './device.js';
 const ANISO = (n) => IS_QUEST ? Math.min(n, 2) : n;   // Quest: filtrowanie anizotropowe jest drogie przy małym zysku w VR
 import * as THREE from 'three';
 import { GFX } from './config.js';
+import { SURFACES, heightField, normalsFromHeight } from './heightlogic.js';
 
 export function mkRng(seed) {
     let a = seed >>> 0;
@@ -29,6 +30,15 @@ export function normalFor(texture, strength) {
     if (normalCache.has(texture)) return normalCache.get(texture);
     const src = texture.image, w = src.width, h = src.height, k = strength || 3;
     const c = makeCanvas(w, h), x = c.getContext('2d', { willReadFrequently: true });
+    const surf = texture.userData && texture.userData.surface;   // znana powierzchnia (ściana, podłoga, drewno, tynk): prawdziwy relief z core/heightlogic.js, a nie z jasności koloru
+    if (surf && SURFACES.includes(surf)) {
+        const hf = heightField(surf, w, h), px = normalsFromHeight(hf, w, h, k);
+        x.putImageData(new ImageData(px, w, h), 0, 0);
+        const t = new THREE.CanvasTexture(c);
+        t.wrapS = texture.wrapS; t.wrapT = texture.wrapT; t.anisotropy = ANISO(8); t.repeat.copy(texture.repeat); t.offset.copy(texture.offset);
+        normalCache.set(texture, t);
+        return t;
+    }
     x.drawImage(src, 0, 0);
     const img = x.getImageData(0, 0, w, h), d = img.data, hg = new Float32Array(w * h);
     for (let i = 0; i < w * h; i++) hg[i] = (0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]) / 255;
@@ -115,7 +125,7 @@ export function createWallTexture() {
     const vg = ctx.createRadialGradient(S / 2, S / 2, S * 0.3, S / 2, S / 2, S * 0.75);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.35)');
     ctx.fillStyle = vg; ctx.fillRect(0, 0, S, S);
-    return toTex(c, true);
+    const t = toTex(c, true); t.userData.surface = 'wall'; return t;
 }
 
 export function createFloorTexture() {
@@ -139,7 +149,7 @@ export function createFloorTexture() {
     }
     crackWalk(ctx, R, S, 14, 24, 'rgba(0,0,0,0.7)', 1, 3, 8);
     for (let i = 0; i < 40; i++) { ctx.fillStyle = 'rgba(90,0,0,0.55)'; ctx.beginPath(); ctx.arc(R() * S, R() * S, 2 + R() * 9, 0, 7); ctx.fill(); }
-    return toTex(c, true);
+    const t = toTex(c, true); t.userData.surface = 'floor'; return t;
 }
 
 export function createFloorRoughTexture() {
@@ -169,7 +179,7 @@ export function createPlasterTexture() {
         const x = R() * S, y = R() * S * 0.6, l = 40 + R() * 200, w = 2 + R() * 5;
         ctx.fillStyle = 'rgba(110,8,8,0.75)'; ctx.fillRect(x, y, w, l); ctx.beginPath(); ctx.arc(x + w / 2, y + l, w * 0.9, 0, 7); ctx.fill();
     }
-    return toTex(c, true);
+    const t = toTex(c, true); t.userData.surface = 'plaster'; return t;
 }
 
 export function createSkinTexture() {
@@ -205,7 +215,7 @@ export function createWoodTexture() {
         ctx.fillStyle = 'rgba(95,0,0,0.65)'; ctx.fillRect(x, y, w, l); ctx.beginPath(); ctx.arc(x + w / 2, y + l, w * 0.8, 0, 7); ctx.fill();
     }
     for (let i = 0; i < 12; i++) radial(ctx, R() * S, R() * S, 20 + R() * 60, 'rgba(15,8,3,0.35)', 'rgba(0,0,0,0)');
-    return toTex(c, true);
+    const t = toTex(c, true); t.userData.surface = 'wood'; return t;
 }
 
 function _createLeafTexture() {

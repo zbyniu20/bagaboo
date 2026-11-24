@@ -17,6 +17,9 @@ import { pollEmoteButtons } from './core/emotepanel.js';
 import { setAmbience, dreadUpdate } from './core/ambience.js';
 import { updateAcoustics } from './core/acoustics.js';
 import { bakeLevel, applyArt, updateBake } from './core/lightbake.js';
+import { updateDust } from './core/dust.js';
+import { buildShafts } from './core/shafts.js';
+import { addLevelProps } from './core/props.js';
 import { updateSpectate } from './core/spectate.js';
 import { updateTutorial, autoStartTutorial } from './core/tutorial.js';
 import { updateGlbMonsters } from './core/glbmonster.js';
@@ -69,9 +72,11 @@ export async function loadLevel(id, spawn) {
     level.build();
     for (const e of extras) e.build();
     buildPet(id);
+    addLevelProps(L.levelId).catch(() => {});             // rekwizyty z assets/props/props.glb (core/props.js): instancje, bez kolizji; brak pliku = bez zmian
     onLevelBuilt(cfg.light, LIGHT_PRESETS[cfg.light]);   // warstwa wizualna (odbicia, szczegół, poświaty, cząsteczki)
     applyArt(L.levelId);                                   // paleta rodziny poziomu (core/artlogic.js): światło otoczenia i mgła
     autoStartTutorial(L.levelId);                          // nowy gracz dostaje samouczek sam przy pierwszym wejściu do lobby (core/tutorial.js)
+    buildShafts();                                         // snopy światła pod stałymi lampami (core/shafts.js): jedna siatka
     bakeLevel();                                           // wypalone światło pośrednie ze wszystkich świateł poziomu (core/lightbake.js), PRZED pulą świateł
     registerLevelLights(L.root);                           // pula świateł: do renderu trafia tylko K najważniejszych
     // Prawdziwe odbicia: jednorazowe zdjęcie poziomu z miejsca startu (światła wybrane dla tego miejsca, latarka wyłączona na czas zdjęcia)
@@ -359,7 +364,7 @@ renderer.setAnimationLoop(() => {
             }
         }
     }
-    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); dreadUpdate(dt); updateAcoustics(dt); updateGlbMonsters(dt); updateBake(dt); updateTutorial(dt);
+    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); dreadUpdate(dt); updateAcoustics(dt); updateGlbMonsters(dt); updateBake(dt); updateDust(dt); updateTutorial(dt);
     NETM.animateFaces(dt);
     if (started && !frozen) {
         ECO.tick(dt, NETM.otherPlayers().length);
@@ -406,4 +411,4 @@ loadLevel('lobby').then(() => {
 })
     .catch((e) => { console.error(e); $('status').innerText = 'Could not load the level: ' + e.message; });
 // Uchwyt dla testów w przeglądarce (tests/smoke-dist.mjs sprawdza nim zbudowaną paczkę): ładowanie poziomu i licznik rysowania
-window.BAGABOO_DEBUG = { loadLevel: loadLevel, renderer: renderer };
+window.BAGABOO_DEBUG = { loadLevel: loadLevel, renderer: renderer, scene: scene };

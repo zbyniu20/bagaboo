@@ -13,6 +13,7 @@ export const MAPS = [
     { id: 'aisles', name: 'Night Supermarket', blurb: 'Long shelf aisles, checkout counters and shelves you can jump over.', A: 24, H: 7 },
     { id: 'rooftops', name: 'City Rooftops', blurb: 'Nine buildings, fire escapes and plank bridges. The monster can leap up walls.', A: 24, H: 26 },
     { id: 'temple', name: 'Ruined Temple', blurb: 'Rings of tall pillars, broken walls and a stepped dais in the middle.', A: 26, H: 18 },
+    { id: 'carnival', name: 'Abandoned Carnival', blurb: 'A carousel, ferris wheel legs, stalls and tents. Crate steps lead to a rickety walkway.', A: 26, H: 14 },
 ];
 export const MAP_IDS = MAPS.map(m => m.id);
 export const MAX_SEED = 999999;
@@ -233,7 +234,25 @@ export function cleanVotes(v) {
     return v.every(n => Number.isInteger(n) && n >= 0 && n <= LOBBY.MAX_VOTES) ? v.slice() : null;
 }
 
-const GEN = { hedge, yard, aisles, rooftops, temple };
+// ---------- Abandoned Carnival: karuzela w środku, nogi diabelskiego młyna, rzędy straganów, namioty, skrzynie-schody i kładka ----------
+function carnival(seed) {
+    const R = rng(seed), A = 26, H = 14, boxes = [], tent = [0xa83a3a, 0x3a5aa8, 0xc8a83a, 0x7a3a8a];
+    boxes.push(gbox(0, 0, 9, 0.5, 9, 0x7a6a5a, 'wood'), gbox(0, 0, 1.4, 5, 1.4, 0xb8a050, 'metal'), gbox(0, 0, 9.4, 0.3, 9.4, 0x5a1a1a, 'wall'));
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + R() * 0.15, x = Math.cos(a) * 3.4, z = Math.sin(a) * 3.4; boxes.push(gbox(x, z, 0.9, 1.5, 0.5, pick(R, tent), 'wood')); }   // konie karuzeli
+    for (const sx of [-1, 1]) { boxes.push(gbox(sx * 17, -12, 1.0, 9, 5, 0x6a6a72, 'metal'), gbox(sx * 17, -17, 1.0, 9, 1.0, 0x6a6a72, 'metal')); }   // nogi diabelskiego młyna
+    boxes.push(box(0, 9.2, -14.5, 36, 0.6, 1.2, 0x5a5a62, 'metal'));   // oś pod górą (nie do wejścia: za wysoko)
+    for (const z of [-4, 14]) for (let k = 0; k < 4; k++) {   // rzędy straganów
+        const x = -19 + k * 12.6 + (R() - 0.5) * 2; if (Math.abs(x) < 6 && z === -4) continue;
+        boxes.push(gbox(x, z, 4, 2.4, 2, pick(R, tent), 'wood'));
+        if (R() < 0.6) boxes.push(...stairs(x, z + (z < 0 ? -1 : 1) * 1.0, 4, 0.55, 0.75, 1.4, 0, z < 0 ? -1 : 1, 0x6a5a4a));
+    }
+    for (let k = 0; k < 3; k++) { const x = (k - 1) * 15 + (R() - 0.5) * 3, z = -21 + R() * 2; boxes.push(gbox(x, z, 5, 3.2, 5, pick(R, tent), 'wall')); }   // namioty
+    const wx = -14 + R() * 6; boxes.push(box(wx, 2.8, 14, 9, 0.2, 1.3, 0x7a5a3a, 'wood'));   // kładka między dwoma straganami nad rzędem
+    for (let k = 0; k < 7; k++) { const x = -22 + R() * 44, z = -2 + R() * 22; if (!(z > A - 7 && Math.abs(x) < 6)) boxes.push(gbox(x, z, 1.1, 1.1, 1.1, 0x8a6a3a, 'wood')); }   // skrzynie
+    const st = starts(boxes, A, R, 1.0), lights = [[0, 6, 0], [-17, 9, -12], [17, 9, -12], [-14, 5, 14], [14, 5, 14], [0, 5, -20]];
+    return { boxes, lights, entry: [0, 1.0, A - 2], monster: st.monster, survivors: st.survivors, botJump: 4.2, floor: 0x3a3430, wall: 0x2a2026, ceil: 0x0c0a10 };
+}
+const GEN = { hedge, yard, aisles, rooftops, temple, carnival };
 // Układ mapy dla (id, ziarno). Stacja jest zbudowana w monster.js, więc dostaje tylko dane startowe.
 export function generateMap(id, seed) {
     const def = MAPS.find(m => m.id === id); if (!def) return null;
