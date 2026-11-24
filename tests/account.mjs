@@ -59,8 +59,9 @@ const shown = (p, id) => p.evaluate((id) => { const e = document.getElementById(
     await p.close();
 }
 {
-    const p = await openPage(false); const ids = await vrButtons(p);
-    ok('VR menu: before choosing, a "Play as guest" button is offered', ids.includes('guest') && !ids.includes('logout'), ids);
+    const p = await openPage(false); await p.evaluate(() => document.getElementById('btnToLogin').click());   // domyślnie menu jest otwarte; formularz konta otwiera się na życzenie
+    const ids = await vrButtons(p);
+    ok('VR menu: with the account form open, a "Play as guest" button is offered', ids.includes('guest') && !ids.includes('logout'), ids);
     await vrPress(p, 'guest'); ok('VR menu: pressing it opens the guest menu', await shown(p, 'menuStage'));
     await p.close();
 }

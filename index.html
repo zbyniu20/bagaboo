@@ -168,9 +168,13 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
           </div>
           <details id="staffKey" style="margin-top:10px">
             <summary class="eyebrow" style="cursor:pointer">Staff key (admins and mods, no server)</summary>
-            <div class="btn-group"><button id="btnKeyCreate" type="button">Create key</button><button id="btnKeyLogin" type="button">Log in with key</button></div>
-            <textarea id="keyText" rows="3" spellcheck="false" placeholder="Public key appears here after Create key. To move your key to another device paste it here and press Import." style="width:100%;margin-top:8px"></textarea>
-            <div class="btn-group"><button id="btnKeyExport" type="button">Show private key</button><button id="btnKeyImport" type="button">Import key</button></div>
+            <div id="keyHint" class="eyebrow" style="margin-top:8px"></div>
+            <label class="eyebrow" for="keyPin" style="margin-top:8px">PIN (4-12 digits, you choose it)</label>
+            <input type="password" id="keyPin" inputmode="numeric" maxlength="12" autocomplete="off">
+            <input type="password" id="keyPin2" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="Repeat PIN (first time only)">
+            <div class="btn-group"><button id="btnKeyCreate" type="button">Set PIN and create key</button><button id="btnKeyLogin" type="button">Log in with PIN</button></div>
+            <textarea id="keyText" rows="3" spellcheck="false" placeholder="Your public key appears here after creating the key. To move the key to another device paste the exported text here and press Import." style="width:100%;margin-top:8px"></textarea>
+            <div class="btn-group"><button id="btnKeyExport" type="button">Export key</button><button id="btnKeyImport" type="button">Import key</button></div>
           </details>
           <button class="link" type="button" id="btnGuest">Back: just pick a nickname and play</button>
         </div>
