@@ -366,9 +366,9 @@
     "semantic_hash": "4a89a2231e55fc6b65648f11874fbcfc"
   },
   "levels/laundry.js": {
-    "mtime": 1795461641.1559613,
-    "seen": 1795467200.139651,
-    "ast_hash": "66d9a7c19afea3b2b1260148f3bb8bf8",
+    "mtime": 1795522557.508735,
+    "seen": 1795522817.3313642,
+    "ast_hash": "0f42bf356e247f158fe1427e3328a094",
     "semantic_hash": ""
   },
   "levels/lava.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795522427.5803964,
-    "seen": 1795522490.2834637,
-    "ast_hash": "a3d0855d8018ebc8daf4dac7076de2dd",
+    "mtime": 1795522754.3404157,
+    "seen": 1795522817.3317368,
+    "ast_hash": "f55ca0d34d13801da7d481d05c533547",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795521946.4070902,
-    "seen": 1795522490.2834713,
-    "ast_hash": "b4e04f9685b4fe2cbe336456502a8bf1",
+    "mtime": 1795522539.5246248,
+    "seen": 1795522817.3317459,
+    "ast_hash": "fbc8a27843166864e481384bb61b5921",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795521982.811812,
-    "seen": 1795522490.2831705,
-    "ast_hash": "c8aa6ba22435c7a61cd9257840857a4f",
+    "mtime": 1795522567.9866264,
+    "seen": 1795522817.331436,
+    "ast_hash": "55defdaccd6aaeaf7abd997496b43aa9",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795521946.4075463,
-    "seen": 1795522490.283213,
-    "ast_hash": "951925bf1054597c24eac9366cb9cd3c",
+    "mtime": 1795522539.5250213,
+    "seen": 1795522817.3314748,
+    "ast_hash": "9c092b4bc63e2cda9cf3f4b7aa5cf773",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10551,6 +10551,12 @@
     "mtime": 1795521998.2127755,
     "seen": 1795522490.2832155,
     "ast_hash": "dd758489158298d5133f04e3e92d3e66",
+    "semantic_hash": ""
+  },
+  "core/memorylogic.js": {
+    "mtime": 1795522539.508403,
+    "seen": 1795522817.3312573,
+    "ast_hash": "552d8444feb2c6ede910285ccba4c3dd",
     "semantic_hash": ""
   },
   "package-lock.json": {
