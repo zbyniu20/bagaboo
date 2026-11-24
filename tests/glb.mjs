@@ -44,7 +44,7 @@ async function run(label, body) {
     else if (body) await page.route(/assets\/monsters\/\w+\.glb/, (r) => r.fulfill({ status: 200, contentType: 'application/octet-stream', body }));
     await page.goto(`http://localhost:${port}/?three=${V}`);
     await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
-    await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });
+    await page.click('#btnSolo', { timeout: 90000 });
     await page.waitForTimeout(1500);
     await page.evaluate(async () => { const M = await import('./main.js'); await M.loadLevel('monster'); });
     await page.waitForTimeout(3500);

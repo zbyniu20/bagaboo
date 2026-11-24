@@ -254,8 +254,8 @@ async function canStart(allowBanned) {
     const acc = AUTH.account();
     if (acc) $('playerName').value = acc.nick;   // zalogowany gracz gra pod nickiem swojego konta
     else if (!guestMode) {   // najpierw logowanie albo świadomy wybór gry jako gość (dotyczy też przycisków z menu w goglach)
-        showStage('auth'); acctMsg('Log in, create an account, or play as a guest first.', false);
-        $('status').innerText = 'Log in or choose "Play as guest" on the start page first.';
+        showStage('auth'); acctMsg('Log in or create an account, or go back and play with a nickname.', false);
+        $('status').innerText = 'Log in or go back and play with a nickname.';
         return false;
     } else {
         const name = ($('playerName').value || '').trim();
@@ -278,7 +278,7 @@ let confirmedNick = '';   // nick potwierdzony przez serwer kont w tej sesji (po
 const acctMsg = (text, good) => { const m = $('acctMsg'); m.innerText = text || ''; m.style.color = good ? '#9aff60' : '#ff8a70'; };
 function acctBusy(on) { ['btnLogin', 'btnRegister', 'btnReset', 'btnGuest'].forEach(id => { $(id).disabled = on; }); }
 // Dwa ekrany: najpierw logowanie ('auth'), potem menu z trybami gry ('menu'). Do menu wchodzi się po zalogowaniu albo jako gość.
-let guestMode = false, recoveryPending = false;
+let guestMode = true, recoveryPending = false;   // domyślnie: wpisz nick i graj; konto jest opcjonalne (chroni nick)
 function showStage(stage) { $('authStage').style.display = stage === 'auth' ? 'block' : 'none'; $('menuStage').style.display = stage === 'menu' ? 'block' : 'none'; }
 function syncAccountUi() {
     const a = AUTH.account(), nm = $('playerName');
@@ -322,7 +322,7 @@ $('btnReset').onclick = async () => {
 };
 $('btnGuest').onclick = () => { guestMode = true; acctMsg(''); syncAccountUi(); };
 $('btnToLogin').onclick = () => { guestMode = false; acctMsg(''); syncAccountUi(); };
-$('btnLogout').onclick = () => { confirmedNick = ''; guestMode = false; AUTH.logout(); acctMsg('Signed out.', true); };
+$('btnLogout').onclick = () => { confirmedNick = ''; guestMode = true; AUTH.logout(); acctMsg('Signed out.', true); };
 $('btnRecoverySaved').onclick = () => { recoveryPending = false; $('recoveryBox').style.display = 'none'; $('recoveryCode').innerText = ''; syncAccountUi(); };
 syncAccountUi();
 AUTH.refresh().then((a) => { if (a) confirmedNick = a.nick; syncAccountUi(); });   // zapisana sesja: serwer potwierdza ją albo wylogowuje

@@ -23,7 +23,7 @@ page.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed to load resource/i.test(m.text())) errors.push('CONSOLE ' + m.text().slice(0, 300)); });
 await page.goto(`http://localhost:${port}/?three=${V}`);
 await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
-await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });
+await page.click('#btnSolo', { timeout: 90000 });
 await page.waitForTimeout(1500);
 let fails = 0; const ok = (name, cond, extra) => { if (cond) console.log('ok  ', name); else { fails++; console.log('FAIL', name, extra === undefined ? '' : JSON.stringify(extra)); } };
 const LEVELS = (process.env.LEVELS || 'hospital,catacombs,cemetery,nursery,laundry,silence,furas,maze').split(','), probe = () => page.evaluate(async () => {
@@ -48,7 +48,7 @@ const lobby = await probe(); ok('lobby: no props there', lobby.placed === 0 && l
 const p2 = await ctx.newPage(), e2 = []; p2.on('pageerror', (e) => e2.push(e.message));
 await p2.route(/props\.glb/, (r) => r.fulfill({ status: 404, body: '' }));
 await p2.goto(`http://localhost:${port}/?three=${V}`); await p2.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
-await p2.click('#btnGuest', { timeout: 90000 }); await p2.click('#btnSolo', { timeout: 90000 }); await p2.waitForTimeout(1200);
+await p2.click('#btnSolo', { timeout: 90000 }); await p2.waitForTimeout(1200);
 await p2.evaluate(async () => { const M = await import('./main.js'); await M.loadLevel('hospital'); }); await p2.waitForTimeout(3000);
 const miss = await p2.evaluate(async () => { const E = await import('./core/engine.js'), P = await import('./core/props.js'); let n = 0; E.scene.traverse(o => { if (o.isInstancedMesh && /^props_/.test(o.name)) n++; }); return { n, file: P.propInfo.file, obstacles: E.L.obstacles.length }; });
 ok('missing props.glb: the level loads as before (no props, no errors)', miss.n === 0 && miss.file === false && miss.obstacles > 10 && e2.length === 0, [miss, e2]);

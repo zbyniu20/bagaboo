@@ -23,7 +23,7 @@ page.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed to load resource/i.test(m.text())) errors.push('CONSOLE ' + m.text().slice(0, 300)); });
 await page.goto(`http://localhost:${port}/?three=${V}`);
 await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
-await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });
+await page.click('#btnSolo', { timeout: 90000 });
 await page.waitForTimeout(1500);
 let fails = 0; const ok = (name, cond, extra) => { if (cond) console.log('ok  ', name); else { fails++; console.log('FAIL', name, extra === undefined ? '' : JSON.stringify(extra)); } };
 const WITH = (process.env.WITH || 'hospital,catacombs,cemetery,nursery,laundry,silence,furas,maze,hotel,well,memory,lobby,levels,home,wardrobe').split(','), WITHOUT = (process.env.WITHOUT || 'lava,hideseek,redlight,room000').split(',');

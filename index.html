@@ -152,7 +152,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
           <button id="btnRecoverySaved" type="button">I saved it, continue</button>
         </div>
         <div id="authForm">
-          <span class="eyebrow" id="authTitle">Sign in to play</span>
+          <span class="eyebrow" id="authTitle">Account (optional) - protects your nickname</span>
           <label class="eyebrow" for="acctNick">Account nickname</label>
           <input type="text" id="acctNick" maxlength="16" autocomplete="username" spellcheck="false">
           <label class="eyebrow" for="acctPass" style="margin-top:10px">Password (at least 8 characters)</label>
@@ -166,13 +166,13 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
             <input type="password" id="acctNewPass" maxlength="100" autocomplete="new-password">
             <button id="btnReset" type="button">Set new password</button>
           </div>
-          <button class="link" type="button" id="btnGuest">Play as guest (no account)</button>
+          <button class="link" type="button" id="btnGuest">Back: just pick a nickname and play</button>
         </div>
         <div id="acctMsg" role="status"></div>
       </div>
       <!-- Ekran 2: menu gry -->
       <div id="menuStage" style="display:none">
-        <div id="acctBar"><span id="acctWho">Guest</span><button class="link" type="button" id="btnLogout">Log out</button><button class="link" type="button" id="btnToLogin">Log in</button></div>
+        <div id="acctBar"><span id="acctWho">Guest</span><button class="link" type="button" id="btnLogout">Log out</button><button class="link" type="button" id="btnToLogin">Protect my nickname (account)</button></div>
         <label class="eyebrow" for="playerName">Nickname</label>
         <div class="row">
           <input type="text" id="playerName" value="Acrobat" maxlength="16" autocomplete="nickname" spellcheck="false">

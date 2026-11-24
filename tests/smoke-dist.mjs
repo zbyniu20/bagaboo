@@ -31,7 +31,7 @@ await page.goto(`http://localhost:${PORT}/`);
 await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
 const status = await page.evaluate(() => document.getElementById('status').innerText);
 /Ready/.test(status) ? ok('the bundled game boots: ' + status) : fail('the bundled game did not boot: ' + status);
-await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });
+await page.click('#btnSolo', { timeout: 90000 });
 await page.waitForFunction(() => !!window.BAGABOO_DEBUG, null, { timeout: 120000 });   // uchwyt powstaje na końcu main.js
 await page.waitForTimeout(1500);
 (await page.evaluate(() => typeof window.Peer === 'function')) ? ok('Peer comes from the bundle (window.Peer)') : fail('window.Peer is missing');

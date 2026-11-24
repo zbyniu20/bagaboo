@@ -24,7 +24,7 @@ async function open() {
     const p = await ctx.newPage(); p.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message)); p.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed to load resource/i.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 200)); });
     await p.goto(`http://localhost:${port}/?three=${V}`);
     await p.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
-    await p.click('#btnGuest', { timeout: 90000 }); await p.click('#btnSolo', { timeout: 90000 }); await p.waitForTimeout(3500); return p;
+    await p.click('#btnSolo', { timeout: 90000 }); await p.waitForTimeout(3500); return p;
 }
 const dbg = (p) => p.evaluate(async () => (await import('./core/tutorial.js')).debugTutorial());
 const wait = (p, id, ms) => p.evaluate(async ([id, ms]) => { const T = await import('./core/tutorial.js'), t0 = performance.now(); while (performance.now() - t0 < ms) { if (T.debugTutorial().id === id) return true; await new Promise(r => setTimeout(r, 100)); } return false; }, [id, ms || 8000]);
@@ -46,7 +46,7 @@ await p.evaluate(async () => { const T = await import('./core/tutoriallogic.js')
 d = await p.evaluate(async () => { const T = await import('./core/tutoriallogic.js'); T.TUT.next('trigger'); await new Promise(r => setTimeout(r, 400)); return (await import('./core/tutorial.js')).debugTutorial(); });
 ok('after the last step the tutorial ends and is remembered in the save', d.on === false && d.done === true, d);
 await p.reload(); await p.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
-await p.click('#btnGuest', { timeout: 90000 }); await p.click('#btnSolo', { timeout: 90000 }); await p.waitForTimeout(3500);
+await p.click('#btnSolo', { timeout: 90000 }); await p.waitForTimeout(3500);
 d = await dbg(p); ok('a finished tutorial does not start again after a reload', d.on === false && d.done === true, d);
 // przycisk w menu pauzy: zwykły gracz go nie widzi, ekipa tak
 const btn = (p2) => p2.evaluate(async () => { const P = await import('./core/pause.js'); P.pauseMenu.redraw(); return P.pauseMenu.buttons.map(b => b.id).includes('tut'); });
