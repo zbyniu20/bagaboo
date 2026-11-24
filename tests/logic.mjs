@@ -746,6 +746,10 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
 {
     const store = {}; globalThis.localStorage = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
     const SK = await import(url('core/staffkey.js')), CFG = await import(url('core/config.js')), AU = await import(url('core/auth.js'));
+    check('accounts: login is on (staff nicknames need a password or PIN), nobody is logged in by default', CFG.FEATURES.accounts === true && AU.accountsOn() === true && AU.account() === null && (await AU.vouch('G:ROOM', 'n0')) === null);
+    CFG.FEATURES.accounts = false;
+    check('accounts: with the switch off nobody gets an identity or a proof', AU.accountsOn() === false && AU.account() === null && (await AU.vouch('G:ROOM', 'n0')) === null);
+    CFG.FEATURES.accounts = true;
     check('staffkey: only a reserved staff nickname can get a key, and the PIN needs 4 to 12 digits', !(await SK.createKey('RandomGuy', '1234')).ok && !(await SK.createKey('Luna', '12')).ok && !(await SK.createKey('Luna', 'abcd')).ok && !SK.hasKey());
     const made = await SK.createKey('Luna', '4821');
     check('staffkey: the private key is stored encrypted (no plain "d" in storage)', made.ok && SK.hasKey() && !/"d":/.test(store.bagaboo_staffkey) && !store.bagaboo_staffkey.includes('4821'));
@@ -764,6 +768,6 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     let last = null; for (let i = 0; i < 5; i++) last = await SK.signIn('1111');
     check('staffkey: five wrong PINs lock the key for a while (even the right PIN is refused)', last.error === 'bad_pin' && (await SK.signIn('9999')).error === 'locked');
     check('staffkey: an invalid import is rejected', !SK.importKey('not json').ok && !SK.importKey('{"nick":"Luna","pub":{},"enc":{}}').ok);
-    delete CFG.STAFF_KEYS.luna;
+    delete CFG.STAFF_KEYS.luna; CFG.FEATURES.accounts = false;
 }
 done('logic');

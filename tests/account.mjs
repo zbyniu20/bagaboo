@@ -22,7 +22,7 @@ let fails = 0; const ok = (name, cond, extra) => { if (cond) console.log('ok  ',
 const page = await ctx.newPage(), errs = []; page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message)); page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed to load resource/i.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 300)); });
 await page.route(/bagaboo-api/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }));   // serwer kont: potwierdza sesję
 await page.addInitScript(() => { localStorage.setItem('bagaboo_session', JSON.stringify({ token: 'a.b.c', id: 7, nick: 'Tester', exp: Math.floor(Date.now() / 1000) + 86400 })); });
-await page.goto(`http://localhost:${port}/?three=${V}`);
+await page.goto(`http://localhost:${port}/?accounts=1&three=${V}`);
 await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
 const vis = (id) => page.evaluate((id) => { const e = document.getElementById(id); return !!e && e.offsetParent !== null; }, id);
 ok('a saved session opens the menu stage as a signed-in player', await vis('menuStage') && !(await vis('authStage')) && /Signed in as Tester/.test(await page.innerText('#acctWho')));
@@ -43,7 +43,7 @@ async function openPage(session) {
     const p = await ctx.newPage(); p.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
     await p.route(/bagaboo-api/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
     if (session) await p.addInitScript(() => { localStorage.setItem('bagaboo_session', JSON.stringify({ token: 'a.b.c', id: 7, nick: 'Tester', exp: Math.floor(Date.now() / 1000) + 86400 })); });
-    await p.goto(`http://localhost:${port}/?three=${V}`);
+    await p.goto(`http://localhost:${port}/?accounts=1&three=${V}`);
     await p.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
     return p;
 }
@@ -64,6 +64,18 @@ const shown = (p, id) => p.evaluate((id) => { const e = document.getElementById(
     ok('VR menu: with the account form open, a "Play as guest" button is offered', ids.includes('guest') && !ids.includes('logout'), ids);
     await vrPress(p, 'guest'); ok('VR menu: pressing it opens the guest menu', await shown(p, 'menuStage'));
     await p.close();
+}
+{
+    // Nick ekipy bez hasła albo PIN-u: gra nie startuje, otwiera się logowanie z sekcją klucza ekipy
+    const p = await openPage(false); await p.waitForTimeout(2000);   // po starcie strona jeszcze raz synchronizuje konto i czyści nick ekipy z pola
+    await p.evaluate(() => { document.getElementById('playerName').value = 'BoyIsGamer'; document.getElementById('btnSolo').click(); }); await p.waitForFunction(() => document.getElementById('authStage').offsetParent !== null, null, { timeout: 30000 }).catch(() => {});
+    ok('a staff nickname without a password or PIN is stopped and the login form opens with the staff key section', await p.evaluate(() => document.getElementById('authStage').offsetParent !== null && document.getElementById('menuStage').offsetParent === null && document.getElementById('staffKey').open === true), await p.evaluate(() => ({ auth: !!document.getElementById('authStage').offsetParent, menu: !!document.getElementById('menuStage').offsetParent, open: document.getElementById('staffKey').open, status: document.getElementById('status').innerText, msg: document.getElementById('acctMsg').innerText })));
+    ok('the game did not start for the reserved nickname', await p.evaluate(async () => { const N = await import('./core/network.js'); return !(N.NET.mode === 'solo' && window.BAGABOO_DEBUG && window.BAGABOO_DEBUG.started); }));
+    await p.close();
+    const g = await openPage(false);
+    await g.evaluate(() => { document.getElementById('playerName').value = 'RandomPlayer'; }); await g.click('#btnSolo', { timeout: 90000 }); await g.waitForTimeout(2500);
+    ok('a normal nickname plays without any account', await g.evaluate(async () => { const N = await import('./core/network.js'); return N.NET.mode === 'solo'; }));
+    await g.close();
 }
 {
     const p = await openPage(true); await p.click('#btnSolo', { timeout: 90000 }); await p.waitForTimeout(2500);

@@ -261,9 +261,9 @@ async function canStart(allowBanned) {
     } else {
         const name = ($('playerName').value || '').trim();
         if (isReservedNick(name)) {
-            guestMode = false; showStage('auth');
-            acctMsg('The nickname "' + name + '" is reserved for the staff. Staff: choose your PIN or enter it below. Everyone else: go back and pick another nickname.', false); openStaffKey(name);
-            $('status').innerText = 'The nickname "' + name + '" is reserved for the staff. Log in to your account first.';
+            if (AUTH.accountsOn()) { guestMode = false; showStage('auth'); }
+            acctMsg('The nickname "' + name + '" is reserved for the staff. Staff: log in with your password or your PIN below. Everyone else: go back and pick another nickname.', false); openStaffKey(name);
+            $('status').innerText = 'The nickname "' + name + '" is reserved. Pick another nickname.';
             return false;
         }
     }
@@ -285,13 +285,14 @@ function syncAccountUi() {
     const a = AUTH.account(), nm = $('playerName');
     $('acctWho').innerText = a ? 'Signed in as ' + a.nick : 'Playing as a guest';
     $('btnLogout').style.display = a ? 'inline-block' : 'none'; $('btnToLogin').style.display = a ? 'none' : 'inline-block';
+    $('acctBar').style.display = AUTH.accountsOn() ? 'flex' : 'none';   // bez logowania nie ma paska konta
     $('authForm').style.display = recoveryPending ? 'none' : 'block';
     nm.readOnly = !!a; nm.title = a ? 'Your account nickname. Log out to use another.' : '';
     if (a) nm.value = a.nick;
     else if (isReservedNick(nm.value)) nm.value = 'Acrobat';   // bez konta nick ekipy nie zostaje w polu
     ECO.markNickVerified(a && confirmedNick === a.nick ? a.nick : '');   // premia ekipy (economy.js) tylko po potwierdzeniu przez serwer
     if (recoveryPending) showStage('auth');   // najpierw kod odzyskiwania, dopiero potem menu
-    else showStage(a || guestMode ? 'menu' : 'auth');
+    else showStage(!AUTH.accountsOn() || a || guestMode ? 'menu' : 'auth');
 }
 AUTH.onAuthChange(syncAccountUi);
 function showRecovery(code) { $('recoveryCode').innerText = code; $('recoveryBox').style.display = 'block'; }
