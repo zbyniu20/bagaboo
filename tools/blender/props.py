@@ -11,8 +11,8 @@ def lin(c):   # kolory w pliku są liniowe: przelicz z sRGB, żeby w grze wyglą
     return (f(c[0]), f(c[1]), f(c[2]), 1.0)
 
 class Prop:
-    def __init__(self, name):
-        self.name = name; self.bm = bmesh.new(); self.col = self.bm.loops.layers.float_color.new('Col'); self.rng = random.Random(zlib.crc32(name.encode()))
+    def __init__(self, name, prefix='prop_'):
+        self.name = name; self.prefix = prefix; self.bm = bmesh.new(); self.col = self.bm.loops.layers.float_color.new('Col'); self.rng = random.Random(zlib.crc32(name.encode()))
     def _paint(self, verts, color):
         c = lin(hexc(color)); faces = {f for v in verts for f in v.link_faces}
         for f in faces:
@@ -32,9 +32,9 @@ class Prop:
                 p = l.vert.co; k = 0.55 + 0.45 * min(1.0, max(0.0, p.z / max(0.01, height * 0.6)))
                 n = 0.86 + 0.14 * math.sin(p.x * 37.0 + p.y * 23.0 + p.z * 51.0)
                 c = l[self.col]; l[self.col] = (c[0] * k * n, c[1] * k * n, c[2] * k * n, 1.0)
-        me = bpy.data.meshes.new('prop_' + self.name); self.bm.to_mesh(me); self.bm.free()
+        me = bpy.data.meshes.new(self.prefix + self.name); self.bm.to_mesh(me); self.bm.free()
         for p in me.polygons: p.use_smooth = False
-        ob = bpy.data.objects.new('prop_' + self.name, me); bpy.context.scene.collection.objects.link(ob); return ob
+        ob = bpy.data.objects.new(self.prefix + self.name, me); bpy.context.scene.collection.objects.link(ob); return ob
 
 def barrel():
     p = Prop('barrel'); body = 0x5a3a28
@@ -86,13 +86,39 @@ def cart():
         for sy in (-0.22, 0.22): p.box(sx, sy, 0.45, 0.03, 0.03, 0.7, 0x3a3a40); p.cyl(sx, sy, 0.06, 0.06, 0.06, 0.04, 0x1a1a1c, axis='Y', segs=10)
     p.box(0.45, 0, 1.0, 0.03, 0.5, 0.35, m); return p, 1.1
 
+
+# ---------- elementy architektury (kit_*): przylegają do ściany, wystają najwyżej 0,12 m, bez kolizji. Ściana to płaszczyzna y = 0, na zewnątrz w stronę -Y Blendera
+# (w grze +Z po eksporcie), długość wzdłuż X, wysokość wzdłuż Z. Listwy (base, crown) mają długość 1 m i w grze są skalowane wzdłuż X; rura, korytko i kratka mają stałą długość. ----------
+def kit_base():
+    p = Prop('base', 'kit_'); p.box(0, -0.02, 0.06, 1.0, 0.04, 0.12, 0x3c3a3a); p.box(0, -0.035, 0.12, 1.0, 0.012, 0.02, 0x55524e); return p, 0.12
+def kit_crown():
+    p = Prop('crown', 'kit_'); p.box(0, -0.02, -0.03, 1.0, 0.04, 0.06, 0x5a5650); p.box(0, -0.04, -0.075, 1.0, 0.04, 0.03, 0x4a4640); return p, 0.1
+def kit_pipe():
+    p = Prop('pipe', 'kit_'); r = 0.05
+    p.cyl(0, -0.09, 0, r, r, 2.0, 0x6a5848, axis='X', segs=8)
+    for x in (-1.0, 1.0): p.cyl(x, -0.09, 0, r * 1.45, r * 1.45, 0.05, 0x3a3430, axis='X', segs=8)
+    for x in (-0.8, 0.8): p.box(x, -0.045, 0, 0.05, 0.09, 0.09, 0x33302c); p.cyl(x, -0.09, 0, r * 1.25, r * 1.25, 0.04, 0x2a2622, axis='X', segs=8)
+    return p, 0.1
+def kit_tray():
+    p = Prop('tray', 'kit_'); p.box(0, -0.15, 0, 2.0, 0.3, 0.03, 0x3a3c40)
+    for sy in (-0.01, -0.29): p.box(0, sy, 0.03, 2.0, 0.02, 0.05, 0x44464a)
+    for i, y in enumerate((-0.07, -0.15, -0.23)): p.cyl(0, y, 0.035, 0.016, 0.016, 2.0, 0x1a1a1c if i != 1 else 0x5a2a22, axis='X', segs=6)
+    for x in (-0.8, 0.0, 0.8): p.box(x, -0.04, -0.09, 0.04, 0.08, 0.18, 0x2e2e32)
+    return p, 0.2
+def kit_vent():
+    p = Prop('vent', 'kit_'); p.box(0, -0.03, 0, 0.6, 0.06, 0.4, 0x3a3a3e)
+    for i in range(6): p.box(0, -0.065, -0.15 + i * 0.06, 0.52, 0.03, 0.035, 0x1c1c1e)
+    return p, 0.2
+
+BUILD_KIT = [kit_base, kit_crown, kit_pipe, kit_tray, kit_vent]
+
 BUILD = [barrel, crate, bench, pipes, debris, bucket, chair, shelf, cart]
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('-') and not a.endswith('.py')]
     out = args[-1] if args else os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'assets', 'props')
     os.makedirs(out, exist_ok=True)
     bpy.ops.wm.read_factory_settings(use_empty=True); objs = []
-    for i, fn in enumerate(BUILD):
+    for i, fn in enumerate(BUILD + BUILD_KIT):
         p, h = fn(); ob = p.finish(h); ob.location.x = i * 2.5; objs.append(ob)
     bpy.ops.object.select_all(action='DESELECT')
     for o in objs: o.select_set(True)

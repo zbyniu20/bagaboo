@@ -7,7 +7,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GFX, LP } from './config.js';
 import * as T from './textures.js';
 import { aoFor } from './gfxlogic.js';
-import { familyFor, gradeColor } from './artlogic.js';
+import { familyFor, gradeColor, familyName, tileStrength, TILE } from './artlogic.js';
 import { SETTINGS } from './settings.js';
 
 export { THREE, CANNON };
@@ -83,7 +83,7 @@ export const tex = {
     plaster: T.createPlasterTexture(), skin: T.createSkinTexture(), wood: T.createWoodTexture(),
     eye: T.createEyeballTexture(), dot: T.createDotTexture(), camo: T.createCamoTexture(), bandage: T.createBandageTexture(),
     // rysowane dopiero przy pierwszym użyciu (poziomy z mokrą podłogą, zardzewiałymi ścianami i potworami)
-    get floorWet() { return T.createFloorWetRoughTexture(); }, get wallRust() { return T.createWallRustTexture(); }, get eyeBloodshot() { return T.createBloodshotEyeTexture(); }
+    get floorWet() { return T.createFloorWetRoughTexture(); }, get wallRust() { return T.createWallRustTexture(); }, get eyeBloodshot() { return T.createBloodshotEyeTexture(); }, get decals() { return T.createDecalAtlas(); }
 };
 
 // Stan bieżącego poziomu. Wszystko, co poziom tworzy, trafia tutaj, żeby dało się go wyczyścić przy zmianie poziomu.
@@ -106,6 +106,7 @@ export function clearLevel() {
     for (const b of L.bodies) world.removeBody(b);
     for (const k of ['obstacles', 'trampolines', 'ropes', 'throwables', 'bodies', 'constraints', 'reserved', 'portals', 'hammerTargets', 'bakeList']) L[k].length = 0;
     L.tramp = null; L.heldId = null; L.floorY = undefined;
+    L.gen = (L.gen || 0) + 1;   // numer pokolenia poziomu: asynchroniczne dekoracje (rekwizyty, elementy architektury) sprawdzają go po wczytaniu pliku
     L.bounds = { minX: -14.6, maxX: 14.6, minZ: -14.6, maxZ: 14.6, maxY: 19.6 };
     // Zwolnienie pamięci karty graficznej po starym poziomie
     L.root.traverse((o) => {
@@ -163,13 +164,13 @@ export function addCollider(minX, minY, minZ, maxX, maxY, maxZ) {
 // Punkt leży na krawędzi, gdy jest blisko dwóch ścian jednocześnie; obwódka porusza się i chowa razem z blokiem.
 // Wypalone w shaderze ambient occlusion (bez dodatkowych siatek): decyzje w czystym core/gfxlogic.js (aoFor), tu tylko uniformy i kod shadera.
 export const BAKE_U = { value: 1 };   // wspólny mnożnik wypalonego światła (core/lightbake.js, updateBake): gaśnie razem ze światłami w zaciemnieniach
-function addShaderEdges(mat, w, h, d, edgeColor, ao) {
+function addShaderEdges(mat, w, h, d, edgeColor, ao, tile) {
     const half = new THREE.Vector3(w / 2, h / 2, d / 2), col = new THREE.Color(edgeColor), op = LP.edgeOpacity, aov = new THREE.Vector4(ao ? ao.b : 0, ao ? ao.t : 0, ao ? ao.f : 0, ao ? ao.c : 0);
     mat.userData.ao = aov;   // do odczytu w testach (tests/gfx.mjs)
     mat.onBeforeCompile = (sh) => {
-        sh.uniforms.uEdgeHalf = { value: half }; sh.uniforms.uEdgeCol = { value: col }; sh.uniforms.uEdgeOp = { value: op }; sh.uniforms.uAO = { value: aov }; sh.uniforms.uBakeK = BAKE_U;
-        sh.vertexShader = 'varying vec3 vEdgeP; attribute vec3 aBake; varying vec3 vBake;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvEdgeP = position; vBake = aBake;');
-        sh.fragmentShader = 'uniform vec3 uEdgeHalf; uniform vec3 uEdgeCol; uniform float uEdgeOp; uniform vec4 uAO; uniform float uBakeK; varying vec3 vEdgeP; varying vec3 vBake;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n    totalEmissiveRadiance += vBake * diffuseColor.rgb * uBakeK;   // wypalone oświetlenie (core/lightbake.js)').replace('#include <color_fragment>', `#include <color_fragment>
+        sh.uniforms.uEdgeHalf = { value: half }; sh.uniforms.uEdgeCol = { value: col }; sh.uniforms.uEdgeOp = { value: op }; sh.uniforms.uAO = { value: aov }; sh.uniforms.uBakeK = BAKE_U; sh.uniforms.uTile = { value: tile || 0 }; sh.uniforms.uTileScale = { value: TILE.scale };
+        sh.vertexShader = 'varying vec3 vEdgeP; attribute vec3 aBake; varying vec3 vBake; varying vec3 vTileP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvEdgeP = position; vBake = aBake; vTileP = (modelMatrix * vec4(position, 1.0)).xyz;');
+        sh.fragmentShader = 'uniform vec3 uEdgeHalf; uniform vec3 uEdgeCol; uniform float uEdgeOp; uniform vec4 uAO; uniform float uBakeK; uniform float uTile; uniform float uTileScale; varying vec3 vEdgeP; varying vec3 vBake; varying vec3 vTileP;\n' + TILE_GLSL + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n    totalEmissiveRadiance += vBake * diffuseColor.rgb * uBakeK;   // wypalone oświetlenie (core/lightbake.js)').replace('#include <color_fragment>', `#include <color_fragment>
             vec3 eD = uEdgeHalf - abs(vEdgeP);
             float e1 = 1.0 - smoothstep(0.0, 0.016, eD.x), e2 = 1.0 - smoothstep(0.0, 0.016, eD.y), e3 = 1.0 - smoothstep(0.0, 0.016, eD.z);
             float edge = max(max(e1 * e2, e2 * e3), e1 * e3);
@@ -179,10 +180,15 @@ function addShaderEdges(mat, w, h, d, edgeColor, ao) {
             float aoE = min(uEdgeHalf.x - abs(vEdgeP.x), uEdgeHalf.z - abs(vEdgeP.z));
             aoF *= mix(1.0, mix(1.0 - uAO.z, 1.0, smoothstep(0.0, 0.9, aoE)), step(uEdgeHalf.y - 0.002, vEdgeP.y) * step(0.001, uAO.z));
             aoF *= mix(1.0, mix(1.0 - uAO.w, 1.0, smoothstep(0.0, 0.9, aoE)), step(vEdgeP.y, 0.002 - uEdgeHalf.y) * step(0.001, uAO.w));
-            diffuseColor.rgb *= aoF;`);
+            diffuseColor.rgb *= aoF;
+            float tn = tileNoise(vTileP * uTileScale), tm = tileNoise(vTileP * uTileScale * 2.7 + 11.3);
+            diffuseColor.rgb *= 1.0 + (tn - 0.5) * 2.0 * uTile + (tm - 0.5) * 0.7 * uTile;
+            diffuseColor.rgb *= vec3(1.0 + (tm - 0.5) * 0.5 * uTile, 1.0, 1.0 - (tm - 0.5) * 0.5 * uTile);`);
     };
     mat.customProgramCacheKey = () => 'crispEdge';
 }
+// Szum wartości 3D w shaderze (łamanie powtarzalności tekstur): tylko mnoży kolor, relief (normalne) zostaje zgodny z fugami
+const TILE_GLSL = 'float tileHash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }\nfloat tileNoise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(mix(mix(tileHash(i), tileHash(i + vec3(1,0,0)), f.x), mix(tileHash(i + vec3(0,1,0)), tileHash(i + vec3(1,1,0)), f.x), f.y), mix(mix(tileHash(i + vec3(0,0,1)), tileHash(i + vec3(1,0,1)), f.x), mix(tileHash(i + vec3(0,1,1)), tileHash(i + vec3(1,1,1)), f.x), f.y), f.z); }\n';
 export function addCrispBlock(x, y, z, w, h, d, color, edgeColor, texture, opts) {
     texture = texture || tex.wall; opts = opts || {};
     const nm = T.normalFor(texture, 3);   // prawdziwa mapa normalnych (z jasności tekstury) zamiast bump mapy
@@ -197,7 +203,7 @@ export function addCrispBlock(x, y, z, w, h, d, color, edgeColor, texture, opts)
     geo.setAttribute('aBake', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3), 3));   // zera: bez wypalenia nic nie dodaje (wypala core/lightbake.js)
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true;
-    addShaderEdges(mat, w, h, d, edgeColor, aoFor(x, y, z, w, h, d, opts));
+    addShaderEdges(mat, w, h, d, edgeColor, aoFor(x, y, z, w, h, d, opts), tileStrength(familyName(L.levelId)));
     L.bakeList.push({ mesh: mesh, w: w, h: h, d: d, uvMeters: opts.uvMeters || 4 });   // obwódka krawędzi i AO w shaderze: bez osobnego obiektu (połowa wywołań rysowania)
     L.root.add(mesh);
     addStaticBody(x, y, z, new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)), mesh, false);

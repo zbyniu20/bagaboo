@@ -464,6 +464,22 @@ function _createBloodshotEyeTexture() {
 
 // Pamięć podręczna tekstur poziomów: przy powrocie do lobby nie rysujemy ich od nowa (szybsze ładowanie)
 const _texCache = new Map();
+
+// Atlas decali 4 x 2 (komórki 256 px; core/decallogic.js): wilgoć, pleśń, łuszcząca się farba, pęknięcia, zacieki, sadza, kałuża, brud. Przezroczysty, ciemne plamy.
+function _createDecalAtlas() {
+    const C = 256, c = makeCanvas(C * 4, C * 2), ctx = c.getContext('2d'), R = mkRng(9031);
+    const cell = (i, fn) => { ctx.save(); ctx.translate((i % 4) * C, ((i / 4) | 0) * C); ctx.beginPath(); ctx.rect(0, 0, C, C); ctx.clip(); fn(); ctx.restore(); };
+    const blob = (x, y, rx, ry, col, a) => { const g = ctx.createRadialGradient(x, y, 0, x, y, 1); g.addColorStop(0, col.replace('A', a)); g.addColorStop(1, col.replace('A', 0)); ctx.save(); ctx.translate(x, y); ctx.scale(rx, ry); ctx.translate(-x, -y); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 1, 0, 7); ctx.fill(); ctx.restore(); };
+    cell(0, () => { for (let i = 0; i < 14; i++) blob(C / 2 + (R() - 0.5) * 80, 40 + R() * 150, 24 + R() * 50, 40 + R() * 70, 'rgba(18,22,20,A)', 0.2 + R() * 0.25); });                                 // wilgoć
+    cell(1, () => { for (let i = 0; i < 26; i++) { const x = 30 + R() * 196, y = 30 + R() * 196, r = 6 + R() * 20; blob(x, y, r, r, 'rgba(14,26,12,A)', 0.5 + R() * 0.4); for (let k = 0; k < 6; k++) blob(x + (R() - 0.5) * r * 3, y + (R() - 0.5) * r * 3, 2 + R() * 4, 2 + R() * 4, 'rgba(8,16,8,A)', 0.8); } });   // pleśń
+    cell(2, () => { for (let i = 0; i < 9; i++) { const x = 30 + R() * 190, y = 30 + R() * 190, s = 18 + R() * 40; ctx.fillStyle = 'rgba(8,6,5,0.75)'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + s, y + R() * s * 0.4); ctx.lineTo(x + s * 0.7, y + s); ctx.lineTo(x - s * 0.2, y + s * 0.7); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(176,170,152,0.85)'; ctx.beginPath(); ctx.moveTo(x + 2, y + 2); ctx.lineTo(x + s - 3, y + R() * s * 0.4 + 2); ctx.lineTo(x + s * 0.7 - 2, y + s - 4); ctx.lineTo(x, y + s * 0.7 - 3); ctx.closePath(); ctx.fill(); } blob(C / 2, C / 2, 110, 110, 'rgba(10,8,6,A)', 0.18); });   // łuszcząca się farba
+    cell(3, () => { crackWalk(ctx, R, C, 7, 26, 'rgba(6,4,4,0.9)', 1.2, 3.4, 10); crackWalk(ctx, R, C, 4, 18, 'rgba(6,4,4,0.7)', 0.8, 2, 7); });                                                                    // pęknięcia
+    cell(4, () => { for (let i = 0; i < 6; i++) { const x = 40 + R() * 176, w = 4 + R() * 12, g = ctx.createLinearGradient(0, 10, 0, 246); g.addColorStop(0, 'rgba(96,44,18,0.0)'); g.addColorStop(0.15, 'rgba(96,44,18,0.65)'); g.addColorStop(0.8, 'rgba(70,30,12,0.5)'); g.addColorStop(1, 'rgba(70,30,12,0.0)'); ctx.fillStyle = g; ctx.fillRect(x - w / 2, 10, w, 236 - R() * 60); blob(x, 240 - R() * 40, w * 1.4, w * 1.1, 'rgba(70,30,12,A)', 0.4); } });   // zacieki rdzy
+    cell(5, () => { for (let i = 0; i < 10; i++) blob(C / 2 + (R() - 0.5) * 90, 60 + R() * 120, 34 + R() * 60, 28 + R() * 50, 'rgba(0,0,0,A)', 0.12 + R() * 0.18); });                                                  // sadza
+    cell(6, () => { for (let i = 0; i < 7; i++) blob(C / 2 + (R() - 0.5) * 70, C / 2 + (R() - 0.5) * 70, 40 + R() * 70, 34 + R() * 56, 'rgba(6,8,10,A)', 0.4 + R() * 0.3); blob(C / 2 - 20, C / 2 - 25, 40, 22, 'rgba(120,130,140,A)', 0.18); });   // kałuża
+    cell(7, () => { for (let i = 0; i < 9; i++) blob(C / 2 + (R() - 0.5) * 100, C / 2 + (R() - 0.5) * 100, 26 + R() * 56, 26 + R() * 48, 'rgba(14,10,8,A)', 0.14 + R() * 0.2); for (let i = 0; i < 500; i++) { ctx.fillStyle = 'rgba(8,6,4,' + (0.15 + R() * 0.35) + ')'; ctx.fillRect(40 + R() * 176, 40 + R() * 176, 1 + R() * 2, 1 + R() * 2); } });   // brud
+    const t = toTex(c, false); t.userData.atlas = true; return t;
+}
 function cached(name, fn) {
     return function () {
         const key = name + JSON.stringify(Array.from(arguments));
@@ -485,3 +501,4 @@ export const createMistTexture = cached('createMistTexture', _createMistTexture)
 export const createHazardTexture = cached('createHazardTexture', _createHazardTexture);
 export const createTrampMatTexture = cached('createTrampMatTexture', _createTrampMatTexture);
 export const createShaftTexture = cached('createShaftTexture', _createShaftTexture);
+export const createDecalAtlas = cached('createDecalAtlas', _createDecalAtlas);

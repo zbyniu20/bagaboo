@@ -22,6 +22,7 @@ import { lavaBeast } from '../core/monsterskins.js';
 import { ARRIVAL_FROM_MEMORY } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
 import { setDread } from '../core/ambience.js';
+import { swapRoot } from '../core/glbmonster.js';
 
 // ---------- USTAWIENIA ----------
 // 6 ścieżek po 20 kamieni wypełnia prawie cały basen. Kamienie 1,5 x 1,5 m, między nimi 1,1 m lawy
@@ -200,7 +201,7 @@ function buildDecor(R) {
 
 // ---------- LAWOWA BESTIA ----------
 function buildBeast() {
-    const b = lavaBeast(); b.group.scale.setScalar(2.6); L.root.add(b.group);
+    const b = lavaBeast(); b.group.scale.setScalar(2.6); L.root.add(b.group); swapRoot(b.group, 'lavabeast', { height: 3.2 });   // model z Blendera (assets/monsters/lavabeast.glb); brak pliku = dawna bestia
     const glow = new THREE.PointLight(0xff5010, 20, 10, 1.6); b.group.add(glow); glow.position.set(0, -0.6, 0.6);
     // Wynurza się z lawy z boku, między lądem startowym a pierwszym rzędem
     S.beast = { m: b, x: 5.5, z: START_EDGE - 2.5, y: -6, speed: BEAST_SPEED * S.df.speed, roarT: 3, rising: true };

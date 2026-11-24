@@ -6,7 +6,7 @@
 // ==========================================
 import { THREE, L, scene } from './engine.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { SETTINGS, GAMES_CALM } from './settings.js';
+import { SETTINGS } from './settings.js';
 import { PROPS, propSetFor, propsEnabled, propCount, placeProps } from './proplogic.js';
 
 let buf = null;
@@ -19,17 +19,26 @@ async function fetchBuf() {
     }
     return null;
 }
-export async function addLevelProps(levelId) {
+// Geometrie z pliku (rekwizyty prop_* i elementy architektury kit_*): jeden plik pobierany raz, parsowany raz na pokolenie poziomu i dzielony przez core/props.js i core/kit.js
+// (clearLevel zwalnia geometrię, więc kolejny poziom parsuje od nowa)
+let parsed = null;
+export function levelGeometries(gen) {
+    if (parsed && parsed.gen === gen) return parsed.promise;
+    const promise = (async () => {
+        const data = await fetchBuf(); propInfo.file = !!data; if (!data) return null;
+        try { const gltf = await new GLTFLoader().parseAsync(data.slice(0), ''), geos = {}; gltf.scene.traverse(o => { if (o.isMesh && o.geometry) geos[o.name] = o.geometry; }); return geos; } catch (e) { return null; }
+    })();
+    parsed = { gen: gen, promise: promise }; return promise;
+}
+export async function addLevelProps(levelId, calm) {
     propInfo.placed = 0; propInfo.kinds = 0;
     const set = propSetFor(levelId);
-    if (!set || !propsEnabled(SETTINGS.quality, GAMES_CALM.on) || typeof fetch === 'undefined') return;
-    const token = L.root, id = L.levelId, bx = L.obstacles.filter(b => b.box3).map(b => ({ minX: b.box3.min.x, maxX: b.box3.max.x, minY: b.box3.min.y, maxY: b.box3.max.y, minZ: b.box3.min.z, maxZ: b.box3.max.z }));
+    if (!set || !propsEnabled(SETTINGS.quality, !!calm) || typeof fetch === 'undefined') return;
+    const gen = L.gen || 0, bx = L.obstacles.filter(b => b.box3).map(b => ({ minX: b.box3.min.x, maxX: b.box3.max.x, minY: b.box3.min.y, maxY: b.box3.max.y, minZ: b.box3.min.z, maxZ: b.box3.max.z }));
     const spots = placeProps({ seed: set.seed, count: propCount(set, SETTINGS.quality), area: L.bounds, floorY: L.floorY || 0, boxes: bx, spawn: L.spawn, reserved: L.reserved, portals: L.portals.filter(p => p.box3).map(p => ({ minX: p.box3.min.x, maxX: p.box3.max.x, minZ: p.box3.min.z, maxZ: p.box3.max.z })), kinds: set.kinds });
     if (!spots.length) return;
-    const data = await fetchBuf(); propInfo.file = !!data; if (!data) return;
-    let gltf; try { gltf = await new GLTFLoader().parseAsync(data.slice(0), ''); } catch (e) { return; }
-    if (L.levelId !== id || L.root !== token) return;   // gracz zdążył przejść do innego poziomu
-    const geos = {}; gltf.scene.traverse(o => { if (o.isMesh && o.geometry) geos[o.name] = o.geometry; });
+    const geos = await levelGeometries(gen); if (!geos) return;
+    if ((L.gen || 0) !== gen) return;   // gracz zdążył przejść do innego poziomu
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), p = new THREE.Vector3(), s = new THREE.Vector3(), c = new THREE.Color(), fy = L.floorY || 0;
     const by = {}; for (const sp of spots) (by[sp.name] = by[sp.name] || []).push(sp);
     for (const name of Object.keys(by)) {

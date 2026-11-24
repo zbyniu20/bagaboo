@@ -29,6 +29,9 @@ export function familyName(levelId) {
     return FAMILY_OF[base] || 'neutral';
 }
 export function familyFor(levelId) { return FAMILIES[familyName(levelId)]; }
+// Łamanie powtarzalności tekstur (cieniowanie bloków w engine.js): siła zmiany jasności i odcienia wg pozycji w świecie. Gry (arcade) prawie bez zmian: czytelność.
+export const TILE = { base: 0.11, arcade: 0.03, scale: 0.21 };
+export const tileStrength = (family) => family === 'arcade' ? TILE.arcade : TILE.base;
 export const knownLevels = () => Object.keys(FAMILY_OF);
 const lerp = (a, b, t) => a + (b - a) * t;
 // Korekta koloru bloku (hex 0xRRGGBB): nasycenie, potem ciągnięcie ku tonowi rodziny; jasność zostaje (luminancja bez zmian)

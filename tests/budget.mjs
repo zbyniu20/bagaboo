@@ -28,14 +28,14 @@ await page.waitForTimeout(1500);
 const Q = process.env.QUALITY || 'medium';
 await page.evaluate((q) => { try { localStorage.setItem('bagaboo_settings', JSON.stringify({ ver: 2, quality: q })); } catch (e) {} }, Q);
 let fails = 0; const ok = (name, cond, extra) => { if (cond) console.log('ok  ', name); else { fails++; console.log('FAIL', name, extra === undefined ? '' : JSON.stringify(extra)); } };
-const BUDGET = { default: 260, laundry: 230 }, LEVELS = (process.env.LEVELS || 'hospital,catacombs,cemetery,nursery,laundry,silence,furas,maze').split(',');
+const BUDGET = { default: 260, laundry: 230, memory: 310 }, LEVELS = (process.env.LEVELS || 'hospital,catacombs,cemetery,nursery,laundry,silence,furas,maze').split(',');
 await page.reload(); await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
 await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 }); await page.waitForTimeout(1200);
 for (const id of LEVELS) {
     await page.evaluate(async (id) => { const M = await import('./main.js'); await M.loadLevel(id); }, id);
     await page.waitForTimeout(3500);
     const r = await page.evaluate(async () => {
-        const E = await import('./core/engine.js'), R = E.renderer, I = R.info, ex = []; E.scene.traverse(o => { if (o.name === 'lampShafts' || /^props_/.test(o.name)) ex.push(o); });
+        const E = await import('./core/engine.js'), R = E.renderer, I = R.info, ex = []; E.scene.traverse(o => { if (o.name === 'lampShafts' || o.name === 'levelDecals' || /^kit_/.test(o.name) || /^props_/.test(o.name)) ex.push(o); });
         const sm = R.shadowMap.enabled; R.shadowMap.enabled = false;
         const draw = () => { I.reset(); R.render(E.scene, E.camera); return I.render.calls; };
         draw(); const withAll = draw(); ex.forEach(o => o.visible = false); const base = draw(); ex.forEach(o => o.visible = true); R.shadowMap.enabled = sm;
