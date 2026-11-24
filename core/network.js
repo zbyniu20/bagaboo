@@ -400,7 +400,9 @@ function spawnBlood(pos, n, k) {
         blood.push({ sp: sp, v: new THREE.Vector3((Math.random() - 0.5) * 2.4 * k, (0.8 + Math.random() * 2.2) * k, (Math.random() - 0.5) * 2.4 * k), life: 0 });
     }
 }
-export function bloodBurst(pos, n) { spawnBlood(pos, n, 1.4); }   // dla własnych rąk ofiary (levels/monster.js)
+export function bloodBurst(pos, n) { spawnBlood(pos, n, 1.4); }
+// Własna urwana część widziana oczami ofiary (levels/monster.js): kopia ręki albo głowy odlatuje łukiem i leży na ziemi (sprzątana razem z cudzymi przez clearDismember)
+export function tearOffLocal(src, floor) { throwPart(src, 'me', floor); }   // dla własnych rąk ofiary (levels/monster.js)
 function throwPart(src, id, floor) {   // kopia urwanego elementu (ręka, głowa) leci łukiem i leży na ziemi
     const c = src.clone(true); c.traverse(o => { if (o.isSprite) o.visible = false; });
     c.visible = true; c.position.copy(src.position); c.quaternion.copy(src.quaternion); scene.add(c);

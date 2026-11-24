@@ -39,9 +39,11 @@ for (const [code, name, wantL, wantR] of [[1, 'left hand', false, true], [2, 'ri
     await setCode(code); await settle(250);
     const mid = await state(); ok(code + ' ' + name + ': during the tearing animation both hands are still there', mid.L === true && mid.R === true, mid);
     await settle(1100);
+    const pop = await page.evaluate(async () => (await import('./levels/monster.js')).debugPop()); ok(code + ' ' + name + ': a "TORN OFF!" popup jumps up in front of the caught player', pop && pop.visible === true && pop.t > 0.5, pop);
     const s = await state(); ok(code + ' ' + name + ': after the animation the hands are ' + (wantL ? 'L shown' : 'L hidden') + ', ' + (wantR ? 'R shown' : 'R hidden'), s.L === wantL && s.R === wantR, s);
     await settle(1000); const s2 = await state(); ok(code + ' ' + name + ': the state is stable until the next round (no flicker)', JSON.stringify(s2) === JSON.stringify(s), s2);
     await setCode(0); await settle(300);
+    const popGone = await page.evaluate(async () => (await import('./levels/monster.js')).debugPop()); ok(code + ' ' + name + ': the popup disappears with the new round', popGone && popGone.visible === false, popGone);
     const back = await state(); ok(code + ' ' + name + ': a new round or the lobby restores the hands', back.L === true && back.R === true, back);
 }
 // opcja Gore wyłączona: nic się nie ukrywa

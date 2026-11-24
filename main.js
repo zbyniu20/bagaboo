@@ -337,22 +337,39 @@ $('btnKeyCreate').onclick = async () => {
     if (pin !== $('keyPin2').value) { acctMsg('The two PINs are different.', false); return; }
     acctBusy(true); const res = await SK.createKey($('acctNick').value.trim(), pin); acctBusy(false);
     if (!res.ok) { acctMsg(keyMsg(res), false); return; }
-    $('keyPin').value = $('keyPin2').value = ''; $('keyText').value = JSON.stringify({ [res.nick.toLowerCase()]: res.pub }); syncKeyUi();
+    rememberNow(res.nick, pin); $('keyPin').value = $('keyPin2').value = ''; $('keyText').value = JSON.stringify({ [res.nick.toLowerCase()]: res.pub }); syncKeyUi();
     if (res.registered) { confirmedNick = res.nick; acctMsg('PIN set. You are logged in as ' + res.nick + '.', true); syncAccountUi(); }
     else acctMsg('PIN set and key created. Send the public key below to the owner so it can be added to STAFF_KEYS (core/config.js). Until then nobody trusts it.', true);
 };
 $('btnKeyLogin').onclick = async () => {
-    acctBusy(true); const r = await SK.signIn($('keyPin').value); acctBusy(false); $('keyPin').value = '';
+    const typed = $('keyPin').value; acctBusy(true); const r = await SK.signIn(typed); acctBusy(false); $('keyPin').value = '';
     if (!r.ok) { acctMsg(keyMsg(r), false); return; }
+    rememberNow(r.nick, typed);
     confirmedNick = r.nick; acctMsg(''); syncAccountUi();
 };
 $('keyPin').addEventListener('keydown', (e) => { if (e.key === 'Enter') { if (SK.hasKey()) $('btnKeyLogin').click(); else $('keyPin2').focus(); } });
 $('btnKeyExport').onclick = () => { const t = SK.exportKey(); $('keyText').value = t; acctMsg(t ? 'Encrypted key. It only works with your PIN, but still do not share it.' : 'No staff key on this device.', !!t); };
 $('btnKeyImport').onclick = () => { const r = SK.importKey($('keyText').value); acctMsg(r.ok ? (r.registered ? 'Key imported. Enter your PIN and log in.' : 'Key imported, but its public key is not registered yet.') : keyMsg(r), !!r.ok); if (r.ok) { $('keyText').value = ''; syncKeyUi(); } };
+// Zapamiętanie nicku i PIN-u na tym urządzeniu (opcjonalne, domyślnie wyłączone): kto korzysta z urządzenia, wejdzie jako ekipa bez wpisywania PIN-u.
+// Wylogowanie zapomina PIN (nick zostaje do podpowiedzi), a odznaczenie pola usuwa wszystko.
+const REM_KEY = 'bagaboo_remember';
+const readRem = () => { try { const r = JSON.parse(localStorage.getItem(REM_KEY)); return r && typeof r.nick === 'string' ? r : null; } catch (e) { return null; } };
+const writeRem = (nick, pin) => { try { if (nick) localStorage.setItem(REM_KEY, JSON.stringify({ nick: nick, pin: pin || '' })); else localStorage.removeItem(REM_KEY); } catch (e) {} };
+function rememberNow(nick, pin) { if ($('keyRemember').checked) writeRem(nick, pin); else writeRem(''); }
+$('keyRemember').onchange = () => { if (!$('keyRemember').checked) writeRem(''); };
+(async () => {
+    const r = readRem(); if (!r || !AUTH.accountsOn()) return;
+    $('keyRemember').checked = true; $('acctNick').value = r.nick;
+    if (!r.pin || !SK.hasKey()) return;
+    const res = await SK.signIn(r.pin);
+    if (res.ok) { confirmedNick = res.nick; syncAccountUi(); }
+    else if (res.error === 'bad_pin') writeRem(r.nick, '');   // PIN się zmienił: nie próbujemy w kółko (nie zbliżamy się do blokady)
+})();
+
 syncKeyUi();
 $('btnGuest').onclick = () => { guestMode = true; acctMsg(''); syncAccountUi(); };
 $('btnToLogin').onclick = () => { guestMode = false; acctMsg(''); syncAccountUi(); };
-$('btnLogout').onclick = () => { confirmedNick = ''; guestMode = true; AUTH.logout(); acctMsg('Signed out.', true); };
+$('btnLogout').onclick = () => { { const r = readRem(); if (r) writeRem(r.nick, ''); } confirmedNick = ''; guestMode = true; AUTH.logout(); acctMsg('Signed out.', true); };
 $('btnRecoverySaved').onclick = () => { recoveryPending = false; $('recoveryBox').style.display = 'none'; $('recoveryCode').innerText = ''; syncAccountUi(); };
 syncAccountUi();
 { const la = AUTH.account(); if (la && la.local) confirmedNick = la.nick; syncAccountUi(); }   // klucz ekipy z tego urządzenia: tożsamość potwierdza podpis, nie serwer
