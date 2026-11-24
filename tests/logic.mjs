@@ -565,4 +565,17 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
         check('dust: motes drift slowly and stay inside the window for a long time', (() => { let p = { x: 3, y: 1, z: -2 }; const c = { x: 0, y: 1.6, z: 0 }; for (let i = 0; i < 6000; i++) { const q = DL.advance(p, 7, i * 0.016, 0.016, c); if (Math.hypot(q.x - p.x, q.z - p.z) > 0.01 && Math.abs(q.x - p.x) < 5) {} p = q; if (Math.abs(p.x - c.x) > DL.DUST.R + 1e-6 || Math.abs(p.z - c.z) > DL.DUST.R + 1e-6 || p.y < c.y - 1.3 || p.y > c.y + DL.DUST.H + 0.1 || !Number.isFinite(p.x + p.y + p.z)) return false; } return true; })());
         check('dust: wired (per frame in main.js, one Points object, disposed, off in calm mode)', /updateDust\(dt\)/.test(MJ6) && /new THREE\.Points/.test(DU) && /disposeDust/.test(DU) && /pts\.geometry\.dispose\(\)/.test(DU) && /GAMES_CALM\.on/.test(DU));
     }
+    {
+        const HL = await import('../core/heightlogic.js');
+        const TX = fs.readFileSync(new URL('../core/textures.js', import.meta.url), 'utf8');
+        const W = 256, wall = HL.heightField('wall', W, W), at = (f, x, y) => f[y * W + x];
+        const mean = (f) => f.reduce((a, b) => a + b, 0) / f.length;
+        check('height: every surface has values in 0..1 and is deterministic', HL.SURFACES.every(k => { const a = HL.heightField(k, 64, 64), b = HL.heightField(k, 64, 64); return a.every(v => v >= 0 && v <= 1) && a.every((v, i) => v === b[i]); }));
+        check('height: wall grooves are cut in (the 256 px grid, here at x=0 and x=64) and rivets stick out', at(wall, 0, 30) < mean(wall) - 0.2 && at(wall, 64, 30) < mean(wall) - 0.2 && at(wall, 3, 3) > mean(wall) + 0.1);
+        check('height: the floor has grooves between tiles and the wood has gaps between planks', (() => { const f = HL.heightField('floor', W, W), w = HL.heightField('wood', W, W); return at(f, 0, 100) < mean(f) - 0.2 && at(w, 100, 63) < mean(w) - 0.2; })());
+        check('height: the relief is independent of the colour (the generator takes no colour input, only the kind and the size)', HL.heightField.length === 3);
+        check('height: the result tiles without a seam (edge to edge difference is as small as between neighbours)', ['wall', 'floor', 'wood', 'plaster'].every(k => { const f = HL.heightField(k, 128, 128); let e = 0, n = 0; for (let j = 0; j < 128; j++) { e += Math.abs(f[j * 128] - f[j * 128 + 127]); n += Math.abs(f[j * 128 + 64] - f[j * 128 + 65]); } return e < n * 3 + 0.5; }));
+        check('height: flat field gives the flat normal and the strength tilts it the right way', (() => { const flat = new Float32Array(16).fill(0.5), n = HL.normalsFromHeight(flat, 4, 4, 3); const ramp = new Float32Array(16); for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) ramp[j * 4 + i] = i / 4; const r = HL.normalsFromHeight(ramp, 4, 4, 3); return Math.abs(n[0] - 127.5) < 1.5 && Math.abs(n[1] - 127.5) < 1.5 && n[2] > 254 && r[4 + 0 + 4] < 127; })());
+        check('height: normalFor uses it for known surfaces (wall, floor, wood, plaster are marked), luminance only for the rest', /heightField\(surf, w, h\)/.test(TX) && ['wall', 'floor', 'plaster', 'wood'].every(k => new RegExp("userData\\.surface = '" + k + "'").test(TX)));
+    }
 done('logic');

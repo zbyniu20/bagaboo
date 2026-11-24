@@ -264,9 +264,9 @@
     "semantic_hash": ""
   },
   "core/textures.js": {
-    "mtime": 1795377472.0468035,
-    "seen": 1795377979.4042087,
-    "ast_hash": "c45794057ead49ee6ce42c6493a2aae4",
+    "mtime": 1795478869.2454665,
+    "seen": 1795479242.6470037,
+    "ast_hash": "accaff4c36f7518413d40dbeaba0cff7",
     "semantic_hash": ""
   },
   "core/trainingdummy.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795476723.8993163,
-    "seen": 1795476779.095101,
-    "ast_hash": "5c0b4ad1c7524315ab8b78ea4293e965",
+    "mtime": 1795479181.8134851,
+    "seen": 1795479242.6473463,
+    "ast_hash": "ac3cc261072d6b700cacd82109df042a",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795476435.263333,
-    "seen": 1795476779.095112,
-    "ast_hash": "d5bcae99308e54043bc76fcc7c9d6716",
+    "mtime": 1795478869.2454665,
+    "seen": 1795479242.6473713,
+    "ast_hash": "988eccf25e92471e39404258de98ba5d",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795476711.3113155,
-    "seen": 1795476779.0946906,
-    "ast_hash": "40a5721497ac1edb5a62e0ab78bc52ef",
+    "mtime": 1795478869.2454665,
+    "seen": 1795479242.6471024,
+    "ast_hash": "b13ee321d1189d6ef4bca9d88cf10d3c",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795476435.2635655,
-    "seen": 1795476779.0947456,
-    "ast_hash": "ed91aa7ab4822da1909686f7720735c5",
+    "mtime": 1795478869.2454665,
+    "seen": 1795479242.6471357,
+    "ast_hash": "9ed0bab1b37b455bf8a6ae83cca29ba6",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10395,6 +10395,18 @@
     "mtime": 1795476589.3695054,
     "seen": 1795476779.0946596,
     "ast_hash": "cd2a3e0a5cc946568501118119f7bef6",
+    "semantic_hash": ""
+  },
+  "core/heightlogic.js": {
+    "mtime": 1795478841.167592,
+    "seen": 1795479242.6469371,
+    "ast_hash": "ed0678f9baf43def3129977c438d08bf",
+    "semantic_hash": ""
+  },
+  "tests/levelshot.mjs": {
+    "mtime": 1795478868.56053,
+    "seen": 1795479242.6470997,
+    "ast_hash": "8af0abc3399171c2c6664db36ef2283f",
     "semantic_hash": ""
   },
   "package-lock.json": {
