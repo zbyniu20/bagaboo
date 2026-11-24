@@ -29,6 +29,7 @@
     "../core/kitlogic.js",
     "../core/hapticlogic.js",
     "../core/silencelogic.js",
+    "../core/voicelogic.js",
     "../core/avatarfxlogic.js",
     "../core/acousticlogic.js",
     "../core/spectatelogic.js",

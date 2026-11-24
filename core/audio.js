@@ -6,6 +6,8 @@
 import { SETTINGS, GAMES_CALM } from './settings.js';
 import { buzz, hapticPlay } from './haptics.js';
 import { attenuate, sideOf } from './hapticlogic.js';
+import { buildVoice } from './voice.js';
+import { VOICE, micGated } from './voicelogic.js';
 import { LEVEL_DEFS } from './registry.js';
 import { occludedFilter, occludedGain } from './acousticlogic.js';
 import { tensionSmooth, tensionParams, hushMul } from './musiclogic.js';
@@ -414,6 +416,17 @@ function hapticAt(name, vol, pos, range) {
     if (!pos) { hapticPlay(name, vol); return; }
     const dx = pos.x - lis.x, dz = pos.z - lis.z, k = attenuate(Math.hypot(dx, dz), range) * (vol === undefined ? 1 : vol);
     if (k > 0) hapticPlay(name, k, sideOf(_f.x, _f.z, dx, dz));
+}
+// Głos potwora (szept z formantów, core/voice.js): przestrzenny i z okluzją jak inne dźwięki. Najwyżej VOICE.maxVoices naraz. Zwraca długość w s (0, gdy nic nie zagrało).
+let voices = 0, speechUntil = 0;
+export const voiceCount = () => voices;
+export function voiceSpeaking() { return !!ctx && micGated(ctx.currentTime, speechUntil); }   // bramka mikrofonu: głos z głośników nie jest głosem gracza
+export function speak(events, profile, pos, vol) {
+    if (!ctx || !events || !events.length || voices >= VOICE.maxVoices) return 0;
+    const v = buildVoice(ctx, events, profile, outAt(pos), noiseBuffer(2), vol === undefined ? 0.9 : vol);
+    voices++; speechUntil = Math.max(speechUntil, ctx.currentTime + v.duration); v.onend = () => { voices = Math.max(0, voices - 1); };
+    hapticAt('whisper', 1, pos, 8);
+    return v.duration;
 }
 export function step(vol, pos) {
     if (!ctx || vol < 0.02) return;

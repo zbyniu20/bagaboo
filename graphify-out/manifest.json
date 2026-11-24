@@ -1,14 +1,14 @@
 {
   "core/ambience.js": {
-    "mtime": 1795520981.0924387,
-    "seen": 1795521850.4351277,
-    "ast_hash": "556bcccc594e96cef702626a0e70dd47",
+    "mtime": 1795521946.4065576,
+    "seen": 1795522490.282887,
+    "ast_hash": "98b07d6ef894afc83829dd71af8c425b",
     "semantic_hash": ""
   },
   "core/audio.js": {
-    "mtime": 1795520952.1163464,
-    "seen": 1795521850.4351325,
-    "ast_hash": "49422a0787d8632f8a328d9320fa18f5",
+    "mtime": 1795521929.9898794,
+    "seen": 1795522490.282893,
+    "ast_hash": "a1ea4d75e5de95a685ef037bbf39c123",
     "semantic_hash": ""
   },
   "core/auth.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795521782.884358,
-    "seen": 1795521850.4356415,
-    "ast_hash": "de90975070d7739e80fbac615cc8bb88",
+    "mtime": 1795522427.5803964,
+    "seen": 1795522490.2834637,
+    "ast_hash": "a3d0855d8018ebc8daf4dac7076de2dd",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795520962.9872642,
-    "seen": 1795521850.4356484,
-    "ast_hash": "3fb7b5920d6077ef30e2448f1ea54fe7",
+    "mtime": 1795521946.4070902,
+    "seen": 1795522490.2834713,
+    "ast_hash": "b4e04f9685b4fe2cbe336456502a8bf1",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795520981.0939388,
-    "seen": 1795521850.4353843,
-    "ast_hash": "309d716a16903be9bb2546e15b23181e",
+    "mtime": 1795521982.811812,
+    "seen": 1795522490.2831705,
+    "ast_hash": "c8aa6ba22435c7a61cd9257840857a4f",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -582,9 +582,9 @@
     "semantic_hash": ""
   },
   "tests/modes/lobby.mjs": {
-    "mtime": 1795375687.832264,
-    "seen": 1795376188.2606628,
-    "ast_hash": "1d78aa59f655210177ebd8b857a7ebd4",
+    "mtime": 1795521954.7497416,
+    "seen": 1795522490.283178,
+    "ast_hash": "3b2726dc5d0bc83d2bac8f7c5b072f71",
     "semantic_hash": ""
   },
   "core/leveldata.js": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795520962.9875689,
-    "seen": 1795521850.435422,
-    "ast_hash": "42f78a6add7786020a350c7df8b84a1f",
+    "mtime": 1795521946.4075463,
+    "seen": 1795522490.283213,
+    "ast_hash": "951925bf1054597c24eac9366cb9cd3c",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10533,6 +10533,24 @@
     "mtime": 1795521309.510685,
     "seen": 1795521850.4354136,
     "ast_hash": "6ccd09108d7aa347e9e821ff92ad2a3f",
+    "semantic_hash": ""
+  },
+  "core/voice.js": {
+    "mtime": 1795521935.0419471,
+    "seen": 1795522490.283073,
+    "ast_hash": "77251d09b679379f8d13203472f349f2",
+    "semantic_hash": ""
+  },
+  "core/voicelogic.js": {
+    "mtime": 1795521898.8843648,
+    "seen": 1795522490.2830768,
+    "ast_hash": "3f1a4102e6a1617c194fe258826a9f7a",
+    "semantic_hash": ""
+  },
+  "tests/voice.mjs": {
+    "mtime": 1795521998.2127755,
+    "seen": 1795522490.2832155,
+    "ast_hash": "dd758489158298d5133f04e3e92d3e66",
     "semantic_hash": ""
   },
   "package-lock.json": {
