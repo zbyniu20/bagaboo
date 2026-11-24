@@ -607,4 +607,10 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
         check('props: the mesh names agree with the Blender script and the file exists and is small', Object.values(PL.PROPS).every(p => PY.includes("'" + p.mesh.replace('prop_', '') + "'")) && fs.existsSync(new URL('../assets/props/props.glb', import.meta.url)) && fs.statSync(new URL('../assets/props/props.glb', import.meta.url)).size < 400000 && Object.keys(PL.PROPS).length <= 10);
         check('props: wired (called after the level is built, instances, no collision, level check after loading, parsed again for each level)', /addLevelProps\(L\.levelId\)/.test(MJ8) && /new THREE\.InstancedMesh/.test(PR) && !/addCollider|L\.obstacles\.push/.test(PR) && /L\.levelId !== id \|\| L\.root !== token/.test(PR) && /data\.slice\(0\)/.test(PR));
     }
+    {
+        const AL = await import('../core/artlogic.js'), EN = fs.readFileSync(new URL('../core/engine.js', import.meta.url), 'utf8');
+        check('tile break: games (arcade) get almost none, every other family the full strength, and the strength stays small enough not to wash the textures out', AL.tileStrength('arcade') < AL.tileStrength('clinical') && AL.tileStrength('arcade') <= 0.05 && ['neutral', 'clinical', 'crypt', 'industrial', 'hotel', 'dread'].every(f => AL.tileStrength(f) === AL.TILE.base) && AL.TILE.base <= 0.15);
+        check('tile break: wired in the block shader (world position varying, uniform strength, one cache key, albedo only)', /vTileP = \(modelMatrix \* vec4\(position, 1\.0\)\)\.xyz/.test(EN) && /uniforms\.uTile = \{ value: tile \|\| 0 \}/.test(EN) && /customProgramCacheKey = \(\) => 'crispEdge'/.test(EN) && /tileStrength\(familyName\(L\.levelId\)\)/.test(EN) && /diffuseColor\.rgb \*= 1\.0 \+ \(tn - 0\.5\)/.test(EN));
+        check('tile break: maze variants and unknown levels still resolve to a family (hyphen, underscore)', AL.familyName('maze-48213') === 'industrial' && AL.familyName('maze_3') === 'industrial' && AL.familyName('nope') === 'neutral');
+    }
 done('logic');

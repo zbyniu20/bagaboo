@@ -32,6 +32,25 @@ for (const id of LEVELS) {
     await page.evaluate(async (id) => { const M = await import('./main.js'); await M.loadLevel(id); }, id);
     await page.waitForTimeout(3000);
     await page.evaluate(async () => { try { const T = await import('./core/tutorial.js'); T.skipTutorial(); } catch (e) {} });
+    if (process.env.WALL) {
+        const w = await page.evaluate(async (k) => {
+            const E = await import('./core/engine.js'), PL = await import('./core/player.js'), D = await import('./core/desktop.js'), sp = E.L.spawn || [0, 1, 0], fy = E.L.floorY || 0, c = [];
+            const obs = E.L.obstacles.filter(b => b.box3), inside = (x, z) => obs.some(b => b.box3.max.y > fy + 0.25 && b.box3.min.y < fy + 1.8 && x > b.box3.min.x && x < b.box3.max.x && z > b.box3.min.z && z < b.box3.max.z);
+            for (const b of obs) { const q = b.box3; if (q.max.y - q.min.y < 2.2 || q.min.y > fy + 0.6) continue;
+                for (const [nx, nz, len, cx, cz] of [[0, -1, q.max.x - q.min.x, (q.min.x + q.max.x) / 2, q.min.z], [0, 1, q.max.x - q.min.x, (q.min.x + q.max.x) / 2, q.max.z], [-1, 0, q.max.z - q.min.z, q.min.x, (q.min.z + q.max.z) / 2], [1, 0, q.max.z - q.min.z, q.max.x, (q.min.z + q.max.z) / 2]]) {
+                    if (len < 3) continue; const px = cx + nx * 2.2, pz = cz + nz * 2.2; if (inside(px, pz) || inside(cx + nx * 0.4, cz + nz * 0.4) || px < E.L.bounds.minX || px > E.L.bounds.maxX || pz < E.L.bounds.minZ || pz > E.L.bounds.maxZ) continue;
+                    c.push({ px, pz, yaw: Math.atan2(nx, nz), d: Math.hypot(px - sp[0], pz - sp[2]) }); } }
+            c.sort((a, b) => a.d - b.d); const f = c[Math.min(c.length - 1, k)]; if (!f) return null;
+            PL.setPlayerPosition(f.px, fy + 1.2, f.pz); D.setDesktopFacing(f.yaw); return f;
+        }, Number(process.env.WALL) - 1);
+        console.log('ściana:', JSON.stringify(w)); await page.waitForTimeout(1500);
+    }
+    if (process.env.CLEAN !== '0') await page.evaluate(async () => {   // HUD przy kamerze gra przestawia co klatkę, więc chowamy go dokładnie na czas rysowania
+        const E = await import('./core/engine.js'), r = E.renderer, orig = r.render.bind(r);
+        r.render = (sc, cam) => { const hid = []; for (const o of E.camera.children) if ((o.isMesh || o.isGroup) && o.visible) { o.visible = false; hid.push(o); } const out = orig(sc, cam); for (const o of hid) o.visible = true; return out; };
+        for (const e of document.querySelectorAll('body *')) if (/^Desktop test mode/.test(e.innerText || '') && getComputedStyle(e).position === 'fixed') e.style.setProperty('display', 'none', 'important');
+        const v = document.getElementById('VRButton'); if (v) v.style.setProperty('display', 'none', 'important');
+    });
     if (process.env.NEARPROP) {
         const info = await page.evaluate(async (pick) => {
             const E = await import('./core/engine.js'), PL = await import('./core/player.js'), m = new E.THREE.Matrix4(), c = [];
