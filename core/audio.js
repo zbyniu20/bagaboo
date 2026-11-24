@@ -4,11 +4,14 @@
 // initAudio() musi zostać wywołane po kliknięciu przycisku (wymóg przeglądarek)
 // ==========================================
 import { SETTINGS, GAMES_CALM } from './settings.js';
-import { buzz } from './haptics.js';
+import { buzz, hapticPlay } from './haptics.js';
+import { attenuate, sideOf } from './hapticlogic.js';
+import { buildVoice } from './voice.js';
+import { VOICE, micGated } from './voicelogic.js';
 import { LEVEL_DEFS } from './registry.js';
 import { occludedFilter, occludedGain } from './acousticlogic.js';
 import { tensionSmooth, tensionParams, hushMul } from './musiclogic.js';
-let ctx = null, master = null, droneGain = null, scareBus = null, shaper = null, droneLp = null, tensGain = null, tensLfoG = null, tensLfo = null, tens = 0;
+let duck = 1, ambBus = null, ctx = null, master = null, droneGain = null, scareBus = null, shaper = null, droneLp = null, tensGain = null, tensLfoG = null, tensLfo = null, tens = 0;
 const DRONE = 0.07;
 const hb = { next: 0 };
 // Haki dla muzyki i ambientu (music.js, ambience.js): zmiana głośności, wyciszenie przy jumpscare'ie, poziom zagrożenia
@@ -17,7 +20,9 @@ let threat = { i: 0, until: 0 };
 // Zagrożenie 0..1: bicie serca (im bliżej potwór) i głośne zdarzenia podbijają je na krótko; muzyka robi się szybsza i gęstsza
 export function bumpThreat(i, secs) { if (!ctx) return; const t = ctx.currentTime; if (i >= threat.i || t > threat.until) threat = { i: i, until: t + (secs || 0.4) }; }
 export function threatLevel() { return ctx && ctx.currentTime < threat.until ? threat.i : 0; }
-export function audioBus() { return ctx ? { ctx: ctx, master: master } : null; }
+export function audioBus() { return ctx ? { ctx: ctx, master: master, ambient: ambBus || master } : null; }
+// Cisza (core/silencelogic.js): mnożnik szyny ambientu (ambient, drone, warstwa napięcia). Sygnały zagrożenia idą wprost do master i nigdy nie są tłumione.
+export function setAmbientDuck(g) { duck = g; if (ambBus && ctx) ambBus.gain.setTargetAtTime(Math.max(0, Math.min(1, g)), ctx.currentTime, 0.05); }
 export function spatial(pos, dest, raw) { return ctx ? outAt(pos, dest, raw) : null; }   // raw = bez filtra odległości i pogłosu (dla źródeł działających długo, bo odległość się zmienia)
 export function noiseBuf(sec) { return ctx ? noiseBuffer(sec) : null; }
 
@@ -36,7 +41,8 @@ export function initAudio() {
     // Niskie, pulsujące tło
     droneGain = ctx.createGain(); droneGain.gain.value = DRONE * SETTINGS.music;
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220;
-    droneGain.connect(lp); lp.connect(master); droneLp = lp;
+    ambBus = ctx.createGain(); ambBus.connect(master);   // szyna ambientu: drone, warstwa napięcia i pętle ambientu (cisza tłumi tylko ją)
+    droneGain.connect(lp); lp.connect(ambBus); droneLp = lp;
     for (const f of [41, 41.6, 61.7]) { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(droneGain); o.start(); }
     const lfo = ctx.createOscillator(), lfoG = ctx.createGain(); lfo.frequency.value = 0.07; lfoG.gain.value = 120;
     lfo.connect(lfoG); lfoG.connect(lp.frequency); lfo.start();
@@ -45,7 +51,7 @@ export function initAudio() {
     for (const f of [58.3, 82.4, 116.5]) { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(tensGain); o.start(); }
     tensLfo = ctx.createOscillator(); tensLfoG = ctx.createGain(); tensLfo.frequency.value = 0.07; tensLfoG.gain.value = 0; tensLfo.connect(tensLfoG); tensLfoG.connect(tensGain.gain); tensLfo.start();
     // Co jakiś czas odległe skrzypienie
-    setInterval(() => { if (Math.random() < 0.35) creak(0.25); }, 9000);
+    setInterval(() => { if (duck > 0.5 && Math.random() < 0.35) creak(0.25); }, 9000);   // nie w oknie ciszy (core/silencelogic.js)
 }
 // Muzyka napięcia: target 0..1 (z reżysera grozy), hush = potwór tuż obok. Wołane co klatkę, wygładza się samo.
 export function setTension(target, dt, hush) {
@@ -296,6 +302,7 @@ export function stinger(pos) {
 // Szept (z pozycją: dokładnie z tego miejsca, bez pozycji: z boku)
 export function whisper(pos) {
     if (!ctx) return;
+    hapticAt('whisper', 1, pos, 8);
     const t0 = ctx.currentTime, n = ctx.createBufferSource(); n.buffer = noiseBuffer(1.6);
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 6;
     for (let i = 0; i <= 8; i++) bp.frequency.setValueAtTime(1500 + Math.random() * 2500, t0 + i * 0.18);
@@ -306,6 +313,7 @@ export function whisper(pos) {
 // Metaliczny huk (wyłamane drzwi klatki, otwarta krata)
 export function bang(pos) {
     if (!ctx) return;
+    hapticAt('knock', 1, pos, 14, 2.0);
     const t0 = ctx.currentTime, dst = outAt(pos);
     const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
     o.frequency.setValueAtTime(120, t0); o.frequency.exponentialRampToValueAtTime(35, t0 + 0.5);
@@ -363,6 +371,7 @@ export function crackle(pos) {
 // Oddech potwora (głęboki wdech i wydech szumu przez filtr; vol 0..1, pos = {x,y,z}): słychać go przestrzennie, gdy potwór jest blisko
 export function breath(pos, vol) {
     if (!ctx) return;
+    if (pos) hapticAt('breath', Math.min(1, (vol || 0.3) * 1.5), pos, 6);
     const t0 = ctx.currentTime, dst = pos ? outAt(pos) : shaper, v = Math.max(0.02, Math.min(1, vol || 0.4));
     const n = ctx.createBufferSource(); n.buffer = noiseBuffer(2.2);
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(380, t0); bp.frequency.linearRampToValueAtTime(620, t0 + 0.7); bp.frequency.linearRampToValueAtTime(300, t0 + 1.7); bp.Q.value = 1.2;
@@ -402,8 +411,29 @@ export function roar(vol, pos) {
     const ng = ctx.createGain(); ng.gain.value = 0.6; n.connect(bp); bp.connect(ng); ng.connect(ws); n.start(t0);
 }
 // Ciężki krok potwora (pos = miejsce stopy)
+// Wzór wibracji dla dźwięku w świecie: siła z odległości od gracza, strona z kierunku źródła względem patrzenia. Bez położenia (piknięcia odliczania) i ze źródeł bliżej niż
+// minDist (poziomo) NIE wibruje: to własne kroki i uderzenia gracza (młotek, stopy w Ciszy), które mają własne wibracje albo żadnych.
+function hapticAt(name, vol, pos, range, minDist) {
+    if (!pos) return;
+    const dx = pos.x - lis.x, dz = pos.z - lis.z, d = Math.hypot(dx, dz);
+    if (d < (minDist || 0)) return;
+    const k = attenuate(d, range) * (vol === undefined ? 1 : vol);
+    if (k > 0) hapticPlay(name, k, sideOf(_f.x, _f.z, dx, dz));
+}
+// Głos potwora (szept z formantów, core/voice.js): przestrzenny i z okluzją jak inne dźwięki. Najwyżej VOICE.maxVoices naraz. Zwraca długość w s (0, gdy nic nie zagrało).
+let voices = 0, speechUntil = 0;
+export const voiceCount = () => voices;
+export function voiceSpeaking() { return !!ctx && micGated(ctx.currentTime, speechUntil); }   // bramka mikrofonu: głos z głośników nie jest głosem gracza
+export function speak(events, profile, pos, vol) {
+    if (!ctx || !events || !events.length || voices >= VOICE.maxVoices) return 0;
+    const v = buildVoice(ctx, events, profile, outAt(pos), noiseBuffer(2), vol === undefined ? 0.9 : vol);
+    voices++; speechUntil = Math.max(speechUntil, ctx.currentTime + v.duration); v.onend = () => { voices = Math.max(0, voices - 1); };
+    hapticAt('whisper', 1, pos, 8);
+    return v.duration;
+}
 export function step(vol, pos) {
     if (!ctx || vol < 0.02) return;
+    hapticAt('step', vol, pos, 9, 1.0);
     const t0 = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
     o.type = 'sine'; o.frequency.setValueAtTime(70, t0); o.frequency.exponentialRampToValueAtTime(32, t0 + 0.25);
     env(g, t0, vol, 0.01, 0.3); o.connect(g); g.connect(outAt(pos)); o.start(t0); o.stop(t0 + 0.35);
@@ -509,6 +539,7 @@ export function purr(pos, vol) {
 // Warkot przed skokiem (Furas): niska piła z szybką modulacją i szumem, z kierunku potwora
 export function growl(pos) {
     if (!ctx) return;
+    hapticAt('growl', 1, pos, 10);
     const t0 = ctx.currentTime, dst = pos ? outAt(pos, scareBus) : scareBus;
     const o = ctx.createOscillator(), o2 = ctx.createOscillator(), lp = ctx.createBiquadFilter(), am = ctx.createGain(), e = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
     o.type = 'sawtooth'; o2.type = 'square'; o.frequency.setValueAtTime(95, t0); o.frequency.linearRampToValueAtTime(58, t0 + 0.9); o2.frequency.setValueAtTime(47, t0); o2.frequency.linearRampToValueAtTime(30, t0 + 0.9);

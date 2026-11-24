@@ -71,7 +71,9 @@ await page.evaluate(async () => { (await import('./core/economy.js')).SAVE.walle
 await wait(500);
 const placed = await page.evaluate(async () => (await import('./levels/home.js')).debug().slots[0]); ok('home: a statue could be placed for the test', placed === 'statue', placed);
 let h = await hh('lights'); ok('home: the lights flicker for a moment', h.flick > 0, h);
+await page.evaluate(() => { window.__rnd = Math.random; Math.random = () => 0.1; });   // migotanie losuje przyciemnienie w każdej klatce (55%), a w renderowaniu programowym klatek w oknie próbkowania jest kilka: wymuszamy przyciemnienie, żeby test nie był loteryjny
 await wait(300); const lv = []; for (let i = 0; i < 12; i++) { lv.push(...(await hh()).lights); await wait(60); }
+await page.evaluate(() => { Math.random = window.__rnd; });
 ok('home: during the flicker the lights dip to a fraction of their power', Math.min(...lv) < 10, lv.slice(0, 6));
 await wait(1500); h = await hh(); ok('home: afterwards the lights are back at full power', h.flick <= 0 && h.lights.every(v => Math.abs(v - 36) < 1e-9), h);
 h = await hh('writing'); ok('home: a message appears on the wall', h.write >= 0, h);

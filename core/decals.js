@@ -14,7 +14,7 @@ export function addLevelDecals(levelId, kind, calm) {
     const set = decalSet(levelId, familyName(levelId), kind);
     if (!set || !decalEnabled(SETTINGS.quality, !!calm)) return null;
     const bx = L.obstacles.filter(b => b.box3).map(b => ({ minX: b.box3.min.x, maxX: b.box3.max.x, minY: b.box3.min.y, maxY: b.box3.max.y, minZ: b.box3.min.z, maxZ: b.box3.max.z }));
-    const spots = placeDecals({ seed: set.seed, count: decalCount(set, SETTINGS.quality), area: L.bounds, floorY: L.floorY || 0, boxes: bx, spawn: L.spawn, reserved: L.reserved, portals: L.portals.filter(p => p.box3).map(p => ({ minX: p.box3.min.x, maxX: p.box3.max.x, minZ: p.box3.min.z, maxZ: p.box3.max.z })), kinds: set.kinds });
+    const spots = placeDecals({ seed: set.seed + ((L.visit || 0) % 997), count: decalCount(set, SETTINGS.quality), area: L.bounds, floorY: L.floorY || 0, boxes: bx, spawn: L.spawn, reserved: L.reserved, portals: L.portals.filter(p => p.box3).map(p => ({ minX: p.box3.min.x, maxX: p.box3.max.x, minZ: p.box3.min.z, maxZ: p.box3.max.z })), kinds: set.kinds });
     if (!spots.length) return null;
     const pos = [], uv = [], col = [], idx = [];
     for (const d of spots) {

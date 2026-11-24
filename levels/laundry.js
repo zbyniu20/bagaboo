@@ -11,6 +11,7 @@ import { levelReward, recordTime, diffOf } from '../core/economy.js';
 import { createGhost } from '../core/runkit.js';
 import { createEvents } from '../core/events.js';
 import { toast } from '../core/terminal.js';
+import { newMemory, hideStep, checkTick } from '../core/memorylogic.js';
 import { hands, releaseAll } from '../core/player.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
@@ -65,7 +66,7 @@ export function build() {
     L.spawn = info.spawn.slice();
     L.bounds = { minX: X0 + 0.4, maxX: X1 - 0.4, minZ: Z1 + 0.4, maxZ: Z0 - 0.4, maxY: H - 0.4 };
     L.onNoise = onNoise;
-    S = { ev: createEvents('laundry', { skip: ['fog'] }), df: diffOf('laundry'), ghost: createGhost('laundry'), carried: false, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', valves: [], safe: [], soap: null, vents: [], drums: [], batch: { blocks: {}, parts: {} }, nextSteam: 25, steam: 0,
+    S = { mem: newMemory(Math.random, diffOf('laundry').id), checking: false, ev: createEvents('laundry', { skip: ['fog'] }), df: diffOf('laundry'), ghost: createGhost('laundry'), carried: false, clock: 0, runT: 0, introT: INTRO_TIME, phase: 'intro', valves: [], safe: [], soap: null, vents: [], drums: [], batch: { blocks: {}, parts: {} }, nextSteam: 25, steam: 0,
           machT: 2, hudT: 0, caughtT: -1, leaving: false, done: 0, rage: false, fx: [], lamps: [], blackout: 0, nextBlackout: 35, glimpseT: 18, rumbleT: 12 };
     buildHall();
     buildMachines();
@@ -506,6 +507,11 @@ function thinkMonster(dt, t, p) {
     checkFake(dt, p);
     const WALK = WALK0 * S.df.speed, INVESTIGATE = INVESTIGATE0 * S.df.speed, SPRINT = SPRINT0 * S.df.speed, RAGE = RAGE0 * S.df.speed;
     const tm = S.tm, safe = inSafe(p) || p.y - 0.35 > SAFE_HEIGHT;
+    // Potwór uczy się kryjówek (core/memorylogic.js): jeśli chowasz się wciąż w tym samym bębnie, co jakiś czas idzie go sprawdzić. Zasada ochrony bębna się NIE zmienia.
+    const hidIn = S.safe.findIndex((b, i) => b.containsPoint(p) && !S.fakeUsed.has(i));
+    hideStep(S.mem, dt, hidIn >= 0 ? hidIn : null);
+    const learned = tm.mode === 'patrol' ? checkTick(S.mem, dt, true, S.df.id, Math.random) : null;
+    if (learned !== null && S.safe[learned]) { const b = S.safe[learned]; tm.mode = 'investigate'; tm.investigate = new THREE.Vector3((b.min.x + b.max.x) / 2, 0, (b.min.z + b.max.z) / 2); tm.pathT = 0; tm.waitT = 0; S.checking = true; toast('He remembers where you hide...', '#ff8a6a'); }
     const sees = !safe && canSee(p);
     if (sees && tm.mode !== 'chase') {
         if (S.clock - tm.screechT > 6) { SFX.screech({ x: tm.x, y: 2.5, z: tm.z }); tm.screechT = S.clock; }   // audio-jumpscare
@@ -515,7 +521,7 @@ function thinkMonster(dt, t, p) {
     // Cel ruchu zależnie od trybu
     let target = null, speed = WALK;
     if (tm.mode === 'chase') { target = [p.x, p.z]; speed = SPRINT; }
-    else if (tm.mode === 'investigate' && tm.investigate) { target = [tm.investigate.x, tm.investigate.z]; speed = INVESTIGATE; if (Math.hypot(tm.x - target[0], tm.z - target[1]) < 1.2) { tm.waitT += dt; if (tm.waitT > 3) { tm.waitT = 0; tm.mode = 'patrol'; tm.investigate = null; } } }
+    else if (tm.mode === 'investigate' && tm.investigate) { target = [tm.investigate.x, tm.investigate.z]; speed = INVESTIGATE; if (Math.hypot(tm.x - target[0], tm.z - target[1]) < 1.2) { if (S.checking && tm.waitT === 0) SFX.bang({ x: tm.x, y: 1.2, z: tm.z }); tm.waitT += dt; if (tm.waitT > 3) { tm.waitT = 0; tm.mode = 'patrol'; tm.investigate = null; S.checking = false; } } }
     else {
         if (tm.mode === 'rage') speed = RAGE;
         const wp = S.patrol[tm.wp]; target = wp;

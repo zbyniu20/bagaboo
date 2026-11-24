@@ -4,17 +4,23 @@
 // oraz losowe odgłosy z kierunku wokół gracza (kapanie, odległe huki, skrzypienie, pohukiwanie sowy, dzwon, kliknięcia automatów).
 // Dźwięk idzie przez HRTF, więc słychać kierunek i odległość. Głośność = suwak Effects.
 // ==========================================
+import { familyName } from './artlogic.js';
+import { silenceStep, newSilence, silenceAllowed } from './silencelogic.js';
 import { THREE, camera, scene, lighting, L, tex } from './engine.js';
 import { buildMannequin, addMonsterFace } from './mannequin.js';
 import { voiceLevel, voiceSmooth, voiceHeard } from './hauntlogic.js';
 import { toast } from './terminal.js';
 import { LEVEL_DEFS } from './registry.js';
-import { audioBus, spatial, noiseBuf, creak, bang, whisper, setRoom, breath, growl, step, stinger, pa, childLaugh, micLevel, setTension } from './audio.js';
+import { mutFactor } from './mutators.js';
+import { speak, voiceSpeaking, voiceCount } from './audio.js';
+import { pickPhrase, profileFor, textToEvents, voiceTick, newVoiceState } from './voicelogic.js';
+import { SAVE } from './economy.js';
+import { setAmbientDuck, audioBus, spatial, noiseBuf, creak, bang, whisper, setRoom, breath, growl, step, stinger, pa, childLaugh, micLevel, setTension } from './audio.js';
 import { GAMES_CALM, SETTINGS } from './settings.js';
 
 // loops: stałe źródła [typ, [[x,y,z], ...]], rand: losowe odgłosy { t: typ, e: [min,max] s między, d: [min,max] m od gracza, v: głośność }
 const DEFS = Object.fromEntries(LEVEL_DEFS.filter(d => d.ambience).map(d => [d.id, d.ambience]));   // z core/registry.js
-export const DREAD = { hush: false, near: 99, tension: 0, apps: 0, scared: 0, fogMul: 1, voice: 0 };   // voice: wygładzony poziom głosu z mikrofonu 0..1 (poziomy z potworami: heardVoice)   // fogMul: mnożnik gęstości mgły ustawiany przez tryb (np. Final Hunt w Become the Monster)   // stan reżysera grozy (dreadUpdate): odległość do najbliższego potwora i napięcie 0..1
+export const DREAD = { silent: false, hush: false, near: 99, tension: 0, apps: 0, scared: 0, fogMul: 1, voice: 0 };   // voice: wygładzony poziom głosu z mikrofonu 0..1 (poziomy z potworami: heardVoice)   // fogMul: mnożnik gęstości mgły ustawiany przez tryb (np. Final Hunt w Become the Monster)   // stan reżysera grozy (dreadUpdate): odległość do najbliższego potwora i napięcie 0..1
 let cur = null, loops = [], timers = [], pending = true;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const _p = { x: 0, y: 0, z: 0 };
@@ -45,7 +51,7 @@ function oneShot(ctx, def, pos) {
 }
 // Stałe źródła: zwraca { stop(), tick(dt) }
 function startLoop(ctx, type, pos) {
-    const dst = pos ? spatial({ x: pos[0], y: pos[1], z: pos[2] }, null, true) : audioBus().master, nodes = [];
+    const dst = pos ? spatial({ x: pos[0], y: pos[1], z: pos[2] }, audioBus().ambient, true) : audioBus().ambient, nodes = [];
     const gainNode = ctx.createGain(); gainNode.connect(dst);
     const src = (kind, f, q) => { const s = ctx.createBufferSource(); s.buffer = noiseBuf(2); s.loop = true; const fl = ctx.createBiquadFilter(); fl.type = kind; fl.frequency.value = f; if (q) fl.Q.value = q; s.connect(fl); fl.connect(gainNode); s.start(); nodes.push(s); return fl; };
     const osc = (wave, f) => { const o = ctx.createOscillator(); o.type = wave; o.frequency.value = f; o.connect(gainNode); o.start(); nodes.push(o); return o; };
@@ -77,7 +83,7 @@ function tick() {
         timers = (cur.rand || []).map(r => rnd(r.e[0], r.e[1]) * 0.6);
     }
     for (const l of loops) if (l.tick) l.tick();
-    (cur.rand || []).forEach((r, i) => { timers[i] -= dt; if (timers[i] <= 0) { timers[i] = rnd(r.e[0], r.e[1]); if (!DREAD.hush && !((r.t === 'pa' || r.t === 'laugh') && SETTINGS.lobbyEvents === false)) oneShot(ctx, r, aroundPlayer(r.d)); } });   // blisko potwora ambient milknie: słychać tylko jego
+    (cur.rand || []).forEach((r, i) => { timers[i] -= dt; if (timers[i] <= 0) { timers[i] = rnd(r.e[0], r.e[1]); if (!DREAD.hush && !DREAD.silent && !((r.t === 'pa' || r.t === 'laugh') && SETTINGS.lobbyEvents === false)) oneShot(ctx, r, aroundPlayer(r.d)); } });   // blisko potwora ambient milknie: słychać tylko jego
 }
 setInterval(tick, 250);
 
@@ -86,6 +92,7 @@ setInterval(tick, 250);
 // ambient milknie (poniżej 9 m), słychać jego kroki, oddech, charczenie i szepty za plecami, latarka się zacina i gaśnie na ułamki sekundy, a mgła gęstnieje.
 // Wyłączone w BagaBoo Games (GAMES_CALM). Rejestracja jest ważna tylko dla poziomu, który ją zrobił (id z L.levelId).
 let dread = null;
+let lastDuck = 1; const SIL = newSilence(), VST = newVoiceState();   // cisza (core/silencelogic.js): stan okien ciszy
 const _dp = new THREE.Vector3(), _fw = new THREE.Vector3(), dst = { scaredT: 0, blackT: 0, hideFn: null, stepT: [], last: [], breathT: 3, growlT: 6, whisperT: 8, stutter: 0, mul: 1, lampDirty: false, fogDirty: false };
 // opts: { hide(on): chowa/pokazuje potwory (znikają na czas jumpscare'a), apparitions: false wyłącza zjawy (Memory, Cisza, Room 000 mają własne) }
 export function setDread(fn, opts) { dread = fn ? { id: L.levelId, fn: fn, hide: opts && opts.hide, app: !(opts && opts.apparitions === false), calm: !!(opts && opts.calm) } : null; }   // calm: true = działa też w BagaBoo Games (kroki, oddech, latarka, mgła; bez jumpscare'ów i zjaw)
@@ -122,13 +129,13 @@ export function dreadAppear(kind) {   // też dla testów: wymusza zjawę
 // Głos z mikrofonu gracza: potwór w poziomie z reżyserem grozy może go usłyszeć. mult: mnożnik zasięgu (np. 1,3 na Nightmare, HIDDEN_MUL dla ukrytego). Pierwszy raz w poziomie ostrzega napisem.
 let voiceToast = false;
 export function heardVoice(dist, mult) {
-    const h = voiceHeard(DREAD.voice, dist, mult);
+    const h = voiceHeard(DREAD.voice, dist, mult * mutFactor('hear'));
     if (h && !voiceToast) { voiceToast = true; toast('Your voice carries: monsters hear your microphone!', '#ff8a6a'); }
     return h;
 }
 export function dreadUpdate(dt) {
     dt = Math.min(0.1, dt);
-    DREAD.voice = voiceSmooth(DREAD.voice, voiceLevel(micLevel()), dt);
+    DREAD.voice = voiceSmooth(DREAD.voice, voiceLevel(voiceSpeaking() ? 0 : micLevel()), dt);   // w czasie głosu potwora mikrofon liczy się jak cisza (echo z głośników)
     let list = null;
     if (dread && dread.id === L.levelId && (!GAMES_CALM.on || dread.calm)) { try { list = dread.fn(); } catch (e) { dread = null; } }
     camera.getWorldPosition(_dp);
@@ -143,6 +150,10 @@ export function dreadUpdate(dt) {
     }
     const a = near < 16 ? 1 - near / 16 : 0;
     if (dst.scaredT > 0) { dst.scaredT -= dt; if (dst.scaredT <= 0 && dst.hideFn) { try { dst.hideFn(false); } catch (e) {} dst.hideFn = null; } }
+    // celowa cisza: tłumi tylko ambient, drone i warstwę napięcia (szyna ambient), nigdy sygnałów zagrożenia
+    { const en = !!list && silenceAllowed(L.levelId, GAMES_CALM.on) && dst.scaredT <= 0, sv = silenceStep(SIL, dt, a, near < 9, en, Math.random);
+      DREAD.silent = en && sv.gain < 0.5; const g = sv.gain > 0.997 ? 1 : sv.gain; if (Math.abs(g - lastDuck) > 0.003) { setAmbientDuck(g); lastDuck = g; }
+      if (sv.event === 'cue') try { creak(0.3, aroundPlayer([9, 14])); } catch (e) {} }
     DREAD.near = near; DREAD.tension = a; try { setTension(dread && dread.id === L.levelId ? Math.max(a, dst.scaredT > 0 ? 1 : 0) : 0, dt, near < 9); } catch (e) {} DREAD.hush = near < 9 || dst.scaredT > 0;
     // zjawy: tylko gdy poziom je dopuszcza, nic nie goni i nie trwa jumpscare
     if (dread && dread.id === L.levelId && dread.app && !GAMES_CALM.on) {
@@ -159,8 +170,15 @@ export function dreadUpdate(dt) {
     if (nearM) {
         const pos = { x: nearM.x, y: (nearM.y || 0) + 1.4, z: nearM.z };
         dst.breathT -= dt; if (near < 14 && dst.breathT <= 0) { dst.breathT = 2.4 + near * 0.12 + Math.random() * 1.6; breath(pos, 0.15 + 0.5 * (1 - near / 14)); }
-        dst.growlT -= dt; if (near < 10 && dst.growlT <= 0) { dst.growlT = 7 + Math.random() * 8; growl(pos); }
-        dst.whisperT -= dt; if (near < 16 && dst.whisperT <= 0) { dst.whisperT = 9 + Math.random() * 10; camera.getWorldDirection(_fw); whisper({ x: _dp.x - _fw.x * 1.3, y: _dp.y - 0.1, z: _dp.z - _fw.z * 1.3 }); }   // szept tuż za plecami
+        dst.growlT -= dt; if (near < 10 && dst.growlT <= 0) { dst.growlT = (7 + Math.random() * 8) / mutFactor('whisper'); growl(pos); }
+        dst.whisperT -= dt; if (near < 16 && dst.whisperT <= 0) { dst.whisperT = (9 + Math.random() * 10) / mutFactor('whisper'); camera.getWorldDirection(_fw); whisper({ x: _dp.x - _fw.x * 1.3, y: _dp.y - 0.1, z: _dp.z - _fw.z * 1.3 }); }   // szept tuż za plecami
+        // głos potwora (core/voice.js, szept z formantów, czasem z nickiem gracza; lokalnie): nie w trybie spokojnym, nie po jumpscare'ie, z odstępem 28-55 s
+        VST.active = voiceCount();
+        if (!GAMES_CALM.on && voiceTick(VST, dt, near, dst.scaredT, GAMES_CALM.on, Math.random)) {
+            const fam = familyName(L.levelId), ph = pickPhrase(fam, SAVE.profile && SAVE.profile.name), pr = profileFor(fam), tv = textToEvents(ph, pr);
+            camera.getWorldDirection(_fw);
+            if (speak(tv.events, pr, { x: _dp.x - _fw.x * 1.4, y: _dp.y - 0.1, z: _dp.z - _fw.z * 1.4 }, 0.9) > 0) { dst.whisperT = Math.max(dst.whisperT, 6); toast(ph, '#9aa6b0'); }
+        }
     }
     const P = lighting.preset;
     // latarka: im bliżej potwór, tym częstsze zacięcia (krótkie przygaśnięcia i mrugnięcia)

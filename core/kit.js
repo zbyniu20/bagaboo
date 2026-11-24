@@ -15,7 +15,7 @@ export async function addLevelKit(levelId, kind, calm) {
     const set = kitSet(levelId, familyName(levelId), kind);
     if (!set || !kitEnabled(SETTINGS.quality, !!calm) || typeof fetch === 'undefined') return;
     const gen = L.gen || 0, bx = L.obstacles.filter(b => b.box3).map(b => ({ minX: b.box3.min.x, maxX: b.box3.max.x, minY: b.box3.min.y, maxY: b.box3.max.y, minZ: b.box3.min.z, maxZ: b.box3.max.z }));
-    const spots = placeKit({ seed: set.seed, p: set.p, factor: set.factor, max: kitMax(SETTINGS.quality), area: L.bounds, floorY: L.floorY || 0, boxes: bx, spawn: L.spawn, reserved: L.reserved, portals: L.portals.filter(p => p.box3).map(p => ({ minX: p.box3.min.x, maxX: p.box3.max.x, minZ: p.box3.min.z, maxZ: p.box3.max.z })) });
+    const spots = placeKit({ seed: set.seed + ((L.visit || 0) % 997), p: set.p, factor: set.factor, max: kitMax(SETTINGS.quality), area: L.bounds, floorY: L.floorY || 0, boxes: bx, spawn: L.spawn, reserved: L.reserved, portals: L.portals.filter(p => p.box3).map(p => ({ minX: p.box3.min.x, maxX: p.box3.max.x, minZ: p.box3.min.z, maxZ: p.box3.max.z })) });
     if (!spots.length) return;
     const geos = await levelGeometries(gen); if (!geos) return;
     if ((L.gen || 0) !== gen) return;   // gracz zdążył przejść do innego poziomu
