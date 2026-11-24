@@ -32,5 +32,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+      - name: Chwila na pojawienie się artefaktu
+        run: sleep 15   # deploy-pages pytał o artefakt ułamek sekundy po uploadzie i dostawał "Found 0 artifact(s)": GitHub nie zdążył go jeszcze pokazać
       - id: deployment
         uses: actions/deploy-pages@v4
