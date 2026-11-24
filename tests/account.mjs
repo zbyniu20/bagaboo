@@ -66,6 +66,18 @@ const shown = (p, id) => p.evaluate((id) => { const e = document.getElementById(
     await p.close();
 }
 {
+    // Nick ekipy bez hasła albo PIN-u: gra nie startuje, otwiera się logowanie z sekcją klucza ekipy
+    const p = await openPage(false); await p.waitForTimeout(2000);   // po starcie strona jeszcze raz synchronizuje konto i czyści nick ekipy z pola
+    await p.evaluate(() => { document.getElementById('playerName').value = 'BoyIsGamer'; document.getElementById('btnSolo').click(); }); await p.waitForFunction(() => document.getElementById('authStage').offsetParent !== null, null, { timeout: 30000 }).catch(() => {});
+    ok('a staff nickname without a password or PIN is stopped and the login form opens with the staff key section', await p.evaluate(() => document.getElementById('authStage').offsetParent !== null && document.getElementById('menuStage').offsetParent === null && document.getElementById('staffKey').open === true), await p.evaluate(() => ({ auth: !!document.getElementById('authStage').offsetParent, menu: !!document.getElementById('menuStage').offsetParent, open: document.getElementById('staffKey').open, status: document.getElementById('status').innerText, msg: document.getElementById('acctMsg').innerText })));
+    ok('the game did not start for the reserved nickname', await p.evaluate(async () => { const N = await import('./core/network.js'); return !(N.NET.mode === 'solo' && window.BAGABOO_DEBUG && window.BAGABOO_DEBUG.started); }));
+    await p.close();
+    const g = await openPage(false);
+    await g.evaluate(() => { document.getElementById('playerName').value = 'RandomPlayer'; }); await g.click('#btnSolo', { timeout: 90000 }); await g.waitForTimeout(2500);
+    ok('a normal nickname plays without any account', await g.evaluate(async () => { const N = await import('./core/network.js'); return N.NET.mode === 'solo'; }));
+    await g.close();
+}
+{
     const p = await openPage(true); await p.click('#btnSolo', { timeout: 90000 }); await p.waitForTimeout(2500);
     const r = await p.evaluate(async () => {
         const P = await import('./core/pause.js'), A = await import('./core/auth.js'); P.pauseMenu.redraw(); const out = {};

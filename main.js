@@ -262,7 +262,7 @@ async function canStart(allowBanned) {
         const name = ($('playerName').value || '').trim();
         if (isReservedNick(name)) {
             if (AUTH.accountsOn()) { guestMode = false; showStage('auth'); }
-            acctMsg('The nickname "' + name + '" is reserved for the staff. Staff: choose your PIN or enter it below. Everyone else: go back and pick another nickname.', false); openStaffKey(name);
+            acctMsg('The nickname "' + name + '" is reserved for the staff. Staff: log in with your password or your PIN below. Everyone else: go back and pick another nickname.', false); openStaffKey(name);
             $('status').innerText = 'The nickname "' + name + '" is reserved. Pick another nickname.';
             return false;
         }

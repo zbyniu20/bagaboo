@@ -746,8 +746,10 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
 {
     const store = {}; globalThis.localStorage = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
     const SK = await import(url('core/staffkey.js')), CFG = await import(url('core/config.js')), AU = await import(url('core/auth.js'));
-    check('accounts: login is switched off by default (no account, no proof, nick-only entry)', CFG.FEATURES.accounts === false && AU.accountsOn() === false && AU.account() === null && (await AU.vouch('G:ROOM', 'n0')) === null);
-    CFG.FEATURES.accounts = true;   // dalej sprawdzamy kod, który zostaje do ponownego włączenia
+    check('accounts: login is on (staff nicknames need a password or PIN), nobody is logged in by default', CFG.FEATURES.accounts === true && AU.accountsOn() === true && AU.account() === null && (await AU.vouch('G:ROOM', 'n0')) === null);
+    CFG.FEATURES.accounts = false;
+    check('accounts: with the switch off nobody gets an identity or a proof', AU.accountsOn() === false && AU.account() === null && (await AU.vouch('G:ROOM', 'n0')) === null);
+    CFG.FEATURES.accounts = true;
     check('staffkey: only a reserved staff nickname can get a key, and the PIN needs 4 to 12 digits', !(await SK.createKey('RandomGuy', '1234')).ok && !(await SK.createKey('Luna', '12')).ok && !(await SK.createKey('Luna', 'abcd')).ok && !SK.hasKey());
     const made = await SK.createKey('Luna', '4821');
     check('staffkey: the private key is stored encrypted (no plain "d" in storage)', made.ok && SK.hasKey() && !/"d":/.test(store.bagaboo_staffkey) && !store.bagaboo_staffkey.includes('4821'));

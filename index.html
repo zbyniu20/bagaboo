@@ -152,7 +152,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
           <button id="btnRecoverySaved" type="button">I saved it, continue</button>
         </div>
         <div id="authForm">
-          <span class="eyebrow" id="authTitle">Account (optional) - protects your nickname</span>
+          <span class="eyebrow" id="authTitle">Log in (required for staff nicknames)</span>
           <label class="eyebrow" for="acctNick">Account nickname</label>
           <input type="text" id="acctNick" maxlength="16" autocomplete="username" spellcheck="false">
           <label class="eyebrow" for="acctPass" style="margin-top:10px">Password (at least 8 characters)</label>
@@ -176,13 +176,13 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
             <textarea id="keyText" rows="3" spellcheck="false" placeholder="Your public key appears here after creating the key. To move the key to another device paste the exported text here and press Import." style="width:100%;margin-top:8px"></textarea>
             <div class="btn-group"><button id="btnKeyExport" type="button">Export key</button><button id="btnKeyImport" type="button">Import key</button></div>
           </details>
-          <button class="link" type="button" id="btnGuest">Back: just pick a nickname and play</button>
+          <button class="link" type="button" id="btnGuest">Back: play with a nickname (no account)</button>
         </div>
         <div id="acctMsg" role="status"></div>
       </div>
       <!-- Ekran 2: menu gry -->
       <div id="menuStage" style="display:none">
-        <div id="acctBar"><span id="acctWho">Guest</span><button class="link" type="button" id="btnLogout">Log out</button><button class="link" type="button" id="btnToLogin">Protect my nickname (account)</button></div>
+        <div id="acctBar"><span id="acctWho">Guest</span><button class="link" type="button" id="btnLogout">Log out</button><button class="link" type="button" id="btnToLogin">Staff log in / account</button></div>
         <label class="eyebrow" for="playerName">Nickname</label>
         <div class="row">
           <input type="text" id="playerName" value="Acrobat" maxlength="16" autocomplete="nickname" spellcheck="false">
