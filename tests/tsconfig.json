@@ -27,6 +27,7 @@
     "../core/spotlogic.js",
     "../core/decallogic.js",
     "../core/kitlogic.js",
+    "../core/hapticlogic.js",
     "../core/avatarfxlogic.js",
     "../core/acousticlogic.js",
     "../core/spectatelogic.js",

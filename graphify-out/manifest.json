@@ -6,9 +6,9 @@
     "semantic_hash": ""
   },
   "core/audio.js": {
-    "mtime": 1795474606.34977,
-    "seen": 1795474971.0496066,
-    "ast_hash": "c7aa713533b62df1a9c08daa152300ae",
+    "mtime": 1795520534.8525114,
+    "seen": 1795520897.257607,
+    "ast_hash": "6ac143e40f51c28096059cd2fb2d1dd7",
     "semantic_hash": ""
   },
   "core/auth.js": {
@@ -126,10 +126,10 @@
     "semantic_hash": "2447eeb94d01f5eaa69e147845c58d0d"
   },
   "core/haptics.js": {
-    "mtime": 1795016110.8798718,
-    "seen": 1795275190.7332814,
-    "ast_hash": "e57f975e400de7364e6e13f02e6202a7",
-    "semantic_hash": "e57f975e400de7364e6e13f02e6202a7"
+    "mtime": 1795520524.8648732,
+    "seen": 1795520897.2577143,
+    "ast_hash": "aaa301cf7e85972ea1611d926ea444b9",
+    "semantic_hash": ""
   },
   "core/hauntedui.js": {
     "mtime": 1795016110.8798718,
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795516633.3909504,
-    "seen": 1795518684.3111248,
-    "ast_hash": "e570f364d8319a040d156567244b1b2a",
+    "mtime": 1795520826.2643013,
+    "seen": 1795520897.2586112,
+    "ast_hash": "b4718415a39c24ea3d071a232f244e5b",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795512414.6028812,
-    "seen": 1795515879.2213988,
-    "ast_hash": "1c7965ae577f26962b968d9232b2cad9",
+    "mtime": 1795520534.8534572,
+    "seen": 1795520897.2586265,
+    "ast_hash": "8573d75ded319f9f47814c6bd9842f15",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795516052.1818352,
-    "seen": 1795518684.3108435,
-    "ast_hash": "a1157b657b4da6abfc0a9a5c9496bf39",
+    "mtime": 1795520550.6418252,
+    "seen": 1795520897.2580996,
+    "ast_hash": "1c58713f00d6be92f628f761aa92d86c",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795512414.603425,
-    "seen": 1795515879.2211738,
-    "ast_hash": "e6e0ec2b1d443ef397a2b3c79148496b",
+    "mtime": 1795520534.8540297,
+    "seen": 1795520897.2581713,
+    "ast_hash": "06235558533050ad246b83a100efa316",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10509,6 +10509,18 @@
     "mtime": 1795512950.1573582,
     "seen": 1795515879.2211337,
     "ast_hash": "4bf8d897b3b97ca2756a6535d3f5b6bd",
+    "semantic_hash": ""
+  },
+  "core/hapticlogic.js": {
+    "mtime": 1795520534.8526773,
+    "seen": 1795520897.257711,
+    "ast_hash": "a456e80e3a3851fbeeecc84236e6c5ec",
+    "semantic_hash": ""
+  },
+  "tests/haptics.mjs": {
+    "mtime": 1795520673.293858,
+    "seen": 1795520897.2580683,
+    "ast_hash": "b2f118ec35b211b11764dc2d08aaa864",
     "semantic_hash": ""
   },
   "package-lock.json": {

@@ -4,7 +4,8 @@
 // initAudio() musi zostać wywołane po kliknięciu przycisku (wymóg przeglądarek)
 // ==========================================
 import { SETTINGS, GAMES_CALM } from './settings.js';
-import { buzz } from './haptics.js';
+import { buzz, hapticPlay } from './haptics.js';
+import { attenuate, sideOf } from './hapticlogic.js';
 import { LEVEL_DEFS } from './registry.js';
 import { occludedFilter, occludedGain } from './acousticlogic.js';
 import { tensionSmooth, tensionParams, hushMul } from './musiclogic.js';
@@ -296,6 +297,7 @@ export function stinger(pos) {
 // Szept (z pozycją: dokładnie z tego miejsca, bez pozycji: z boku)
 export function whisper(pos) {
     if (!ctx) return;
+    hapticAt('whisper', 1, pos, 8);
     const t0 = ctx.currentTime, n = ctx.createBufferSource(); n.buffer = noiseBuffer(1.6);
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 6;
     for (let i = 0; i <= 8; i++) bp.frequency.setValueAtTime(1500 + Math.random() * 2500, t0 + i * 0.18);
@@ -306,6 +308,7 @@ export function whisper(pos) {
 // Metaliczny huk (wyłamane drzwi klatki, otwarta krata)
 export function bang(pos) {
     if (!ctx) return;
+    hapticAt('knock', 1, pos, 14);
     const t0 = ctx.currentTime, dst = outAt(pos);
     const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
     o.frequency.setValueAtTime(120, t0); o.frequency.exponentialRampToValueAtTime(35, t0 + 0.5);
@@ -363,6 +366,7 @@ export function crackle(pos) {
 // Oddech potwora (głęboki wdech i wydech szumu przez filtr; vol 0..1, pos = {x,y,z}): słychać go przestrzennie, gdy potwór jest blisko
 export function breath(pos, vol) {
     if (!ctx) return;
+    if (pos) hapticAt('breath', Math.min(1, (vol || 0.3) * 1.5), pos, 6);
     const t0 = ctx.currentTime, dst = pos ? outAt(pos) : shaper, v = Math.max(0.02, Math.min(1, vol || 0.4));
     const n = ctx.createBufferSource(); n.buffer = noiseBuffer(2.2);
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(380, t0); bp.frequency.linearRampToValueAtTime(620, t0 + 0.7); bp.frequency.linearRampToValueAtTime(300, t0 + 1.7); bp.Q.value = 1.2;
@@ -402,8 +406,15 @@ export function roar(vol, pos) {
     const ng = ctx.createGain(); ng.gain.value = 0.6; n.connect(bp); bp.connect(ng); ng.connect(ws); n.start(t0);
 }
 // Ciężki krok potwora (pos = miejsce stopy)
+// Wzór wibracji dla dźwięku w świecie: siła z odległości od gracza, strona z kierunku źródła względem patrzenia. Bez pozycji: oba kontrolery z pełną siłą.
+function hapticAt(name, vol, pos, range) {
+    if (!pos) { hapticPlay(name, vol); return; }
+    const dx = pos.x - lis.x, dz = pos.z - lis.z, k = attenuate(Math.hypot(dx, dz), range) * (vol === undefined ? 1 : vol);
+    if (k > 0) hapticPlay(name, k, sideOf(_f.x, _f.z, dx, dz));
+}
 export function step(vol, pos) {
     if (!ctx || vol < 0.02) return;
+    hapticAt('step', vol, pos, 9);
     const t0 = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
     o.type = 'sine'; o.frequency.setValueAtTime(70, t0); o.frequency.exponentialRampToValueAtTime(32, t0 + 0.25);
     env(g, t0, vol, 0.01, 0.3); o.connect(g); g.connect(outAt(pos)); o.start(t0); o.stop(t0 + 0.35);
@@ -509,6 +520,7 @@ export function purr(pos, vol) {
 // Warkot przed skokiem (Furas): niska piła z szybką modulacją i szumem, z kierunku potwora
 export function growl(pos) {
     if (!ctx) return;
+    hapticAt('growl', 1, pos, 10);
     const t0 = ctx.currentTime, dst = pos ? outAt(pos, scareBus) : scareBus;
     const o = ctx.createOscillator(), o2 = ctx.createOscillator(), lp = ctx.createBiquadFilter(), am = ctx.createGain(), e = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
     o.type = 'sawtooth'; o2.type = 'square'; o.frequency.setValueAtTime(95, t0); o.frequency.linearRampToValueAtTime(58, t0 + 0.9); o2.frequency.setValueAtTime(47, t0); o2.frequency.linearRampToValueAtTime(30, t0 + 0.9);
