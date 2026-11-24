@@ -6,9 +6,9 @@
     "semantic_hash": ""
   },
   "core/audio.js": {
-    "mtime": 1795521929.9898794,
-    "seen": 1795522490.282893,
-    "ast_hash": "a1ea4d75e5de95a685ef037bbf39c123",
+    "mtime": 1795527618.2861009,
+    "seen": 1795533041.5767884,
+    "ast_hash": "bf30b892435097ad0429878bf3c9a0da",
     "semantic_hash": ""
   },
   "core/auth.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795523250.7084453,
-    "seen": 1795524654.8963969,
-    "ast_hash": "92ace9ba1af8027483b964ad29471482",
+    "mtime": 1795533022.8901954,
+    "seen": 1795533041.5773144,
+    "ast_hash": "2a2fdadc872b4c1998fb0cdbda96ac5b",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795522991.188943,
-    "seen": 1795524654.895959,
-    "ast_hash": "5c287b87efc81c8394223347efb44de0",
+    "mtime": 1795527629.409797,
+    "seen": 1795533041.5770528,
+    "ast_hash": "37ff925f16dc38eeed0c03caa9f956d5",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10188,9 +10188,9 @@
     "semantic_hash": ""
   },
   "tests/haunt.mjs": {
-    "mtime": 1795372107.2050223,
-    "seen": 1795373079.3477323,
-    "ast_hash": "54c914196ec71a682ddeafcdc87d213c",
+    "mtime": 1795532081.507621,
+    "seen": 1795533041.577042,
+    "ast_hash": "6d7834faa549f60cb66bc1caac2d009d",
     "semantic_hash": ""
   },
   "tests/staffhaunt.mjs": {

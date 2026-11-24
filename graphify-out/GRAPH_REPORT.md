@@ -1,7 +1,7 @@
 # Graph Report - bagaboo  (2026-11-24)
 
 ## Corpus Check
-- 524 files · ~1,351,007 words
+- 524 files · ~1,351,233 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 99 file(s) not represented in the graph (top: .css 84, .glb 12, (none) 3)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `574a375e`
+- Built from commit: `c91d71f3`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -243,8 +243,8 @@
 3. `makeCanvas()` - 106 edges
 4. `addCrispBlock()` - 98 edges
 5. `mkRng()` - 97 edges
-6. `buzz()` - 84 edges
-7. `toTex()` - 84 edges
+6. `toTex()` - 84 edges
+7. `buzz()` - 84 edges
 8. `buildDoor()` - 73 edges
 9. `levelReward()` - 61 edges
 10. `shader()` - 60 edges
@@ -1120,7 +1120,7 @@ Cohesion: 0.14
 Nodes (25): wrapText(), copy(), emptyMap(), placeBlock(), setMark(), currentMap(), mapIn(), persist() (+17 more)
 
 ## Knowledge Gaps
-- **36 isolated node(s):** `./core/auth.js`, `./core/acoustics.js`, `./core/botkit.js`, `./core/levelkit.js`, `./core/mannequin.js` (+31 more)
+- **36 isolated node(s):** `./core/petmodel.js`, `./core/emotes.js`, `./core/gorillamachine.js`, `./core/highfive.js`, `./core/leveldata.js` (+31 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2244 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **23 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -1128,16 +1128,16 @@ Nodes (25): wrapText(), copy(), emptyMap(), placeBlock(), setMark(), currentMap(
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `f()` connect `build.js` to `static.mjs`, `ref_url`, `logic.mjs`, `copy-lint.mjs`, `gate.mjs`, `changed.mjs`, `custom.js`, `ref_node_fs`?**
-  _High betweenness centrality (0.362) - this node is a cross-community bridge._
+  _High betweenness centrality (0.401) - this node is a cross-community bridge._
 - **Are the 51 inferred relationships involving `lib()` (e.g. with `arrive()` and `audit()`) actually correct?**
   _`lib()` has 51 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `./core/auth.js`, `./core/acoustics.js`, `./core/botkit.js` to the rest of the system?**
+- **What connects `./core/petmodel.js`, `./core/emotes.js`, `./core/gorillamachine.js` to the rest of the system?**
   _36 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `network.js` be split into smaller, more focused modules?**
   _Cohesion score 0.04008252284114353 - nodes in this community are weakly interconnected._
 - **Why does `mode` connect `custom.js` to `build.js`?**
-  _High betweenness centrality (0.125) - this node is a cross-community bridge._
+  _High betweenness centrality (0.137) - this node is a cross-community bridge._
 - **Should `economy.js` be split into smaller, more focused modules?**
   _Cohesion score 0.04905335628227195 - nodes in this community are weakly interconnected._
-- **Why does `sub()` connect `build.js` to `init`?**
-  _High betweenness centrality (0.056) - this node is a cross-community bridge._
+- **Why does `color` connect `shader` to `dotted-globe/effect.js`, `color`, `orb-sphere/effect.js`, `mount`, `halftone-screen/effect.js`, `gradient-mesh/effect.js`, `ruled-grounds/effect.js`, `god-rays/effect.js`, `film-light-leak/effect.js`, `fx.js`, `line-engraving/effect.js`, `prism-dispersion/effect.js`, `soft-light-bars/effect.js`, `start.mjs`, `painterly-landscape/effect.js`, `silk-folds/effect.js`, `rng`, `duotone-grade/effect.js`?**
+  _High betweenness centrality (0.039) - this node is a cross-community bridge._

@@ -11,7 +11,7 @@ import { VOICE, micGated } from './voicelogic.js';
 import { LEVEL_DEFS } from './registry.js';
 import { occludedFilter, occludedGain } from './acousticlogic.js';
 import { tensionSmooth, tensionParams, hushMul } from './musiclogic.js';
-let ambBus = null, ctx = null, master = null, droneGain = null, scareBus = null, shaper = null, droneLp = null, tensGain = null, tensLfoG = null, tensLfo = null, tens = 0;
+let duck = 1, ambBus = null, ctx = null, master = null, droneGain = null, scareBus = null, shaper = null, droneLp = null, tensGain = null, tensLfoG = null, tensLfo = null, tens = 0;
 const DRONE = 0.07;
 const hb = { next: 0 };
 // Haki dla muzyki i ambientu (music.js, ambience.js): zmiana głośności, wyciszenie przy jumpscare'ie, poziom zagrożenia
@@ -22,7 +22,7 @@ export function bumpThreat(i, secs) { if (!ctx) return; const t = ctx.currentTim
 export function threatLevel() { return ctx && ctx.currentTime < threat.until ? threat.i : 0; }
 export function audioBus() { return ctx ? { ctx: ctx, master: master, ambient: ambBus || master } : null; }
 // Cisza (core/silencelogic.js): mnożnik szyny ambientu (ambient, drone, warstwa napięcia). Sygnały zagrożenia idą wprost do master i nigdy nie są tłumione.
-export function setAmbientDuck(g) { if (ambBus && ctx) ambBus.gain.setTargetAtTime(Math.max(0, Math.min(1, g)), ctx.currentTime, 0.05); }
+export function setAmbientDuck(g) { duck = g; if (ambBus && ctx) ambBus.gain.setTargetAtTime(Math.max(0, Math.min(1, g)), ctx.currentTime, 0.05); }
 export function spatial(pos, dest, raw) { return ctx ? outAt(pos, dest, raw) : null; }   // raw = bez filtra odległości i pogłosu (dla źródeł działających długo, bo odległość się zmienia)
 export function noiseBuf(sec) { return ctx ? noiseBuffer(sec) : null; }
 
@@ -51,7 +51,7 @@ export function initAudio() {
     for (const f of [58.3, 82.4, 116.5]) { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(tensGain); o.start(); }
     tensLfo = ctx.createOscillator(); tensLfoG = ctx.createGain(); tensLfo.frequency.value = 0.07; tensLfoG.gain.value = 0; tensLfo.connect(tensLfoG); tensLfoG.connect(tensGain.gain); tensLfo.start();
     // Co jakiś czas odległe skrzypienie
-    setInterval(() => { if (Math.random() < 0.35) creak(0.25); }, 9000);
+    setInterval(() => { if (duck > 0.5 && Math.random() < 0.35) creak(0.25); }, 9000);   // nie w oknie ciszy (core/silencelogic.js)
 }
 // Muzyka napięcia: target 0..1 (z reżysera grozy), hush = potwór tuż obok. Wołane co klatkę, wygładza się samo.
 export function setTension(target, dt, hush) {
@@ -313,7 +313,7 @@ export function whisper(pos) {
 // Metaliczny huk (wyłamane drzwi klatki, otwarta krata)
 export function bang(pos) {
     if (!ctx) return;
-    hapticAt('knock', 1, pos, 14);
+    hapticAt('knock', 1, pos, 14, 2.0);
     const t0 = ctx.currentTime, dst = outAt(pos);
     const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine';
     o.frequency.setValueAtTime(120, t0); o.frequency.exponentialRampToValueAtTime(35, t0 + 0.5);
@@ -411,10 +411,13 @@ export function roar(vol, pos) {
     const ng = ctx.createGain(); ng.gain.value = 0.6; n.connect(bp); bp.connect(ng); ng.connect(ws); n.start(t0);
 }
 // Ciężki krok potwora (pos = miejsce stopy)
-// Wzór wibracji dla dźwięku w świecie: siła z odległości od gracza, strona z kierunku źródła względem patrzenia. Bez pozycji: oba kontrolery z pełną siłą.
-function hapticAt(name, vol, pos, range) {
-    if (!pos) { hapticPlay(name, vol); return; }
-    const dx = pos.x - lis.x, dz = pos.z - lis.z, k = attenuate(Math.hypot(dx, dz), range) * (vol === undefined ? 1 : vol);
+// Wzór wibracji dla dźwięku w świecie: siła z odległości od gracza, strona z kierunku źródła względem patrzenia. Bez położenia (piknięcia odliczania) i ze źródeł bliżej niż
+// minDist (poziomo) NIE wibruje: to własne kroki i uderzenia gracza (młotek, stopy w Ciszy), które mają własne wibracje albo żadnych.
+function hapticAt(name, vol, pos, range, minDist) {
+    if (!pos) return;
+    const dx = pos.x - lis.x, dz = pos.z - lis.z, d = Math.hypot(dx, dz);
+    if (d < (minDist || 0)) return;
+    const k = attenuate(d, range) * (vol === undefined ? 1 : vol);
     if (k > 0) hapticPlay(name, k, sideOf(_f.x, _f.z, dx, dz));
 }
 // Głos potwora (szept z formantów, core/voice.js): przestrzenny i z okluzją jak inne dźwięki. Najwyżej VOICE.maxVoices naraz. Zwraca długość w s (0, gdy nic nie zagrało).
@@ -430,7 +433,7 @@ export function speak(events, profile, pos, vol) {
 }
 export function step(vol, pos) {
     if (!ctx || vol < 0.02) return;
-    hapticAt('step', vol, pos, 9);
+    hapticAt('step', vol, pos, 9, 1.0);
     const t0 = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
     o.type = 'sine'; o.frequency.setValueAtTime(70, t0); o.frequency.exponentialRampToValueAtTime(32, t0 + 0.25);
     env(g, t0, vol, 0.01, 0.3); o.connect(g); g.connect(outAt(pos)); o.start(t0); o.stop(t0 + 0.35);
