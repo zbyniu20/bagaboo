@@ -52,6 +52,7 @@ export function build() {
     mx.font = 'bold 48px sans-serif'; mx.textAlign = 'center'; mx.textBaseline = 'middle'; mx.fillStyle = '#ff3a2a'; mx.shadowColor = '#ff0000'; mx.shadowBlur = 16; mx.fillText('MONSTER', 128, 34);
     S.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.toTex(mc, false), transparent: true, depthWrite: false })); S.tag.scale.set(1.2, 0.3, 1); S.tag.visible = false; L.root.add(S.tag);
     S.flash = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: 0x8a0000, transparent: true, opacity: 0, depthTest: false })); S.flash.position.z = -0.3; S.flash.renderOrder = 1004; S.flash.visible = false; camera.add(S.flash);
+    S.tearParts = []; S.headGeo = new THREE.SphereGeometry(0.2, 12, 10); S.headMat = new THREE.MeshStandardMaterial({ color: 0x4a2c1a, emissive: 0x3a0000, roughness: 0.9 }); S.sinewGeo = new THREE.CylinderGeometry(0.03, 0.03, 1, 8); S.sinewMat = new THREE.MeshBasicMaterial({ color: 0x8c0a0a });
     // Czerwona winieta strachu (uciekinier, gdy potwór jest blisko) i reżyser grozy w trybie spokojnym (kroki, oddech, latarka, mgła; bez jumpscare'ów i zjaw)
     { const c = T.makeCanvas(256, 256), x = c.getContext('2d'), gr = x.createRadialGradient(128, 128, 50, 128, 128, 150); gr.addColorStop(0, 'rgba(120,0,0,0)'); gr.addColorStop(0.65, 'rgba(120,0,0,0.5)'); gr.addColorStop(1, 'rgba(30,0,0,0.95)'); x.fillStyle = gr; x.fillRect(0, 0, 256, 256);
       S.fear = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, opacity: 0, depthTest: false })); S.fear.position.z = -0.32; S.fear.renderOrder = 1003; S.fear.visible = false; camera.add(S.fear); }
@@ -372,23 +373,61 @@ const TEAR_TIME = 0.6;
 function localDismember(code) {
     if (code === S.localDm) return;
     const prev = S.localDm || 0; S.localDm = code;
-    if (!code) { S.tearT = 0; S.flashA = 0; if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; return; }
-    if (code & ~prev) { S.tearT = TEAR_TIME; toast(prev ? 'It grabs you again...' : 'The monster grabs you...', '#ff3a2a'); }   // także druga ręka po pierwszej dostaje animację
+    if (!code) { S.tearT = 0; S.flashA = 0; clearLocalTear(); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; return; }
+    if (code & ~prev) { S.tearT = TEAR_TIME; S.tearNew = code & ~prev; startLocalTear(S.tearNew); toast(prev ? 'It grabs you again...' : 'The monster grabs you...', '#ff3a2a'); }   // także druga ręka po pierwszej dostaje animację
+}
+// Animacja widziana oczami ofiary (3D, bez napisów): z miejsca ręki (albo szyi) potwór wyciąga kopię części, która rozciąga się na żylastym pasie,
+// cieniejącym i tryskającym krwią; po TEAR_TIME pas pęka, a część odlatuje łukiem i leży na ziemi. Prawdziwa ręka (śledzona) znika dopiero po zerwaniu.
+const _td = new THREE.Vector3(), _ta = new THREE.Vector3(), _tu = new THREE.Vector3(0, 1, 0);
+function clearLocalTear() {
+    if (!S || !S.tearParts) return;
+    for (const p of S.tearParts) { scene.remove(p.ghost); scene.remove(p.sinew); }
+    S.tearParts.length = 0;
+}
+function startLocalTear(fresh) {
+    clearLocalTear();
+    camera.getWorldDirection(_td); _td.y = 0; if (_td.lengthSq() < 1e-4) _td.set(0, 0, -1); _td.normalize();
+    const f = _td.clone(), right = new THREE.Vector3(-f.z, 0, f.x);
+    const add = (kind, src, dir) => {
+        const ghost = src.clone(true); ghost.traverse(o => { if (o.isSprite) o.visible = false; }); ghost.visible = true;
+        src.getWorldPosition(ghost.position); src.getWorldQuaternion(ghost.quaternion); src.getWorldScale(ghost.scale); scene.add(ghost);
+        const sinew = new THREE.Mesh(S.sinewGeo, S.sinewMat); sinew.frustumCulled = false; scene.add(sinew);
+        S.tearParts.push({ kind: kind, src: src, ghost: ghost, sinew: sinew, dir: dir.normalize(), drip: 0, base: ghost.quaternion.clone() });
+    };
+    if (hands.L && lostLeft(fresh)) add('L', hands.L, f.clone().multiplyScalar(0.8).addScaledVector(right, -0.45).add(new THREE.Vector3(0, 0.25, 0)));
+    if (hands.R && lostRight(fresh)) add('R', hands.R, f.clone().multiplyScalar(0.8).addScaledVector(right, 0.45).add(new THREE.Vector3(0, 0.25, 0)));
+    if (lostHead(fresh)) { const hd = new THREE.Mesh(S.headGeo, S.headMat); camera.getWorldPosition(hd.position); hd.position.y -= 0.25; add('H', hd, f.clone().multiplyScalar(0.3).add(new THREE.Vector3(0, 1, 0))); }
+}
+function tickTearParts(k, dt) {
+    for (const p of S.tearParts) {
+        if (p.kind === 'H') { camera.getWorldPosition(_ta); _ta.y -= 0.25; } else p.src.getWorldPosition(_ta);   // zakotwiczenie: ręka śledzona albo szyja pod kamerą
+        const dist = 0.62 * k * k + 0.012 * Math.sin(k * 90);   // coraz mocniejsze szarpnięcie
+        p.ghost.position.copy(_ta).addScaledVector(p.dir, dist); p.ghost.quaternion.copy(p.base).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.sin(k * 70) * 0.5 * k, Math.cos(k * 63) * 0.5 * k, Math.sin(k * 55) * 0.6 * k)));
+        const len = Math.max(0.02, dist), thin = Math.max(0.15, 1 - 0.85 * k);   // pas cienieje, im dalej jest wyciągnięty
+        p.sinew.position.copy(_ta).addScaledVector(p.dir, len / 2); p.sinew.quaternion.setFromUnitVectors(_tu, p.dir); p.sinew.scale.set(thin, len, thin);
+        p.drip -= dt; if (p.drip <= 0) { N.bloodBurst(_ta, 3); p.drip = 0.05; }
+    }
 }
 function tickLocalTear(dt) {
     const code = S.localDm;
     if (S.tearT > 0) {
-        S.tearT -= dt; const k = 1 - Math.max(0, S.tearT) / TEAR_TIME;
-        buzz('both', 0.4 + 0.6 * k, 60); S.flashA = Math.max(S.flashA, 0.12 + 0.25 * k);
+        const td = Math.min(dt, 0.05);   // przy szarpiącym FPS animacja nadal trwa co najmniej ~12 klatek (a nie jedną długą)
+        S.tearT -= td; const k = 1 - Math.max(0, S.tearT) / TEAR_TIME;
+        buzz('both', 0.4 + 0.6 * k, 60); S.flashA = Math.max(S.flashA, 0.12 + 0.25 * k); tickTearParts(k, td);
         if (S.tearT <= 0) {   // urwane: ręce znikają, krew tryska z miejsca odcięcia
-            for (const [h, lost] of [[hands.L, lostLeft(code)], [hands.R, lostRight(code)]]) if (h && lost) { h.visible = false; N.bloodBurst(h.position, 26); }
-            if (lostHead(code)) { camera.getWorldPosition(_p); _p.y -= 0.25; N.bloodBurst(_p, 30); }
+            for (const p of S.tearParts) {   // pas pęka: kopia odlatuje, prawdziwa ręka znika, krew tryska z miejsca zerwania
+                if (p.kind === 'H') { camera.getWorldPosition(_ta); _ta.y -= 0.25; } else p.src.getWorldPosition(_ta);
+                N.tearOffLocal(p.ghost, p.kind === 'H' ? 0.2 : 0.08); N.bloodBurst(_ta, 26);
+                if (p.kind !== 'H') p.src.visible = false;
+            }
+            clearLocalTear(); S.tearNew = 0;
             SFX.stinger(); buzz('both', 1, 400); S.flashA = 0.8; toast('The monster tore off ' + dismemberText(code) + '!' + (S.caught.has('me') ? '' : ' You live, but the next grab is deadly!'), '#ff3a2a');
         }
     } else S.flashA = Math.max(0, S.flashA - dt * 0.9);
     S.flash.material.opacity = S.flashA; S.flash.visible = S.flashA > 0.01;
 }
 // Hak dla testu w przeglądarce (tests/gore.mjs): ustawia urwane kończyny TEGO gracza tak, jakby potwór go złapał (0 = przywróć). Nie zmienia przebiegu rundy.
+export function debugTear() { return S && S.tearParts ? { parts: S.tearParts.length, sinews: S.tearParts.filter(p => p.sinew.parent).length, ghosts: S.tearParts.filter(p => p.ghost.parent).length } : null; }   // animacja urywania widziana przez ofiarę (tests/gore.mjs)
 export function debugDismember(code) { if (!S) return false; S.dm = code ? Object.assign(Object.create(null), { [N.myId()]: code }) : Object.create(null); return true; }
 // Haki dla testu w przeglądarce (tests/hunt.mjs): wymuszają rundę z botem na zadanym czasie i podają stan polowania. Nie są używane w grze.
 export function debugPlay(timeLeft, botDx) { if (!S) return false; S.phase = 'play'; S.mon = 'bot'; S.t = timeLeft; S.caught = new Set(); S.dm = Object.create(null); camera.getWorldPosition(_p); S.bot = { x: _p.x + (botDx === undefined ? 40 : botDx), y: 0, z: _p.z, vy: 0, speed: BOT_SPEED, ground: true, stuck: 0, lastD: 99, side: 0 }; return true; }
@@ -614,7 +653,7 @@ function randomScares(dt, t, p) {
 export function dispose() {
     stopSpectate(false);
     N.setSpectatorCheck(null);
-    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); camera.remove(S.fear); if (S.final || S.fogBase) setFinalLook(false); DREAD.fogMul = 1; for (const mk of S.marks) L.root.remove(mk); setDread(null); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
+    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); clearLocalTear(); S.headGeo.dispose(); S.headMat.dispose(); S.sinewGeo.dispose(); S.sinewMat.dispose(); camera.remove(S.fear); if (S.final || S.fogBase) setFinalLook(false); DREAD.fogMul = 1; for (const mk of S.marks) L.root.remove(mk); setDread(null); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
     if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); S.board = null; }
     if (S && S.glb) { L.root.remove(S.glb.group); S.glb.dispose(); S.glb = null; }
     L.moveScale = 1;

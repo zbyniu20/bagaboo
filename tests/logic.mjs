@@ -776,4 +776,11 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     }
     CFG.FEATURES.accounts = true;
 }
+
+// --- Zapamiętanie nicku i PIN-u oraz animacja urwania widziana przez ofiarę (kontrola wiązań w kodzie; zachowanie sprawdzają account.mjs i gore.mjs) ---
+{
+    const mainJs = fs.readFileSync(path.join(ROOT, 'main.js'), 'utf8'), mon = fs.readFileSync(path.join(ROOT, 'levels/monster.js'), 'utf8'), net = fs.readFileSync(path.join(ROOT, 'core/network.js'), 'utf8'), html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    check('remember: opt-in checkbox, saved only when ticked, forgotten on untick and PIN forgotten on logout, auto sign-in uses the stored PIN through signIn', /id="keyRemember"/.test(html) && !/id="keyRemember"[^>]*checked/.test(html) && /function rememberNow\(nick, pin\) \{ if \(\$\('keyRemember'\)\.checked\) writeRem\(nick, pin\); else writeRem\(''\); \}/.test(mainJs) && /keyRemember'\)\.onchange = \(\) => \{ if \(!\$\('keyRemember'\)\.checked\) writeRem\(''\)/.test(mainJs) && /btnLogout'\)\.onclick = \(\) => \{ \{ const r = readRem\(\); if \(r\) writeRem\(r\.nick, ''\)/.test(mainJs) && /SK\.signIn\(r\.pin\)/.test(mainJs));
+    check('gore tear (victim view): a real 3D animation (stretched copy on a thinning sinew, snaps, flies off), no text popup', /function startLocalTear\(fresh\)/.test(mon) && /function tickTearParts\(k, dt\)/.test(mon) && /N\.tearOffLocal\(p\.ghost, p\.kind === 'H' \? 0\.2 : 0\.08\)/.test(mon) && /clearLocalTear\(\); S\.headGeo\.dispose\(\)/.test(mon) && !/popTear|S\.pop\b|canvas.*TORN OFF/.test(mon) && /export function tearOffLocal\(src, floor\) \{ throwPart\(src, 'me', floor\); \}/.test(net));
+}
 done('logic');

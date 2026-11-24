@@ -172,6 +172,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; t
             <label class="eyebrow" for="keyPin" style="margin-top:8px">PIN (4-12 digits, you choose it)</label>
             <input type="password" id="keyPin" inputmode="numeric" maxlength="12" autocomplete="off">
             <input type="password" id="keyPin2" inputmode="numeric" maxlength="12" autocomplete="off" placeholder="Repeat PIN (first time only)">
+            <label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px"><input type="checkbox" id="keyRemember"> Remember my nickname and PIN on this device (anyone using this device can log in as you)</label>
             <div class="btn-group"><button id="btnKeyCreate" type="button">Set PIN and create key</button><button id="btnKeyLogin" type="button">Log in with PIN</button></div>
             <textarea id="keyText" rows="3" spellcheck="false" placeholder="Your public key appears here after creating the key. To move the key to another device paste the exported text here and press Import." style="width:100%;margin-top:8px"></textarea>
             <div class="btn-group"><button id="btnKeyExport" type="button">Export key</button><button id="btnKeyImport" type="button">Import key</button></div>
