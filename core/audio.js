@@ -9,7 +9,7 @@ import { attenuate, sideOf } from './hapticlogic.js';
 import { LEVEL_DEFS } from './registry.js';
 import { occludedFilter, occludedGain } from './acousticlogic.js';
 import { tensionSmooth, tensionParams, hushMul } from './musiclogic.js';
-let ctx = null, master = null, droneGain = null, scareBus = null, shaper = null, droneLp = null, tensGain = null, tensLfoG = null, tensLfo = null, tens = 0;
+let ambBus = null, ctx = null, master = null, droneGain = null, scareBus = null, shaper = null, droneLp = null, tensGain = null, tensLfoG = null, tensLfo = null, tens = 0;
 const DRONE = 0.07;
 const hb = { next: 0 };
 // Haki dla muzyki i ambientu (music.js, ambience.js): zmiana głośności, wyciszenie przy jumpscare'ie, poziom zagrożenia
@@ -18,7 +18,9 @@ let threat = { i: 0, until: 0 };
 // Zagrożenie 0..1: bicie serca (im bliżej potwór) i głośne zdarzenia podbijają je na krótko; muzyka robi się szybsza i gęstsza
 export function bumpThreat(i, secs) { if (!ctx) return; const t = ctx.currentTime; if (i >= threat.i || t > threat.until) threat = { i: i, until: t + (secs || 0.4) }; }
 export function threatLevel() { return ctx && ctx.currentTime < threat.until ? threat.i : 0; }
-export function audioBus() { return ctx ? { ctx: ctx, master: master } : null; }
+export function audioBus() { return ctx ? { ctx: ctx, master: master, ambient: ambBus || master } : null; }
+// Cisza (core/silencelogic.js): mnożnik szyny ambientu (ambient, drone, warstwa napięcia). Sygnały zagrożenia idą wprost do master i nigdy nie są tłumione.
+export function setAmbientDuck(g) { if (ambBus && ctx) ambBus.gain.setTargetAtTime(Math.max(0, Math.min(1, g)), ctx.currentTime, 0.05); }
 export function spatial(pos, dest, raw) { return ctx ? outAt(pos, dest, raw) : null; }   // raw = bez filtra odległości i pogłosu (dla źródeł działających długo, bo odległość się zmienia)
 export function noiseBuf(sec) { return ctx ? noiseBuffer(sec) : null; }
 
@@ -37,7 +39,8 @@ export function initAudio() {
     // Niskie, pulsujące tło
     droneGain = ctx.createGain(); droneGain.gain.value = DRONE * SETTINGS.music;
     const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220;
-    droneGain.connect(lp); lp.connect(master); droneLp = lp;
+    ambBus = ctx.createGain(); ambBus.connect(master);   // szyna ambientu: drone, warstwa napięcia i pętle ambientu (cisza tłumi tylko ją)
+    droneGain.connect(lp); lp.connect(ambBus); droneLp = lp;
     for (const f of [41, 41.6, 61.7]) { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(droneGain); o.start(); }
     const lfo = ctx.createOscillator(), lfoG = ctx.createGain(); lfo.frequency.value = 0.07; lfoG.gain.value = 120;
     lfo.connect(lfoG); lfoG.connect(lp.frequency); lfo.start();

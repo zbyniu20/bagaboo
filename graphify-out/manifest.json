@@ -1,14 +1,14 @@
 {
   "core/ambience.js": {
-    "mtime": 1795474612.8524427,
-    "seen": 1795474971.0496027,
-    "ast_hash": "32af99c0e1fac8b76473d22e12bc3ea8",
+    "mtime": 1795520981.0924387,
+    "seen": 1795521850.4351277,
+    "ast_hash": "556bcccc594e96cef702626a0e70dd47",
     "semantic_hash": ""
   },
   "core/audio.js": {
-    "mtime": 1795520534.8525114,
-    "seen": 1795520897.257607,
-    "ast_hash": "6ac143e40f51c28096059cd2fb2d1dd7",
+    "mtime": 1795520952.1163464,
+    "seen": 1795521850.4351325,
+    "ast_hash": "49422a0787d8632f8a328d9320fa18f5",
     "semantic_hash": ""
   },
   "core/auth.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795520826.2643013,
-    "seen": 1795520897.2586112,
-    "ast_hash": "b4718415a39c24ea3d071a232f244e5b",
+    "mtime": 1795521782.884358,
+    "seen": 1795521850.4356415,
+    "ast_hash": "de90975070d7739e80fbac615cc8bb88",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795520534.8534572,
-    "seen": 1795520897.2586265,
-    "ast_hash": "8573d75ded319f9f47814c6bd9842f15",
+    "mtime": 1795520962.9872642,
+    "seen": 1795521850.4356484,
+    "ast_hash": "3fb7b5920d6077ef30e2448f1ea54fe7",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795520550.6418252,
-    "seen": 1795520897.2580996,
-    "ast_hash": "1c58713f00d6be92f628f761aa92d86c",
+    "mtime": 1795520981.0939388,
+    "seen": 1795521850.4353843,
+    "ast_hash": "309d716a16903be9bb2546e15b23181e",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795520534.8540297,
-    "seen": 1795520897.2581713,
-    "ast_hash": "06235558533050ad246b83a100efa316",
+    "mtime": 1795520962.9875689,
+    "seen": 1795521850.435422,
+    "ast_hash": "42f78a6add7786020a350c7df8b84a1f",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10521,6 +10521,18 @@
     "mtime": 1795520673.293858,
     "seen": 1795520897.2580683,
     "ast_hash": "b2f118ec35b211b11764dc2d08aaa864",
+    "semantic_hash": ""
+  },
+  "core/silencelogic.js": {
+    "mtime": 1795520952.0963087,
+    "seen": 1795521850.435274,
+    "ast_hash": "c27dbb8f2413bfd7787589c1432b2c9e",
+    "semantic_hash": ""
+  },
+  "tests/silence.mjs": {
+    "mtime": 1795521309.510685,
+    "seen": 1795521850.4354136,
+    "ast_hash": "6ccd09108d7aa347e9e821ff92ad2a3f",
     "semantic_hash": ""
   },
   "package-lock.json": {
