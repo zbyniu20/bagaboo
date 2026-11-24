@@ -15,21 +15,27 @@ export function makeSpots(o) {
     return { free, clear, inside, tall };
 }
 
-// Płaskie ściany: dla każdej wysokiej bryły cztery ściany boczne, z pominięciem tych, które są wewnątrz innej bryły albo na zewnątrz granic
-// (styk ścian, tył ścian obwodowych). Zwraca [{ cx, cz, nx, nz, tx, tz, len, top, bottom }]; (nx, nz) = normalna na zewnątrz, (tx, tz) = kierunek wzdłuż ściany
+// Płaskie ściany: dla każdej wysokiej bryły cztery ściany boczne, z pominięciem tych, które są zasłonięte przez inną bryłę (styk, T) albo leżą na zewnątrz poziomu
+// (tył ścian obwodowych). L.bounds to obszar ruchu gracza i bywa mniejszy niż pomieszczenie (w Home ściany stoją na 7-8 m, granice to 6,6 m), więc "zewnątrz" ocenia się
+// względnie: dla pary przeciwległych ścian tej samej bryły zostaje ta bliższa granicom (a ściana dalsza niż 1,5 m od granic odpada).
+// Zwraca [{ cx, cz, nx, nz, tx, tz, len, top, bottom }]; (nx, nz) = normalna na zewnątrz bryły, (tx, tz) = kierunek wzdłuż ściany
+const boundsDist = (A, x, z) => A ? Math.hypot(Math.max(A.minX - x, 0, x - A.maxX), Math.max(A.minZ - z, 0, z - A.maxZ)) : 0;
 export function wallFaces(o) {
-    const { free, inside, tall } = makeSpots(o), out = [], A = o.area;
-    const blocked = (x, z) => !free(x, z, 0) || (A && !inside(x, z, 0));
+    const { free, tall } = makeSpots(o), out = [], A = o.area;
     for (const q of tall) {
         const defs = [[0, -1, 1, 0, q.maxX - q.minX, (q.minX + q.maxX) / 2, q.minZ], [0, 1, 1, 0, q.maxX - q.minX, (q.minX + q.maxX) / 2, q.maxZ], [-1, 0, 0, 1, q.maxZ - q.minZ, q.minX, (q.minZ + q.maxZ) / 2], [1, 0, 0, 1, q.maxZ - q.minZ, q.maxX, (q.minZ + q.maxZ) / 2]];
-        for (const [nx, nz, tx, tz, len, cx, cz] of defs) {
-            if (len < SPOT.minFace) continue;
-            let ok = true;
-            for (const t of [-0.375, 0, 0.375]) { const px = cx + tx * len * t + nx * SPOT.probe, pz = cz + tz * len * t + nz * SPOT.probe; if (blocked(px, pz)) { ok = false; break; } }
-            if (ok) out.push({ cx: cx, cz: cz, nx: nx, nz: nz, tx: tx, tz: tz, len: len, top: q.maxY, bottom: q.minY });
+        const cand = defs.map(([nx, nz, tx, tz, len, cx, cz]) => {
+            if (len < SPOT.minFace) return null;
+            let dist = 0;
+            for (const t of [-0.375, 0, 0.375]) { const px = cx + tx * len * t + nx * SPOT.probe, pz = cz + tz * len * t + nz * SPOT.probe; if (!free(px, pz, 0)) return null; dist = Math.max(dist, boundsDist(A, px, pz)); }
+            return { cx: cx, cz: cz, nx: nx, nz: nz, tx: tx, tz: tz, len: len, top: q.maxY, bottom: q.minY, dist: dist };
+        });
+        for (const [a, b] of [[0, 1], [2, 3]]) {
+            const fa = cand[a], fb = cand[b];
+            for (const [f, other] of [[fa, fb], [fb, fa]]) { if (!f || f.dist > 1.5) continue; if (other && other.dist < f.dist && (f.dist > 0 || other.dist > 0)) continue; out.push(f); }
         }
     }
-    return out;
+    return out.map(f => { delete f.dist; return f; });
 }
 // Przedziały ściany [t0, t1] (w metrach od środka, wzdłuż ściany), z których wycięto okolice portali i rezerwacji (margin m)
 export function faceIntervals(face, o, m) {

@@ -32,6 +32,17 @@ for (const id of LEVELS) {
     await page.evaluate(async (id) => { const M = await import('./main.js'); await M.loadLevel(id); }, id);
     await page.waitForTimeout(3000);
     await page.evaluate(async () => { try { const T = await import('./core/tutorial.js'); T.skipTutorial(); } catch (e) {} });
+    if (process.env.KIT) {
+        const w = await page.evaluate(async (k) => {
+            const E = await import('./core/engine.js'), PL = await import('./core/player.js'), D = await import('./core/desktop.js'), fy = E.L.floorY || 0, m = new E.THREE.Matrix4(), c = [];
+            E.scene.traverse(o => { if (o.isInstancedMesh && /^kit_(pipe|tray|crown)$/.test(o.name)) for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, m); c.push({ name: o.name, x: m.elements[12], y: m.elements[13], z: m.elements[14], nx: m.elements[8], nz: m.elements[10] }); } });
+            const obs = E.L.obstacles.filter(b => b.box3), hit = (x, z) => obs.some(b => b.box3.max.y > fy + 0.25 && b.box3.min.y < fy + 1.8 && x > b.box3.min.x && x < b.box3.max.x && z > b.box3.min.z && z < b.box3.max.z);
+            for (let j = 0; j < c.length; j++) { const f = c[(j + k) % c.length], px = f.x + f.nx * 2.4, pz = f.z + f.nz * 2.4; if (!hit(px, pz) && !hit(f.x + f.nx * 1.2, f.z + f.nz * 1.2)) { PL.setPlayerPosition(px, fy + 1.2, pz); D.setDesktopFacing(Math.atan2(f.nx, f.nz)); return { piece: f.name, y: f.y }; } }
+            return null;
+        }, Number(process.env.KIT) - 1);
+        console.log('element:', JSON.stringify(w)); await page.waitForTimeout(1500);
+    }
+    if (process.env.NOKIT) await page.evaluate(async () => { const E = await import('./core/engine.js'); E.scene.traverse(o => { if (/^kit_/.test(o.name)) o.visible = false; }); });
     if (process.env.DECAL) {
         const w = await page.evaluate(async (k) => {
             const E = await import('./core/engine.js'), PL = await import('./core/player.js'), D = await import('./core/desktop.js'); let m = null; E.scene.traverse(o => { if (o.name === 'levelDecals') m = o; });

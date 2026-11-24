@@ -21,6 +21,7 @@ import { updateDust } from './core/dust.js';
 import { buildShafts } from './core/shafts.js';
 import { addLevelProps } from './core/props.js';
 import { addLevelDecals } from './core/decals.js';
+import { addLevelKit } from './core/kit.js';
 import { updateSpectate } from './core/spectate.js';
 import { updateTutorial, autoStartTutorial } from './core/tutorial.js';
 import { updateGlbMonsters } from './core/glbmonster.js';
@@ -75,6 +76,7 @@ export async function loadLevel(id, spawn) {
     buildPet(id);
     const calmLevel = id === 'games' || cfgKind(id) === 'game';   // GAMES_CALM.on jest ustawiane dopiero niżej, więc dekoracje dostają tryb jawnie (inaczej widziałyby wartość z poprzedniego poziomu)
     addLevelDecals(L.levelId, cfgKind(id), calmLevel);        // plamy na ścianach i podłodze wg rodziny kolorystycznej (core/decals.js): jedna siatka
+    addLevelKit(L.levelId, cfgKind(id), calmLevel).catch(() => {});   // listwy, rury, korytka i kratki przy ścianach wg rodziny kolorystycznej (core/kit.js): instancje, bez kolizji
     addLevelProps(L.levelId, calmLevel).catch(() => {});             // rekwizyty z assets/props/props.glb (core/props.js): instancje, bez kolizji; brak pliku = bez zmian
     onLevelBuilt(cfg.light, LIGHT_PRESETS[cfg.light]);   // warstwa wizualna (odbicia, szczegół, poświaty, cząsteczki)
     applyArt(L.levelId);                                   // paleta rodziny poziomu (core/artlogic.js): światło otoczenia i mgła
