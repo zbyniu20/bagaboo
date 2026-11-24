@@ -578,4 +578,16 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
         check('height: flat field gives the flat normal and the strength tilts it the right way', (() => { const flat = new Float32Array(16).fill(0.5), n = HL.normalsFromHeight(flat, 4, 4, 3); const ramp = new Float32Array(16); for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) ramp[j * 4 + i] = i / 4; const r = HL.normalsFromHeight(ramp, 4, 4, 3); return Math.abs(n[0] - 127.5) < 1.5 && Math.abs(n[1] - 127.5) < 1.5 && n[2] > 254 && r[4 + 0 + 4] < 127; })());
         check('height: normalFor uses it for known surfaces (wall, floor, wood, plaster are marked), luminance only for the rest', /heightField\(surf, w, h\)/.test(TX) && ['wall', 'floor', 'plaster', 'wood'].every(k => new RegExp("userData\\.surface = '" + k + "'").test(TX)));
     }
+    {
+        const SL = await import('../core/shaftlogic.js');
+        const SH = fs.readFileSync(new URL('../core/shafts.js', import.meta.url), 'utf8'), MJ7 = fs.readFileSync(new URL('../main.js', import.meta.url), 'utf8');
+        const lamps = [{ x: 0, y: 3.5, z: 0, intensity: 10 }, { x: 1, y: 3.5, z: 1, intensity: 9 }, { x: 8, y: 3.5, z: 0, intensity: 6 }, { x: 16, y: 3.5, z: 0, intensity: 1 }, { x: 24, y: 1.0, z: 0, intensity: 12 }, { x: 30, y: 3.5, z: 0, intensity: NaN }, null];
+        check('shafts: only medium and high quality outside BagaBoo Games', SL.shaftsEnabled('high', false) && SL.shaftsEnabled('medium', false) && !SL.shaftsEnabled('low', false) && !SL.shaftsEnabled('high', true));
+        const p = SL.pickShafts(lamps, 0, 6);
+        check('shafts: low lamps, broken input, very weak lights and near neighbours are skipped (2 left of 7)', p.length === 2 && p[0].x === 0 && p[1].x === 8, p.map(x => x.x));
+        check('shafts: strongest first, brighter lamp brighter shaft, opacity inside limits, cone widens downwards and ends above the floor', p[0].opacity >= p[1].opacity && p.every(s => s.opacity >= SL.SHAFT.opacityMin && s.opacity <= SL.SHAFT.opacityMax && s.botR > s.topR && s.length > 0 && s.y - s.length > 0));
+        check('shafts: count is capped by max and the limit, empty and invalid inputs give nothing', SL.pickShafts(Array.from({ length: 40 }, (_, i) => ({ x: i * 5, y: 4, z: 0, intensity: 10 })), 0, 100).length === SL.SHAFT.max && SL.pickShafts(lamps, 0, 1).length === 1 && SL.pickShafts([], 0).length === 0 && SL.pickShafts(null, 0).length === 0 && SL.pickShafts(lamps, 0, 0).length === 0);
+        check('shafts: very long drops are limited to maxLength', SL.pickShafts([{ x: 0, y: 30, z: 0, intensity: 5 }], 0)[0].length === SL.SHAFT.maxLength);
+        check('shafts: wired (built after the level and before the bake, one merged mesh, additive, no depth write, fades with the lights, off in calm mode)', /buildShafts\(\);[\s\S]*bakeLevel\(\)/.test(MJ7) && /AdditiveBlending/.test(SH) && /depthWrite: false/.test(SH) && /uK: BAKE_U/.test(SH) && /shaftsEnabled\(SETTINGS\.quality, GAMES_CALM\.on\)/.test(SH) && /new THREE\.Mesh\(g, mat\)/.test(SH));
+    }
 done('logic');

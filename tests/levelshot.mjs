@@ -31,6 +31,7 @@ await page.waitForTimeout(1500);
 for (const id of LEVELS) {
     await page.evaluate(async (id) => { const M = await import('./main.js'); await M.loadLevel(id); }, id);
     await page.waitForTimeout(3000);
+    if (process.env.NOSHAFTS) await page.evaluate(async () => { const E = await import('./core/engine.js'); E.scene.traverse(o => { if (o.name === 'lampShafts') o.visible = false; }); });
     await page.screenshot({ path: path.join(OUT, id + '-' + TAG + '.png') });
     console.log('zrzut', id);
 }

@@ -18,6 +18,7 @@ import { setAmbience, dreadUpdate } from './core/ambience.js';
 import { updateAcoustics } from './core/acoustics.js';
 import { bakeLevel, applyArt, updateBake } from './core/lightbake.js';
 import { updateDust } from './core/dust.js';
+import { buildShafts } from './core/shafts.js';
 import { updateSpectate } from './core/spectate.js';
 import { updateTutorial, autoStartTutorial } from './core/tutorial.js';
 import { updateGlbMonsters } from './core/glbmonster.js';
@@ -73,6 +74,7 @@ export async function loadLevel(id, spawn) {
     onLevelBuilt(cfg.light, LIGHT_PRESETS[cfg.light]);   // warstwa wizualna (odbicia, szczegół, poświaty, cząsteczki)
     applyArt(L.levelId);                                   // paleta rodziny poziomu (core/artlogic.js): światło otoczenia i mgła
     autoStartTutorial(L.levelId);                          // nowy gracz dostaje samouczek sam przy pierwszym wejściu do lobby (core/tutorial.js)
+    buildShafts();                                         // snopy światła pod stałymi lampami (core/shafts.js): jedna siatka
     bakeLevel();                                           // wypalone światło pośrednie ze wszystkich świateł poziomu (core/lightbake.js), PRZED pulą świateł
     registerLevelLights(L.root);                           // pula świateł: do renderu trafia tylko K najważniejszych
     // Prawdziwe odbicia: jednorazowe zdjęcie poziomu z miejsca startu (światła wybrane dla tego miejsca, latarka wyłączona na czas zdjęcia)

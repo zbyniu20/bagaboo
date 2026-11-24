@@ -456,9 +456,9 @@
     "semantic_hash": ""
   },
   "main.js": {
-    "mtime": 1795476648.1304467,
-    "seen": 1795476779.09463,
-    "ast_hash": "fa7f7da0770df0e3fd41dae2e77a7af9",
+    "mtime": 1795479278.2204537,
+    "seen": 1795479971.9402702,
+    "ast_hash": "60e993874c29669bdd72c07d50bf74be",
     "semantic_hash": ""
   },
   "tests/package.json": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795479181.8134851,
-    "seen": 1795479242.6473463,
-    "ast_hash": "ac3cc261072d6b700cacd82109df042a",
+    "mtime": 1795479915.1735287,
+    "seen": 1795479971.940576,
+    "ast_hash": "5acf9fbb0232765eb83c9d8afcf4143f",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795478869.2454665,
-    "seen": 1795479242.6473713,
-    "ast_hash": "988eccf25e92471e39404258de98ba5d",
+    "mtime": 1795479278.2209783,
+    "seen": 1795479971.9405825,
+    "ast_hash": "794d9efa9f4a60bd026b52c858051693",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795478869.2454665,
-    "seen": 1795479242.6471024,
-    "ast_hash": "b13ee321d1189d6ef4bca9d88cf10d3c",
+    "mtime": 1795479301.4178357,
+    "seen": 1795479971.9403093,
+    "ast_hash": "dc22cab14b26e87014a7df3495bd2846",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795478869.2454665,
-    "seen": 1795479242.6471357,
-    "ast_hash": "9ed0bab1b37b455bf8a6ae83cca29ba6",
+    "mtime": 1795479278.2212124,
+    "seen": 1795479971.9403465,
+    "ast_hash": "3fe57dbeaf630d9c43e1b3238eac253e",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10404,9 +10404,27 @@
     "semantic_hash": ""
   },
   "tests/levelshot.mjs": {
-    "mtime": 1795478868.56053,
-    "seen": 1795479242.6470997,
-    "ast_hash": "8af0abc3399171c2c6664db36ef2283f",
+    "mtime": 1795479675.614238,
+    "seen": 1795479971.9403062,
+    "ast_hash": "73d0ebac4bff7bba42da963626d881eb",
+    "semantic_hash": ""
+  },
+  "core/shaftlogic.js": {
+    "mtime": 1795479278.197491,
+    "seen": 1795479971.940154,
+    "ast_hash": "1dc9a72b81e012db4536fb42aee94da7",
+    "semantic_hash": ""
+  },
+  "core/shafts.js": {
+    "mtime": 1795479278.2028565,
+    "seen": 1795479971.9401565,
+    "ast_hash": "bf95d98ff764d068199932838db9e48b",
+    "semantic_hash": ""
+  },
+  "tests/shafts.mjs": {
+    "mtime": 1795479484.589994,
+    "seen": 1795479971.940336,
+    "ast_hash": "494da906edc2edca30394296c3f478e7",
     "semantic_hash": ""
   },
   "package-lock.json": {
