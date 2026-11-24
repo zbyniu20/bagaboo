@@ -147,6 +147,9 @@ export function isModMenuUser(name) { return MODMENU_SET.has(low(name)); }
 // Zastrzeżone nicki (stała ekipa): grać pod nimi może tylko zalogowane konto o tym nicku (core/auth.js).
 // Host nie wpuści gościa z takim nickiem bez dowodu z serwera kont (core/network.js). Konta ekipy zakłada admin w bazie (bagaboo-api, ADMIN_KEY).
 export const RESERVED_NICKS = new Set([...ULTIMATE_NAMES, ...ADMIN_NAMES, ...COADMIN_NAMES, ...OWNER_NAMES, ...MOD_NAMES, ...FURAS_NAMES].map(low));
+// Logowanie (konta na serwerze i klucze ekipy z PIN-em) jest WYŁĄCZONE: każdy wchodzi samym nickiem. Kod zostaje; włączenie to `accounts: true`
+// (do prób w przeglądarce: adres ze `?accounts=1`). Nicki z `RESERVED_NICKS` pozostają zablokowane, bo bez logowania nikt ich nie potwierdzi.
+export const FEATURES = { accounts: false };
 // Klucze PUBLICZNE ekipy (core/staffkey.js): nick małymi literami -> JWK { kty:'EC', crv:'P-256', x, y }. Klucz prywatny zostaje na urządzeniu admina.
 // Nowy admin tworzy klucz w grze (Account -> Staff key), przekazuje właścicielowi tekst klucza publicznego, a ten dopisuje go tutaj.
 export const STAFF_KEYS = {};

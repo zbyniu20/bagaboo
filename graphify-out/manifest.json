@@ -12,9 +12,9 @@
     "semantic_hash": ""
   },
   "core/auth.js": {
-    "mtime": 1795535541.500547,
-    "seen": 1795535660.5405667,
-    "ast_hash": "0508e9662d31ffacd722dd2bf7c1a3d3",
+    "mtime": 1795538168.400342,
+    "seen": 1795538338.9951546,
+    "ast_hash": "05ee027869fe23fd004d3704d2c3e860",
     "semantic_hash": ""
   },
   "core/avatar.js": {
@@ -36,9 +36,9 @@
     "semantic_hash": "d5d631eabcc794a6df15b9a02d235980"
   },
   "core/config.js": {
-    "mtime": 1795535541.500168,
-    "seen": 1795535660.5405822,
-    "ast_hash": "9d65f8053236b804f52d342422417148",
+    "mtime": 1795538168.4000072,
+    "seen": 1795538338.9951699,
+    "ast_hash": "35211ca8f2929dd00b31ad09354a6a14",
     "semantic_hash": ""
   },
   "core/cosmetics.js": {
@@ -456,9 +456,9 @@
     "semantic_hash": ""
   },
   "main.js": {
-    "mtime": 1795535722.4135022,
-    "seen": 1795537727.07179,
-    "ast_hash": "36f9aeb4607445a960f2e7f4563683df",
+    "mtime": 1795538168.4011898,
+    "seen": 1795538338.9955366,
+    "ast_hash": "64bbcc29a9976c6a3e7e6127fc04ea9d",
     "semantic_hash": ""
   },
   "tests/package.json": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795537717.3417523,
-    "seen": 1795537727.0723002,
-    "ast_hash": "3cbb360f9d11c7a530cc8f3aace6b6aa",
+    "mtime": 1795538329.2725565,
+    "seen": 1795538338.9961252,
+    "ast_hash": "3b2342ce4dd5e8de029bdc4d15198cc7",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795535738.0658994,
-    "seen": 1795537727.0718482,
-    "ast_hash": "07b412e7d52fc2b5738de14daa3e935c",
+    "mtime": 1795538174.705038,
+    "seen": 1795538338.9956117,
+    "ast_hash": "4ff39e5339cc9d84ac95f890a823cd0a",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10332,9 +10332,9 @@
     "semantic_hash": ""
   },
   "tests/account.mjs": {
-    "mtime": 1795536917.9992228,
-    "seen": 1795537727.0717945,
-    "ast_hash": "a1b95c56097099244af5340000226f9c",
+    "mtime": 1795538174.7058778,
+    "seen": 1795538338.9955425,
+    "ast_hash": "af746345428b294b20ea446cdcc5c030",
     "semantic_hash": ""
   },
   "tests/mirror.mjs": {

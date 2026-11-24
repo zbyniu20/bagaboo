@@ -8,6 +8,7 @@
 export const API_URL = 'https://bagaboo-api.bagaboo-api.workers.dev';
 // Klucz publiczny serwera kont (ES256, GET /pubkey). Zmiana klucza na serwerze wymaga wpisania tu nowego.
 const SERVER_KEY = { kty: 'EC', crv: 'P-256', x: 'AGYlRJ1xTyj3QBHSlF9-P3uVBTBEAWKO_l6xAR0wxCE', y: 'rQlXVK8g7NcIhxTMPWsMMr3o83efg_4H-VkT3rw-UlU' };
+import { FEATURES } from './config.js';
 import { localAccount, signProof, verifyLocal, signOut } from './staffkey.js';
 const SESSION_KEY = 'bagaboo_session';
 export const NICK_RE = /^[A-Za-z0-9_-]{3,16}$/;
@@ -43,7 +44,8 @@ function saveSession(token, acc) {
 }
 export function logout() { session = null; signOut(); try { localStorage.removeItem(SESSION_KEY); } catch (e) {} notify(); }
 // Zalogowane konto albo null
-export function account() { return session && session.exp * 1000 > Date.now() ? { id: session.id, nick: session.nick } : localAccount(); }   // konto z serwera albo klucz ekipy z tego urządzenia
+export function accountsOn() { try { return FEATURES.accounts || /[?&]accounts=1\b/.test(globalThis.location && globalThis.location.search || ''); } catch (e) { return FEATURES.accounts; } }
+export function account() { if (!accountsOn()) return null; return session && session.exp * 1000 > Date.now() ? { id: session.id, nick: session.nick } : localAccount(); }   // konto z serwera albo klucz ekipy z tego urządzenia
 export function isLoggedIn() { return !!account(); }
 
 // ---------- rozmowa z serwerem ----------
@@ -68,7 +70,7 @@ export async function login(nick, password) { return finish(await post('/login',
 export async function resetPassword(nick, recoveryCode, newPassword) { return finish(await post('/reset', { nick: nick, recoveryCode: recoveryCode, newPassword: newPassword })); }
 // Sprawdza zapisaną sesję na serwerze (np. po zmianie hasła przez admina). Błąd sieci nie wylogowuje.
 export async function refresh() {
-    if (!session) return null;
+    if (!accountsOn() || !session) return null;
     const r = await call('/me', { headers: { Authorization: 'Bearer ' + session.token } });
     if (r.status === 401) { logout(); return null; }
     return account();
@@ -93,6 +95,7 @@ export function randomNonce() {
 }
 // Gość: prosi serwer o dowód dla tego hosta i tej liczby (nonce). Null, gdy nie jest zalogowany albo serwer nie odpowiada.
 export async function vouch(aud, nonce) {
+    if (!accountsOn()) return null;
     if (!session) return signProof(aud, nonce);   // ekipa z kluczem lokalnym podpisuje sama, bez serwera
     const r = await post('/vouch', { aud: aud, nonce: nonce }, session.token);
     return r.data && r.data.ok && typeof r.data.proof === 'string' ? r.data.proof : null;

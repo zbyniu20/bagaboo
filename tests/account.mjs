@@ -22,7 +22,7 @@ let fails = 0; const ok = (name, cond, extra) => { if (cond) console.log('ok  ',
 const page = await ctx.newPage(), errs = []; page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message)); page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed to load resource/i.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 300)); });
 await page.route(/bagaboo-api/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }));   // serwer kont: potwierdza sesję
 await page.addInitScript(() => { localStorage.setItem('bagaboo_session', JSON.stringify({ token: 'a.b.c', id: 7, nick: 'Tester', exp: Math.floor(Date.now() / 1000) + 86400 })); });
-await page.goto(`http://localhost:${port}/?three=${V}`);
+await page.goto(`http://localhost:${port}/?accounts=1&three=${V}`);
 await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
 const vis = (id) => page.evaluate((id) => { const e = document.getElementById(id); return !!e && e.offsetParent !== null; }, id);
 ok('a saved session opens the menu stage as a signed-in player', await vis('menuStage') && !(await vis('authStage')) && /Signed in as Tester/.test(await page.innerText('#acctWho')));
@@ -43,7 +43,7 @@ async function openPage(session) {
     const p = await ctx.newPage(); p.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
     await p.route(/bagaboo-api/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
     if (session) await p.addInitScript(() => { localStorage.setItem('bagaboo_session', JSON.stringify({ token: 'a.b.c', id: 7, nick: 'Tester', exp: Math.floor(Date.now() / 1000) + 86400 })); });
-    await p.goto(`http://localhost:${port}/?three=${V}`);
+    await p.goto(`http://localhost:${port}/?accounts=1&three=${V}`);
     await p.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
     return p;
 }
