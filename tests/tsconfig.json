@@ -31,6 +31,7 @@
     "../core/silencelogic.js",
     "../core/voicelogic.js",
     "../core/memorylogic.js",
+    "../core/mutators.js",
     "../core/avatarfxlogic.js",
     "../core/acousticlogic.js",
     "../core/spectatelogic.js",

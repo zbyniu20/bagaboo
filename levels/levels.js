@@ -15,6 +15,7 @@ import * as SFX from '../core/audio.js';
 import { PROX, TICKER, MONO, SERIF, ITAL, BONE, BLOOD, AMB, AMBD, mmss, visitorsHere, ensureAssets, sp, tx, drawGlass, addComputers, stepDread, drawCard } from '../core/hauntedui.js';
 import { IS_QUEST } from '../core/device.js';
 import { CARDS } from '../core/levelcards.js';
+import { MUTATORS, MUT_LEVELS, mutatorChoice, setMutatorChoice, nextMutator } from '../core/mutators.js';
 import { ARRIVAL_LEVELS } from './lobby-door.js';
 
 const W = 10, D = 7, H = 6;   // sala 20 x 14 m, terminal na północnej ścianie
@@ -118,6 +119,14 @@ function drawScreen(t) {
             c.strokeStyle = on ? '#7fe8ff' : '#3a1812'; c.lineWidth = 2; c.strokeRect(661, 581, XR - 662, 32);
             tx(c, diff === 'easy' ? 'DAILY RUN: not ranked' : (on ? 'DAILY RUN: ON ' + dailyDate() : 'DAILY RUN: off'), (660 + XR) / 2, 597, 21, on ? '#041418' : (diff === 'easy' ? '#6a5c4c' : '#b8a78a'), 'center');
             if (diff !== 'easy') t.buttons.push({ id: 'daily', x: 660, y: 580, w: XR - 660, h: 34, action: () => { setDailyMode(d.rec, !dailyOn(d.rec)); t.dirty = true; } });
+        }
+        if (!d.daily && MUT_LEVELS.includes(d.rec)) {   // mutator (core/mutators.js): zmienione zasady, bez nagród i rekordów; wybór tylko na sesję
+            const mid = mutatorChoice(d.rec), mu = MUTATORS[mid], hov = t.hover.has('mut');
+            c.fillStyle = mu ? mu.color : (hov ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'); c.fillRect(660, 580, XR - 660, 34);
+            c.strokeStyle = mu ? mu.color : '#3a1812'; c.lineWidth = 2; c.strokeRect(661, 581, XR - 662, 32);
+            tx(c, mu ? 'MUTATOR: ' + mu.name.toUpperCase() : 'MUTATOR: off', (660 + XR) / 2, 597, 21, mu ? '#120403' : '#b8a78a', 'center');
+            if (mu) tx(c, 'No rewards, no records.', 660, 634, 15, mu.color);
+            t.buttons.push({ id: 'mut', x: 660, y: 580, w: XR - 660, h: 34, action: () => { setMutatorChoice(d.rec, nextMutator(mid)); t.dirty = true; } });
         }
         tx(c, diff === 'easy' ? 'BEST TIMES' : ((dm ? "TODAY'S BEST" : 'BEST TIMES') + ' (' + df.name.toUpperCase() + ')'), X0, 634, 17, AMBD);
         if (diff === 'easy') tx(c, 'Easy runs are not ranked.', X0, 660, 20, '#9a8c78');

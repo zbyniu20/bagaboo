@@ -10,6 +10,7 @@
 // ==========================================
 import { THREE, scene, camera, renderer, lighting } from './engine.js';
 import { diffOf } from './economy.js';
+import { mutFactor } from './mutators.js';
 import * as SFX from './audio.js';
 
 const KINDS = ['blackout', 'flicker', 'red', 'fog', 'whisper'];
@@ -20,7 +21,7 @@ export function createEvents(level, opts) {
     opts = opts || {};
     const kinds = KINDS.filter(k => !(opts.skip || []).includes(k));
     const df = diffOf(level), scale = df.id === 'easy' ? 1.6 : (df.id === 'nightmare' ? 0.6 : 1);
-    const wait = () => (40 + Math.random() * 50) * scale;
+    const wait = () => (40 + Math.random() * 50) * scale / mutFactor('events');   // nastrój i mutator (core/mutators.js) zmieniają częstość
     let next = wait() * 0.7, cur = null, last = '';
     const hemiColor = new THREE.Color();
 

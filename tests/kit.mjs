@@ -43,8 +43,8 @@ for (const id of [...WITH, ...WITHOUT]) {
     else ok(id + ': no kit pieces (games, calm mode and Room 000)', r.meshes === 0 && r.count === 0, r);
     console.log('     ', id, JSON.stringify(r));
 }
-const lv = WITH.filter(id => !HUBS.includes(id));
-ok('every level (not a hub) gets at least one piece, and most get 20 or more (a few walls give few pieces, hubs may get none by chance)', lv.every(id => results[id].count >= 1) && lv.filter(id => results[id].count >= 20).length >= 6, lv.map(id => id + ':' + results[id].count));
+const lv = WITH.filter(id => !HUBS.includes(id) && id !== 'well');   // Studnia ma tylko 2 płaskie ściany, więc przy losowym ziarnie wizyty może nie dostać nic
+ok('every level (not a hub, not the Well with its two walls) gets at least one piece, and most get 20 or more (the seed changes at every visit)', lv.every(id => results[id].count >= 1) && lv.filter(id => results[id].count >= 20).length >= 6, lv.map(id => id + ':' + results[id].count));
 ok('no page errors', errors.length === 0, errors);
 await browser.close(); server.close();
 if (errors.length) console.log(errors.join('\n'));

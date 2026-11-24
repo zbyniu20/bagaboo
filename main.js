@@ -14,7 +14,8 @@ import { redrawTerminals, updatePointers, updateToast, markAllDirty, toast, term
 import { initAudio, updateListener, hooks as audioHooks } from './core/audio.js';
 import { setLevelMusic } from './core/music.js';
 import { pollEmoteButtons } from './core/emotepanel.js';
-import { setAmbience, dreadUpdate } from './core/ambience.js';
+import { setAmbience, dreadUpdate, DREAD } from './core/ambience.js';
+import { beginRun, mutFactor } from './core/mutators.js';
 import { updateAcoustics } from './core/acoustics.js';
 import { bakeLevel, applyArt, updateBake } from './core/lightbake.js';
 import { updateDust } from './core/dust.js';
@@ -71,6 +72,9 @@ export async function loadLevel(id, spawn) {
     for (const e of cfg.extras) extras.push(await loadModule(e));
     L.levelId = id;   // poziom może to nadpisać (labirynt ma osobne id dla każdego układu)
     for (const e of extras) if (e.prebuild) e.prebuild();
+    L.visit = (Math.random() * 1e9) | 0;                   // zapach wizyty: decale, rekwizyty i elementy architektury układają się inaczej przy każdym wejściu (tylko wygląd)
+    DREAD.fogMul = 1;                                      // gęstość mgły z poprzedniego poziomu nie przechodzi dalej (Staff room i Final Hunt ustawiają własną)
+    const run = beginRun(L.levelId, ECO.dailyOn(id));      // nastrój wizyty i mutator wybrany w terminalu (core/mutators.js), PRZED budową, bo createEvents czyta częstość
     level.build();
     for (const e of extras) e.build();
     buildPet(id);
@@ -79,6 +83,9 @@ export async function loadLevel(id, spawn) {
     addLevelKit(L.levelId, cfgKind(id), calmLevel).catch(() => {});   // listwy, rury, korytka i kratki przy ścianach wg rodziny kolorystycznej (core/kit.js): instancje, bez kolizji
     addLevelProps(L.levelId, calmLevel).catch(() => {});             // rekwizyty z assets/props/props.glb (core/props.js): instancje, bez kolizji; brak pliku = bez zmian
     onLevelBuilt(cfg.light, LIGHT_PRESETS[cfg.light]);   // warstwa wizualna (odbicia, szczegół, poświaty, cząsteczki)
+    if (run.mutator) { lighting.hemi.intensity *= mutFactor('hemi'); DREAD.fogMul *= mutFactor('fog'); }   // mutator Pitch black: ciemniej i gęstsza mgła (po applyLighting)
+    if (run.mutator) toast('Mutator: ' + run.mutator.name + '. ' + run.mutator.info + ' No rewards, no records.', run.mutator.color);
+    else if (run.mood && run.mood.name) toast('Tonight the place feels ' + run.mood.name + '...', '#9aa6b0');
     applyArt(L.levelId);                                   // paleta rodziny poziomu (core/artlogic.js): światło otoczenia i mgła
     autoStartTutorial(L.levelId);                          // nowy gracz dostaje samouczek sam przy pierwszym wejściu do lobby (core/tutorial.js)
     buildShafts(calmLevel);                                         // snopy światła pod stałymi lampami (core/shafts.js): jedna siatka

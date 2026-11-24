@@ -11,6 +11,7 @@ import { buildMannequin, addMonsterFace } from './mannequin.js';
 import { voiceLevel, voiceSmooth, voiceHeard } from './hauntlogic.js';
 import { toast } from './terminal.js';
 import { LEVEL_DEFS } from './registry.js';
+import { mutFactor } from './mutators.js';
 import { speak, voiceSpeaking, voiceCount } from './audio.js';
 import { pickPhrase, profileFor, textToEvents, voiceTick, newVoiceState } from './voicelogic.js';
 import { SAVE } from './economy.js';
@@ -128,7 +129,7 @@ export function dreadAppear(kind) {   // też dla testów: wymusza zjawę
 // Głos z mikrofonu gracza: potwór w poziomie z reżyserem grozy może go usłyszeć. mult: mnożnik zasięgu (np. 1,3 na Nightmare, HIDDEN_MUL dla ukrytego). Pierwszy raz w poziomie ostrzega napisem.
 let voiceToast = false;
 export function heardVoice(dist, mult) {
-    const h = voiceHeard(DREAD.voice, dist, mult);
+    const h = voiceHeard(DREAD.voice, dist, mult * mutFactor('hear'));
     if (h && !voiceToast) { voiceToast = true; toast('Your voice carries: monsters hear your microphone!', '#ff8a6a'); }
     return h;
 }
@@ -169,8 +170,8 @@ export function dreadUpdate(dt) {
     if (nearM) {
         const pos = { x: nearM.x, y: (nearM.y || 0) + 1.4, z: nearM.z };
         dst.breathT -= dt; if (near < 14 && dst.breathT <= 0) { dst.breathT = 2.4 + near * 0.12 + Math.random() * 1.6; breath(pos, 0.15 + 0.5 * (1 - near / 14)); }
-        dst.growlT -= dt; if (near < 10 && dst.growlT <= 0) { dst.growlT = 7 + Math.random() * 8; growl(pos); }
-        dst.whisperT -= dt; if (near < 16 && dst.whisperT <= 0) { dst.whisperT = 9 + Math.random() * 10; camera.getWorldDirection(_fw); whisper({ x: _dp.x - _fw.x * 1.3, y: _dp.y - 0.1, z: _dp.z - _fw.z * 1.3 }); }   // szept tuż za plecami
+        dst.growlT -= dt; if (near < 10 && dst.growlT <= 0) { dst.growlT = (7 + Math.random() * 8) / mutFactor('whisper'); growl(pos); }
+        dst.whisperT -= dt; if (near < 16 && dst.whisperT <= 0) { dst.whisperT = (9 + Math.random() * 10) / mutFactor('whisper'); camera.getWorldDirection(_fw); whisper({ x: _dp.x - _fw.x * 1.3, y: _dp.y - 0.1, z: _dp.z - _fw.z * 1.3 }); }   // szept tuż za plecami
         // głos potwora (core/voice.js, szept z formantów, czasem z nickiem gracza; lokalnie): nie w trybie spokojnym, nie po jumpscare'ie, z odstępem 28-55 s
         VST.active = voiceCount();
         if (!GAMES_CALM.on && voiceTick(VST, dt, near, dst.scaredT, GAMES_CALM.on, Math.random)) {

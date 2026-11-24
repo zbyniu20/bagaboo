@@ -9,6 +9,7 @@
 import { toast, markAllDirty } from './terminal.js';
 import { RECORD_DEFS, DIFF_LEVEL_IDS } from './registry.js';
 import { PERSONAL } from './modstate.js';
+import { mutatorActive } from './mutators.js';
 import { isAdminName, isModName, isStaffName, isUltimateName, isOwnerName, isCoAdminName, isFurasName, isTherianName, isReservedNick, staffBadgesFor, roleTagsFor } from './config.js';
 
 const SAVE_KEY = 'bagaboo_save_v1';
@@ -603,6 +604,7 @@ export function recordKey(level, diff) { diff = diff || getDiff(level); return d
 // Nagroda za przejście poziomu: pełna za pierwszym razem, potem mniejsza, maks. REPEAT_LIMIT razy dziennie.
 // Mnożnik trudności; pierwsze przejście na Nightmare daje jednorazowy bonus (poza dziennym limitem).
 export function levelReward(level, first, repeat, label) {
+    if (mutatorActive()) { toast('Mutator run: no reward, no record, no progress', '#ffb030'); return; }   // bieg ze zmienionymi zasadami (core/mutators.js)
     SESSION.wins = (SESSION.wins || 0) + 1;   // wygrane w tej sesji (tablica w lobby, tylko do wyświetlania)
     const key = level + 'Wins', wins = SAVE[key] || 0, df = diffOf(level);
     SAVE[key] = wins + 1;
@@ -631,6 +633,7 @@ export function rewardActivity(key) { capped(key, ACTIVITY[key].each); }
 // Rekordy czasów (w sekundach). Zwraca true przy nowym rekordzie. Easy nie liczy się do rekordów,
 // Nightmare zapisuje się pod kluczem "<poziom>_nm". Każdy zaliczony czas trafia też do listy top 5.
 export function recordTime(id, sec) {
+    if (mutatorActive()) return false;   // mutator zmienia zasady: bez rekordów (nie rusza listy czasów ani ducha)
     const diff = getDiff(id);
     if (diff === 'easy') { toast('Easy runs do not count for records', '#9aa0a0'); return false; }
     if (isDaily(id)) {   // dzienny układ: osobna lista czasów dnia (nie miesza się z rekordami życia)
@@ -659,6 +662,7 @@ export function topTimes(id, diff, daily) {
 }
 // Rekord punktowy (im więcej, tym lepiej), np. strzelnica
 export function recordScore(id, score) {
+    if (mutatorActive()) return;
     const prev = SAVE.records[id];
     if (prev === undefined || score > prev) { SAVE.records[id] = score; saveGame(); markAllDirty(); if (prev !== undefined) toast('New record: ' + score, '#ffd27a'); return true; }
     return false;
