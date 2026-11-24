@@ -2,8 +2,9 @@
 // Rekwizyty w poziomach (czysta logika, bez THREE): tabela rekwizytów z assets/props/props.glb, zestawy dla poziomów i rozmieszczanie.
 // Rekwizyty to dekoracja BEZ kolizji (gracz i boty przechodzą przez nie), więc nie mogą nic blokować: stoją z dala od startu, rezerwacji i portali,
 // poza przeszkodami, a przy ścianach tylko tam, gdzie po drugiej stronie zostaje co najmniej 1,9 m przejścia, a na otwartej podłodze tylko z 0,95 m luzu dookoła. Rysuje je core/props.js (instancje).
-// Odpowiednik reguł z addStoryProps (core/levelkit.js) w postaci czystej funkcji; zmieniając reguły unikania, zmień oba miejsca.
+// Reguły unikania (start, rezerwacje, portale, przeszkody) są we wspólnym core/spotlogic.js.
 // ==========================================
+import { makeSpots } from './spotlogic.js';
 export const PROPS = {   // nazwa siatki w GLB -> promień zajmowanego miejsca (m); nazwy muszą pasować do tools/blender/props.py (test pilnuje)
     barrel: { mesh: 'prop_barrel', r: 0.38 }, crate: { mesh: 'prop_crate', r: 0.48 }, bench: { mesh: 'prop_bench', r: 0.85 },
     pipes: { mesh: 'prop_pipes', r: 0.95 }, debris: { mesh: 'prop_debris', r: 0.6 }, bucket: { mesh: 'prop_bucket', r: 0.28 },
@@ -33,10 +34,7 @@ function pickKind(R, kinds) { let tot = 0; for (const k of kinds) tot += k[1]; l
 export function placeProps(o) {
     const R = mulberry(o.seed), A = o.area, fy = o.floorY || 0, boxes = o.boxes || [], sp = o.spawn || [0, 1, 0], kinds = (o.kinds || []).filter(k => PROPS[k[0]] && k[1] > 0);
     if (!kinds.length || !(o.count > 0) || !A) return [];
-    const free = (x, z, r) => !boxes.some(q => q.maxY > fy + 0.25 && q.minY < fy + 1.6 && x > q.minX - r && x < q.maxX + r && z > q.minZ - r && z < q.maxZ + r);
-    const clear = (x, z) => Math.hypot(x - sp[0], z - sp[2]) > 5 && !(o.reserved || []).some(r => Math.hypot(x - r[0], z - r[1]) < (r[2] || 2) + 1) && !(o.portals || []).some(p => x > p.minX - 2 && x < p.maxX + 2 && z > p.minZ - 2 && z < p.maxZ + 2);
-    const inside = (x, z) => x > A.minX + 0.8 && x < A.maxX - 0.8 && z > A.minZ + 0.8 && z < A.maxZ - 0.8;
-    const tall = boxes.filter(q => q.maxY - q.minY >= 1.8 && q.minY <= fy + 0.6), out = [];
+    const SP = makeSpots(o), free = SP.free, clear = SP.clear, inside = (x, z) => SP.inside(x, z, 0.8), tall = SP.tall, out = [];
     for (let tries = 0; tries < o.count * 50 && out.length < o.count; tries++) {
         const name = pickKind(R, kinds), r = PROPS[name].r; let x, z, rotY;
         if (tall.length && R() < 0.7) {   // przy ścianie, tyłem do niej

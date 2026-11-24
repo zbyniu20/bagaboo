@@ -1,17 +1,17 @@
 // ==========================================
 // Snopy światła pod stałymi lampami: jedna scalona siatka stożków (addytywne, bez zapisu głębi), jedno wywołanie rysowania.
 // Brzegi są miękkie (przezroczystość zależy od kąta patrzenia, Fresnel), przy podstawie lampy jasno, przy podłodze gaśnie. Gasną razem ze światłami (BAKE_U).
-// Wyłączone na jakości Low i w BagaBoo Games (GAMES_CALM). Wołane z main.js po zbudowaniu poziomu (przed pulą świateł). Logika: core/shaftlogic.js.
+// Wyłączone na jakości Low i w BagaBoo Games (tryb spokojny podaje main.js jawnie, bo GAMES_CALM.on jest ustawiane dopiero po budowie). Wołane z main.js po zbudowaniu poziomu (przed pulą świateł). Logika: core/shaftlogic.js.
 // ==========================================
 import * as THREE from 'three';
 import { L, BAKE_U } from './engine.js';
-import { SETTINGS, GAMES_CALM } from './settings.js';
+import { SETTINGS } from './settings.js';
 import { pickShafts, shaftsEnabled } from './shaftlogic.js';
 
 export const shaftInfo = { count: 0 };
-export function buildShafts() {
+export function buildShafts(calm) {
     shaftInfo.count = 0;
-    if (!shaftsEnabled(SETTINGS.quality, GAMES_CALM.on)) return null;
+    if (!shaftsEnabled(SETTINGS.quality, !!calm)) return null;
     const lights = [];
     L.root.traverse(o => { if (o.isPointLight && o.visible && o.intensity > 0 && !o.userData.pooled && !o.userData.noShaft) { const p = o.getWorldPosition(new THREE.Vector3()); lights.push({ x: p.x, y: p.y, z: p.z, intensity: o.intensity, color: o.color.getHex() }); } });
     const picks = pickShafts(lights, L.floorY || 0, 6);

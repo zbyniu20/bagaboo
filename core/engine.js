@@ -83,7 +83,7 @@ export const tex = {
     plaster: T.createPlasterTexture(), skin: T.createSkinTexture(), wood: T.createWoodTexture(),
     eye: T.createEyeballTexture(), dot: T.createDotTexture(), camo: T.createCamoTexture(), bandage: T.createBandageTexture(),
     // rysowane dopiero przy pierwszym użyciu (poziomy z mokrą podłogą, zardzewiałymi ścianami i potworami)
-    get floorWet() { return T.createFloorWetRoughTexture(); }, get wallRust() { return T.createWallRustTexture(); }, get eyeBloodshot() { return T.createBloodshotEyeTexture(); }
+    get floorWet() { return T.createFloorWetRoughTexture(); }, get wallRust() { return T.createWallRustTexture(); }, get eyeBloodshot() { return T.createBloodshotEyeTexture(); }, get decals() { return T.createDecalAtlas(); }
 };
 
 // Stan bieżącego poziomu. Wszystko, co poziom tworzy, trafia tutaj, żeby dało się go wyczyścić przy zmianie poziomu.

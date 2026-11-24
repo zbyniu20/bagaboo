@@ -32,6 +32,17 @@ for (const id of LEVELS) {
     await page.evaluate(async (id) => { const M = await import('./main.js'); await M.loadLevel(id); }, id);
     await page.waitForTimeout(3000);
     await page.evaluate(async () => { try { const T = await import('./core/tutorial.js'); T.skipTutorial(); } catch (e) {} });
+    if (process.env.DECAL) {
+        const w = await page.evaluate(async (k) => {
+            const E = await import('./core/engine.js'), PL = await import('./core/player.js'), D = await import('./core/desktop.js'); let m = null; E.scene.traverse(o => { if (o.name === 'levelDecals') m = o; });
+            if (!m) return null; const p = m.geometry.attributes.position, c = [], fy = E.L.floorY || 0;
+            for (let q = 0; q < p.count / 4; q++) { const a = [0, 1, 2, 3].map(i => [p.getX(q * 4 + i), p.getY(q * 4 + i), p.getZ(q * 4 + i)]); if (Math.abs(a[0][1] - a[2][1]) < 0.2) continue; const cx = (a[0][0] + a[2][0]) / 2, cz = (a[0][2] + a[2][2]) / 2, tx = a[1][0] - a[0][0], tz = a[1][2] - a[0][2], tl = Math.hypot(tx, tz) || 1; let nx = -tz / tl, nz = tx / tl;
+                const obs = E.L.obstacles.filter(b => b.box3), hit = (x, z) => obs.some(b => b.box3.max.y > fy + 0.25 && b.box3.min.y < fy + 1.8 && x > b.box3.min.x && x < b.box3.max.x && z > b.box3.min.z && z < b.box3.max.z);
+                if (hit(cx + nx * 0.3, cz + nz * 0.3)) { nx = -nx; nz = -nz; } if (hit(cx + nx * 0.3, cz + nz * 0.3) || hit(cx + nx * 2.2, cz + nz * 2.2)) continue; c.push({ px: cx + nx * 2.2, pz: cz + nz * 2.2, yaw: Math.atan2(nx, nz), y: (a[0][1] + a[2][1]) / 2 }); }
+            const f = c[Math.min(c.length - 1, k)]; if (!f) return null; PL.setPlayerPosition(f.px, fy + 1.2, f.pz); D.setDesktopFacing(f.yaw); return f;
+        }, Number(process.env.DECAL) - 1);
+        console.log('decal:', JSON.stringify(w)); await page.waitForTimeout(1500);
+    }
     if (process.env.WALL) {
         const w = await page.evaluate(async (k) => {
             const E = await import('./core/engine.js'), PL = await import('./core/player.js'), D = await import('./core/desktop.js'), sp = E.L.spawn || [0, 1, 0], fy = E.L.floorY || 0, c = [];
@@ -62,6 +73,7 @@ for (const id of LEVELS) {
         console.log('rekwizyt:', info); await page.evaluate(async () => { const D = await import('./core/desktop.js'); D.setDesktopFacing(0); }); await page.waitForTimeout(Number(process.env.WAIT || 14000));
     }
     if (process.env.NOPROPS) await page.evaluate(async () => { const E = await import('./core/engine.js'); E.scene.traverse(o => { if (/^props_/.test(o.name)) o.visible = false; }); });
+    if (process.env.NODECALS) await page.evaluate(async () => { const E = await import('./core/engine.js'); E.scene.traverse(o => { if (o.name === 'levelDecals') o.visible = false; }); });
     if (process.env.NOSHAFTS) await page.evaluate(async () => { const E = await import('./core/engine.js'); E.scene.traverse(o => { if (o.name === 'lampShafts') o.visible = false; }); });
     await page.screenshot({ path: path.join(OUT, id + '-' + TAG + '.png') });
     console.log('zrzut', id);
