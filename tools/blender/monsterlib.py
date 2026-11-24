@@ -277,7 +277,13 @@ def humanoid_clips(m, walk=0.55, run=1.0, arm_walk=0.35, arm_run=0.9, knee=0.9, 
         ph = math.sin(t * math.pi); setx(pb, 'chest', -0.2 * ph); setx(pb, 'head', 0.3 * ph)
         for side in ('L', 'R'): setx(pb, 'upperarm' + side, -1.7 * ph); setx(pb, 'forearm' + side, -0.4 * ph)
         setx(pb, 'jaw', 0.7 * ph)
-    m.clip('Idle', 48, idle); m.clip('Walk', 24, gait(walk, arm_walk, knee, 0.05)); m.clip('Run', 16, gait(run, arm_run, knee * 1.2, lean_run)); m.clip('Attack', 24, attack)
+    def scream(pb, t):   # głowa w tył, szeroka paszcza, ręce w górę, klatka wygięta (jednorazowy klip: gra odtwarza go, gdy potwór zauważa gracza i rusza biegiem)
+        ph = math.sin(t * math.pi); setx(pb, 'chest', 0.25 * ph); setx(pb, 'head', -0.5 * ph, 0, 0.06 * math.sin(t * 28) * ph); setx(pb, 'jaw', 0.95 * ph)
+        for side in ('L', 'R'): setx(pb, 'upperarm' + side, -2.5 * ph); setx(pb, 'forearm' + side, -0.25 * ph)
+    def listen(pb, t):   # nasłuchiwanie: głowa przechylona i powoli skręcana na boki, klatka lekko pochylona (klip w pętli)
+        ph = t * 2 * math.pi; setx(pb, 'chest', -0.1 + 0.02 * math.sin(ph)); setx(pb, 'head', 0.08, 0.45 * math.sin(ph), 0.3)
+        for side in ('L', 'R'): setx(pb, 'upperarm' + side, 0.05); setx(pb, 'forearm' + side, -0.15)
+    m.clip('Idle', 48, idle); m.clip('Scream', 36, scream); m.clip('Listen', 48, listen); m.clip('Walk', 24, gait(walk, arm_walk, knee, 0.05)); m.clip('Run', 16, gait(run, arm_run, knee * 1.2, lean_run)); m.clip('Attack', 24, attack)
 
 # ---------- scena podglądowa (Cycles CPU) ----------
 def new_scene(): reset()

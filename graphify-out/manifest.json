@@ -402,9 +402,9 @@
     "semantic_hash": ""
   },
   "levels/memory.js": {
-    "mtime": 1795369300.4188735,
-    "seen": 1795370038.6917636,
-    "ast_hash": "1ead2ec3349fac54a211e1c01b04f5f1",
+    "mtime": 1795515998.3973918,
+    "seen": 1795518684.3107812,
+    "ast_hash": "0ad2a662ce4902df697c1219d3bccdbf",
     "semantic_hash": ""
   },
   "levels/monster.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795514641.30547,
-    "seen": 1795515879.2213922,
-    "ast_hash": "755489dfe5ab5b022c567741c87fa309",
+    "mtime": 1795516633.3909504,
+    "seen": 1795518684.3111248,
+    "ast_hash": "e570f364d8319a040d156567244b1b2a",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795513791.5116816,
-    "seen": 1795515879.2211392,
-    "ast_hash": "690567bf2024a42f2676df0544370a5e",
+    "mtime": 1795516052.1818352,
+    "seen": 1795518684.3108435,
+    "ast_hash": "a1157b657b4da6abfc0a9a5c9496bf39",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10284,15 +10284,15 @@
     "semantic_hash": ""
   },
   "core/glblogic.js": {
-    "mtime": 1795461813.1600795,
-    "seen": 1795467200.1395345,
-    "ast_hash": "99f121b6f19842dc2eb0c94016439a41",
+    "mtime": 1795515952.7287037,
+    "seen": 1795518684.3106258,
+    "ast_hash": "eb9f9778f7476bd5ef385c14a53fdb65",
     "semantic_hash": ""
   },
   "core/glbmonster.js": {
-    "mtime": 1795461813.1606274,
-    "seen": 1795467200.1395364,
-    "ast_hash": "c1286a6ff19f8625bc4dae0d7af4349e",
+    "mtime": 1795515992.286228,
+    "seen": 1795518684.3106284,
+    "ast_hash": "c07a5b7c1e05485779397cda693dbe38",
     "semantic_hash": ""
   },
   "tests/glb.mjs": {
@@ -10302,9 +10302,9 @@
     "semantic_hash": ""
   },
   "assets/monsters/README.md": {
-    "mtime": 1795449506.6872804,
-    "seen": 1795449573.551062,
-    "ast_hash": "4e070e73be3bb234eb75cf4f9af63273",
+    "mtime": 1795516633.3918812,
+    "seen": 1795518684.311128,
+    "ast_hash": "47e4bdfca9778bfa9dbaf44787c1eab6",
     "semantic_hash": ""
   },
   "tests/glbshot.mjs": {
@@ -10320,9 +10320,9 @@
     "semantic_hash": ""
   },
   "tools/blender/monsterlib.py": {
-    "mtime": 1795461846.982545,
-    "seen": 1795467200.1397412,
-    "ast_hash": "2471ac97f0316cb29f79bb6dfe0a2c4d",
+    "mtime": 1795516017.489274,
+    "seen": 1795518684.3108928,
+    "ast_hash": "1cc66e6b86275e77c780068c45ec5595",
     "semantic_hash": ""
   },
   "tools/blender/monsters.py": {
@@ -10404,9 +10404,9 @@
     "semantic_hash": ""
   },
   "tests/levelshot.mjs": {
-    "mtime": 1795515486.0568602,
-    "seen": 1795515879.2211366,
-    "ast_hash": "cfe7535433c278a3daa30ffc3960c67e",
+    "mtime": 1795518530.2632124,
+    "seen": 1795518684.3108406,
+    "ast_hash": "21b516e25b50946ab06808936b82612a",
     "semantic_hash": ""
   },
   "core/shaftlogic.js": {

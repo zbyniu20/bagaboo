@@ -32,6 +32,15 @@ for (const id of LEVELS) {
     await page.evaluate(async (id) => { const M = await import('./main.js'); await M.loadLevel(id); }, id);
     await page.waitForTimeout(3000);
     await page.evaluate(async () => { try { const T = await import('./core/tutorial.js'); T.skipTutorial(); } catch (e) {} });
+    if (process.env.MONSTER) {
+        await page.evaluate((d) => { window.__mdist = d; }, Number(process.env.MDIST || 2.6));
+        const w = await page.evaluate(async (k) => {
+            const E = await import('./core/engine.js'), PL = await import('./core/player.js'), D = await import('./core/desktop.js'), fy = E.L.floorY || 0, c = []; E.scene.traverse(o => { if (o.isSkinnedMesh && o.visible) c.push(o); });
+            const seen = new Set(), v = new E.THREE.Vector3(), list = []; for (const o of c) { let r = o; while (r.parent && r.parent !== E.L.root && r.parent !== E.scene) r = r.parent; if (seen.has(r)) continue; seen.add(r); o.getWorldPosition(v); list.push({ x: v.x, z: v.z, y: v.y }); }
+            const f = list[Math.min(list.length - 1, k)]; if (!f) return null; PL.setPlayerPosition(f.x, fy + 1.2, f.z + (Number(window.__mdist) || 2.6)); D.setDesktopFacing(0); return { n: list.length, x: f.x, z: f.z };
+        }, Number(process.env.MONSTER) - 1);
+        console.log('potwór:', JSON.stringify(w)); await page.waitForTimeout(Number(process.env.WAIT || 2500));
+    }
     if (process.env.KIT) {
         const w = await page.evaluate(async (k) => {
             const E = await import('./core/engine.js'), PL = await import('./core/player.js'), D = await import('./core/desktop.js'), fy = E.L.floorY || 0, m = new E.THREE.Matrix4(), c = [];
