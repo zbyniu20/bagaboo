@@ -52,6 +52,7 @@
     "../core/netguard.js",
     "../core/modstate.js",
     "../core/config.js",
+    "../core/staffkey.js",
     "../core/perflogic.js"
   ]
 }

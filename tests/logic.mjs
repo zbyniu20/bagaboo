@@ -741,4 +741,26 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
         check('variety: the same run without a mutator pays out as before (the gate does not leak into normal runs)', E5.SAVE.wallet > w1 && (E5.SAVE.cemeteryWins || 0) === win0 + 1); MU.endRun();
         check('variety: wired (the run starts BEFORE the level is built with the daily flag, dimming and fog after the lighting, a fresh fog baseline per level, events and ears and whispers read the factors, a terminal button only for allowed levels, a new per-visit seed for the decor)', /beginRun\(L\.levelId, ECO\.dailyOn\(id\)\);[\s\S]*level\.build\(\);/.test(MJ11) && /DREAD\.fogMul = 1;[\s\S]*beginRun/.test(MJ11) && /lighting\.hemi\.intensity \*= mutFactor\('hemi'\)/.test(MJ11) && /scale \/ mutFactor\('events'\)/.test(EV) && /mult \* mutFactor\('hear'\)/.test(AM4) && /\/ mutFactor\('whisper'\)/.test(AM4) && /!d\.daily && MUT_LEVELS\.includes\(d\.rec\)/.test(LV2) && /L\.visit = /.test(MJ11) && ['decals', 'props', 'kit'].every(f => /L\.visit/.test(fs.readFileSync(new URL('../core/' + f + '.js', import.meta.url), 'utf8'))));
     }
+
+// --- Klucze ekipy (core/staffkey.js): konto bez serwera ---
+{
+    const store = {}; globalThis.localStorage = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
+    const SK = await import(url('core/staffkey.js')), CFG = await import(url('core/config.js')), AU = await import(url('core/auth.js'));
+    check('staffkey: only a reserved staff nickname can get a key', !(await SK.createKey('RandomGuy')).ok && !(await SK.createKey('ab')).ok);
+    const made = await SK.createKey('Luna');
+    check('staffkey: a new key is not trusted until its public key is in STAFF_KEYS', made.ok && !made.registered && SK.signIn() === null && (await AU.vouch('G:ROOM', 'n1')) === null && AU.account() === null);
+    CFG.STAFF_KEYS.luna = made.pub;
+    const proof = await AU.vouch('G:ROOM', 'nonce-1234');
+    check('staffkey: a registered key logs in and its proof verifies to the nickname', SK.signIn() === 'Luna' && AU.account().nick === 'Luna' && (await AU.verifyProof(proof, 'G:ROOM', 'nonce-1234')) === 'Luna');
+    check('staffkey: the proof is bound to the room and the nonce (replay is refused)', (await AU.verifyProof(proof, 'G:OTHER', 'nonce-1234')) === null && (await AU.verifyProof(proof, 'G:ROOM', 'nonce-9999')) === null);
+    const parts = proof.split('.'), forged = parts[0] + '.' + Buffer.from(JSON.stringify({ typ: 'join', aud: 'G:ROOM', nonce: 'nonce-1234', nick: 'lincolnvr', exp: Math.floor(Date.now() / 1000) + 99 })).toString('base64url') + '.' + parts[2];
+    check('staffkey: a forged or altered proof and a nick without a registered key are refused', (await AU.verifyProof(forged, 'G:ROOM', 'nonce-1234')) === null && (await AU.verifyProof(parts[0] + '.' + parts[1] + '.AAAA', 'G:ROOM', 'nonce-1234')) === null);
+    const other = await SK.createKey('Luna'); const stolen = await AU.vouch('G:ROOM', 'nonce-5555');
+    check('staffkey: a different key under the same nickname is not trusted', other.ok && SK.signIn() === null && stolen === null && AU.account() === null);
+    store.bagaboo_staffkey = JSON.stringify({ nick: 'Luna', priv: JSON.parse(JSON.stringify({ kty: 'EC' })), pub: made.pub });
+    check('staffkey: an invalid import is rejected', !SK.importKey('not json').ok && !SK.importKey('{"nick":"Luna","priv":{}}').ok);
+    AU.logout();
+    check('staffkey: logout turns the key off on this device', AU.account() === null);
+    delete CFG.STAFF_KEYS.luna;
+}
 done('logic');

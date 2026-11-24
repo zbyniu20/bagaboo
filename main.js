@@ -45,6 +45,7 @@ import { captureEnvironment } from './core/envcapture.js';
 import { LEVEL_DEFS, levelPath } from './core/registry.js';
 import { isReservedNick, isStaffName } from './core/config.js';
 import * as AUTH from './core/auth.js';
+import * as SK from './core/staffkey.js';
 import { updateModMenu } from './core/modmenu.js';
 import { buildPet, updatePet, disposePet } from './core/pet.js';   // Stworek: towarzysz w salach (lobby, Levels, Games, Staff, Wardrobe, My Room)
 
@@ -276,7 +277,7 @@ $('btnJoin').onclick = async () => { if (!(await canStart(true))) return; initAu
 try { localStorage.removeItem('bagaboo_saved_pw'); } catch (e) {}
 let confirmedNick = '';   // nick potwierdzony przez serwer kont w tej sesji (po logowaniu albo po udanym sprawdzeniu sesji)
 const acctMsg = (text, good) => { const m = $('acctMsg'); m.innerText = text || ''; m.style.color = good ? '#9aff60' : '#ff8a70'; };
-function acctBusy(on) { ['btnLogin', 'btnRegister', 'btnReset', 'btnGuest'].forEach(id => { $(id).disabled = on; }); }
+function acctBusy(on) { ['btnLogin', 'btnRegister', 'btnReset', 'btnGuest', 'btnKeyCreate', 'btnKeyLogin'].forEach(id => { $(id).disabled = on; }); }
 // Dwa ekrany: najpierw logowanie ('auth'), potem menu z trybami gry ('menu'). Do menu wchodzi się po zalogowaniu albo jako gość.
 let guestMode = true, recoveryPending = false;   // domyślnie: wpisz nick i graj; konto jest opcjonalne (chroni nick)
 function showStage(stage) { $('authStage').style.display = stage === 'auth' ? 'block' : 'none'; $('menuStage').style.display = stage === 'menu' ? 'block' : 'none'; }
@@ -320,11 +321,26 @@ $('btnReset').onclick = async () => {
     if (res.recoveryCode) showRecovery(res.recoveryCode); else recoveryPending = false;   // stary kod przestaje działać, więc pokazujemy nowy
     syncAccountUi();
 };
+// Klucz ekipy (core/staffkey.js): konto admina i moda bez serwera. Klucz prywatny zostaje na tym urządzeniu.
+$('btnKeyCreate').onclick = async () => {
+    const nick = $('acctNick').value.trim(), res = await SK.createKey(nick);
+    if (!res.ok) { acctMsg(res.error === 'not_staff_nick' ? 'Type your staff nickname in the nickname field first.' : 'Could not save the key on this device.', false); return; }
+    $('keyText').value = JSON.stringify({ [res.nick.toLowerCase()]: res.pub });
+    acctMsg(res.registered ? 'Key created and already registered. Press Log in with key.' : 'Key created. Send the public key below to the owner so it can be added to STAFF_KEYS in core/config.js. Until then nobody trusts it.', res.registered);
+};
+$('btnKeyLogin').onclick = () => {
+    const n = SK.signIn();
+    if (!n) { acctMsg(SK.readKey() ? 'This key is not registered yet. Send its public key to the owner.' : 'No staff key on this device. Create or import one.', false); return; }
+    confirmedNick = n; acctMsg(''); syncAccountUi();
+};
+$('btnKeyExport').onclick = () => { const t = SK.exportKey(); $('keyText').value = t; acctMsg(t ? 'This is your PRIVATE key. Keep it secret and do not share it.' : 'No staff key on this device.', !!t); };
+$('btnKeyImport').onclick = () => { const r = SK.importKey($('keyText').value); acctMsg(r.ok ? (r.registered ? 'Key imported. Press Log in with key.' : 'Key imported, but its public key is not registered yet.') : 'That is not a valid staff key.', !!r.ok); if (r.ok) $('keyText').value = ''; };
 $('btnGuest').onclick = () => { guestMode = true; acctMsg(''); syncAccountUi(); };
 $('btnToLogin').onclick = () => { guestMode = false; acctMsg(''); syncAccountUi(); };
 $('btnLogout').onclick = () => { confirmedNick = ''; guestMode = true; AUTH.logout(); acctMsg('Signed out.', true); };
 $('btnRecoverySaved').onclick = () => { recoveryPending = false; $('recoveryBox').style.display = 'none'; $('recoveryCode').innerText = ''; syncAccountUi(); };
 syncAccountUi();
+{ const la = AUTH.account(); if (la && la.local) confirmedNick = la.nick; syncAccountUi(); }   // klucz ekipy z tego urządzenia: tożsamość potwierdza podpis, nie serwer
 AUTH.refresh().then((a) => { if (a) confirmedNick = a.nick; syncAccountUi(); });   // zapisana sesja: serwer potwierdza ją albo wylogowuje
 // Jakość grafiki: zapis ustawienia i ponowne uruchomienie (tekstury i cienie tworzą się przy starcie)
 $('quality').onchange = () => { SETTINGS.quality = $('quality').value; saveSettings(); location.reload(); };
