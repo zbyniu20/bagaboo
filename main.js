@@ -19,6 +19,7 @@ import { updateAcoustics } from './core/acoustics.js';
 import { bakeLevel, applyArt, updateBake } from './core/lightbake.js';
 import { updateDust } from './core/dust.js';
 import { buildShafts } from './core/shafts.js';
+import { addLevelProps } from './core/props.js';
 import { updateSpectate } from './core/spectate.js';
 import { updateTutorial, autoStartTutorial } from './core/tutorial.js';
 import { updateGlbMonsters } from './core/glbmonster.js';
@@ -71,6 +72,7 @@ export async function loadLevel(id, spawn) {
     level.build();
     for (const e of extras) e.build();
     buildPet(id);
+    addLevelProps(L.levelId).catch(() => {});             // rekwizyty z assets/props/props.glb (core/props.js): instancje, bez kolizji; brak pliku = bez zmian
     onLevelBuilt(cfg.light, LIGHT_PRESETS[cfg.light]);   // warstwa wizualna (odbicia, szczegół, poświaty, cząsteczki)
     applyArt(L.levelId);                                   // paleta rodziny poziomu (core/artlogic.js): światło otoczenia i mgła
     autoStartTutorial(L.levelId);                          // nowy gracz dostaje samouczek sam przy pierwszym wejściu do lobby (core/tutorial.js)

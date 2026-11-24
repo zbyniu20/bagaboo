@@ -31,6 +31,18 @@ await page.waitForTimeout(1500);
 for (const id of LEVELS) {
     await page.evaluate(async (id) => { const M = await import('./main.js'); await M.loadLevel(id); }, id);
     await page.waitForTimeout(3000);
+    await page.evaluate(async () => { try { const T = await import('./core/tutorial.js'); T.skipTutorial(); } catch (e) {} });
+    if (process.env.NEARPROP) {
+        const info = await page.evaluate(async (pick) => {
+            const E = await import('./core/engine.js'), PL = await import('./core/player.js'), m = new E.THREE.Matrix4(), c = [];
+            E.scene.traverse(o => { if (o.isInstancedMesh && /^props_/.test(o.name)) for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, m); c.push([o.name, m.elements[12], m.elements[14]]); } });
+            const free = (x, z) => !E.L.obstacles.some(b => b.box3 && b.box3.max.y > 0.25 && b.box3.min.y < 1.8 && x > b.box3.min.x - 0.5 && x < b.box3.max.x + 0.5 && z > b.box3.min.z - 0.5 && z < b.box3.max.z + 0.5);
+            for (let k = 0; k < c.length; k++) { const [n, x, z] = c[(k + pick) % c.length]; if (free(x, z + 2.4)) { PL.setPlayerPosition(x, (E.L.floorY || 0) + 1.2, z + 2.4); return n; } }
+            return null;
+        }, Number(process.env.NEARPROP) - 1);
+        console.log('rekwizyt:', info); await page.evaluate(async () => { const D = await import('./core/desktop.js'); D.setDesktopFacing(0); }); await page.waitForTimeout(Number(process.env.WAIT || 14000));
+    }
+    if (process.env.NOPROPS) await page.evaluate(async () => { const E = await import('./core/engine.js'); E.scene.traverse(o => { if (/^props_/.test(o.name)) o.visible = false; }); });
     if (process.env.NOSHAFTS) await page.evaluate(async () => { const E = await import('./core/engine.js'); E.scene.traverse(o => { if (o.name === 'lampShafts') o.visible = false; }); });
     await page.screenshot({ path: path.join(OUT, id + '-' + TAG + '.png') });
     console.log('zrzut', id);

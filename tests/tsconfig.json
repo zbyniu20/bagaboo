@@ -23,6 +23,7 @@
     "../core/dustlogic.js",
     "../core/heightlogic.js",
     "../core/shaftlogic.js",
+    "../core/proplogic.js",
     "../core/avatarfxlogic.js",
     "../core/acousticlogic.js",
     "../core/spectatelogic.js",
