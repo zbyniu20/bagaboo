@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "levels/monster.js": {
-    "mtime": 1795548848.8168738,
-    "seen": 1795549299.8144898,
-    "ast_hash": "2c0f2fdbd0e4834cd8b986c9591780f7",
+    "mtime": 1795549370.8758779,
+    "seen": 1795549817.4637663,
+    "ast_hash": "7a44528fa0d41ee190169620d5feeae9",
     "semantic_hash": ""
   },
   "levels/nursery.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795549290.5112424,
-    "seen": 1795549299.814836,
-    "ast_hash": "6debb76f2c2944360451782c4d7e89b6",
+    "mtime": 1795549808.0863597,
+    "seen": 1795549817.464094,
+    "ast_hash": "b32108c70c7decd9fb043790d48e1585",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795545444.9234486,
-    "seen": 1795547783.725118,
-    "ast_hash": "9fd31a83daeffaea60db0db9fbd66382",
+    "mtime": 1795549380.1054368,
+    "seen": 1795549817.4638274,
+    "ast_hash": "50e39a0e104d2196573e89eca9c73110",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {

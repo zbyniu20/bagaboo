@@ -14,7 +14,7 @@ import * as T from '../core/textures.js';
 import { buildMannequin } from '../core/mannequin.js';
 import { loadGlbMonster } from '../core/glbmonster.js';
 import { BOT_KINDS } from '../core/glblogic.js';
-import { levelReward } from '../core/economy.js';
+import { levelReward, getLook } from '../core/economy.js';
 import { toast, Terminal, AMBER, AMBER_DIM, GOLD, OK_COL } from '../core/terminal.js';
 import { hands, setPlayerPosition } from '../core/player.js';
 import * as N from '../core/network.js';
@@ -22,6 +22,7 @@ import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare , introSeen } from '../core/levelkit.js';
 import { buildMonsterSkin } from '../core/monsterskins.js';
+import { createHead } from '../core/avatar.js';
 import { ARRIVAL_FROM_MONSTER } from './games.js';
 import { MAPS, generateMap, pickMap, cleanMapPick, lobbyMap, cleanVotes, cleanOptions, pickOptions, LOBBY } from '../core/monstermaps.js';
 import { GATE, countVotes, winnerOf, gateStep } from '../core/lobbylogic.js';
@@ -55,8 +56,7 @@ export function build() {
     S.tearParts = [];
     // Pas: pęk mokrych, czerwonych włókien (gruby rdzeń i dwie cienkie nitki) ze strzępami ciała na końcach; głowa: skóra z twarzą w agonii i krwawym kikutem szyi
     S.sinewGeo = new THREE.CylinderGeometry(1, 1, 1, 8); S.sinewMat = new THREE.MeshStandardMaterial({ color: 0xa01010, emissive: 0x4a0000, roughness: 0.22, metalness: 0.1 });
-    S.blobGeo = new THREE.SphereGeometry(1, 10, 8); S.headGeo = new THREE.SphereGeometry(0.2, 24, 18);
-    S.faceTex = T.toTex(drawTornFace(), false); S.headMat = new THREE.MeshStandardMaterial({ map: S.faceTex, roughness: 0.7, emissive: 0x2a0000});
+    S.blobGeo = new THREE.SphereGeometry(1, 10, 8); S.tornHeads = [];   // głowa ofiary to jej własny awatar (createHead z jej strojem), sprzątana przy wyjściu z trybu
     S.neckGeo = new THREE.CylinderGeometry(0.075, 0.11, 0.14, 10); S.neckMat = new THREE.MeshStandardMaterial({ color: 0x8a0a0a, emissive: 0x3a0000, roughness: 0.25 });
     // Czerwona winieta strachu (uciekinier, gdy potwór jest blisko) i reżyser grozy w trybie spokojnym (kroki, oddech, latarka, mgła; bez jumpscare'ów i zjaw)
     { const c = T.makeCanvas(256, 256), x = c.getContext('2d'), gr = x.createRadialGradient(128, 128, 50, 128, 128, 150); gr.addColorStop(0, 'rgba(120,0,0,0)'); gr.addColorStop(0.65, 'rgba(120,0,0,0.5)'); gr.addColorStop(1, 'rgba(30,0,0,0.95)'); x.fillStyle = gr; x.fillRect(0, 0, 256, 256);
@@ -389,27 +389,6 @@ function clearLocalTear() {
     for (const p of S.tearParts) { scene.remove(p.ghost); for (const o of p.fibers) scene.remove(o); for (const o of p.blobs) scene.remove(o); }
     S.tearParts.length = 0;
 }
-// Twarz urywanej głowy (tekstura równokrężna, przód = +Z, czyli u = 0,25): wytrzeszczone przekrwione oczy, krzyk z zębami, krwawe łzy i usta
-function drawTornFace() {
-    const W = 1024, H = 512, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
-    c.fillStyle = '#6b4228'; c.fillRect(0, 0, W, H);
-    for (let n = 0; n < 900; n++) { c.fillStyle = 'rgba(' + (30 + (n * 7) % 40) + ',15,10,0.10)'; c.beginPath(); c.arc((n * 137) % W, (n * 89) % H, 2 + (n % 5), 0, 7); c.fill(); }
-    const cx = W * 0.25, cy = H * 0.5;
-    for (const sx of [-1, 1]) {   // oczy: białka z żyłkami, czerwone tęczówki, czarne źrenice
-        const ex = cx + sx * 52, ey = cy - 22;
-        c.fillStyle = '#e8d9c0'; c.beginPath(); c.ellipse(ex, ey, 30, 23, 0, 0, 7); c.fill();
-        c.strokeStyle = 'rgba(190,20,20,0.8)'; c.lineWidth = 1.5; for (let k = 0; k < 9; k++) { const an = k * 0.7; c.beginPath(); c.moveTo(ex + Math.cos(an) * 28, ey + Math.sin(an) * 21); c.lineTo(ex + Math.cos(an) * 12, ey + Math.sin(an) * 9); c.stroke(); }
-        c.fillStyle = '#b01010'; c.beginPath(); c.arc(ex, ey, 11, 0, 7); c.fill(); c.fillStyle = '#100000'; c.beginPath(); c.arc(ex, ey, 4.5, 0, 7); c.fill();
-        c.strokeStyle = '#1c0a05'; c.lineWidth = 6; c.beginPath(); c.moveTo(ex - sx * 34, ey - 22); c.lineTo(ex + sx * 30, ey - 36); c.stroke();   // brwi uniesione z bólu
-        c.fillStyle = 'rgba(150,0,0,0.85)'; c.fillRect(ex - 2, ey + 22, 5, 70 + (sx > 0 ? 20 : 0));   // krwawe łzy
-    }
-    c.fillStyle = '#2a1008'; c.beginPath(); c.ellipse(cx, cy + 12, 5, 9, 0, 0, 7); c.fill();   // nos
-    c.fillStyle = '#1a0000'; c.beginPath(); c.ellipse(cx, cy + 62, 34, 42, 0, 0, 7); c.fill();   // usta otwarte do krzyku
-    c.fillStyle = '#e6dcc0'; for (let k = -3; k <= 3; k++) { c.fillRect(cx + k * 9 - 4, cy + 24, 8, 14); c.fillRect(cx + k * 9 - 4, cy + 86, 8, 11); }   // zęby
-    c.fillStyle = 'rgba(140,0,0,0.9)'; c.beginPath(); c.ellipse(cx, cy + 80, 22, 12, 0, 0, 7); c.fill(); c.fillRect(cx - 28, cy + 96, 7, 60); c.fillRect(cx + 14, cy + 96, 6, 90);   // język i krew z ust
-    c.strokeStyle = '#2a0808'; c.lineWidth = 3; c.beginPath(); c.moveTo(cx - 90, cy - 70); c.lineTo(cx - 40, cy - 52); c.stroke();   // blizna
-    return cv;
-}
 const _tp = new THREE.Vector3(), _tq = new THREE.Quaternion(), _te = new THREE.Euler();
 function startLocalTear(fresh) {
     clearLocalTear();
@@ -425,10 +404,12 @@ function startLocalTear(fresh) {
     if (hands.L && lostLeft(fresh)) add('L', hands.L, f.clone().multiplyScalar(0.8).addScaledVector(right, -0.45).add(new THREE.Vector3(0, 0.25, 0)));
     if (hands.R && lostRight(fresh)) add('R', hands.R, f.clone().multiplyScalar(0.8).addScaledVector(right, 0.45).add(new THREE.Vector3(0, 0.25, 0)));
     if (lostHead(fresh)) {   // głowa wyskakuje PRZED ofiarę (nie przez jej twarz), twarzą do niej: szyja jest zakotwiczona w dole kadru
-        const hd = new THREE.Mesh(S.headGeo, S.headMat), dir = f.clone().multiplyScalar(0.7).add(new THREE.Vector3(0, 0.55, 0)).normalize();
-        camera.getWorldPosition(_ta); _ta.y -= 0.32; _ta.addScaledVector(f, 0.45); hd.position.copy(_ta).addScaledVector(dir, 0.3);
-        const neck = new THREE.Mesh(S.neckGeo, S.neckMat); neck.position.y = -0.2; hd.add(neck);   // krwawy kikut szyi
-        camera.getWorldPosition(_ta); hd.lookAt(_ta);   // twarz (+Z) zwrócona do ofiary
+        const hd = new THREE.Group(), real = createHead(getLook(), false), dir = f.clone().multiplyScalar(0.7).add(new THREE.Vector3(0, 0.55, 0)).normalize();   // prawdziwa głowa gracza: skórka, czapka, okulary, maska
+        real.rotation.y = Math.PI; real.scale.multiplyScalar(1.3); hd.add(real);   // głowa awatara patrzy w -Z, a lookAt kieruje +Z
+        camera.getWorldPosition(_ta); _ta.y -= 0.32; _ta.addScaledVector(f, 0.45); hd.position.copy(_ta).addScaledVector(dir, 0.3); hd.updateMatrixWorld(true);
+        const bb = new THREE.Box3().setFromObject(hd), neck = new THREE.Mesh(S.neckGeo, S.neckMat); neck.position.y = bb.min.y - hd.position.y - 0.02; hd.add(neck);   // krwawy kikut szyi pod brodą
+        S.tornHeads.push(hd); while (S.tornHeads.length > 4) { const o = S.tornHeads.shift(); o.traverse(x => { if (x.geometry) x.geometry.dispose(); if (x.material) x.material.dispose(); }); }
+        camera.getWorldPosition(_ta); hd.lookAt(_ta);   // twarz zwrócona do ofiary
         add('H', hd, dir); S.tearParts[S.tearParts.length - 1].d0 = 0.3; S.tearParts[S.tearParts.length - 1].fwd = f.clone();
     }
 }
@@ -695,7 +676,7 @@ function randomScares(dt, t, p) {
 export function dispose() {
     stopSpectate(false);
     N.setSpectatorCheck(null);
-    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); clearLocalTear(); S.headGeo.dispose(); S.headMat.dispose(); S.faceTex.dispose(); S.neckGeo.dispose(); S.neckMat.dispose(); S.blobGeo.dispose(); S.sinewGeo.dispose(); S.sinewMat.dispose(); camera.remove(S.fear); if (S.final || S.fogBase) setFinalLook(false); DREAD.fogMul = 1; for (const mk of S.marks) L.root.remove(mk); setDread(null); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
+    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); clearLocalTear(); for (const h of S.tornHeads) h.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); S.neckGeo.dispose(); S.neckMat.dispose(); S.blobGeo.dispose(); S.sinewGeo.dispose(); S.sinewMat.dispose(); camera.remove(S.fear); if (S.final || S.fogBase) setFinalLook(false); DREAD.fogMul = 1; for (const mk of S.marks) L.root.remove(mk); setDread(null); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
     if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); S.board = null; }
     if (S && S.glb) { L.root.remove(S.glb.group); S.glb.dispose(); S.glb = null; }
     L.moveScale = 1;
