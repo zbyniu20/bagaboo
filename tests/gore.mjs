@@ -32,25 +32,31 @@ await page.waitForTimeout(2500);
 const state = () => page.evaluate(async () => { const P = await import('./core/player.js'); return { L: P.hands.L.visible, R: P.hands.R.visible }; });
 const setCode = (c) => page.evaluate(async (c) => { const M = await import('./levels/monster.js'); return M.debugDismember(c); }, c);
 const settle = (ms) => page.waitForTimeout(ms);
+const tearDone = () => page.evaluate(async () => { const M = await import('./levels/monster.js'); await new Promise((res) => { const t0 = performance.now(); const poll = () => { const d = M.debugTear(); if (performance.now() - t0 > 3000 && d && d.parts === 0 || performance.now() - t0 > 60000) res(); else requestAnimationFrame(poll); }; poll(); }); });   // animacja kończy się po ~12 klatkach, niezależnie od tempa
 ok('the hands exist and are visible at the start', JSON.stringify(await state()) === '{"L":true,"R":true}', await state());
 ok('the debug hook works in the monster level', await setCode(0) === true);
 // własne ręce: animacja trwa 0,6 s, potem znikają; ręce wracają po kodzie 0
 for (const [code, name, wantL, wantR] of [[1, 'left hand', false, true], [2, 'right hand', true, false], [3, 'both hands', false, false], [4, 'head (hands stay)', true, true]]) {
-    await setCode(code); await settle(250);
-    const mid = await state(); ok(code + ' ' + name + ': during the tearing animation both hands are still there', mid.L === true && mid.R === true, mid);
-    await settle(1100);
-    const pop = await page.evaluate(async () => (await import('./levels/monster.js')).debugPop()); ok(code + ' ' + name + ': a "TORN OFF!" popup jumps up in front of the caught player', pop && pop.visible === true && pop.t > 0.5, pop);
+    await setCode(code);
+    const midAll = await page.evaluate(async () => {   // pierwsza klatka, w której animacja już trwa (niezależnie od tempa renderowania w kontenerze)
+        const P = await import('./core/player.js'), M = await import('./levels/monster.js');
+        return await new Promise((res) => { const t0 = performance.now(); const poll = () => { const d = M.debugTear(); if ((d && d.parts > 0) || performance.now() - t0 > 60000) res({ mid0: d, L: P.hands.L.visible, R: P.hands.R.visible }); else requestAnimationFrame(poll); }; poll(); });
+    });
+    const mid0 = midAll.mid0; ok(code + ' ' + name + ': during the tearing a stretched copy and a sinew are pulled away in front of the caught player', mid0 && mid0.parts === (code === 3 ? 2 : 1) && mid0.sinews === mid0.parts && mid0.ghosts === mid0.parts, mid0);
+    const mid = { L: midAll.L, R: midAll.R }; ok(code + ' ' + name + ': during the tearing animation both hands are still there', mid.L === true && mid.R === true, mid);
+    await page.evaluate(async () => { const M = await import('./levels/monster.js'); await new Promise((res) => { const t0 = performance.now(); const poll = () => { const d = M.debugTear(); if ((d && d.parts === 0) || performance.now() - t0 > 60000) res(); else requestAnimationFrame(poll); }; poll(); }); });   // czekamy na koniec animacji, nie stały czas
+    await settle(400);
+    const done0 = await page.evaluate(async () => (await import('./levels/monster.js')).debugTear()); ok(code + ' ' + name + ': after the tear the sinew snaps and the copies are gone from the player (they fly off as debris)', done0 && done0.parts === 0, done0);
     const s = await state(); ok(code + ' ' + name + ': after the animation the hands are ' + (wantL ? 'L shown' : 'L hidden') + ', ' + (wantR ? 'R shown' : 'R hidden'), s.L === wantL && s.R === wantR, s);
     await settle(1000); const s2 = await state(); ok(code + ' ' + name + ': the state is stable until the next round (no flicker)', JSON.stringify(s2) === JSON.stringify(s), s2);
     await setCode(0); await settle(300);
-    const popGone = await page.evaluate(async () => (await import('./levels/monster.js')).debugPop()); ok(code + ' ' + name + ': the popup disappears with the new round', popGone && popGone.visible === false, popGone);
     const back = await state(); ok(code + ' ' + name + ': a new round or the lobby restores the hands', back.L === true && back.R === true, back);
 }
 // opcja Gore wyłączona: nic się nie ukrywa
 await page.evaluate(async () => { (await import('./core/settings.js')).SETTINGS.gore = false; });
 await setCode(3); await settle(1500);
 let s = await state(); ok('with Gore off nothing is hidden', s.L === true && s.R === true, s);
-await page.evaluate(async () => { (await import('./core/settings.js')).SETTINGS.gore = true; }); await settle(1500);
+await page.evaluate(async () => { (await import('./core/settings.js')).SETTINGS.gore = true; }); await settle(1500); await tearDone(); await settle(300);
 s = await state(); ok('turning Gore on again in the middle of a round hides the hands', s.L === false && s.R === false, s);
 // wyjście z trybu przywraca ręce
 await page.evaluate(async () => { const M = await import('./main.js'); await M.loadLevel('lobby'); }); await settle(2000);
