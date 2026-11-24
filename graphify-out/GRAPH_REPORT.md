@@ -1,7 +1,7 @@
 # Graph Report - bagaboo  (2026-11-24)
 
 ## Corpus Check
-- 525 files · ~1,354,291 words
+- 525 files · ~1,354,449 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 99 file(s) not represented in the graph (top: .css 84, .glb 12, (none) 3)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e5f077bf`
+- Built from commit: `96a66991`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1240,7 +1240,7 @@ Cohesion: 0.20
 Nodes (8): BUDGET, DEPS, errors, HERE, LEVELS, MIME, ROOT, server
 
 ## Knowledge Gaps
-- **36 isolated node(s):** `./core/auth.js`, `./core/emotes.js`, `./core/gorillamachine.js`, `./core/highfive.js`, `./core/leveldata.js` (+31 more)
+- **36 isolated node(s):** `./core/emotes.js`, `./core/gorillamachine.js`, `./core/highfive.js`, `./core/leveldata.js`, `./core/ui.js` (+31 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2254 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **23 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -1248,16 +1248,16 @@ Nodes (8): BUDGET, DEPS, errors, HERE, LEVELS, MIME, ROOT, server
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `f()` connect `build.js` to `static.mjs`, `ref_url`, `logic.mjs`, `core_engine_three`, `copy-lint.mjs`, `gate.mjs`, `changed.mjs`, `ref_node_fs`?**
-  _High betweenness centrality (0.356) - this node is a cross-community bridge._
+  _High betweenness centrality (0.392) - this node is a cross-community bridge._
 - **Are the 51 inferred relationships involving `lib()` (e.g. with `arrive()` and `audit()`) actually correct?**
   _`lib()` has 51 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `./core/auth.js`, `./core/emotes.js`, `./core/gorillamachine.js` to the rest of the system?**
+- **What connects `./core/emotes.js`, `./core/gorillamachine.js`, `./core/highfive.js` to the rest of the system?**
   _36 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `network.js` be split into smaller, more focused modules?**
   _Cohesion score 0.039316239316239315 - nodes in this community are weakly interconnected._
 - **Why does `mode` connect `core_engine_three` to `build.js`?**
-  _High betweenness centrality (0.128) - this node is a cross-community bridge._
+  _High betweenness centrality (0.138) - this node is a cross-community bridge._
 - **Should `economy.js` be split into smaller, more focused modules?**
   _Cohesion score 0.046620046620046623 - nodes in this community are weakly interconnected._
 - **Why does `sub()` connect `build.js` to `init`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
+  _High betweenness centrality (0.039) - this node is a cross-community bridge._

@@ -153,7 +153,9 @@ export const RESERVED_NICKS = new Set([...ULTIMATE_NAMES, ...ADMIN_NAMES, ...COA
 export const FEATURES = { accounts: true };
 // Klucze PUBLICZNE ekipy (core/staffkey.js): nick małymi literami -> JWK { kty:'EC', crv:'P-256', x, y }. Klucz prywatny zostaje na urządzeniu admina.
 // Nowy admin tworzy klucz w grze (Account -> Staff key), przekazuje właścicielowi tekst klucza publicznego, a ten dopisuje go tutaj.
-export const STAFF_KEYS = {};
+export const STAFF_KEYS = {
+    boyisgamer: { kty: 'EC', crv: 'P-256', x: 'vdU9ODlL8hhtSAMpW8GO3UlDRchLfXvOZHcWlL6ecT4', y: 'sS_wcQ38QNGixqMF81UhTyc0Rv7kV8Uw67GxTZiEWe8' },
+};
 // Moderatorzy wybrani przez admina w grze (zapisani na tym urządzeniu)
 export function localMods() { try { return JSON.parse(localStorage.getItem('bagaboo_mods')) || []; } catch (e) { return []; } }
 export function setLocalMod(name, on) {

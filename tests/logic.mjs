@@ -768,6 +768,12 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     let last = null; for (let i = 0; i < 5; i++) last = await SK.signIn('1111');
     check('staffkey: five wrong PINs lock the key for a while (even the right PIN is refused)', last.error === 'bad_pin' && (await SK.signIn('9999')).error === 'locked');
     check('staffkey: an invalid import is rejected', !SK.importKey('not json').ok && !SK.importKey('{"nick":"Luna","pub":{},"enc":{}}').ok);
-    delete CFG.STAFF_KEYS.luna; CFG.FEATURES.accounts = false;
+    delete CFG.STAFF_KEYS.luna;
+    // Każdy wpis w STAFF_KEYS ma być poprawnym kluczem publicznym P-256 dla nicku z RESERVED_NICKS (literówka w kluczu zablokowałaby ekipie logowanie)
+    for (const nick of Object.keys(CFG.STAFF_KEYS)) {
+        let valid = false; try { await crypto.subtle.importKey('jwk', CFG.STAFF_KEYS[nick], { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']); valid = true; } catch (e) {}
+        check('staffkey: the registered key of ' + nick + ' is a valid P-256 public key for a reserved nickname', valid && CFG.RESERVED_NICKS.has(nick) && nick === nick.toLowerCase() && !CFG.STAFF_KEYS[nick].d);
+    }
+    CFG.FEATURES.accounts = true;
 }
 done('logic');

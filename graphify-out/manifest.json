@@ -36,9 +36,9 @@
     "semantic_hash": "d5d631eabcc794a6df15b9a02d235980"
   },
   "core/config.js": {
-    "mtime": 1795538542.714503,
-    "seen": 1795540900.6782434,
-    "ast_hash": "c092fe976dc9944b5132997fa17a3d56",
+    "mtime": 1795542327.5684543,
+    "seen": 1795542370.5773704,
+    "ast_hash": "23d322bafd60b1c99e1b7d98796759ac",
     "semantic_hash": ""
   },
   "core/cosmetics.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795540887.8450172,
-    "seen": 1795540900.6787593,
-    "ast_hash": "426a7a746606aefbfa9959af607f41da",
+    "mtime": 1795542358.585437,
+    "seen": 1795542370.5787394,
+    "ast_hash": "c7a1f69efd1eff868408e9df477bf4d8",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795538542.7163231,
-    "seen": 1795540900.678491,
-    "ast_hash": "cef9cc92211bcb217d5b0663dc6eec13",
+    "mtime": 1795542341.6591911,
+    "seen": 1795542370.5780098,
+    "ast_hash": "92d79b0a444a83a999ce39793ca3ede0",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
