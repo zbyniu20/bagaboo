@@ -35,7 +35,7 @@ for (const ver of VERSIONS) {
     page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed to load resource/i.test(m.text())) errors.push('CONSOLE ' + m.text().slice(0, 300)); });
     await page.goto(`http://localhost:${PORT}/?three=${ver}`);
     await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
-    await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });
+    await page.click('#btnSolo', { timeout: 90000 });
     await page.waitForTimeout(1500);
     const info = await page.evaluate(async () => { const T = await import('three'); return T.REVISION; });
     console.log('three revision in the page:', info, '(requested ' + ver + ')');

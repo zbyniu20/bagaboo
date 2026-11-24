@@ -45,6 +45,7 @@ import { captureEnvironment } from './core/envcapture.js';
 import { LEVEL_DEFS, levelPath } from './core/registry.js';
 import { isReservedNick, isStaffName } from './core/config.js';
 import * as AUTH from './core/auth.js';
+import * as SK from './core/staffkey.js';
 import { updateModMenu } from './core/modmenu.js';
 import { buildPet, updatePet, disposePet } from './core/pet.js';   // Stworek: towarzysz w salach (lobby, Levels, Games, Staff, Wardrobe, My Room)
 
@@ -254,14 +255,14 @@ async function canStart(allowBanned) {
     const acc = AUTH.account();
     if (acc) $('playerName').value = acc.nick;   // zalogowany gracz gra pod nickiem swojego konta
     else if (!guestMode) {   // najpierw logowanie albo świadomy wybór gry jako gość (dotyczy też przycisków z menu w goglach)
-        showStage('auth'); acctMsg('Log in, create an account, or play as a guest first.', false);
-        $('status').innerText = 'Log in or choose "Play as guest" on the start page first.';
+        showStage('auth'); acctMsg('Log in or create an account, or go back and play with a nickname.', false);
+        $('status').innerText = 'Log in or go back and play with a nickname.';
         return false;
     } else {
         const name = ($('playerName').value || '').trim();
         if (isReservedNick(name)) {
             guestMode = false; showStage('auth');
-            acctMsg('The nickname "' + name + '" is reserved for the staff. Log in to your account or play as a guest under another nickname.', false);
+            acctMsg('The nickname "' + name + '" is reserved for the staff. Staff: choose your PIN or enter it below. Everyone else: go back and pick another nickname.', false); openStaffKey(name);
             $('status').innerText = 'The nickname "' + name + '" is reserved for the staff. Log in to your account first.';
             return false;
         }
@@ -276,9 +277,9 @@ $('btnJoin').onclick = async () => { if (!(await canStart(true))) return; initAu
 try { localStorage.removeItem('bagaboo_saved_pw'); } catch (e) {}
 let confirmedNick = '';   // nick potwierdzony przez serwer kont w tej sesji (po logowaniu albo po udanym sprawdzeniu sesji)
 const acctMsg = (text, good) => { const m = $('acctMsg'); m.innerText = text || ''; m.style.color = good ? '#9aff60' : '#ff8a70'; };
-function acctBusy(on) { ['btnLogin', 'btnRegister', 'btnReset', 'btnGuest'].forEach(id => { $(id).disabled = on; }); }
+function acctBusy(on) { ['btnLogin', 'btnRegister', 'btnReset', 'btnGuest', 'btnKeyCreate', 'btnKeyLogin'].forEach(id => { $(id).disabled = on; }); }
 // Dwa ekrany: najpierw logowanie ('auth'), potem menu z trybami gry ('menu'). Do menu wchodzi się po zalogowaniu albo jako gość.
-let guestMode = false, recoveryPending = false;
+let guestMode = true, recoveryPending = false;   // domyślnie: wpisz nick i graj; konto jest opcjonalne (chroni nick)
 function showStage(stage) { $('authStage').style.display = stage === 'auth' ? 'block' : 'none'; $('menuStage').style.display = stage === 'menu' ? 'block' : 'none'; }
 function syncAccountUi() {
     const a = AUTH.account(), nm = $('playerName');
@@ -320,11 +321,40 @@ $('btnReset').onclick = async () => {
     if (res.recoveryCode) showRecovery(res.recoveryCode); else recoveryPending = false;   // stary kod przestaje działać, więc pokazujemy nowy
     syncAccountUi();
 };
+// Klucz ekipy (core/staffkey.js): konto admina i moda bez serwera. Przy pierwszej wizycie ekipa wybiera własny PIN; klucz prywatny
+// zostaje na tym urządzeniu zaszyfrowany tym PIN-em, a po każdym wejściu na stronę trzeba go podać.
+const keyErr = { not_staff_nick: 'Type your staff nickname in the nickname field first.', bad_pin: 'Wrong PIN. A new PIN needs 4 to 12 digits.', no_key: 'No staff key on this device yet. Choose a PIN and create one.', not_registered: 'Right PIN, but this key is not registered yet. Send the public key to the owner.', storage: 'Could not save the key on this device.', bad_key: 'That is not a valid staff key.' };
+const keyMsg = (r) => r.error === 'locked' ? 'Too many wrong PINs. Try again in ' + Math.max(1, Math.ceil((r.retryAfterSec || 60) / 60)) + ' min.' : (keyErr[r.error] || 'Something went wrong.');
+function syncKeyUi() {
+    const has = SK.hasKey();
+    $('keyPin2').style.display = has ? 'none' : 'block'; $('btnKeyCreate').style.display = has ? 'none' : 'inline-block'; $('btnKeyLogin').style.display = has ? 'inline-block' : 'none';
+    $('keyHint').innerText = has ? 'Enter your PIN to log in as ' + SK.readKey().nick + '.' : 'First visit: choose your own PIN. It protects your staff key on this device.';
+}
+function openStaffKey(nick) { $('staffKey').open = true; if (nick) $('acctNick').value = nick; syncKeyUi(); }
+$('btnKeyCreate').onclick = async () => {
+    const pin = $('keyPin').value;
+    if (pin !== $('keyPin2').value) { acctMsg('The two PINs are different.', false); return; }
+    acctBusy(true); const res = await SK.createKey($('acctNick').value.trim(), pin); acctBusy(false);
+    if (!res.ok) { acctMsg(keyMsg(res), false); return; }
+    $('keyPin').value = $('keyPin2').value = ''; $('keyText').value = JSON.stringify({ [res.nick.toLowerCase()]: res.pub }); syncKeyUi();
+    if (res.registered) { confirmedNick = res.nick; acctMsg('PIN set. You are logged in as ' + res.nick + '.', true); syncAccountUi(); }
+    else acctMsg('PIN set and key created. Send the public key below to the owner so it can be added to STAFF_KEYS (core/config.js). Until then nobody trusts it.', true);
+};
+$('btnKeyLogin').onclick = async () => {
+    acctBusy(true); const r = await SK.signIn($('keyPin').value); acctBusy(false); $('keyPin').value = '';
+    if (!r.ok) { acctMsg(keyMsg(r), false); return; }
+    confirmedNick = r.nick; acctMsg(''); syncAccountUi();
+};
+$('keyPin').addEventListener('keydown', (e) => { if (e.key === 'Enter') { if (SK.hasKey()) $('btnKeyLogin').click(); else $('keyPin2').focus(); } });
+$('btnKeyExport').onclick = () => { const t = SK.exportKey(); $('keyText').value = t; acctMsg(t ? 'Encrypted key. It only works with your PIN, but still do not share it.' : 'No staff key on this device.', !!t); };
+$('btnKeyImport').onclick = () => { const r = SK.importKey($('keyText').value); acctMsg(r.ok ? (r.registered ? 'Key imported. Enter your PIN and log in.' : 'Key imported, but its public key is not registered yet.') : keyMsg(r), !!r.ok); if (r.ok) { $('keyText').value = ''; syncKeyUi(); } };
+syncKeyUi();
 $('btnGuest').onclick = () => { guestMode = true; acctMsg(''); syncAccountUi(); };
 $('btnToLogin').onclick = () => { guestMode = false; acctMsg(''); syncAccountUi(); };
-$('btnLogout').onclick = () => { confirmedNick = ''; guestMode = false; AUTH.logout(); acctMsg('Signed out.', true); };
+$('btnLogout').onclick = () => { confirmedNick = ''; guestMode = true; AUTH.logout(); acctMsg('Signed out.', true); };
 $('btnRecoverySaved').onclick = () => { recoveryPending = false; $('recoveryBox').style.display = 'none'; $('recoveryCode').innerText = ''; syncAccountUi(); };
 syncAccountUi();
+{ const la = AUTH.account(); if (la && la.local) confirmedNick = la.nick; syncAccountUi(); }   // klucz ekipy z tego urządzenia: tożsamość potwierdza podpis, nie serwer
 AUTH.refresh().then((a) => { if (a) confirmedNick = a.nick; syncAccountUi(); });   // zapisana sesja: serwer potwierdza ją albo wylogowuje
 // Jakość grafiki: zapis ustawienia i ponowne uruchomienie (tekstury i cienie tworzą się przy starcie)
 $('quality').onchange = () => { SETTINGS.quality = $('quality').value; saveSettings(); location.reload(); };

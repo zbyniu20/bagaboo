@@ -8,6 +8,7 @@
 export const API_URL = 'https://bagaboo-api.bagaboo-api.workers.dev';
 // Klucz publiczny serwera kont (ES256, GET /pubkey). Zmiana klucza na serwerze wymaga wpisania tu nowego.
 const SERVER_KEY = { kty: 'EC', crv: 'P-256', x: 'AGYlRJ1xTyj3QBHSlF9-P3uVBTBEAWKO_l6xAR0wxCE', y: 'rQlXVK8g7NcIhxTMPWsMMr3o83efg_4H-VkT3rw-UlU' };
+import { localAccount, signProof, verifyLocal, signOut } from './staffkey.js';
 const SESSION_KEY = 'bagaboo_session';
 export const NICK_RE = /^[A-Za-z0-9_-]{3,16}$/;
 
@@ -40,9 +41,9 @@ function saveSession(token, acc) {
     try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {}
     notify();
 }
-export function logout() { session = null; try { localStorage.removeItem(SESSION_KEY); } catch (e) {} notify(); }
+export function logout() { session = null; signOut(); try { localStorage.removeItem(SESSION_KEY); } catch (e) {} notify(); }
 // Zalogowane konto albo null
-export function account() { return session && session.exp * 1000 > Date.now() ? { id: session.id, nick: session.nick } : null; }
+export function account() { return session && session.exp * 1000 > Date.now() ? { id: session.id, nick: session.nick } : localAccount(); }   // konto z serwera albo klucz ekipy z tego urządzenia
 export function isLoggedIn() { return !!account(); }
 
 // ---------- rozmowa z serwerem ----------
@@ -92,7 +93,7 @@ export function randomNonce() {
 }
 // Gość: prosi serwer o dowód dla tego hosta i tej liczby (nonce). Null, gdy nie jest zalogowany albo serwer nie odpowiada.
 export async function vouch(aud, nonce) {
-    if (!session) return null;
+    if (!session) return signProof(aud, nonce);   // ekipa z kluczem lokalnym podpisuje sama, bez serwera
     const r = await post('/vouch', { aud: aud, nonce: nonce }, session.token);
     return r.data && r.data.ok && typeof r.data.proof === 'string' ? r.data.proof : null;
 }
@@ -101,6 +102,7 @@ let serverKeyPromise = null;
 function serverKey() { return serverKeyPromise || (serverKeyPromise = crypto.subtle.importKey('jwk', SERVER_KEY, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify'])); }
 export async function verifyProof(proof, aud, nonce) {
     const j = parseJwt(proof); if (!j || !j.claims) return null;
+    if (j.head && /^[A-Za-z0-9_-]+$/.test(j.head) && (await verifyLocal(j, aud, nonce))) return j.claims.nick;   // dowód klucza ekipy
     try {
         const ok = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, await serverKey(), b64uToBytes(j.sig), new TextEncoder().encode(j.head + '.' + j.body));
         if (!ok) return null;

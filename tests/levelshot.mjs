@@ -26,7 +26,7 @@ page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed to load resource/i.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 300)); });
 await page.goto(`http://localhost:${port}/?three=${V}`);
 await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
-await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });
+await page.click('#btnSolo', { timeout: 90000 });
 await page.waitForTimeout(1500);
 for (const id of LEVELS) {
     await page.evaluate(async (id) => { const M = await import('./main.js'); await M.loadLevel(id); }, id);

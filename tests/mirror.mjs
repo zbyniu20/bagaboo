@@ -22,7 +22,7 @@ const OUT = process.argv[2] || '/tmp/mirror'; fs.mkdirSync(OUT, { recursive: tru
 const page = await ctx.newPage(), errs = []; page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message)); page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed to load resource/i.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 300)); });
 await page.goto(`http://localhost:${port}/?three=${V}`);
 await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
-await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });
+await page.click('#btnSolo', { timeout: 90000 });
 await page.waitForTimeout(2500);
 await page.evaluate(async () => { const P = await import('./core/player.js'); P.setPlayerPosition(-12.6, 1.4, 3.2); });
 await page.waitForTimeout(1500);

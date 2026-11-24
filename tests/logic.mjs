@@ -741,4 +741,29 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
         check('variety: the same run without a mutator pays out as before (the gate does not leak into normal runs)', E5.SAVE.wallet > w1 && (E5.SAVE.cemeteryWins || 0) === win0 + 1); MU.endRun();
         check('variety: wired (the run starts BEFORE the level is built with the daily flag, dimming and fog after the lighting, a fresh fog baseline per level, events and ears and whispers read the factors, a terminal button only for allowed levels, a new per-visit seed for the decor)', /beginRun\(L\.levelId, ECO\.dailyOn\(id\)\);[\s\S]*level\.build\(\);/.test(MJ11) && /DREAD\.fogMul = 1;[\s\S]*beginRun/.test(MJ11) && /lighting\.hemi\.intensity \*= mutFactor\('hemi'\)/.test(MJ11) && /scale \/ mutFactor\('events'\)/.test(EV) && /mult \* mutFactor\('hear'\)/.test(AM4) && /\/ mutFactor\('whisper'\)/.test(AM4) && /!d\.daily && MUT_LEVELS\.includes\(d\.rec\)/.test(LV2) && /L\.visit = /.test(MJ11) && ['decals', 'props', 'kit'].every(f => /L\.visit/.test(fs.readFileSync(new URL('../core/' + f + '.js', import.meta.url), 'utf8'))));
     }
+
+// --- Klucze ekipy (core/staffkey.js): konto bez serwera, klucz prywatny zaszyfrowany własnym PIN-em ---
+{
+    const store = {}; globalThis.localStorage = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } };
+    const SK = await import(url('core/staffkey.js')), CFG = await import(url('core/config.js')), AU = await import(url('core/auth.js'));
+    check('staffkey: only a reserved staff nickname can get a key, and the PIN needs 4 to 12 digits', !(await SK.createKey('RandomGuy', '1234')).ok && !(await SK.createKey('Luna', '12')).ok && !(await SK.createKey('Luna', 'abcd')).ok && !SK.hasKey());
+    const made = await SK.createKey('Luna', '4821');
+    check('staffkey: the private key is stored encrypted (no plain "d" in storage)', made.ok && SK.hasKey() && !/"d":/.test(store.bagaboo_staffkey) && !store.bagaboo_staffkey.includes('4821'));
+    check('staffkey: a new key is not trusted until its public key is in STAFF_KEYS', !made.registered && AU.account() === null && (await AU.vouch('G:ROOM', 'n1')) === null);
+    CFG.STAFF_KEYS.luna = made.pub; AU.logout();   // nowa wizyta: klucz zablokowany, trzeba podać PIN
+    check('staffkey: a wrong PIN is refused and a right PIN of a registered key logs in', (await SK.signIn('0000')).error === 'bad_pin' && AU.account() === null && (await SK.signIn('4821')).ok && AU.account().nick === 'Luna');
+    const proof = await AU.vouch('G:ROOM', 'nonce-1234');
+    check('staffkey: the proof verifies to the nickname and is bound to the room and nonce', (await AU.verifyProof(proof, 'G:ROOM', 'nonce-1234')) === 'Luna' && (await AU.verifyProof(proof, 'G:OTHER', 'nonce-1234')) === null && (await AU.verifyProof(proof, 'G:ROOM', 'nonce-9999')) === null);
+    const parts = proof.split('.'), forged = parts[0] + '.' + Buffer.from(JSON.stringify({ typ: 'join', aud: 'G:ROOM', nonce: 'nonce-1234', nick: 'lincolnvr', exp: Math.floor(Date.now() / 1000) + 99 })).toString('base64url') + '.' + parts[2];
+    check('staffkey: a forged or altered proof is refused', (await AU.verifyProof(forged, 'G:ROOM', 'nonce-1234')) === null && (await AU.verifyProof(parts[0] + '.' + parts[1] + '.AAAA', 'G:ROOM', 'nonce-1234')) === null);
+    AU.logout();
+    check('staffkey: logout locks the key, a new visit needs the PIN again (no proof without it)', AU.account() === null && (await AU.vouch('G:ROOM', 'nonce-2')) === null && SK.hasKey());
+    const exported = SK.exportKey();
+    check('staffkey: the exported key is encrypted and moves to another device (same PIN)', !/"d":/.test(exported) && SK.removeKey() === undefined && !SK.hasKey() && SK.importKey(exported).ok && (await SK.signIn('4821')).ok);
+    check('staffkey: changing the PIN keeps the key and invalidates the old PIN', (await SK.changePin('0000', '9999')).error === 'bad_pin' && (await SK.changePin('4821', '9999')).ok && (await SK.signIn('4821')).error === 'bad_pin' && (await SK.signIn('9999')).ok);
+    let last = null; for (let i = 0; i < 5; i++) last = await SK.signIn('1111');
+    check('staffkey: five wrong PINs lock the key for a while (even the right PIN is refused)', last.error === 'bad_pin' && (await SK.signIn('9999')).error === 'locked');
+    check('staffkey: an invalid import is rejected', !SK.importKey('not json').ok && !SK.importKey('{"nick":"Luna","pub":{},"enc":{}}').ok);
+    delete CFG.STAFF_KEYS.luna;
+}
 done('logic');

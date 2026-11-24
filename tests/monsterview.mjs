@@ -22,7 +22,7 @@ const OUT = process.argv[2] || '/tmp/mv', LEVELS = (process.argv[3] || 'hospital
 const page = await ctx.newPage(); page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
 await page.goto(`http://localhost:${port}/?three=${V}`);
 await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
-await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });
+await page.click('#btnSolo', { timeout: 90000 });
 await page.waitForTimeout(1500);
 for (const lvl of LEVELS) {
     await page.evaluate(async (l) => { const M = await import('./main.js'); await M.loadLevel(l); }, lvl); await page.waitForTimeout(4500);

@@ -28,7 +28,7 @@ async function run(bake) {
     page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed to load resource/i.test(m.text())) errs.push('CONSOLE ' + m.text().slice(0, 300)); });
     await page.goto(`http://localhost:${port}/?three=${V}` + (bake ? '' : '&bake=0'));
     await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
-    await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });
+    await page.click('#btnSolo', { timeout: 90000 });
     await page.waitForTimeout(1500);
     const res = {};
     for (const id of LEVELS) {

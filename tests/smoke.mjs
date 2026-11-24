@@ -62,7 +62,7 @@ page.on('console', (m) => { if (m.type() === 'error' && !/peerjs|favicon|Failed 
 
 await page.goto(`http://localhost:${PORT}/`);
 await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 90000 });
-await page.click('#btnGuest', { timeout: 90000 }); await page.click('#btnSolo', { timeout: 90000 });   // pierwszy ekran to logowanie: test gra jako gość
+await page.click('#btnSolo', { timeout: 90000 });   // pierwszy ekran to logowanie: test gra jako gość
 await page.waitForTimeout(1500);
 
 // czekanie na klatki renderera zamiast sztywnych pauz: zwykle ułamek sekundy (po limicie czasu test idzie dalej, jak wcześniej po stałej pauzie)

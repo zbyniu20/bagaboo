@@ -28,7 +28,9 @@ const vis = (id) => page.evaluate((id) => { const e = document.getElementById(id
 ok('a saved session opens the menu stage as a signed-in player', await vis('menuStage') && !(await vis('authStage')) && /Signed in as Tester/.test(await page.innerText('#acctWho')));
 ok('the Log out button is visible and the nickname field is locked', await vis('btnLogout') && await page.evaluate(() => document.getElementById('playerName').readOnly === true));
 await page.click('#btnLogout');
-ok('after logging out the login stage is shown with the guest button', await vis('authStage') && await vis('btnGuest') && !(await vis('menuStage')));
+ok('after logging out the menu stays open for nickname play, login is optional', await vis('menuStage') && !(await vis('authStage')) && await vis('btnToLogin'));
+await page.click('#btnToLogin');
+ok('the optional account form opens with a way back', await vis('authStage') && await vis('btnGuest'));
 await page.click('#btnGuest');
 ok('choosing "Play as guest" opens the menu as a guest with an editable nickname', await vis('menuStage') && /Playing as a guest/.test(await page.innerText('#acctWho')) && await page.evaluate(() => document.getElementById('playerName').readOnly === false));
 ok('the saved session is gone from this device', await page.evaluate(() => localStorage.getItem('bagaboo_session') === null));
@@ -57,8 +59,9 @@ const shown = (p, id) => p.evaluate((id) => { const e = document.getElementById(
     await p.close();
 }
 {
-    const p = await openPage(false); const ids = await vrButtons(p);
-    ok('VR menu: before choosing, a "Play as guest" button is offered', ids.includes('guest') && !ids.includes('logout'), ids);
+    const p = await openPage(false); await p.evaluate(() => document.getElementById('btnToLogin').click());   // domyślnie menu jest otwarte; formularz konta otwiera się na życzenie
+    const ids = await vrButtons(p);
+    ok('VR menu: with the account form open, a "Play as guest" button is offered', ids.includes('guest') && !ids.includes('logout'), ids);
     await vrPress(p, 'guest'); ok('VR menu: pressing it opens the guest menu', await shown(p, 'menuStage'));
     await p.close();
 }
