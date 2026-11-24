@@ -52,7 +52,12 @@ export function build() {
     mx.font = 'bold 48px sans-serif'; mx.textAlign = 'center'; mx.textBaseline = 'middle'; mx.fillStyle = '#ff3a2a'; mx.shadowColor = '#ff0000'; mx.shadowBlur = 16; mx.fillText('MONSTER', 128, 34);
     S.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.toTex(mc, false), transparent: true, depthWrite: false })); S.tag.scale.set(1.2, 0.3, 1); S.tag.visible = false; L.root.add(S.tag);
     S.flash = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: 0x8a0000, transparent: true, opacity: 0, depthTest: false })); S.flash.position.z = -0.3; S.flash.renderOrder = 1004; S.flash.visible = false; camera.add(S.flash);
-    S.tearParts = []; S.headGeo = new THREE.SphereGeometry(0.2, 12, 10); S.headMat = new THREE.MeshStandardMaterial({ color: 0x4a2c1a, emissive: 0x3a0000, roughness: 0.9 }); S.sinewGeo = new THREE.CylinderGeometry(0.03, 0.03, 1, 8); S.sinewMat = new THREE.MeshBasicMaterial({ color: 0x8c0a0a });
+    S.tearParts = [];
+    // Pas: pęk mokrych, czerwonych włókien (gruby rdzeń i dwie cienkie nitki) ze strzępami ciała na końcach; głowa: skóra z twarzą w agonii i krwawym kikutem szyi
+    S.sinewGeo = new THREE.CylinderGeometry(1, 1, 1, 8); S.sinewMat = new THREE.MeshStandardMaterial({ color: 0xa01010, emissive: 0x4a0000, roughness: 0.22, metalness: 0.1 });
+    S.blobGeo = new THREE.SphereGeometry(1, 10, 8); S.headGeo = new THREE.SphereGeometry(0.2, 24, 18);
+    S.faceTex = T.toTex(drawTornFace(), false); S.headMat = new THREE.MeshStandardMaterial({ map: S.faceTex, roughness: 0.7, emissive: 0x2a0000});
+    S.neckGeo = new THREE.CylinderGeometry(0.075, 0.11, 0.14, 10); S.neckMat = new THREE.MeshStandardMaterial({ color: 0x8a0a0a, emissive: 0x3a0000, roughness: 0.25 });
     // Czerwona winieta strachu (uciekinier, gdy potwór jest blisko) i reżyser grozy w trybie spokojnym (kroki, oddech, latarka, mgła; bez jumpscare'ów i zjaw)
     { const c = T.makeCanvas(256, 256), x = c.getContext('2d'), gr = x.createRadialGradient(128, 128, 50, 128, 128, 150); gr.addColorStop(0, 'rgba(120,0,0,0)'); gr.addColorStop(0.65, 'rgba(120,0,0,0.5)'); gr.addColorStop(1, 'rgba(30,0,0,0.95)'); x.fillStyle = gr; x.fillRect(0, 0, 256, 256);
       S.fear = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, opacity: 0, depthTest: false })); S.fear.position.z = -0.32; S.fear.renderOrder = 1003; S.fear.visible = false; camera.add(S.fear); }
@@ -381,9 +386,31 @@ function localDismember(code) {
 const _td = new THREE.Vector3(), _ta = new THREE.Vector3(), _tu = new THREE.Vector3(0, 1, 0);
 function clearLocalTear() {
     if (!S || !S.tearParts) return;
-    for (const p of S.tearParts) { scene.remove(p.ghost); scene.remove(p.sinew); }
+    for (const p of S.tearParts) { scene.remove(p.ghost); for (const o of p.fibers) scene.remove(o); for (const o of p.blobs) scene.remove(o); }
     S.tearParts.length = 0;
 }
+// Twarz urywanej głowy (tekstura równokrężna, przód = +Z, czyli u = 0,25): wytrzeszczone przekrwione oczy, krzyk z zębami, krwawe łzy i usta
+function drawTornFace() {
+    const W = 1024, H = 512, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
+    c.fillStyle = '#6b4228'; c.fillRect(0, 0, W, H);
+    for (let n = 0; n < 900; n++) { c.fillStyle = 'rgba(' + (30 + (n * 7) % 40) + ',15,10,0.10)'; c.beginPath(); c.arc((n * 137) % W, (n * 89) % H, 2 + (n % 5), 0, 7); c.fill(); }
+    const cx = W * 0.25, cy = H * 0.5;
+    for (const sx of [-1, 1]) {   // oczy: białka z żyłkami, czerwone tęczówki, czarne źrenice
+        const ex = cx + sx * 52, ey = cy - 22;
+        c.fillStyle = '#e8d9c0'; c.beginPath(); c.ellipse(ex, ey, 30, 23, 0, 0, 7); c.fill();
+        c.strokeStyle = 'rgba(190,20,20,0.8)'; c.lineWidth = 1.5; for (let k = 0; k < 9; k++) { const an = k * 0.7; c.beginPath(); c.moveTo(ex + Math.cos(an) * 28, ey + Math.sin(an) * 21); c.lineTo(ex + Math.cos(an) * 12, ey + Math.sin(an) * 9); c.stroke(); }
+        c.fillStyle = '#b01010'; c.beginPath(); c.arc(ex, ey, 11, 0, 7); c.fill(); c.fillStyle = '#100000'; c.beginPath(); c.arc(ex, ey, 4.5, 0, 7); c.fill();
+        c.strokeStyle = '#1c0a05'; c.lineWidth = 6; c.beginPath(); c.moveTo(ex - sx * 34, ey - 22); c.lineTo(ex + sx * 30, ey - 36); c.stroke();   // brwi uniesione z bólu
+        c.fillStyle = 'rgba(150,0,0,0.85)'; c.fillRect(ex - 2, ey + 22, 5, 70 + (sx > 0 ? 20 : 0));   // krwawe łzy
+    }
+    c.fillStyle = '#2a1008'; c.beginPath(); c.ellipse(cx, cy + 12, 5, 9, 0, 0, 7); c.fill();   // nos
+    c.fillStyle = '#1a0000'; c.beginPath(); c.ellipse(cx, cy + 62, 34, 42, 0, 0, 7); c.fill();   // usta otwarte do krzyku
+    c.fillStyle = '#e6dcc0'; for (let k = -3; k <= 3; k++) { c.fillRect(cx + k * 9 - 4, cy + 24, 8, 14); c.fillRect(cx + k * 9 - 4, cy + 86, 8, 11); }   // zęby
+    c.fillStyle = 'rgba(140,0,0,0.9)'; c.beginPath(); c.ellipse(cx, cy + 80, 22, 12, 0, 0, 7); c.fill(); c.fillRect(cx - 28, cy + 96, 7, 60); c.fillRect(cx + 14, cy + 96, 6, 90);   // język i krew z ust
+    c.strokeStyle = '#2a0808'; c.lineWidth = 3; c.beginPath(); c.moveTo(cx - 90, cy - 70); c.lineTo(cx - 40, cy - 52); c.stroke();   // blizna
+    return cv;
+}
+const _tp = new THREE.Vector3(), _tq = new THREE.Quaternion(), _te = new THREE.Euler();
 function startLocalTear(fresh) {
     clearLocalTear();
     camera.getWorldDirection(_td); _td.y = 0; if (_td.lengthSq() < 1e-4) _td.set(0, 0, -1); _td.normalize();
@@ -391,23 +418,38 @@ function startLocalTear(fresh) {
     const add = (kind, src, dir) => {
         const ghost = src.clone(true); ghost.traverse(o => { if (o.isSprite) o.visible = false; }); ghost.visible = true;
         src.getWorldPosition(ghost.position); src.getWorldQuaternion(ghost.quaternion); src.getWorldScale(ghost.scale); scene.add(ghost);
-        const sinew = new THREE.Mesh(S.sinewGeo, S.sinewMat); sinew.frustumCulled = false; scene.add(sinew);
-        S.tearParts.push({ kind: kind, src: src, ghost: ghost, sinew: sinew, dir: dir.normalize(), drip: 0, base: ghost.quaternion.clone() });
+        const fibers = [0, 1, 2].map(() => { const s = new THREE.Mesh(S.sinewGeo, S.sinewMat); s.frustumCulled = false; scene.add(s); return s; });   // rdzeń i dwie nitki
+        const blobs = [0, 1].map(() => { const s = new THREE.Mesh(S.blobGeo, S.sinewMat); s.frustumCulled = false; scene.add(s); return s; });   // strzępy ciała na obu końcach
+        S.tearParts.push({ kind: kind, src: src, ghost: ghost, sinew: fibers[0], fibers: fibers, blobs: blobs, dir: dir.normalize(), drip: 0, base: ghost.quaternion.clone() });
     };
     if (hands.L && lostLeft(fresh)) add('L', hands.L, f.clone().multiplyScalar(0.8).addScaledVector(right, -0.45).add(new THREE.Vector3(0, 0.25, 0)));
     if (hands.R && lostRight(fresh)) add('R', hands.R, f.clone().multiplyScalar(0.8).addScaledVector(right, 0.45).add(new THREE.Vector3(0, 0.25, 0)));
-    if (lostHead(fresh)) { const hd = new THREE.Mesh(S.headGeo, S.headMat); camera.getWorldPosition(hd.position); hd.position.y -= 0.25; add('H', hd, f.clone().multiplyScalar(0.3).add(new THREE.Vector3(0, 1, 0))); }
+    if (lostHead(fresh)) {   // głowa wyskakuje PRZED ofiarę (nie przez jej twarz), twarzą do niej: szyja jest zakotwiczona w dole kadru
+        const hd = new THREE.Mesh(S.headGeo, S.headMat), dir = f.clone().multiplyScalar(0.7).add(new THREE.Vector3(0, 0.55, 0)).normalize();
+        camera.getWorldPosition(_ta); _ta.y -= 0.32; _ta.addScaledVector(f, 0.45); hd.position.copy(_ta).addScaledVector(dir, 0.3);
+        const neck = new THREE.Mesh(S.neckGeo, S.neckMat); neck.position.y = -0.2; hd.add(neck);   // krwawy kikut szyi
+        camera.getWorldPosition(_ta); hd.lookAt(_ta);   // twarz (+Z) zwrócona do ofiary
+        add('H', hd, dir); S.tearParts[S.tearParts.length - 1].d0 = 0.3; S.tearParts[S.tearParts.length - 1].fwd = f.clone();
+    }
 }
 function tickTearParts(k, dt) {
     for (const p of S.tearParts) {
-        if (p.kind === 'H') { camera.getWorldPosition(_ta); _ta.y -= 0.25; } else p.src.getWorldPosition(_ta);   // zakotwiczenie: ręka śledzona albo szyja pod kamerą
-        const dist = 0.62 * k * k + 0.012 * Math.sin(k * 90);   // coraz mocniejsze szarpnięcie
-        p.ghost.position.copy(_ta).addScaledVector(p.dir, dist); p.ghost.quaternion.copy(p.base).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.sin(k * 70) * 0.5 * k, Math.cos(k * 63) * 0.5 * k, Math.sin(k * 55) * 0.6 * k)));
-        const len = Math.max(0.02, dist), thin = Math.max(0.15, 1 - 0.85 * k);   // pas cienieje, im dalej jest wyciągnięty
-        p.sinew.position.copy(_ta).addScaledVector(p.dir, len / 2); p.sinew.quaternion.setFromUnitVectors(_tu, p.dir); p.sinew.scale.set(thin, len, thin);
-        p.drip -= dt; if (p.drip <= 0) { N.bloodBurst(_ta, 3); p.drip = 0.05; }
+        if (p.kind === 'H') { camera.getWorldPosition(_ta); _ta.y -= 0.32; _ta.addScaledVector(p.fwd, 0.45); } else p.src.getWorldPosition(_ta);   // zakotwiczenie: ręka śledzona albo szyja w dole kadru
+        const dist = (p.d0 || 0) + 0.62 * k * k + 0.012 * Math.sin(k * 90), wob = p.kind === 'H' ? 0.12 : 1;   // głowa szarpie się słabiej, żeby twarz została widoczna
+        p.ghost.position.copy(_ta).addScaledVector(p.dir, dist);
+        _te.set(Math.sin(k * 70) * 0.5 * k * wob, Math.cos(k * 63) * 0.5 * k * wob, Math.sin(k * 55) * 0.6 * k * wob); p.ghost.quaternion.copy(p.base).multiply(_tq.setFromEuler(_te));
+        const len = Math.max(0.03, dist), thin = Math.max(0.2, 1 - 0.8 * k);   // pas cienieje, im dalej jest wyciągnięty
+        _tp.crossVectors(p.dir, _tu); if (_tp.lengthSq() < 0.05) _tp.set(1, 0, 0); _tp.normalize();
+        p.fibers.forEach((fb, i) => {   // rdzeń prosto, dwie nitki oplatają go i rozchodzą się wraz z napięciem
+            const r = i === 0 ? 0.034 * thin : 0.013 * thin, off = i === 0 ? 0 : (i === 1 ? 1 : -1) * 0.035 * (0.4 + k) * Math.sin(k * 30 + i);
+            fb.position.copy(_ta).addScaledVector(p.dir, len / 2).addScaledVector(_tp, off); fb.quaternion.setFromUnitVectors(_tu, p.dir); fb.scale.set(r, len, r);
+        });
+        p.blobs[0].position.copy(_ta); p.blobs[0].scale.setScalar(0.05 + 0.02 * Math.sin(k * 40));   // strzęp przy ciele
+        p.blobs[1].position.copy(p.ghost.position).addScaledVector(p.dir, -0.04); p.blobs[1].scale.setScalar(0.04 + 0.015 * Math.sin(k * 33 + 1));   // strzęp przy oderwanej części
+        p.drip -= dt; if (p.drip <= 0) { N.bloodBurst(_ta, 3); N.bloodBurst(p.ghost.position, 2); p.drip = 0.05; }
     }
 }
+
 function tickLocalTear(dt) {
     const code = S.localDm;
     if (S.tearT > 0) {
@@ -416,7 +458,7 @@ function tickLocalTear(dt) {
         buzz('both', 0.4 + 0.6 * k, 60); S.flashA = Math.max(S.flashA, 0.12 + 0.25 * k); tickTearParts(k, td);
         if (S.tearT <= 0) {   // urwane: ręce znikają, krew tryska z miejsca odcięcia
             for (const p of S.tearParts) {   // pas pęka: kopia odlatuje, prawdziwa ręka znika, krew tryska z miejsca zerwania
-                if (p.kind === 'H') { camera.getWorldPosition(_ta); _ta.y -= 0.25; } else p.src.getWorldPosition(_ta);
+                if (p.kind === 'H') { camera.getWorldPosition(_ta); _ta.y -= 0.32; _ta.addScaledVector(p.fwd, 0.45); } else p.src.getWorldPosition(_ta);
                 N.tearOffLocal(p.ghost, p.kind === 'H' ? 0.2 : 0.08); N.bloodBurst(_ta, 26);
                 if (p.kind !== 'H') p.src.visible = false;
             }
@@ -653,7 +695,7 @@ function randomScares(dt, t, p) {
 export function dispose() {
     stopSpectate(false);
     N.setSpectatorCheck(null);
-    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); clearLocalTear(); S.headGeo.dispose(); S.headMat.dispose(); S.sinewGeo.dispose(); S.sinewMat.dispose(); camera.remove(S.fear); if (S.final || S.fogBase) setFinalLook(false); DREAD.fogMul = 1; for (const mk of S.marks) L.root.remove(mk); setDread(null); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
+    if (S) { S.scare.dispose(); for (const id in N.playersState) N.setAvatarHidden(id, false); N.clearDismember(); camera.remove(S.flash); clearLocalTear(); S.headGeo.dispose(); S.headMat.dispose(); S.faceTex.dispose(); S.neckGeo.dispose(); S.neckMat.dispose(); S.blobGeo.dispose(); S.sinewGeo.dispose(); S.sinewMat.dispose(); camera.remove(S.fear); if (S.final || S.fogBase) setFinalLook(false); DREAD.fogMul = 1; for (const mk of S.marks) L.root.remove(mk); setDread(null); if (hands.L) hands.L.visible = true; if (hands.R) hands.R.visible = true; }
     if (S) { setTint(false); S.hud.dispose(); S.intro.dispose(); S.board = null; }
     if (S && S.glb) { L.root.remove(S.glb.group); S.glb.dispose(); S.glb = null; }
     L.moveScale = 1;

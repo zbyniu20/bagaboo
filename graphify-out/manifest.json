@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "levels/monster.js": {
-    "mtime": 1795546977.339368,
-    "seen": 1795547783.7250288,
-    "ast_hash": "fc5a1620e27fb43211eafcd80eac48e6",
+    "mtime": 1795548848.8168738,
+    "seen": 1795549299.8144898,
+    "ast_hash": "2c0f2fdbd0e4834cd8b986c9591780f7",
     "semantic_hash": ""
   },
   "levels/nursery.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795547770.6743026,
-    "seen": 1795547783.7253876,
-    "ast_hash": "ae6f8d34a9afb827c19fd3f6e0132dd6",
+    "mtime": 1795549290.5112424,
+    "seen": 1795549299.814836,
+    "ast_hash": "6debb76f2c2944360451782c4d7e89b6",
     "semantic_hash": ""
   },
   "README.md": {
