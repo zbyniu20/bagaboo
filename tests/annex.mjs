@@ -74,6 +74,28 @@ await shot('ouija', -10.5, 1.6, 40, Math.PI);
 await shot('organ', 10, 1.6, 47.5, 0);
 await shot('annex_wide', -1, 1.6, 22, Math.PI);
 
+// Tyrolka: dotknięcie uchwytu zabiera gracza w dół, na końcu puszcza; poziom się nie zmienia
+await shot('zip', -8, 1.6, 30, 1.57);
+const zip = await ev(async () => {
+    const Z = await import('./core/annexzip.js'), E = await import('./core/engine.js'), P = await import('./core/player.js'), w = (ms) => new Promise(r => setTimeout(r, ms));
+    P.setPlayerPosition(-13.7, 10.4, 35.4); await w(300); const before = Z.debugAnnexZip();
+    Z.debugZipGrab(); await w(700); const mid = Z.debugAnnexZip();
+    for (let i = 0; i < 90 && Z.debugAnnexZip().ph === 'ride'; i++) await w(400);
+    await w(1500); const after = Z.debugAnnexZip();
+    return { before, mid, after, level: E.L.levelId };
+});
+ok('the zipline carries the player down the rope and lets go at the bottom (one ride, still in the lobby)', zip.mid.ph === 'ride' && zip.after.ph === 'idle' && zip.after.rides === 1 && zip.mid.body[1] < zip.before.body[1] + 0.5 && zip.after.body[1] < 4.5 && zip.after.body[2] < 28 && zip.level === 'lobby', zip);
+
+// Ghost Gallery: trafienie piłką startuje rundę, koniec rundy zapisuje wynik i nie kasuje rekordu wspinaczki
+await shot('gallery', -1, 1.6, 44, Math.PI);
+const gal = await ev(async () => {
+    const G = await import('./core/annexgallery.js'), E = await import('./core/economy.js'), w = (ms) => new Promise(r => setTimeout(r, ms));
+    G.debugGalleryForceUp(2); G.debugGalleryBall(0, -1, 1.2, 49.45); for (let i = 0; i < 40 && G.debugAnnexGallery().hits < 1; i++) await w(300); const a = G.debugAnnexGallery();
+    G.debugGalleryEnd(); for (let i = 0; i < 40 && G.debugAnnexGallery().ph === 'run'; i++) await w(300); await w(300); const b = G.debugAnnexGallery();
+    return { a, b, saved: JSON.stringify(E.SAVE.annex) };
+});
+ok('a ball hitting a standing ghost scores and starts the round; the end of the round saves the best and keeps the climb record', gal.a.balls === 3 && gal.a.hits >= 1 && gal.a.score >= 10 && gal.b.last >= 10 && gal.b.best >= 10 && /galleryBest/.test(gal.saved) && /"climbBest":[1-9]/.test(gal.saved), gal);
+
 // Po wyjściu i powrocie rekord jest zapamiętany, a nic nie przecieka do innych poziomów
 await ev(async () => { const M = await import('./main.js'); await M.loadLevel('levels'); });
 await page.waitForTimeout(1500);
