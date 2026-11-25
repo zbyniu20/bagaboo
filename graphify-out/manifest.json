@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795642038.5294614,
-    "seen": 1795643342.4235828,
-    "ast_hash": "a13222cd2cbef30702562dfc16d1017a",
+    "mtime": 1795647032.5772362,
+    "seen": 1795647146.1949158,
+    "ast_hash": "876fe847115ab856dfb4e7020297e708",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795642893.9051585,
-    "seen": 1795643342.4231198,
-    "ast_hash": "87c4fa17c1e45abe612ed3d79279a30b",
+    "mtime": 1795647083.239501,
+    "seen": 1795647146.1943092,
+    "ast_hash": "c53c4728546c359917b31394402f9f56",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795641981.4306517,
-    "seen": 1795643342.423182,
-    "ast_hash": "290c47598ed6d15c47f041a0e36f845f",
+    "mtime": 1795647032.5809414,
+    "seen": 1795647146.1943858,
+    "ast_hash": "f6459fbb192198c009d6d7bfc2ef70d0",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10632,15 +10632,15 @@
     "semantic_hash": ""
   },
   "core/chestlogic.js": {
-    "mtime": 1795632454.315056,
-    "seen": 1795633462.8283143,
-    "ast_hash": "2178087040d8aa3979d9d71259b13881",
+    "mtime": 1795647003.4168935,
+    "seen": 1795647146.193763,
+    "ast_hash": "b4ab75a4a37b91a8c99addf672514cd9",
     "semantic_hash": ""
   },
   "core/nightchest.js": {
-    "mtime": 1795634522.284533,
-    "seen": 1795635500.2280507,
-    "ast_hash": "67f5db2a7f2f4d7185443130b166dac7",
+    "mtime": 1795647032.5665302,
+    "seen": 1795647146.1940053,
+    "ast_hash": "ffcd4e2637ed358ca1da84144c5ce460",
     "semantic_hash": ""
   },
   "core/secretlogic.js": {
@@ -10737,6 +10737,18 @@
     "mtime": 1795641981.383725,
     "seen": 1795643342.4229865,
     "ast_hash": "d3e8ff983707d12726ac7a3879ed689b",
+    "semantic_hash": ""
+  },
+  "core/deep.js": {
+    "mtime": 1795647003.3720722,
+    "seen": 1795647146.1937935,
+    "ast_hash": "a043b569c0aac41da66fd048f9f0cac5",
+    "semantic_hash": ""
+  },
+  "core/puzzlelogic.js": {
+    "mtime": 1795647003.3704014,
+    "seen": 1795647146.1940455,
+    "ast_hash": "1412ef02a15f0c7c697166d67065a2d6",
     "semantic_hash": ""
   },
   "package-lock.json": {

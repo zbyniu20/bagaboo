@@ -32,10 +32,11 @@ export function tierWeights(streak) {
 }
 const span = (range, r) => range[0] + Math.floor(r() * (range[1] - range[0] + 1));
 // Losowanie: rand to funkcja 0..1, streak to seria PO tym otwarciu, pool to klucze kosmetyków do wygrania ('hat:cap'). Zwraca { tier, bones, item }
-export function rollReward(rand, streak, pool) {
+export function rollReward(rand, streak, pool, forceRare) {
     const w = tierWeights(streak), x = rand();
     let tier = x < w.rare ? 'rare' : (x < w.rare + w.uncommon ? 'uncommon' : 'common');
     if (streak > 0 && streak % CHEST.PITY === 0) tier = 'rare';
+    if (forceRare) tier = 'rare';   // piątek trzynastego: rzadka nagroda jest pewna (core/puzzlelogic.js: isFriday13)
     if (tier === 'rare') {
         const list = Array.isArray(pool) ? pool : [];
         if (list.length) return { tier: 'rare', bones: 0, item: list[Math.min(list.length - 1, Math.floor(rand() * list.length))] };
