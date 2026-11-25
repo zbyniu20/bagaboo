@@ -30,7 +30,7 @@ const LAUNDRY_Z = 1.5;   // drzwi do Pralni we wschodniej ścianie
 export const ARRIVAL_LAUNDRY = [13.2, 1.2, LAUNDRY_Z];   // ...i z Pralni
 const HOME_Z = -7.5;                                     // drzwi do Mojego Pokoju we wschodniej ścianie
 export const ARRIVAL_HOME = [13.2, 1.2, HOME_Z];         // ...i z Mojego Pokoju
-const MIRROR = { x: -14.93, z: 3.2, w: 1.6, h: 2.3 };   // lustro na zachodniej ścianie, obok sklepu
+const MIRROR = { x: -14.93, z: 2.75, w: 1.6, h: 2.3 };   // lustro na zachodniej ścianie, obok sklepu
 const MIRROR_LAYER = 5;                          // warstwa widoczna tylko w lustrze (twoja głowa i tułów)
 const ENV = LP.envIntensity;
 let mirror = null, me = null, lookHooked = false;
@@ -124,7 +124,7 @@ const SLIPPERY_WALL = 0.45;   // ściany przy trasie (północna i zachodnia) s�
 let route = null;
 function buildRoute() {
     // Śliskie ściany: bez uchwytów trudno się po nich wspinać
-    for (const o of L.obstacles) { const b = o.box3; if ((b.max.z <= -14.9 && b.min.z < -19) || (b.max.x <= -14.9 && b.min.x < -19)) o.grip = SLIPPERY_WALL; }
+    for (const o of L.obstacles) { const b = o.box3; if ((b.max.z <= -14.9 && b.min.z < -19) || (b.max.x <= -14.9 && b.min.x < -19 && b.min.z < 0)) o.grip = SLIPPERY_WALL; }
     const red = new THREE.MeshStandardMaterial({ color: 0xc01010, emissive: 0xff1a0a, emissiveIntensity: 0.55, roughness: 0.4 });
     const holds = [], dots = [], ropes = [];
     ROUTE.forEach((r, i) => {

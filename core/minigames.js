@@ -6,8 +6,8 @@
 // Nic tu nie daje Bagabucksów ani rekordów (to zabawa, bez nagród), więc nie ma czego nadużywać.
 // ==========================================
 export const HOOP = { X: -14.35, Y: 3.05, Z: 10.9, R: 0.32 };                  // środek obręczy (x, y, z) i promień; tablica wisi na ścianie x = -14.85
-export const TARGET = { X: -14.93, Y: 1.9, Z: 8.3, R: 0.6, WALL_HIT: -14.62, MIN_STEP: 0.012,   // X: ściana; trafienie, gdy środek piłki jest bliżej ściany niż WALL_HIT i leci w jej stronę
-    RINGS: [[0.09, 50], [0.22, 20], [0.38, 10], [0.6, 5]] };                  // [promień, punkty]
+export const TARGET = { X: -14.93, Y: 1.9, Z: 9.35, R: 0.55, WALL_HIT: -14.62, MIN_STEP: 0.012,   // X: ściana; trafienie, gdy środek piłki jest bliżej ściany niż WALL_HIT i leci w jej stronę
+    RINGS: [[0.09, 50], [0.22, 20], [0.38, 10], [0.55, 5]] };                  // [promień, punkty]
 export const STREAK_WINDOW = 15;                                                // kosz w ciągu tylu sekund od poprzedniego podtrzymuje serię
 export const BALL_COOLDOWN = 1.2;                                               // jedna piłka trafia w tarczę najwyżej raz na tyle sekund
 export const MAX_SCORE = 99999;

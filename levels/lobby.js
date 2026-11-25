@@ -19,6 +19,9 @@ import { buildBestiary, updateBestiary, disposeBestiary } from '../core/bestiary
 import { buildNightChest, updateNightChest, disposeNightChest } from '../core/nightchest.js';   // skrzynia z codzienną nagrodą
 import { buildSecrets, updateSecrets, disposeSecrets } from '../core/secrets.js';   // ukryte złote czaszki
 import { buildEggs, updateEggs, disposeEggs } from '../core/eggs.js';   // easter eggi
+import { buildAnnexShell, buildAnnex, updateAnnex, disposeAnnex } from '../core/annex.js';   // aneks: druga hala za tunelem w południowej ścianie
+import { buildAnnexPlay, updateAnnexPlay, disposeAnnexPlay } from '../core/annexplay.js';   // stół spirytystyczny i organy w aneksie
+import * as AX from '../core/annexlayout.js';
 import { buildPetNest, updatePetNest, disposePetNest } from '../core/petnest.js';   // gniazdo Stworka: jajo, wykluwanie i panel opieki
 
 export const info = { id: 'lobby', name: 'Lobby', spawn: [0, 2, 0] };
@@ -40,12 +43,19 @@ export function build() {
         const l = new THREE.PointLight(f[3], f[4], f[5], 2); l.position.set(f[0], f[1], f[2]); root.add(l);
         fx.flickers.push({ l: l, base: f[4], ph: Math.random() * 100, subtle: false });
     }
+    buildAnnex(fx.flickers); buildAnnexPlay(fx.flickers);   // światła, Climb Rush, stół spirytystyczny i organy w aneksie
+    L.reserved.push([(AX.TUNNEL.x0 + AX.TUNNEL.x1) / 2, 13.2, 3.2]);   // manekiny nie stoją przed tunelem
     if (LP.bounce > 0) { const b = new THREE.PointLight(0xff8a50, LP.bounce, 24, 2); b.position.set(11, 6, 3); root.add(b); }
 
     // Podłoga i ściany
     addCrispBlock(0, -2.5, 0, 40, 5, 40, LP.floorTint, 0x440000, tex.floor, { rough: tex.floorRough, physical: true });
     addCrispBlock(0, 10, -17.5, 40, 20, 5, LP.wallTint, 0x550000);
-    addCrispBlock(0, 10, 17.5, 40, 20, 5, LP.wallTint, 0x550000);
+    // Południowa ściana z tunelem do aneksu (x od -3 do 1, wysokość 4,6 m): dwa bloki po bokach i nadproże
+    addCrispBlock((-20 + AX.TUNNEL.x0) / 2, 10, 17.5, AX.TUNNEL.x0 + 20, 20, 5, LP.wallTint, 0x550000);
+    addCrispBlock((20 + AX.TUNNEL.x1) / 2, 10, 17.5, 20 - AX.TUNNEL.x1, 20, 5, LP.wallTint, 0x550000);
+    addCrispBlock((AX.TUNNEL.x0 + AX.TUNNEL.x1) / 2, (AX.TUNNEL.top + 20) / 2, 17.5, AX.TUNNEL.x1 - AX.TUNNEL.x0, 20 - AX.TUNNEL.top, 5, LP.wallTint, 0x550000);
+    buildAnnexShell();   // podłoga, ściany i sufit aneksu (core/annex.js)
+    L.bounds = { minX: -14.6, maxX: 14.6, minZ: -14.6, maxZ: AX.BOUNDS_MAX_Z, maxY: 19.6 };   // granice ruchu obejmują aneks
     addCrispBlock(-17.5, 10, 0, 5, 20, 40, LP.wallTint, 0x550000);
     addCrispBlock(17.5, 10, 0, 5, 20, 40, LP.wallTint, 0x550000);
 
@@ -155,10 +165,11 @@ function buildDecor() {
     aoG.addColorStop(0, 'rgba(255,255,255,1)'); aoG.addColorStop(1, 'rgba(255,255,255,0)'); aoX.fillStyle = aoG; aoX.fillRect(0, 0, 4, 128);
     const aoMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(aoC), color: 0x000000, transparent: true, opacity: 0.6, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
     const aoGeo = new THREE.PlaneGeometry(30, 1.5); aoGeo.rotateX(-Math.PI / 2);
-    for (const w of [[0, -14.25, 0], [0, 14.25, Math.PI], [14.25, 0, -Math.PI / 2], [-14.25, 0, Math.PI / 2]]) { const m = new THREE.Mesh(aoGeo, aoMat); m.position.set(w[0], 0.02, w[1]); m.rotation.y = w[2]; root.add(m); }
+    for (const w of [[0, -14.25, 0], [14.25, 0, -Math.PI / 2], [-14.25, 0, Math.PI / 2]]) { const m = new THREE.Mesh(aoGeo, aoMat); m.position.set(w[0], 0.02, w[1]); m.rotation.y = w[2]; root.add(m); }
+    for (const seg of [[-15, AX.TUNNEL.x0 - 0.2], [AX.TUNNEL.x1 + 0.2, 15]]) { const m = new THREE.Mesh(aoGeo, aoMat); m.scale.x = (seg[1] - seg[0]) / 30; m.position.set((seg[0] + seg[1]) / 2, 0.02, 14.25); m.rotation.y = Math.PI; root.add(m); }   // południowa ściana przerwana tunelem
     // Listwy
     const parts = [], mk = (cx, cy, cz, w, h, d) => parts.push(place(UNIT_BOX, cx, cy, cz, 0, 0, 0, w, h, d));
-    mk(0, 0.13, -14.93, 30, 0.26, 0.14); mk(0, 0.13, 14.93, 30, 0.26, 0.14); mk(-14.93, 0.13, 0, 0.14, 0.26, 30); mk(14.93, 0.13, 0, 0.14, 0.26, 30);
+    mk(0, 0.13, -14.93, 30, 0.26, 0.14); mk((-15 + AX.TUNNEL.x0) / 2, 0.13, 14.93, AX.TUNNEL.x0 + 15, 0.26, 0.14); mk((15 + AX.TUNNEL.x1) / 2, 0.13, 14.93, 15 - AX.TUNNEL.x1, 0.26, 0.14); mk(-14.93, 0.13, 0, 0.14, 0.26, 30); mk(14.93, 0.13, 0, 0.14, 0.26, 30);
     mk(0, 19.55, -14.93, 30, 0.5, 0.14); mk(0, 19.55, 14.93, 30, 0.5, 0.14); mk(-14.93, 19.55, 0, 0.14, 0.5, 30); mk(14.93, 19.55, 0, 0.14, 0.5, 30);
     const sk = new THREE.Mesh(mergeGeometries(parts), new THREE.MeshStandardMaterial({ map: tex.wall, bumpMap: tex.wall, bumpScale: 1.0, color: 0x555a5e, roughness: 0.8, envMapIntensity: ENV }));
     sk.receiveShadow = true; sk.castShadow = true; root.add(sk);
@@ -166,7 +177,12 @@ function buildDecor() {
     const pipes = [], flanges = [];
     for (const s of [-1, 1]) {
         const z = s * 14.82;
-        for (const y of [2.6, 3.15]) { pipes.push(place(PIPE_CYL, 0, y, z, 0, 0, Math.PI / 2, 0.065, 29.6, 0.065)); for (let x = -13; x <= 13; x += 3.25) flanges.push(place(PIPE_CYL, x, y, z, 0, 0, Math.PI / 2, 0.1, 0.12, 0.1)); }
+        for (const y of [2.6, 3.15]) {
+            // południowa rura przerwana tunelem do aneksu (x od -3 do 1)
+            const segs = s === 1 ? [[-14.8, AX.TUNNEL.x0 - 0.2], [AX.TUNNEL.x1 + 0.2, 14.8]] : [[-14.8, 14.8]];
+            for (const sg of segs) pipes.push(place(PIPE_CYL, (sg[0] + sg[1]) / 2, y, z, 0, 0, Math.PI / 2, 0.065, sg[1] - sg[0], 0.065));
+            for (let x = -13; x <= 13; x += 3.25) if (s === -1 || x < AX.TUNNEL.x0 - 0.4 || x > AX.TUNNEL.x1 + 0.4) flanges.push(place(PIPE_CYL, x, y, z, 0, 0, Math.PI / 2, 0.1, 0.12, 0.1));
+        }
         for (const x of [-13.7, 13.7]) { pipes.push(place(PIPE_CYL, x, 9.9, z, 0, 0, 0, 0.075, 19.8, 0.075)); for (let y = 2; y < 19; y += 3.5) flanges.push(place(PIPE_CYL, x, y, z, 0, 0, 0, 0.11, 0.14, 0.11)); }
     }
     const pm = new THREE.Mesh(mergeGeometries(pipes), new THREE.MeshStandardMaterial({ map: tex.wall, bumpMap: tex.wall, bumpScale: 1.2, color: 0x8a5a3a, metalness: 0.7, roughness: 0.45, envMapIntensity: ENV }));
@@ -284,7 +300,7 @@ function buildComputerDesk(x, z) {
 }
 
 function buildScoreboard() {
-    const g = new THREE.Group(); g.position.set(14.9, 3.1, -7.5); g.rotation.y = -Math.PI / 2; L.root.add(g);
+    const g = new THREE.Group(); g.position.set(14.9, 6.3, -7.5); g.rotation.y = -Math.PI / 2; L.root.add(g);
     const frame = new THREE.Mesh(new RoundedBoxGeometry(5.4, 3.5, 0.14, 2, 0.05), new THREE.MeshStandardMaterial({ color: 0x2a221c, metalness: 0.5, roughness: 0.45, envMapIntensity: ENV }));
     frame.castShadow = true; frame.receiveShadow = true; g.add(frame);
     const b = new THREE.Mesh(new THREE.PlaneGeometry(5.12, 3.2), new THREE.MeshBasicMaterial({ map: board.tex, toneMapped: false, color: 0xdddddd }));
@@ -585,7 +601,7 @@ export function update(dt, t, ctx) {
     updateMannequins(dt);
     updateLobbyPlay(dt, t, ctx);
     updatePetNest(dt, t, ctx);
-    updateBestiary(dt, t); updateNightChest(dt, t); updateSecrets(dt, t); updateEggs(dt, t, SFX.micLevel());
+    updateBestiary(dt, t); updateNightChest(dt, t); updateSecrets(dt, t); updateEggs(dt, t, SFX.micLevel()); updateAnnex(dt, t); updateAnnexPlay(dt, t);
     // Zadanie dzienne: stanie na szczycie spiralnych schodów
     const p = ctx.pos;
     if (p.y > 15.4 && Math.hypot(p.x + 7, p.z + 7) < 2.2) track('top');
@@ -593,4 +609,4 @@ export function update(dt, t, ctx) {
 
 // Po wyjściu z lobby zwykła prędkość (inne poziomy ustawiają własną)
 export function debug(cmd) { return debugLobbyPlay(cmd); }   // dla testów
-export function dispose() { L.moveScale = 1; detachGorillaMachine(); disposeLobbyPlay(); disposePetNest(); disposeBestiary(); disposeNightChest(); disposeSecrets(); disposeEggs(); }
+export function dispose() { L.moveScale = 1; detachGorillaMachine(); disposeLobbyPlay(); disposePetNest(); disposeBestiary(); disposeNightChest(); disposeSecrets(); disposeEggs(); disposeAnnex(); disposeAnnexPlay(); }

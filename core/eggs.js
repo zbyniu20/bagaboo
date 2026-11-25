@@ -13,7 +13,7 @@ import * as SFX from './audio.js';
 import * as E from './egglogic.js';
 
 let G = null;
-const _w = new THREE.Vector3(), _d = new THREE.Vector3(), _c = new THREE.Vector3(), MIRROR = [-14.9, 1.5, 3.2];
+const _w = new THREE.Vector3(), _d = new THREE.Vector3(), _c = new THREE.Vector3(), MIRROR = [-14.9, 1.5, 2.75];
 export function getEggs() { const st = E.normalizeEggs(SAVE.eggs); SAVE.eggs = st; return st; }
 
 // Znalezienie jajka (też dla testów): zapis, nagroda, komunikat. Zwraca wynik z egglogic albo null
