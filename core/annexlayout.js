@@ -17,7 +17,9 @@ export const ZONES = [
     { id: 'climb', name: 'Climb Rush', x0: 9.5, x1: 15, z0: 21, z1: 39, wall: 'east' },
     { id: 'ouija', name: 'Séance table', x0: -14.5, x1: -6, z0: 38.5, z1: 48.5, wall: null },
     { id: 'music', name: 'Haunted instruments', x0: 5, x1: 14.5, z0: 42, z1: 49, wall: null },
-    { id: 'zipline', name: 'Zipline (reserved)', x0: -15, x1: -9, z0: 23, z1: 37, wall: 'west' }
+    { id: 'zipline', name: 'Zipline', x0: -15, x1: -9, z0: 23, z1: 37, wall: 'west' },
+    { id: 'gallery', name: 'Ghost Gallery', x0: -7, x1: 4.6, z0: 48.6, z1: 50, wall: 'south' },
+    { id: 'rack', name: 'Ball rack', x0: -5.5, x1: -3.2, z0: 43, z1: 47, wall: null }
 ];
 export const zoneById = (id) => ZONES.find(z => z.id === id) || null;
 
@@ -44,7 +46,8 @@ export function climbMat() { return [CLIMB.WALL_X - 1.2, 0.02, CLIMB.Z0 - 0.4]; 
 // --- Sprawdzenia geometrii (używa ich test) ---
 export const rectOverlap = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.z0 < b.z1 && b.z0 < a.z1;
 export const insideAnnex = (r) => r.x0 >= ANNEX.x0 && r.x1 <= ANNEX.x1 && r.z0 >= ANNEX.z0 && r.z1 <= ANNEX.z1;
-export const spineRect = () => ({ x0: SPINE.x0, x1: SPINE.x1, z0: ANNEX.z0, z1: ANNEX.z1 });
+export const WALL_STRIP = 1.5;                                            // ostatnie 1,5 m przy dalekiej ścianie nie należy do kręgosłupa (stoją tam rzeczy wiszące na ścianie)
+export const spineRect = () => ({ x0: SPINE.x0, x1: SPINE.x1, z0: ANNEX.z0, z1: ANNEX.z1 - WALL_STRIP });
 export const mouthRect = () => ({ x0: TUNNEL.x0 - MOUTH_KEEPOUT, x1: TUNNEL.x1 + MOUTH_KEEPOUT, z0: ANNEX.z0, z1: ANNEX.z0 + MOUTH_KEEPOUT });
 // Lista usterek układu (pusta = dobrze)
 export function layoutProblems() {

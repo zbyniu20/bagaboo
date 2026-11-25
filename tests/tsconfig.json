@@ -22,7 +22,7 @@
     "../core/minelogic.js",
     "../core/bestiarylogic.js",
     "../core/chestlogic.js",
-    "../core/secretlogic.js", "../core/egglogic.js", "../core/annexlayout.js", "../core/climblogic.js", "../core/ouijalogic.js", "../core/organlogic.js",
+    "../core/secretlogic.js", "../core/egglogic.js", "../core/annexlayout.js", "../core/climblogic.js", "../core/ouijalogic.js", "../core/organlogic.js", "../core/ziplogic.js", "../core/gallerylogic.js",
     "../core/gfxlogic.js",
     "../core/hauntlogic.js",
     "../core/musiclogic.js",

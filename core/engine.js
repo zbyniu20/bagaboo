@@ -108,6 +108,7 @@ export function clearLevel() {
     L.tramp = null; L.heldId = null; L.floorY = undefined;
     L.gen = (L.gen || 0) + 1;   // numer pokolenia poziomu: asynchroniczne dekoracje (rekwizyty, elementy architektury) sprawdzają go po wczytaniu pliku
     L.bounds = { minX: -14.6, maxX: 14.6, minZ: -14.6, maxZ: 14.6, maxY: 19.6 };
+    L.ballMaxZ = undefined;
     // Zwolnienie pamięci karty graficznej po starym poziomie
     L.root.traverse((o) => {
         if (o.geometry) o.geometry.dispose();
@@ -239,7 +240,8 @@ export function containBall(b) {
     if (p.x < -L0) { p.x = -L0; if (v.x < 0) v.x = -v.x * 0.5; }
     if (p.x > L0) { p.x = L0; if (v.x > 0) v.x = -v.x * 0.5; }
     if (p.z < -L0) { p.z = -L0; if (v.z < 0) v.z = -v.z * 0.5; }
-    if (p.z > L0) { p.z = L0; if (v.z > 0) v.z = -v.z * 0.5; }
+    const ZM = L.ballMaxZ !== undefined ? L.ballMaxZ : L0;   // poziom z dłuższą halą (lobby z aneksem) podnosi południową granicę
+    if (p.z > ZM) { p.z = ZM; if (v.z > 0) v.z = -v.z * 0.5; }
     if (p.y < 0.2) { p.y = 0.2; if (v.y < 0) v.y = -v.y * 0.4; }
     if (p.y > TOP) { p.y = TOP; if (v.y > 0) v.y = -v.y * 0.5; }
 }
