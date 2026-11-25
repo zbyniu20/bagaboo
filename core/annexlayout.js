@@ -18,6 +18,7 @@ export const ZONES = [
     { id: 'ouija', name: 'Séance table', x0: -14.5, x1: -6, z0: 38.5, z1: 48.5, wall: null },
     { id: 'music', name: 'Haunted instruments', x0: 5, x1: 14.5, z0: 42, z1: 49, wall: null },
     { id: 'zipline', name: 'Zipline', x0: -15, x1: -9, z0: 23, z1: 37, wall: 'west' },
+    { id: 'statues', name: 'Statue Garden', x0: -8.8, x1: -3.4, z0: 24, z1: 37.6, wall: null },
     { id: 'gallery', name: 'Ghost Gallery', x0: -7, x1: 4.6, z0: 48.6, z1: 50, wall: 'south' },
     { id: 'rack', name: 'Ball rack', x0: -5.5, x1: -3.2, z0: 43, z1: 47, wall: null }
 ];

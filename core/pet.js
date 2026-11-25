@@ -101,7 +101,9 @@ function updateMine(dt, t, ctx) {
     const busy = p.petted > 0 || p.eating > 0 || (stage !== 'idle' && !p.follow);
     let want = busy || !p.follow ? 0 : followSpeed(dRest);
     // strach: gdy potwór Nocnej Zmiany jest blisko, stworek chowa się za graczem, drży i patrzy w stronę potwora (wskazówka, skąd idzie); piszczy co kilka sekund
-    const mon = HAUNT_STATE.monster; p.fear += (petFear(mon, { x: b.x, z: b.z }) - p.fear) * Math.min(1, dt * 3);
+    const sc = HAUNT_STATE.scare && HAUNT_STATE.scare.until > performance.now() / 1000 ? HAUNT_STATE.scare : null, mon = HAUNT_STATE.monster || sc;   // potwór Nocnej Zmiany albo chwilowy strach (stół ouija)
+    p.fear += (petFear(mon, { x: b.x, z: b.z }) - p.fear) * Math.min(1, dt * 3);
+    if (sc && !HAUNT_STATE.monster && p.fear > 0.3) sc.pet = true;   // sekret 'pet': stworek naprawdę się przestraszył
     const hs = p.fear > 0.3 && mon ? hideSpot(mon, pl, 0.9) : null;
     if (hs) { const dh = Math.hypot(hs.x - b.x, hs.z - b.z); want = dh < 0.35 ? 0 : Math.min(6.5, 1.5 + dh * 3); p.fearSnd -= dt; if (p.fearSnd <= 0) { p.fearSnd = 2.2 + Math.random() * 2; SFX.squeak(posOf()); } }
     if (ctx.body && ctx.body.velocity.y > 3.5 && p.jumpCd <= 0 && b.ground && stage === 'idle' && d < 4) { b.vy = 4.6; b.ground = false; p.jumpCd = 0.9; }

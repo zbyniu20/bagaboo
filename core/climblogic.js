@@ -1,13 +1,14 @@
 // ==========================================
-// CLIMB RUSH (czysta logika, bez THREE): stoper toru wspinaczkowego w aneksie lobby. Zapis: SAVE.annex { climbBest, galleryBest } (core/annex.js, zawsze przez normalizeAnnex).
+// CLIMB RUSH (czysta logika, bez THREE): stoper toru wspinaczkowego w aneksie lobby. Zapis: SAVE.annex { climbBest, galleryBest, statueBest } (core/annex.js, zawsze przez normalizeAnnex).
 // Bieg startuje, gdy dłoń dotknie pierwszego uchwytu, a kończy dotknięcie dzwonu na szczycie. Lokalny rekord czasu; bez Bagabucksów i bez rekordów gry.
 // ==========================================
 export const CLIMB_T = { MIN: 2, MAX: 180, RESTART_AFTER: 5, SHOW_DONE: 6 };
 export const newClimb = () => ({ ph: 'idle', t: 0, last: 0, shown: 0 });
 export function normalizeAnnex(raw) {
-    const out = { climbBest: 0, galleryBest: 0 };
+    const out = { climbBest: 0, galleryBest: 0, statueBest: 0 };
     if (raw && typeof raw === 'object') {
         if (typeof raw.climbBest === 'number' && Number.isFinite(raw.climbBest) && raw.climbBest >= CLIMB_T.MIN && raw.climbBest <= 3600) out.climbBest = Math.round(raw.climbBest * 100) / 100;
+        if (typeof raw.statueBest === 'number' && Number.isFinite(raw.statueBest) && raw.statueBest >= CLIMB_T.MIN && raw.statueBest <= 3600) out.statueBest = Math.round(raw.statueBest * 100) / 100;
         if (Number.isInteger(raw.galleryBest) && raw.galleryBest > 0 && raw.galleryBest <= 100000) out.galleryBest = raw.galleryBest;
     }
     return out;

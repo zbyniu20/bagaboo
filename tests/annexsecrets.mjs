@@ -48,6 +48,29 @@ const sk = await ev(async () => {
     return { v0, a, b, c, w: E.SAVE.wallet - w0, n: K.deepCountNow(), left: D.debugDeepSkulls().visible, saved: JSON.stringify(E.SAVE.deep) };
 });
 ok('the three silver skulls pay 50 Bagabucks each exactly once and vanish', sk.v0.length === 3 && sk.a === true && sk.b === false && sk.c === true && sk.w === 100 && sk.n === 2 && sk.left.join() === 'room' && /ceil/.test(sk.saved) && /zipskull/.test(sk.saved), sk);
+// Tajne słowa na stole ouija: LEGION (podpowiedź) i BAGABOO (przyciemnienie i posągi), płacą raz; strach stworka przy odpowiedzi ducha
+const words = await ev(async () => {
+    const P = await import('./core/annexplay.js'), K = await import('./core/deep.js'), E = await import('./core/economy.js'), St = await import('./core/annexstatues.js'), H = await import('./core/hauntlogic.js'), w = (ms) => new Promise(r => setTimeout(r, ms));
+    const w0 = E.SAVE.wallet, n0 = K.deepCountNow();
+    for (const ch of 'LEGION') P.debugOuijaPick(ch); await w(500); const a = { n: K.deepCountNow() - n0, w: E.SAVE.wallet - w0, text: P.debugAnnexPlay().text };
+    for (const ch of 'BAGABOO') P.debugOuijaPick(ch); await w(500); const b = { n: K.deepCountNow() - n0, w: E.SAVE.wallet - w0, dim: P.debugAnnexDim(), stare: St.debugStatues().stare, text: P.debugAnnexPlay().text };
+    for (const ch of 'HELLO') P.debugOuijaPick(ch); await w(300); const sc = H.HAUNT_STATE.scare ? { until: H.HAUNT_STATE.scare.until > performance.now() / 1000, x: H.HAUNT_STATE.scare.x } : null;
+    H.HAUNT_STATE.scare.pet = true; await w(600); const pet = K.getDeep().found.includes('pet');
+    return { a, b, sc, pet };
+});
+ok('LEGION pays once and clears the board, BAGABOO dims the lights and turns the statues, the ghost reply scares the pet (secret pet)', words.a.n === 1 && words.a.w === 50 && words.a.text === '' && words.b.n === 1 && words.b.dim < 0.5 && words.b.stare > 0 && words.sc && words.sc.until && words.pet === true, words);
+await shot('statues', -1, 1.6, 27, 1.57);
+
+// Ogród posągów: start, nieruchome gdy widziane, wygrana zapisuje czas
+const gar = await ev(async () => {
+    const St = await import('./core/annexstatues.js'), E = await import('./core/economy.js');
+    const e1 = St.debugGardenStep(-6, 25.2, false, 0.1), a = St.debugStatues(), p0 = JSON.stringify(a.pos);
+    St.debugGardenStep(-6, 25.2, true, 0.5); const p1 = JSON.stringify(St.debugStatues().pos);
+    for (let i = 0; i < 6; i++) St.debugGardenStep(-6, 28, true, 0.5);
+    const e2 = St.debugGardenStep(-6, 36.8, true, 0.1), b = St.debugStatues();
+    return { e1, e2, still: p0 === p1, count: a.count, ph: b.ph, last: b.last, best: b.best, saved: JSON.stringify(E.SAVE.annex) };
+});
+ok('the statue garden starts on the pad, seen statues stay put, the bell ends the round and saves the best time', gar.e1 === 'start' && gar.count === 6 && gar.still && gar.e2 === 'won' && gar.last >= 2 && gar.best >= 2 && /statueBest/.test(gar.saved), gar);
 
 ok('no page errors', errors.length === 0, errors);
 console.log(fails ? 'FAILED: ' + fails : 'annexsecrets: all checks passed'); await browser.close(); server.close(); process.exit(fails ? 1 : 0);

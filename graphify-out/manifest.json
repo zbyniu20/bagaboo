@@ -390,9 +390,9 @@
     "semantic_hash": ""
   },
   "levels/lobby.js": {
-    "mtime": 1795647231.1110716,
-    "seen": 1795647567.8612497,
-    "ast_hash": "a17d9c5f7462ad691205be555f7c4046",
+    "mtime": 1795647677.8089323,
+    "seen": 1795648376.5683355,
+    "ast_hash": "8f860012b357685368b80826df27e173",
     "semantic_hash": ""
   },
   "levels/maze.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795647512.633409,
-    "seen": 1795647567.8618429,
-    "ast_hash": "75c751357441d2acbac298f69818cdf4",
+    "mtime": 1795648320.785457,
+    "seen": 1795648376.568652,
+    "ast_hash": "2a1b186ebc882b125c35e426af1066d5",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795647198.0946062,
-    "seen": 1795647567.8618512,
-    "ast_hash": "8344907fe0c701e3c2d696a8fee5e87f",
+    "mtime": 1795647632.9398136,
+    "seen": 1795648376.5686595,
+    "ast_hash": "4f5242d13c3dd1b6c5832a39a56f82d9",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795647248.828213,
-    "seen": 1795647567.8614976,
-    "ast_hash": "c213c828c8601617c008f3e9af234b4c",
+    "mtime": 1795647733.5423725,
+    "seen": 1795648376.5683978,
+    "ast_hash": "62f7fd55a6a53c596b7819f89ff078fe",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -9954,9 +9954,9 @@
     "semantic_hash": ""
   },
   "core/pet.js": {
-    "mtime": 1795371705.9707236,
-    "seen": 1795373079.3475802,
-    "ast_hash": "59267a9f1e946c403c07776664b8890a",
+    "mtime": 1795647632.9357612,
+    "seen": 1795648376.5682507,
+    "ast_hash": "b159ae063d56a017e5ca506740b006b0",
     "semantic_hash": ""
   },
   "core/petlogic.js": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795647198.0975451,
-    "seen": 1795647567.861556,
-    "ast_hash": "9cacf34be6c93f0f3e7b129143a00d75",
+    "mtime": 1795647632.9418545,
+    "seen": 1795648376.5684361,
+    "ast_hash": "57577131fd4534e93dc2a5fefe9827e7",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10182,9 +10182,9 @@
     "semantic_hash": ""
   },
   "core/hauntlogic.js": {
-    "mtime": 1795375608.646876,
-    "seen": 1795376188.2604892,
-    "ast_hash": "d12140e3a89c2ce8439411ae1a35e173",
+    "mtime": 1795647632.9354525,
+    "seen": 1795648376.5681915,
+    "ast_hash": "63414afed5c297a95cdeb8a5f2e736fd",
     "semantic_hash": ""
   },
   "tests/haunt.mjs": {
@@ -10680,15 +10680,15 @@
     "semantic_hash": ""
   },
   "core/annexlayout.js": {
-    "mtime": 1795647198.0893707,
-    "seen": 1795647567.8610046,
-    "ast_hash": "f978c83d085f700360d5ae59808223e4",
+    "mtime": 1795647632.9348695,
+    "seen": 1795648376.5681028,
+    "ast_hash": "0c3fed13730af6efb8d169081ae46709",
     "semantic_hash": ""
   },
   "core/climblogic.js": {
-    "mtime": 1795641981.4223597,
-    "seen": 1795643342.4227216,
-    "ast_hash": "dc5ff2be65c4444b69d9268f22c723c9",
+    "mtime": 1795647632.9351947,
+    "seen": 1795648376.5681283,
+    "ast_hash": "6795b154cc12f886d2b981f232a1ffd7",
     "semantic_hash": ""
   },
   "tests/annex.mjs": {
@@ -10698,9 +10698,9 @@
     "semantic_hash": ""
   },
   "core/annexplay.js": {
-    "mtime": 1795641865.2835655,
-    "seen": 1795643342.4226916,
-    "ast_hash": "2bcd9722a521ee2de58a873565c217fd",
+    "mtime": 1795647677.8081067,
+    "seen": 1795648376.568105,
+    "ast_hash": "a6f2958c1ee97be4c081f6fb7bb5eb29",
     "semantic_hash": ""
   },
   "core/organlogic.js": {
@@ -10770,9 +10770,21 @@
     "semantic_hash": ""
   },
   "tests/annexsecrets.mjs": {
-    "mtime": 1795647267.4853945,
-    "seen": 1795647567.8612761,
-    "ast_hash": "e398f1d8e23235cee6188445b7e1ce12",
+    "mtime": 1795648038.979755,
+    "seen": 1795648376.56836,
+    "ast_hash": "6304930f44d20f5326bb0876f0850fd1",
+    "semantic_hash": ""
+  },
+  "core/annexstatues.js": {
+    "mtime": 1795647658.3814175,
+    "seen": 1795648376.5681083,
+    "ast_hash": "5adb5b1b54253a8b1595bbe7fa528837",
+    "semantic_hash": ""
+  },
+  "core/statuelogic.js": {
+    "mtime": 1795647710.4442558,
+    "seen": 1795648376.5682912,
+    "ast_hash": "5d78d5289c56fc51d2603c635b0e56fc",
     "semantic_hash": ""
   },
   "package-lock.json": {
