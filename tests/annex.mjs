@@ -59,6 +59,21 @@ const climb = await ev(async () => {
 ok('Climb Rush runs from the first hold to the bell and saves the record', climb.a.ph === 'run' && climb.b.ph === 'done' && climb.b.last >= 2 && Math.abs(climb.b.best - climb.b.last) < 0.01 && /climbBest/.test(climb.saved), climb);
 await shot('climb_done', 10, 1.6, 22.5, -1.57);
 
+// Stół spirytystyczny: wybór liter, odpowiedź ducha; organy: nuty i odstęp między dźwiękami
+const play = await ev(async () => {
+    const P = await import('./core/annexplay.js'), w = (ms) => new Promise(r => setTimeout(r, ms));
+    for (const ch of 'HELP') P.debugOuijaPick(ch);
+    await w(300); const g1 = P.debugAnnexPlay(); let g2 = g1;
+    for (let i = 0; i < 80 && g2.ghost; i++) { await w(300); g2 = P.debugAnnexPlay(); }
+    await w(2500); g2 = P.debugAnnexPlay();   // planszetka stoi na ostatniej literze: nie wolno jej wybrać drugi raz
+    const k1 = P.debugOrganKey(0), k2 = P.debugOrganKey(0), k3 = P.debugOrganKey(7);
+    return { start: g1, end: g2, k: [k1, k2, k3], organ: P.debugAnnexPlay().organPlays };
+});
+ok('the ouija ghost answers a question letter by letter (HELP -> RUN) and the organ plays notes but not twice in a row on one key', play.start.keys === 8 && play.start.ghost && play.end.ghost === false && play.end.text === 'HELPRUN' && play.k[0] === true && play.k[1] === false && play.k[2] === true && play.organ === 2, play);
+await shot('ouija', -10.5, 1.6, 40, Math.PI);
+await shot('organ', 10, 1.6, 47.5, 0);
+await shot('annex_wide', -1, 1.6, 22, Math.PI);
+
 // Po wyjściu i powrocie rekord jest zapamiętany, a nic nie przecieka do innych poziomów
 await ev(async () => { const M = await import('./main.js'); await M.loadLevel('levels'); });
 await page.waitForTimeout(1500);

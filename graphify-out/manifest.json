@@ -390,9 +390,9 @@
     "semantic_hash": ""
   },
   "levels/lobby.js": {
-    "mtime": 1795636939.31253,
-    "seen": 1795637981.098586,
-    "ast_hash": "7571a9e1f48d093e02a138742af9809b",
+    "mtime": 1795638080.6389937,
+    "seen": 1795638794.3678956,
+    "ast_hash": "ea94a12a90d75a30784f9cc4b68c66de",
     "semantic_hash": ""
   },
   "levels/maze.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795637212.490236,
-    "seen": 1795637981.0988576,
-    "ast_hash": "b906db14572c387830dfc875c266f60a",
+    "mtime": 1795638739.4009318,
+    "seen": 1795638794.3682427,
+    "ast_hash": "3446c68d93c859326dbf85a14ae7caec",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795636582.902124,
-    "seen": 1795637981.0988634,
-    "ast_hash": "0d1229f50f2aa86303da2e64c9e530ec",
+    "mtime": 1795638080.6233573,
+    "seen": 1795638794.36825,
+    "ast_hash": "f4483a5d8c59a412145c66a6b97ad6a5",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795636945.2342558,
-    "seen": 1795637981.0986423,
-    "ast_hash": "aee83c41fabea8f2c6dd5695ff822749",
+    "mtime": 1795638100.5939035,
+    "seen": 1795638794.3679552,
+    "ast_hash": "b204945f8aa5aac932414fc6e29cb7ef",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795636582.9045894,
-    "seen": 1795637981.0986757,
-    "ast_hash": "c4ec8a00688e4ef243042c62eb676d78",
+    "mtime": 1795638080.6257668,
+    "seen": 1795638794.3679905,
+    "ast_hash": "09b4ac3fafb37ce7f0cef1496cf8fe92",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10680,9 +10680,9 @@
     "semantic_hash": ""
   },
   "core/annexlayout.js": {
-    "mtime": 1795637212.490236,
-    "seen": 1795637981.0983894,
-    "ast_hash": "7787b2a5c5e68699062ccc56c794ef18",
+    "mtime": 1795638080.604054,
+    "seen": 1795638794.367676,
+    "ast_hash": "58b6eb5f179409b654841c5aec86018a",
     "semantic_hash": ""
   },
   "core/climblogic.js": {
@@ -10692,9 +10692,27 @@
     "semantic_hash": ""
   },
   "tests/annex.mjs": {
-    "mtime": 1795637198.3668416,
-    "seen": 1795637981.098608,
-    "ast_hash": "af12962ee866c0946707c04377f3c078",
+    "mtime": 1795638424.2509332,
+    "seen": 1795638794.367918,
+    "ast_hash": "4ae19790856df6b79babe4dc54a124f2",
+    "semantic_hash": ""
+  },
+  "core/annexplay.js": {
+    "mtime": 1795638424.2506173,
+    "seen": 1795638794.367678,
+    "ast_hash": "2bcd9722a521ee2de58a873565c217fd",
+    "semantic_hash": ""
+  },
+  "core/organlogic.js": {
+    "mtime": 1795638032.4495187,
+    "seen": 1795638794.3678095,
+    "ast_hash": "5d1bcce0976245f52e2ca4b06f599d0e",
+    "semantic_hash": ""
+  },
+  "core/ouijalogic.js": {
+    "mtime": 1795638027.0895183,
+    "seen": 1795638794.3678107,
+    "ast_hash": "b0920eb5048549aa0640f30f30ec2b04",
     "semantic_hash": ""
   },
   "package-lock.json": {

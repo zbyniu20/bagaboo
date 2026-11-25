@@ -20,6 +20,7 @@ import { buildNightChest, updateNightChest, disposeNightChest } from '../core/ni
 import { buildSecrets, updateSecrets, disposeSecrets } from '../core/secrets.js';   // ukryte złote czaszki
 import { buildEggs, updateEggs, disposeEggs } from '../core/eggs.js';   // easter eggi
 import { buildAnnexShell, buildAnnex, updateAnnex, disposeAnnex } from '../core/annex.js';   // aneks: druga hala za tunelem w południowej ścianie
+import { buildAnnexPlay, updateAnnexPlay, disposeAnnexPlay } from '../core/annexplay.js';   // stół spirytystyczny i organy w aneksie
 import * as AX from '../core/annexlayout.js';
 import { buildPetNest, updatePetNest, disposePetNest } from '../core/petnest.js';   // gniazdo Stworka: jajo, wykluwanie i panel opieki
 
@@ -42,7 +43,7 @@ export function build() {
         const l = new THREE.PointLight(f[3], f[4], f[5], 2); l.position.set(f[0], f[1], f[2]); root.add(l);
         fx.flickers.push({ l: l, base: f[4], ph: Math.random() * 100, subtle: false });
     }
-    buildAnnex(fx.flickers);   // światła, Climb Rush i reszta aneksu
+    buildAnnex(fx.flickers); buildAnnexPlay(fx.flickers);   // światła, Climb Rush, stół spirytystyczny i organy w aneksie
     L.reserved.push([(AX.TUNNEL.x0 + AX.TUNNEL.x1) / 2, 13.2, 3.2]);   // manekiny nie stoją przed tunelem
     if (LP.bounce > 0) { const b = new THREE.PointLight(0xff8a50, LP.bounce, 24, 2); b.position.set(11, 6, 3); root.add(b); }
 
@@ -600,7 +601,7 @@ export function update(dt, t, ctx) {
     updateMannequins(dt);
     updateLobbyPlay(dt, t, ctx);
     updatePetNest(dt, t, ctx);
-    updateBestiary(dt, t); updateNightChest(dt, t); updateSecrets(dt, t); updateEggs(dt, t, SFX.micLevel()); updateAnnex(dt, t);
+    updateBestiary(dt, t); updateNightChest(dt, t); updateSecrets(dt, t); updateEggs(dt, t, SFX.micLevel()); updateAnnex(dt, t); updateAnnexPlay(dt, t);
     // Zadanie dzienne: stanie na szczycie spiralnych schodów
     const p = ctx.pos;
     if (p.y > 15.4 && Math.hypot(p.x + 7, p.z + 7) < 2.2) track('top');
@@ -608,4 +609,4 @@ export function update(dt, t, ctx) {
 
 // Po wyjściu z lobby zwykła prędkość (inne poziomy ustawiają własną)
 export function debug(cmd) { return debugLobbyPlay(cmd); }   // dla testów
-export function dispose() { L.moveScale = 1; detachGorillaMachine(); disposeLobbyPlay(); disposePetNest(); disposeBestiary(); disposeNightChest(); disposeSecrets(); disposeEggs(); disposeAnnex(); }
+export function dispose() { L.moveScale = 1; detachGorillaMachine(); disposeLobbyPlay(); disposePetNest(); disposeBestiary(); disposeNightChest(); disposeSecrets(); disposeEggs(); disposeAnnex(); disposeAnnexPlay(); }

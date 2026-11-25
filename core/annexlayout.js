@@ -21,6 +21,10 @@ export const ZONES = [
 ];
 export const zoneById = (id) => ZONES.find(z => z.id === id) || null;
 
+// Stół spirytystyczny (okrągły blat, promień 1,1 m; plansza 1 m promienia) i organy (półkole klawiszy wokół środka, wymiary w core/organlogic.js)
+export const OUIJA_AT = { x: -10.5, z: 43.5, tableR: 1.1, topY: 0.9, standR: 0.8 };
+export const ORGAN_AT = { x: 10, z: 47 };
+
 // Światła aneksu: [x, y, z, kolor, moc, zasięg]. Idą przez tę samą listę co światła lobby (fx.flickers), więc Nocna Zmiana je przyciemnia.
 export const LIGHTS = [[-8, 12, 26, 0xffa860, 24, 16], [8, 12, 26, 0xffa860, 24, 16], [-8, 12, 43, 0xff9a50, 22, 15], [9, 12, 45, 0xff9a50, 22, 15], [0, 14, 36, 0xffb070, 20, 18], [12.5, 7, 31, 0xffa060, 16, 12]];
 
