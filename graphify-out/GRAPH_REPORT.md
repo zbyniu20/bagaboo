@@ -126,7 +126,7 @@
 - decallogic.js
 - film-light-leak/effect.js
 - sleep
-- trainingdummy.js
+- goobyTexture
 - still
 - deal.mjs
 - Copy registers
@@ -350,7 +350,7 @@ Nodes (32): buildAnnex(), debugAnnex(), draw(), getAnnex(), near(), updateAnnex(
 
 ### Community 16 - "./core/engine.js"
 Cohesion: 0.04
-Nodes (52): DEPS, errors, HERE, LEVELS, MIME, ROOT, run(), server (+44 more)
+Nodes (53): DEPS, errors, HERE, LEVELS, MIME, ROOT, run(), server (+45 more)
 
 ### Community 17 - "glb.mjs"
 Cohesion: 0.06
@@ -469,12 +469,12 @@ Cohesion: 0.07
 Nodes (45): BASE_UNIFORMS, CALM_SPOTS, clamp(), compose(), cssToHex(), DEFAULT_PALETTE, enforceBudget(), FOCAL (+37 more)
 
 ### Community 46 - "start.mjs"
-Cohesion: 0.05
-Nodes (45): ALIAS, allTypes, args, axisOrder(), axisVal(), block(), buttonInk(), dealTypes() (+37 more)
+Cohesion: 0.06
+Nodes (33): ALIAS, allTypes, args, block(), buttonInk(), dealTypes(), DEFAULT_MONO, FONT_TAGS() (+25 more)
 
 ### Community 47 - "copy-lint.mjs"
 Cohesion: 0.07
-Nodes (47): APART, args, attrOf(), BLOCK, brandsOf(), CAST, CAST_CO, clip() (+39 more)
+Nodes (35): APART, args, BLOCK, CAST, CAST_CO, clip(), COINED, cross (+27 more)
 
 ### Community 48 - "photo.js"
 Cohesion: 0.06
@@ -494,7 +494,7 @@ Nodes (19): Player accounts and host identity verification, bagaboo-api account 
 
 ### Community 52 - "cosmetics.js"
 Cohesion: 0.17
-Nodes (20): at(), BLOOD(), BLOOD_DARK, cache, CUTE, dark(), EXTRA_BADGES, EXTRA_SKINS (+12 more)
+Nodes (19): at(), BLOOD(), BLOOD_DARK, cache, CUTE, dark(), EXTRA_BADGES, EXTRA_SKINS (+11 more)
 
 ### Community 53 - "make-posters.mjs"
 Cohesion: 0.11
@@ -581,8 +581,8 @@ Cohesion: 0.33
 Nodes (9): ADD, at(), DEAL, L(), mount(), params, sat(), tones() (+1 more)
 
 ### Community 74 - "logic.mjs"
-Cohesion: 0.08
-Nodes (17): b64u(), bad, forge(), gfx, html, ids, keys, lines (+9 more)
+Cohesion: 0.07
+Nodes (23): checkTick(), favorite(), hideStep(), MEMORY, newMemory(), wait(), b64u(), bad (+15 more)
 
 ### Community 75 - "warning.mjs"
 Cohesion: 0.06
@@ -1049,8 +1049,8 @@ Cohesion: 0.05
 Nodes (52): heardVoice(), stepBot(), takeRespawn(), mutFactor(), animate(), BONES, build(), buildDecor() (+44 more)
 
 ### Community 212 - "presence.js"
-Cohesion: 0.38
-Nodes (11): apply(), cleanup(), connectClient(), getInfo(), members, onChange(), retry(), sendHello() (+3 more)
+Cohesion: 0.33
+Nodes (12): apply(), cleanup(), connectClient(), getInfo(), members, onChange(), PRESENCE, retry() (+4 more)
 
 ### Community 213 - "room000.js"
 Cohesion: 0.05
