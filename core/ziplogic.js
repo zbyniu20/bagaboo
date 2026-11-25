@@ -7,25 +7,29 @@ export const ZIP = { A: [-12.8, 9.7, 35.4], B: [-12.8, 2.9, 25.6], SPEED: 4, REA
 export const ZIP_HOLDS = { X: -14.6, Z0: 25, DZ: 1.0, Y0: 1.3, DY: 0.85, COUNT: 10, MAX_STEP: 1.5 };
 export const PLATFORM = { x: -13.7, y: 8.85, z: 35.4, w: 1.8, h: 0.25, d: 1.8 };
 export const zipHolds = () => { const o = []; for (let i = 0; i < ZIP_HOLDS.COUNT; i++) o.push([ZIP_HOLDS.X, ZIP_HOLDS.Y0 + i * ZIP_HOLDS.DY, ZIP_HOLDS.Z0 + i * ZIP_HOLDS.DZ]); return o; };
-export const zipLength = () => Math.hypot(ZIP.B[0] - ZIP.A[0], ZIP.B[1] - ZIP.A[1], ZIP.B[2] - ZIP.A[2]);
+// Szyna: ogólny przejazd po prostej od A do B (tyrolka i zjeżdżalnia). rail = { A, B, SPEED, HANG, COOLDOWN, MAX_DT }; HANG to odległość ciała pod punktem szyny (ujemna = ciało nad nią).
+export const railLength = (r) => Math.hypot(r.B[0] - r.A[0], r.B[1] - r.A[1], r.B[2] - r.A[2]);
+export function railPoint(r, s) { const L = railLength(r), t = Math.max(0, Math.min(1, s / L)); return [r.A[0] + (r.B[0] - r.A[0]) * t, r.A[1] + (r.B[1] - r.A[1]) * t, r.A[2] + (r.B[2] - r.A[2]) * t]; }
+export function railVelocity(r) { const L = railLength(r); return [(r.B[0] - r.A[0]) / L * r.SPEED, (r.B[1] - r.A[1]) / L * r.SPEED, (r.B[2] - r.A[2]) / L * r.SPEED]; }
+const bodyOn = (r, s) => { const p = railPoint(r, s); return [p[0], p[1] - r.HANG, p[2]]; };
 export const newZip = () => ({ ph: 'idle', s: 0, cd: 0 });
-// Punkt liny w odległości s od początku (przycięty do liny)
-export function zipPoint(s) { const L = zipLength(), t = Math.max(0, Math.min(1, s / L)); return [ZIP.A[0] + (ZIP.B[0] - ZIP.A[0]) * t, ZIP.A[1] + (ZIP.B[1] - ZIP.A[1]) * t, ZIP.A[2] + (ZIP.B[2] - ZIP.A[2]) * t]; }
-// Kierunek jazdy (jednostkowy) i prędkość wektorowa
-export function zipVelocity() { const L = zipLength(); return [(ZIP.B[0] - ZIP.A[0]) / L * ZIP.SPEED, (ZIP.B[1] - ZIP.A[1]) / L * ZIP.SPEED, (ZIP.B[2] - ZIP.A[2]) / L * ZIP.SPEED]; }
-// Krok: handNear = dłoń przy uchwycie. Zwraca { st, pos (punkt uchwytu), body (gdzie ma być ciało), vel, event: ''|'start'|'end' }
-export function zipStep(st, handNear, dt) {
-    const s = { ph: st.ph, s: st.s, cd: st.cd }, d = Math.min(Math.max(dt, 0), ZIP.MAX_DT);
+// Krok: near = dłoń przy uchwycie. Zwraca { st, pos (punkt uchwytu), body (gdzie ma być ciało), vel, event: ''|'start'|'end' }
+export function railStep(r, st, near, dt) {
+    const s = { ph: st.ph, s: st.s, cd: st.cd }, d = Math.min(Math.max(dt, 0), r.MAX_DT);
     if (s.ph === 'idle') {
         s.cd = Math.max(0, s.cd - Math.min(Math.max(dt, 0), 0.5));
-        if (handNear && s.cd <= 0) { s.ph = 'ride'; s.s = 0; return { st: s, pos: zipPoint(0), body: bodyAt(0), vel: zipVelocity(), event: 'start' }; }
-        return { st: s, pos: zipPoint(0), body: null, vel: null, event: '' };
+        if (near && s.cd <= 0) { s.ph = 'ride'; s.s = 0; return { st: s, pos: railPoint(r, 0), body: bodyOn(r, 0), vel: railVelocity(r), event: 'start' }; }
+        return { st: s, pos: railPoint(r, 0), body: null, vel: null, event: '' };
     }
-    s.s += ZIP.SPEED * d;
-    if (s.s >= zipLength()) { s.ph = 'idle'; s.s = 0; s.cd = ZIP.COOLDOWN; return { st: s, pos: zipPoint(zipLength()), body: bodyAt(zipLength()), vel: [0, 0, 0], event: 'end' }; }
-    return { st: s, pos: zipPoint(s.s), body: bodyAt(s.s), vel: zipVelocity(), event: '' };
+    s.s += r.SPEED * d;
+    if (s.s >= railLength(r)) { s.ph = 'idle'; s.s = 0; s.cd = r.COOLDOWN; return { st: s, pos: railPoint(r, railLength(r)), body: bodyOn(r, railLength(r)), vel: [0, 0, 0], event: 'end' }; }
+    return { st: s, pos: railPoint(r, s.s), body: bodyOn(r, s.s), vel: railVelocity(r), event: '' };
 }
-function bodyAt(s) { const p = zipPoint(s); return [p[0], p[1] - ZIP.HANG, p[2]]; }
+// Tyrolka: ta sama szyna z jej stałymi (zachowane nazwy dla istniejących modułów i testów)
+export const zipLength = () => railLength(ZIP);
+export const zipPoint = (s) => railPoint(ZIP, s);
+export const zipVelocity = () => railVelocity(ZIP);
+export const zipStep = (st, handNear, dt) => railStep(ZIP, st, handNear, dt);
 // Usterki toru: uchwyty w zasięgu rąk (krok <= MAX_STEP), platforma tuż nad ostatnim uchwytem, uchwyt liny nad platformą, lina opada
 export function zipProblems() {
     const bad = [], h = zipHolds();

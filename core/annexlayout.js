@@ -27,6 +27,9 @@ export const zoneById = (id) => ZONES.find(z => z.id === id) || null;
 export const OUIJA_AT = { x: -10.5, z: 43.5, tableR: 1.1, topY: 0.9, standR: 0.8 };
 export const ORGAN_AT = { x: 10, z: 47 };
 
+// Srebrne czaszki głębokich sekretów (id = id sekretu z core/puzzlelogic.js). 'room' leży w pokoju w ścianie (core/annexroom.js).
+export const DEEP_SKULLS = { zipskull: [-12.8, 6.85, 30.5], ceil: [14.4, 15.05, 38.45], room: [-10.7, 0.9, 53.0] };
+
 // Światła aneksu: [x, y, z, kolor, moc, zasięg]. Idą przez tę samą listę co światła lobby (fx.flickers), więc Nocna Zmiana je przyciemnia.
 export const LIGHTS = [[-8, 12, 26, 0xffa860, 24, 16], [8, 12, 26, 0xffa860, 24, 16], [-8, 12, 43, 0xff9a50, 22, 15], [9, 12, 45, 0xff9a50, 22, 15], [0, 14, 36, 0xffb070, 20, 18], [12.5, 7, 31, 0xffa060, 16, 12]];
 
