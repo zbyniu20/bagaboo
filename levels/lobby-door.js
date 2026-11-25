@@ -124,7 +124,7 @@ const SLIPPERY_WALL = 0.45;   // ściany przy trasie (północna i zachodnia) s�
 let route = null;
 function buildRoute() {
     // Śliskie ściany: bez uchwytów trudno się po nich wspinać
-    for (const o of L.obstacles) { const b = o.box3; if ((b.max.z <= -14.9 && b.min.z < -19) || (b.max.x <= -14.9 && b.min.x < -19)) o.grip = SLIPPERY_WALL; }
+    for (const o of L.obstacles) { const b = o.box3; if ((b.max.z <= -14.9 && b.min.z < -19) || (b.max.x <= -14.9 && b.min.x < -19 && b.min.z < 0)) o.grip = SLIPPERY_WALL; }
     const red = new THREE.MeshStandardMaterial({ color: 0xc01010, emissive: 0xff1a0a, emissiveIntensity: 0.55, roughness: 0.4 });
     const holds = [], dots = [], ropes = [];
     ROUTE.forEach((r, i) => {

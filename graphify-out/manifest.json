@@ -384,15 +384,15 @@
     "semantic_hash": ""
   },
   "levels/lobby-door.js": {
-    "mtime": 1795636364.4755414,
-    "seen": 1795636391.8314714,
-    "ast_hash": "723131055f82ce53dcedda017d9d92de",
+    "mtime": 1795636582.8980603,
+    "seen": 1795637981.098585,
+    "ast_hash": "c217567749557c21300b67678bbf1cd1",
     "semantic_hash": ""
   },
   "levels/lobby.js": {
-    "mtime": 1795636364.470628,
-    "seen": 1795636391.8314736,
-    "ast_hash": "914b3f8f6db98ad474e630ca97cbf907",
+    "mtime": 1795636939.31253,
+    "seen": 1795637981.098586,
+    "ast_hash": "7571a9e1f48d093e02a138742af9809b",
     "semantic_hash": ""
   },
   "levels/maze.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795635444.0093648,
-    "seen": 1795635500.2285016,
-    "ast_hash": "e4329d86ba2d6410108cbdc123c7e1ed",
+    "mtime": 1795637212.490236,
+    "seen": 1795637981.0988576,
+    "ast_hash": "b906db14572c387830dfc875c266f60a",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795634527.6524396,
-    "seen": 1795635500.2285101,
-    "ast_hash": "b8d0d32fbe83fad599a7959b02c29603",
+    "mtime": 1795636582.902124,
+    "seen": 1795637981.0988634,
+    "ast_hash": "0d1229f50f2aa86303da2e64c9e530ec",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795634552.485393,
-    "seen": 1795635500.2282004,
-    "ast_hash": "6965430c480502c27ba34799c06cf07d",
+    "mtime": 1795636945.2342558,
+    "seen": 1795637981.0986423,
+    "ast_hash": "aee83c41fabea8f2c6dd5695ff822749",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795634522.2854974,
-    "seen": 1795635500.2282388,
-    "ast_hash": "e45fa54ada2e045ee5c45c5f5e251e14",
+    "mtime": 1795636582.9045894,
+    "seen": 1795637981.0986757,
+    "ast_hash": "c4ec8a00688e4ef243042c62eb676d78",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10671,6 +10671,30 @@
     "mtime": 1795636364.4774559,
     "seen": 1795636391.8309824,
     "ast_hash": "72f92393301fc599144008857164b65d",
+    "semantic_hash": ""
+  },
+  "core/annex.js": {
+    "mtime": 1795636558.7454312,
+    "seen": 1795637981.0983872,
+    "ast_hash": "80adabdd5562ff27d061c057a44d02d7",
+    "semantic_hash": ""
+  },
+  "core/annexlayout.js": {
+    "mtime": 1795637212.490236,
+    "seen": 1795637981.0983894,
+    "ast_hash": "7787b2a5c5e68699062ccc56c794ef18",
+    "semantic_hash": ""
+  },
+  "core/climblogic.js": {
+    "mtime": 1795636519.6494288,
+    "seen": 1795637981.0984054,
+    "ast_hash": "de59debd16bfff61b80b4c1623626b35",
+    "semantic_hash": ""
+  },
+  "tests/annex.mjs": {
+    "mtime": 1795637198.3668416,
+    "seen": 1795637981.098608,
+    "ast_hash": "af12962ee866c0946707c04377f3c078",
     "semantic_hash": ""
   },
   "package-lock.json": {
