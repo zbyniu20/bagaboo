@@ -36,6 +36,7 @@ import './core/workshopstore.js';   // rejestruje dane mapy dla gości (Własna 
 import './core/homestore.js';       // rejestruje układ pokoju dla gości (odwiedziny)
 import { SETTINGS, saveSettings, GAMES_CALM } from './core/settings.js';
 import { applyIntensity, needsWarning, LEVELS as INTENSITY_LEVELS } from './core/intensitylogic.js';
+import { bestiaryTick } from './core/bestiary.js';   // czas na poziomie odkrywa potwora w bestiariuszu
 import { enableDesktop, updateDesktop, setDesktopFacing } from './core/desktop.js';
 import { startPresence } from './core/presence.js';
 import { updateHammer } from './core/hammer.js';
@@ -434,7 +435,7 @@ renderer.setAnimationLoop(() => {
             }
         }
     }
-    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); dreadUpdate(dt); updateAcoustics(dt); updateGlbMonsters(dt); updateBake(dt); updateDust(dt); updateTutorial(dt);
+    NETM.poseRemoteHands(dt); NETM.tickDismember(dt); bestiaryTick(levelId, dt); dreadUpdate(dt); updateAcoustics(dt); updateGlbMonsters(dt); updateBake(dt); updateDust(dt); updateTutorial(dt);
     NETM.animateFaces(dt);
     if (started && !frozen) {
         ECO.tick(dt, NETM.otherPlayers().length);

@@ -15,6 +15,10 @@ import { buildLobbyPlay, updateLobbyPlay, disposeLobbyPlay, lobbyDim, debugLobby
 import { SETTINGS } from '../core/settings.js';
 import * as SFX from '../core/audio.js';
 import { HAUNT, nextIn, manStep, poseVariant } from '../core/hauntlogic.js';
+import { buildBestiary, updateBestiary, disposeBestiary } from '../core/bestiary.js';   // galeria potworów (dwa rzędy witryn i panel)
+import { buildNightChest, updateNightChest, disposeNightChest } from '../core/nightchest.js';   // skrzynia z codzienną nagrodą
+import { buildSecrets, updateSecrets, disposeSecrets } from '../core/secrets.js';   // ukryte złote czaszki
+import { buildEggs, updateEggs, disposeEggs } from '../core/eggs.js';   // easter eggi
 import { buildPetNest, updatePetNest, disposePetNest } from '../core/petnest.js';   // gniazdo Stworka: jajo, wykluwanie i panel opieki
 
 export const info = { id: 'lobby', name: 'Lobby', spawn: [0, 2, 0] };
@@ -30,6 +34,7 @@ export function build() {
     const root = L.root;
     buildLobbyPlay();   // Nocna Zmiana (core/lobbyplay.js)
     buildPetNest(0, -12.6);   // Stworek: podest z jajem przy północnej ścianie
+    buildBestiary(-6, 7.8); buildNightChest(1.5, 8.0); buildSecrets(); buildEggs();   // bestiariusz, skrzynia nocna i sekrety (core/bestiary.js, nightchest.js, secrets.js)
 
     for (const f of LP.flickers) {
         const l = new THREE.PointLight(f[3], f[4], f[5], 2); l.position.set(f[0], f[1], f[2]); root.add(l);
@@ -580,6 +585,7 @@ export function update(dt, t, ctx) {
     updateMannequins(dt);
     updateLobbyPlay(dt, t, ctx);
     updatePetNest(dt, t, ctx);
+    updateBestiary(dt, t); updateNightChest(dt, t); updateSecrets(dt, t); updateEggs(dt, t, SFX.micLevel());
     // Zadanie dzienne: stanie na szczycie spiralnych schodów
     const p = ctx.pos;
     if (p.y > 15.4 && Math.hypot(p.x + 7, p.z + 7) < 2.2) track('top');
@@ -587,4 +593,4 @@ export function update(dt, t, ctx) {
 
 // Po wyjściu z lobby zwykła prędkość (inne poziomy ustawiają własną)
 export function debug(cmd) { return debugLobbyPlay(cmd); }   // dla testów
-export function dispose() { L.moveScale = 1; detachGorillaMachine(); disposeLobbyPlay(); disposePetNest(); }
+export function dispose() { L.moveScale = 1; detachGorillaMachine(); disposeLobbyPlay(); disposePetNest(); disposeBestiary(); disposeNightChest(); disposeSecrets(); disposeEggs(); }
