@@ -29,6 +29,7 @@ import { GATE, countVotes, winnerOf, gateStep } from '../core/lobbylogic.js';
 import { GAMES_CALM, SETTINGS } from '../core/settings.js';
 import { startSpectate, stopSpectate, isSpectating } from '../core/spectate.js';
 import { forwardFromQuat } from '../core/spectatelogic.js';
+import { RESCUE, newFallen, nearestRescuer, rescueStep, secondsLeft, cleanFallen, canMark } from '../core/rescuelogic.js';
 import { pickDismember, cleanDismember, lostLeft, lostRight, lostHead, dismemberText, catchOutcome, GRACE } from '../core/dismemberlogic.js';
 
 const WAIT = 10, WAIT_AFTER_VOTE = 6, ROUND = 120, RESULTS = 8, REWARD = 200;
@@ -53,6 +54,7 @@ export function build() {
     mx.font = 'bold 48px sans-serif'; mx.textAlign = 'center'; mx.textBaseline = 'middle'; mx.fillStyle = '#ff3a2a'; mx.shadowColor = '#ff0000'; mx.shadowBlur = 16; mx.fillText('MONSTER', 128, 34);
     S.tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.toTex(mc, false), transparent: true, depthWrite: false })); S.tag.scale.set(1.2, 0.3, 1); S.tag.visible = false; L.root.add(S.tag);
     S.flash = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ color: 0x8a0000, transparent: true, opacity: 0, depthTest: false })); S.flash.position.z = -0.3; S.flash.renderOrder = 1004; S.flash.visible = false; camera.add(S.flash);
+    S.fallen = Object.create(null); S.rescued = new Set(); S.fallenNet = []; S.rmarks = [];   // ratowanie złapanych: znaczniki upadku (host liczy, goście dostają listę)
     S.tearParts = [];
     // Pas: pęk mokrych, czerwonych włókien (gruby rdzeń i dwie cienkie nitki) ze strzępami ciała na końcach; głowa: skóra z twarzą w agonii i krwawym kikutem szyi
     S.sinewGeo = new THREE.CylinderGeometry(1, 1, 1, 8); S.sinewMat = new THREE.MeshStandardMaterial({ color: 0xa01010, emissive: 0x4a0000, roughness: 0.22, metalness: 0.1 });
@@ -262,7 +264,7 @@ function onNet(msg) {
         const vt = cleanVotes(msg.vt); if (vt) S.votes = vt;
         S.gate = { ph: msg.gp === 'counting' || msg.gp === 'launching' ? msg.gp : 'open', t: Number.isFinite(msg.t) ? Math.max(0, Math.min(60, msg.t)) : 0 };
         S.win = Number.isInteger(msg.wn) && msg.wn >= 0 && msg.wn < LOBBY.OPTIONS ? msg.wn : -1;
-        S.phase = 'lobby'; S.t = S.gate.t; S.mon = null; S.caught = new Set(); S.surv = []; S.dm = cleanDismember(null);
+        S.phase = 'lobby'; S.t = S.gate.t; S.mon = null; S.caught = new Set(); S.surv = []; S.dm = cleanDismember(null); S.fallenNet = [];
         return;
     }
     if (pk && (pk.i !== S.map || pk.seed !== S.seed)) applyMap(pk.i, pk.seed, true);
@@ -270,12 +272,14 @@ function onNet(msg) {
     S.phase = msg.ph; S.t = msg.t; S.mon = msg.mon ? fromNet(msg.mon) : null;
     const wasCaught = S.caught.has('me');
     S.caught = new Set((msg.caught || []).map(fromNet)); S.surv = (msg.surv || []).map(fromNet); S.dm = cleanDismember(msg.dm);   // urwane kończyny od hosta (tylko poprawne kody)
+    S.fallenNet = cleanFallen(msg.fl).map(e => Object.assign(e, { id: fromNet(e.id) }));   // znaczniki upadku od hosta (tylko poprawne liczby)
     if (!wasCaught && S.caught.has('me')) localCaught();
+    if (wasCaught && !S.caught.has('me') && msg.ph === 'play') savedNotice();   // koledzy cię podnieśli
     if (msg.ph === 'play' && prev !== 'play') startedRound();
     if (msg.ph === 'results' && prev !== 'results') roundOver();
 }
 function broadcast() {
-    N.sendLevelMsg({ k: 'st', mp: S.map, sd: S.seed, op: S.opts, vt: S.votes, gp: S.gate.ph, wn: S.win, ph: S.phase, t: S.t, mon: S.mon && S.mon !== 'bot' ? toNet(S.mon) : null, caught: [...S.caught].map(toNet), surv: S.surv.map(toNet), dm: Object.assign({}, S.dm) });
+    N.sendLevelMsg({ k: 'st', mp: S.map, sd: S.seed, op: S.opts, vt: S.votes, gp: S.gate.ph, wn: S.win, ph: S.phase, t: S.t, mon: S.mon && S.mon !== 'bot' ? toNet(S.mon) : null, caught: [...S.caught].map(toNet), surv: S.surv.map(toNet), dm: Object.assign({}, S.dm), fl: fallenList().map(e => [toNet(e.id), +e.x.toFixed(2), +e.y.toFixed(2), +e.z.toFixed(2), +e.p.toFixed(2), +e.r.toFixed(1)]) });
 }
 function startedRound() {
     S.rewarded = false;
@@ -325,7 +329,7 @@ function think(dt, p) {
         if (S.t <= 0) {
             const parts = participants();
             S.mon = parts.length >= 2 ? parts[(Math.random() * parts.length) | 0] : 'bot';
-            S.caught = new Set(); S.surv = []; S.dm = Object.create(null); S.phase = 'play'; S.t = ROUND;
+            S.caught = new Set(); S.surv = []; S.dm = Object.create(null); S.fallen = Object.create(null); S.rescued = new Set(); S.phase = 'play'; S.t = ROUND;
             if (S.mon === 'bot') { S.bot = { x: S.md.monster[0], y: 0, z: S.md.monster[2], vy: 0, speed: BOT_SPEED, ground: true, stuck: 0, lastD: 99, side: 0 }; }
             startedRound();
         }
@@ -333,11 +337,12 @@ function think(dt, p) {
         const parts = participants().filter(id => id !== S.mon);
         if (S.mon === 'bot') moveBot(dt, p);
         else for (const id of parts) if (!S.caught.has(id) && !graced(id) && touched(id)) catchPlayer(id);
+        rescueTick(dt, parts);
         if (S.t <= 0 || parts.every(id => S.caught.has(id))) {
             S.surv = parts.filter(id => !S.caught.has(id)); S.phase = 'results'; S.t = RESULTS; roundOver();
         }
     } else if (S.phase === 'results' && S.t <= 0) {
-        S.phase = 'lobby'; S.gate = { ph: 'open', t: 0 }; S.opts = pickOptions(S.lastMap, Math.random); S.votes = [0, 0, 0]; S.win = -1; S.t = 0; S.mon = null; S.bot = null; S.dm = Object.create(null);   // po rundzie wszyscy wracają do lobby na nowe głosowanie
+        S.phase = 'lobby'; S.gate = { ph: 'open', t: 0 }; S.opts = pickOptions(S.lastMap, Math.random); S.votes = [0, 0, 0]; S.win = -1; S.t = 0; S.mon = null; S.bot = null; S.dm = Object.create(null); S.fallen = Object.create(null);   // po rundzie wszyscy wracają do lobby na nowe głosowanie
         applyLobby(true);
         S.netT = 0; mapBoard.dirty = true;
     }
@@ -360,11 +365,63 @@ function touched(id) {
 // Złapanie: los (lewa ręka, prawa ręka, obie, głowa) decyduje o życiu (catchOutcome): jedna ręka = gracz żyje i gra dalej z krótką ochroną (GRACE), dwie ręce albo głowa = odpada.
 // Kod urwania idzie do wszystkich w S.dm (wygląd zależy od opcji Gore), a w S.caught ląduje tylko ten, kto odpadł.
 const graced = (id) => !!(S.grace && S.grace[id] > S.clock);
+// ---------- RATOWANIE (core/rescuelogic.js): host albo solo liczy z własnego widoku pozycji głów ----------
+const monsterSpot = () => { if (S.mon === 'bot') return S.bot ? { x: S.bot.x, z: S.bot.z } : null; const h = S.mon ? headOf(S.mon) : null; return h ? { x: h.x, z: h.z } : null; };
+function markFallen(id) {
+    if (S.phase !== 'play') return;
+    const runners = participants().filter(x => x !== S.mon).length;
+    if (!canMark(runners, S.rescued.has(id))) return;
+    const hd = headOf(id); if (!hd) return;
+    S.fallen[id] = newFallen(hd.x, Math.max(0, hd.y - 1.4), hd.z, S.clock);   // znacznik na ziemi pod miejscem złapania
+}
+function fallenList() {
+    const out = [];
+    for (const id of Object.keys(S.fallen)) { const f = S.fallen[id]; out.push({ id: id, x: f.x, y: f.y, z: f.z, p: f.prog, r: secondsLeft(f, S.clock) }); }
+    return out;
+}
+function rescueTick(dt, parts) {
+    const ids = Object.keys(S.fallen); if (!ids.length) return;
+    const mp = monsterSpot();
+    for (const id of ids) {
+        const f = S.fallen[id];
+        const heads = []; for (const x of parts) { if (x === id || S.caught.has(x)) continue; const h = headOf(x); if (h) heads.push({ id: x, x: h.x, y: h.y, z: h.z }); }
+        const who = nearestRescuer(f, heads), danger = !!mp && Math.hypot(mp.x - f.x, mp.z - f.z) < RESCUE.DANGER;
+        const r = rescueStep(f, !!who, danger, dt, S.clock); f.prog = r.prog;
+        if (r.state === 'done') reviveHost(id, who);
+        else if (r.state === 'lost') { delete S.fallen[id]; if (id === 'me') toast('Nobody reached you in time.', '#e0533f'); }
+    }
+}
+// Uratowany wraca z odzyskanymi rękami i dłuższą ochroną; po stronie gościa robi to stan od hosta (lista złapanych i kody urwania)
+function reviveHost(id, by) {
+    delete S.fallen[id]; S.caught.delete(id); S.rescued.add(id); S.dm[toNet(id)] = 0;
+    (S.grace || (S.grace = Object.create(null)))[id] = S.clock + GRACE * 2;
+    if (id === 'me') savedNotice();
+    else if (by === 'me') { SFX.bell(); buzz('both', 0.6, 200); toast('You pulled a teammate back up!', '#7fc47f'); }
+}
+function savedNotice() { SFX.bell(); buzz('both', 0.8, 300); toast('You were saved! Run!', '#7fc47f'); }
+// Znaczniki upadku: pierścień na ziemi, kolumna światła i tarcza, która rośnie z postępem ratowania (czerwień -> zieleń), a gaśnie, gdy kończy się czas
+function tickRescueMarks(dt) {
+    const list = S.phase === 'play' ? (isAuthority() ? fallenList() : S.fallenNet) : [];
+    for (let i = 0; i < Math.max(list.length, S.rmarks.length); i++) {
+        let mk = S.rmarks[i];
+        if (i >= list.length) { if (mk) mk.g.visible = false; continue; }
+        if (!mk) {
+            const g = new THREE.Group(), add = (geo, col) => { const mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }); const m2 = new THREE.Mesh(geo, mat); g.add(m2); return m2; };
+            const ring = add(new THREE.RingGeometry(1.0, 1.4, 32).rotateX(-Math.PI / 2), 0xff2a1a), beam = add(new THREE.CylinderGeometry(0.16, 0.16, 3.2, 10, 1, true).translate(0, 1.6, 0), 0xff2a1a), disc = add(new THREE.CircleGeometry(1.0, 32).rotateX(-Math.PI / 2), 0xff2a1a);
+            ring.frustumCulled = beam.frustumCulled = disc.frustumCulled = false; L.root.add(g); mk = S.rmarks[i] = { g: g, ring: ring, beam: beam, disc: disc };
+        }
+        const e = list[i], k = e.p, pulse = 0.5 + 0.5 * Math.sin(S.clock * 5), low = e.r < 8 ? (Math.sin(S.clock * 14) > 0 ? 1 : 0.25) : 1;   // pod koniec czasu miga
+        mk.g.visible = true; mk.g.position.set(e.x, e.y + 0.03, e.z);
+        const col = mk.ring.material.color.setRGB(1 - 0.7 * k, 0.16 + 0.84 * k, 0.1 + 0.3 * k); mk.beam.material.color.copy(col); mk.disc.material.color.copy(col);
+        mk.ring.material.opacity = (0.45 + 0.3 * pulse) * low; mk.beam.material.opacity = (0.18 + 0.22 * k + 0.08 * pulse) * low; mk.disc.material.opacity = (0.25 + 0.3 * k) * low;
+        mk.disc.scale.setScalar(Math.max(0.001, k)); mk.ring.scale.setScalar(1 + 0.04 * pulse);
+    }
+}
 function catchPlayer(id, forced) {   // forced: tylko testy (debugCatch) wymuszają wylosowany kod
     const key = toNet(id), out = catchOutcome(S.dm[key] || 0, forced || pickDismember(Math.random));
     S.dm[key] = out.code;
     if (out.dead) {
-        S.caught.add(id);
+        S.caught.add(id); markFallen(id);
         if (id === 'me') localCaught();
         if (S.mon === 'me') { SFX.stinger(); buzz('both', 0.7, 150); toast('Caught one!', '#ff6a4a'); }
     } else {
@@ -448,6 +505,17 @@ function tickLocalTear(dt) {
         }
     } else S.flashA = Math.max(0, S.flashA - dt * 0.9);
     S.flash.material.opacity = S.flashA; S.flash.visible = S.flashA > 0.01;
+}
+// Hak dla testu w przeglądarce (tests/rescue.mjs): kolega 't1' leży złapany pod graczem, a gracz stoi przy nim; zwraca stan przed i po ratowaniu
+export function debugRescue(steps, off) {
+    if (!S) return null;
+    camera.getWorldPosition(_p); S.phase = 'play'; S.t = 90; S.introT = 0; S.mon = 'bot'; S.bot = { x: _p.x + 80, y: 0, z: _p.z, vy: 0, speed: BOT_SPEED, ground: true, stuck: 0, lastD: 99, side: 0 }; S.caught = new Set(['t1']); S.rescued = new Set(); S.dm = Object.assign(Object.create(null), { t1: 4 });
+    S.fallen = Object.create(null); S.fallen.t1 = newFallen(_p.x, _p.y - 1.4, _p.z - (off || 0), S.clock);
+    const before = { caught: S.caught.has('t1'), marks: fallenList().length };
+    tickRescueMarks(0.016); const markVisible = !!(S.rmarks[0] && S.rmarks[0].g.visible);
+    for (let i = 0; i < steps; i++) rescueTick(0.1, ['me', 't1']);
+    tickRescueMarks(0.016);
+    return { before, markVisible, caught: S.caught.has('t1'), rescued: S.rescued.has('t1'), dm: S.dm.t1 || 0, marks: fallenList().length, markHidden: !(S.rmarks[0] && S.rmarks[0].g.visible), grace: !!(S.grace && S.grace.t1 > S.clock) };
 }
 // Hak dla testu w przeglądarce (tests/gore.mjs): ustawia urwane kończyny TEGO gracza tak, jakby potwór go złapał (0 = przywróć). Nie zmienia przebiegu rundy.
 export function debugTear() { return S && S.tearParts ? { parts: S.tearParts.length, sinews: S.tearParts.filter(p => p.sinew.parent).length, ghosts: S.tearParts.filter(p => p.ghost.parent).length } : null; }   // animacja urywania widziana przez ofiarę (tests/gore.mjs)
@@ -569,6 +637,7 @@ export function update(dt, t, ctx) {
     setTint(mon === 'me');
     L.moveScale = mon === 'me' ? monsterBoost(MONSTER_BOOST, S.t) : 1;
     tickHunt(dt, t, mon, mpos, p);
+    tickRescueMarks(dt);
     if (mpos && mon !== 'me' && !S.caught.has('me')) { _h.copy(mpos); SFX.heartbeat(Math.max(0, 1 - _h.distanceTo(p) / 12)); }
     if (isSpectating() && (S.phase !== 'play' || !S.caught.has('me'))) stopSpectate();   // koniec rundy albo nowa runda: wracasz tam, gdzie zostałeś złapany
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.15; drawHud(); }
@@ -622,7 +691,7 @@ function drawHud() {
     else if (S.phase === 'wait') { role = 'Next round starts soon'; col = '#ffb030'; }
     else if (S.phase === 'results') { role = S.surv.includes('me') ? 'You survived! +200' : 'Round over'; col = '#9aff60'; }
     else if (S.mon === 'me') { role = 'You are the MONSTER'; col = '#ff4a2a'; }
-    else if (S.caught.has('me')) { role = 'Caught. Watch the others.'; col = '#ff8a6a'; }
+    else if (S.caught.has('me')) { const me = (isAuthority() ? fallenList() : S.fallenNet).find(e => e.id === 'me'); role = me ? 'Caught. A teammate can still save you (' + Math.ceil(me.r) + ' s)!' : 'Caught. Watch the others.'; col = me ? '#ffd27a' : '#ff8a6a'; }
     else { role = 'Run! Stay out of reach.'; col = '#9aff60'; }
     x.fillStyle = col; x.fillText(role, 330, 52);
     const total = participants().length;

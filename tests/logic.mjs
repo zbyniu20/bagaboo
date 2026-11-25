@@ -783,4 +783,32 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     check('remember: opt-in checkbox, saved only when ticked, forgotten on untick and PIN forgotten on logout, auto sign-in uses the stored PIN through signIn', /id="keyRemember"/.test(html) && !/id="keyRemember"[^>]*checked/.test(html) && /function rememberNow\(nick, pin\) \{ if \(\$\('keyRemember'\)\.checked\) writeRem\(nick, pin\); else writeRem\(''\); \}/.test(mainJs) && /keyRemember'\)\.onchange = \(\) => \{ if \(!\$\('keyRemember'\)\.checked\) writeRem\(''\)/.test(mainJs) && /btnLogout'\)\.onclick = \(\) => \{ \{ const r = readRem\(\); if \(r\) writeRem\(r\.nick, ''\)/.test(mainJs) && /SK\.signIn\(r\.pin\)/.test(mainJs));
     check('gore tear (victim view): a real 3D animation (stretched copy on a thinning sinew, snaps, flies off), no text popup', /function startLocalTear\(fresh\)/.test(mon) && /function tickTearParts\(k, dt\)/.test(mon) && /N\.tearOffLocal\(p\.ghost, p\.kind === 'H' \? 0\.2 : 0\.08\)/.test(mon) && /clearLocalTear\(\); for \(const h of S\.tornHeads\)/.test(mon) && /createHead\(getLook\(\), false\)/.test(mon) && !/popTear|S\.pop\b|canvas.*TORN OFF/.test(mon) && /export function tearOffLocal\(src, floor\) \{ throwPart\(src, 'me', floor\); \}/.test(net));
 }
+
+// --- Ratowanie złapanych (core/rescuelogic.js) ---
+{
+    const R = await import(url('core/rescuelogic.js'));
+    const f = R.newFallen(10, 0, 5, 100), head = (id, x, z, y = 1.5) => ({ id, x, y, z });
+    check('rescue: only a living friend in the ring and at head height counts', R.nearestRescuer(f, [head('a', 10.5, 5.3)]) === 'a' && R.nearestRescuer(f, [head('a', 13, 5)]) === null && R.nearestRescuer(f, [head('a', 10, 5, 4.5)]) === null && R.nearestRescuer(f, [head('far', 12, 5), head('near', 10.2, 5)]) === 'near');
+    let g = R.newFallen(0, 0, 0, 0), st = null; for (let t = 0; t < R.RESCUE.HOLD - 0.05; t += 0.1) { st = R.rescueStep(g, true, false, 0.1, 1); g.prog = st.prog; }
+    check('rescue: HOLD seconds next to the marker saves the player (not earlier)', st.state === 'saving' && st.prog < 1 && R.rescueStep(g, true, false, 0.2, 1).state === 'done');
+    const h2 = R.newFallen(0, 0, 0, 0); h2.prog = 0.6;
+    check('rescue: a monster nearby pauses and drains progress, nobody nearby drains it slower, progress never goes below 0', R.rescueStep(h2, true, true, 1, 1).state === 'paused' && R.rescueStep(h2, true, true, 1, 1).prog < 0.6 && R.rescueStep(h2, false, false, 1, 1).prog < 0.6 && R.rescueStep(h2, false, false, 1, 1).prog > R.rescueStep(h2, true, true, 1, 1).prog && R.rescueStep(h2, false, true, 100, 1).prog === 0);
+    check('rescue: after the window nobody can save the player any more', R.rescueStep(g, true, false, 0.1, R.RESCUE.WINDOW + 0.5).state === 'lost' && R.secondsLeft(g, 10) === R.RESCUE.WINDOW - 10 && R.secondsLeft(g, 1e6) === 0);
+    check('rescue: marking needs two runners and only one rescue per player per round', R.canMark(2, false) === true && R.canMark(1, false) === false && R.canMark(3, true) === false);
+    const bad = R.cleanFallen([['p1', 1, 2, 3, 0.5, 12], ['__proto__', 1, 2, 3, 0, 1], [7, 1, 2, 3, 0, 1], ['p2', NaN, 0, 0, 0, 1], ['p3', 9999, 0, 0, 5, 999], 'x', null, ['p4', 1, 2]]);
+    check('rescue: the list from the host keeps only sane entries, clamps numbers and has a size limit', bad.length === 2 && bad[0].id === 'p1' && bad[1].x === 500 && bad[1].p === 1 && bad[1].r === R.RESCUE.WINDOW && R.cleanFallen('x').length === 0 && R.cleanFallen(Array.from({ length: 30 }, (_, i) => ['id' + i, 0, 0, 0, 0, 1])).length === R.RESCUE.MAX);
+    const mon = fs.readFileSync(path.join(ROOT, 'levels/monster.js'), 'utf8');
+    check('rescue: wired into the mode (host counts, marker on death, broadcast list, guest cleans it, saved player leaves spectating, markers drawn)', /rescueTick\(dt, parts\)/.test(mon) && /S\.caught\.add\(id\); markFallen\(id\)/.test(mon) && /fl: fallenList\(\)/.test(mon) && /cleanFallen\(msg\.fl\)/.test(mon) && /function reviveHost/.test(mon) && /S\.caught\.delete\(id\)/.test(mon) && /tickRescueMarks\(dt\);/.test(mon) && /canMark\(runners, S\.rescued\.has\(id\)\)/.test(mon));
+}
+
+// --- Poziom brutalności (core/intensitylogic.js) i ekran ostrzeżenia ---
+{
+    const I = await import(url('core/intensitylogic.js'));
+    const s = { gore: true, jumpscares: true, lobbyEvents: true };
+    check('intensity: the three levels set gore, jump scares and haunting together and are recognised back', I.LEVELS.every(k => { const x = {}; return I.applyIntensity(x, k) && I.intensityOf(x) === k; }) && I.PRESETS.full.gore && !I.PRESETS.medium.gore && I.PRESETS.medium.jumpscares && !I.PRESETS.gentle.jumpscares && !I.PRESETS.gentle.lobbyEvents);
+    check('intensity: a hand-made mix is "custom", unknown levels change nothing, the pause button cycles and returns from custom to full', I.intensityOf({ gore: true, jumpscares: false, lobbyEvents: true }) === 'custom' && I.applyIntensity(s, 'nope') === false && s.gore === true && I.nextIntensity('full') === 'medium' && I.nextIntensity('medium') === 'gentle' && I.nextIntensity('gentle') === 'full' && I.nextIntensity('custom') === 'full');
+    check('intensity: the warning shows until the player has chosen once', I.needsWarning({}) === true && I.needsWarning({ warned: false }) === true && I.needsWarning({ warned: true }) === false);
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'), mainJs = fs.readFileSync(path.join(ROOT, 'main.js'), 'utf8'), pauseJs = fs.readFileSync(path.join(ROOT, 'core/pause.js'), 'utf8'), kit = fs.readFileSync(path.join(ROOT, 'core/levelkit.js'), 'utf8'), setJs = fs.readFileSync(path.join(ROOT, 'core/settings.js'), 'utf8');
+    check('intensity: the page has the warning with the three choices, main.js applies the choice and remembers it, the pause menu has the Horror button, jump scares obey the choice and the setting defaults exist', /id="warnScreen"/.test(html) && ['full', 'medium', 'gentle'].every(k => html.includes('data-level="' + k + '"')) && /applyIntensity\(SETTINGS, lv\)\) \{ SETTINGS\.warned = true; saveSettings\(\)/.test(mainJs) && /needsWarning\(SETTINGS\)/.test(mainJs) && /intensityOf\(SETTINGS\)/.test(pauseJs) && /if \(SETTINGS\.jumpscares === false\) return false/.test(kit) && /jumpscares: true/.test(setJs) && /warned: false/.test(setJs));
+}
 done('logic');

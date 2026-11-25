@@ -13,6 +13,7 @@ import { petStatus, cycleColorPet, cycleName, cycleSpeciesPet, toggleNameStylePe
 import { PET, colorChoices } from './petlogic.js';
 import { account } from './auth.js';
 import { TUT, tutorialButton } from './tutoriallogic.js';
+import { intensityOf, applyIntensity, nextIntensity, LABELS } from './intensitylogic.js';
 
 export const PAUSE = { on: false, onLobby: null, onLogout: null, inLobby: true };
 let logoutArmed = 0;   // czas pierwszego dotknięcia przycisku wylogowania (drugie w ciągu 4 s potwierdza)
@@ -82,7 +83,7 @@ export const pauseMenu = new Terminal((t) => {
     t.text('Comfort vignette', 60, 456, 28, AMBER, 'left', true);
     t.btn('vig', 380, 430, 170, 52, SETTINGS.vignette ? 'On' : 'Off', () => { SETTINGS.vignette = !SETTINGS.vignette; saveSettings(); }, { tone: SETTINGS.vignette ? 'ok' : undefined });
     t.btn('hap', 565, 430, 200, 52, SETTINGS.haptics ? 'Vibration on' : 'Vibration off', () => { SETTINGS.haptics = !SETTINGS.haptics; saveSettings(); }, { tone: SETTINGS.haptics ? 'ok' : undefined, size: 22 });
-    t.btn('gore', 780, 430, 180, 52, SETTINGS.gore ? 'Gore on' : 'Gore off', () => { SETTINGS.gore = !SETTINGS.gore; saveSettings(); }, { tone: SETTINGS.gore ? 'bad' : undefined, size: 22 });   // Become the Monster: urwane ręce i głowy
+    { const lv = intensityOf(SETTINGS); t.btn('gore', 780, 430, 180, 52, lv === 'custom' ? 'Horror: custom' : LABELS[lv], () => { applyIntensity(SETTINGS, nextIntensity(lv)); SETTINGS.warned = true; saveSettings(); }, { tone: lv === 'full' ? 'bad' : (lv === 'gentle' ? 'ok' : undefined), size: 22 }); }   // poziom brutalności: gore + jumpscare'y + nawiedzenia naraz (core/intensitylogic.js)
     t.text('Turning, events', 60, 516, 26, AMBER, 'left', true);
     t.btn('snap', 380, 490, 170, 52, SETTINGS.snapTurn ? 'Snap 30°' : 'Smooth', () => { SETTINGS.snapTurn = !SETTINGS.snapTurn; saveSettings(); }, { tone: SETTINGS.snapTurn ? 'ok' : undefined, size: 24 });
     t.btn('brReset', 565, 490, 200, 52, 'Reset bright.', () => { SETTINGS.brightness = 1; changed(); }, { size: 20 });
