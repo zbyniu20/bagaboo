@@ -9,7 +9,7 @@ import { buildMannequin } from './mannequin.js';
 import { goobyTexture } from './gooby.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as SFX from './audio.js';
-import { GAMES_CALM } from './settings.js';
+import { GAMES_CALM, SETTINGS } from './settings.js';
 import { toast } from './terminal.js';
 import { dreadScared } from './ambience.js';
 
@@ -190,7 +190,8 @@ export function createJumpscare(o) {
     let t = -1, big = false, lastQ = -1;   // big: rzadszy (15%), mocniejszy atak: drugi skok na twarz i dłuższa sekwencja
     return {
         active() { return t >= 0; },
-        trigger() { if (t >= 0 || GAMES_CALM.on) return false;   // BagaBoo Games: bez jumpscare'ów
+        trigger() { if (t >= 0 || GAMES_CALM.on) return false; if (SETTINGS.jumpscares === false) return false;   // poziom brutalności gracza (łagodny = bez jumpscare'ów)
+          // BagaBoo Games: bez jumpscare'ów
             t = 0; lastQ = -1; big = !gooby && Math.random() < 0.15; g.visible = true; SFX.scare(noob ? 'noob' : gooby, V.eye ? o.variant : null, big); if (!gooby) dreadScared(); return true; },
         update(dt) {
             if (t < 0) return;

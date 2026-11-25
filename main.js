@@ -35,6 +35,7 @@ import { LEVEL_DATA, payload as levelPayload, accept as levelAccept } from './co
 import './core/workshopstore.js';   // rejestruje dane mapy dla gości (Własna mapa)
 import './core/homestore.js';       // rejestruje układ pokoju dla gości (odwiedziny)
 import { SETTINGS, saveSettings, GAMES_CALM } from './core/settings.js';
+import { applyIntensity, needsWarning, LEVELS as INTENSITY_LEVELS } from './core/intensitylogic.js';
 import { enableDesktop, updateDesktop, setDesktopFacing } from './core/desktop.js';
 import { startPresence } from './core/presence.js';
 import { updateHammer } from './core/hammer.js';
@@ -374,6 +375,15 @@ $('btnRecoverySaved').onclick = () => { recoveryPending = false; $('recoveryBox'
 syncAccountUi();
 { const la = AUTH.account(); if (la && la.local) confirmedNick = la.nick; syncAccountUi(); }   // klucz ekipy z tego urządzenia: tożsamość potwierdza podpis, nie serwer
 AUTH.refresh().then((a) => { if (a) confirmedNick = a.nick; syncAccountUi(); });   // zapisana sesja: serwer potwierdza ją albo wylogowuje
+// Ekran ostrzeżenia przy pierwszym wejściu: gracz wybiera poziom brutalności (gore, jumpscare'y, nawiedzenia). Później zmienia go przyciskiem Horror w menu pauzy.
+{
+    const ws = document.getElementById('warnScreen');
+    if (ws && needsWarning(SETTINGS) && (!navigator.webdriver || /[?&]warn=1/.test(location.search))) {   // testy w przeglądarce (webdriver) pomijają ekran, chyba że ?warn=1
+        ws.style.display = 'flex';
+        const first = ws.querySelector('button.lv'); if (first) first.focus();
+        ws.querySelectorAll('button.lv').forEach((b) => { b.onclick = () => { const lv = b.getAttribute('data-level'); if (INTENSITY_LEVELS.includes(lv) && applyIntensity(SETTINGS, lv)) { SETTINGS.warned = true; saveSettings(); ws.style.display = 'none'; } }; });
+    }
+}
 // Jakość grafiki: zapis ustawienia i ponowne uruchomienie (tekstury i cienie tworzą się przy starcie)
 $('quality').onchange = () => { SETTINGS.quality = $('quality').value; saveSettings(); location.reload(); };
 $('btnNew').onclick = () => {

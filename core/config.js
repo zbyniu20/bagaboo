@@ -117,6 +117,12 @@ LIGHT_PRESETS.catacombs = {   // katakumby: prawie całkowita ciemność, gęsta
     sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.15,
     flashlight: { color: 0xfff0d0, intensity: 80, distance: 20, angle: 0.5, penumbra: 0.7, decay: 2 }
 };
+LIGHT_PRESETS.mine = {   // kopalnia: ciemna jaskinia z ciepłymi lampami i zimnymi kryształami, kurz w powietrzu
+    background: 0x070504, fogColor: 0x1a1109, fogDensity: 0.022, exposure: 1.5,
+    hemiSky: 0x9a8268, hemiGround: 0x3a2c1e, hemiIntensity: 1.25,
+    sunColor: 0xffffff, sunIntensity: 0, sunPos: [0, 60, 0], envIntensity: 0.15,
+    flashlight: { color: 0xfff0d0, intensity: 85, distance: 26, angle: 0.5, penumbra: 0.7, decay: 2 }
+};
 LIGHT_PRESETS.room000 = {   // Room 000: opuszczone więzienie, prawie zupełna ciemność, zimna mgła i bardzo słaba latarka
     background: 0x010101, fogColor: 0x030304, fogDensity: 0.07, exposure: 1.15,
     hemiSky: 0x504860, hemiGround: 0x141218, hemiIntensity: 0.45,

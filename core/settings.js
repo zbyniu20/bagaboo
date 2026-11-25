@@ -18,6 +18,8 @@ export const SETTINGS = Object.assign({
     lobbyEvents: true,  // Nocna Zmiana w lobby (wydarzenie co kilkanaście minut)
     vignette: true,    // przyciemnianie brzegów przy szybkim ruchu (komfort)
     haptics: true,     // wibracje kontrolerów
+    jumpscares: true,  // nagłe straszenie na poziomach (poziom brutalności, core/intensitylogic.js); false = brak jumpscare'ów u tego gracza
+    warned: false,     // czy gracz widział ekran ostrzeżenia i wybrał poziom brutalności (strona startowa pokazuje go raz)
     brightness: 1.0,   // jasność obrazu 0.6..1.8 (mnożnik ekspozycji)
     snapTurn: false,   // obrót prawą gałką krokami co 30° zamiast płynnie (komfort VR)
     perfScale: 1.0,    // mnożnik rozdzielczości VR zapamiętany przez regulator wydajności (xrperf.js), 0.7..1
