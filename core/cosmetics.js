@@ -77,6 +77,13 @@ export function extraHat(id) {
         g.add(at(new THREE.CylinderGeometry(0.115, 0.13, 0.1, 18), white, 0, 0.14, 0));
         for (const y of [0.12, 0.155]) g.add(at(new THREE.CylinderGeometry(0.1165, 0.1315, 0.016, 18), black, 0, y, 0));
         g.add(at(new THREE.BoxGeometry(0.2, 0.012, 0.07), white, 0, 0.1, -0.14));
+    } else if (id === 'minerhelmet') {
+        const yellow = mat({ color: 0xe8b820, roughness: 0.55 }), dark = mat({ color: 0x2a2a2e, metalness: 0.6, roughness: 0.45 });
+        const dome = at(new THREE.SphereGeometry(0.135, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), yellow, 0, 0.1, 0); g.add(dome);
+        g.add(at(new THREE.CylinderGeometry(0.15, 0.15, 0.025, 18), yellow, 0, 0.1, 0));
+        g.add(at(new THREE.BoxGeometry(0.03, 0.02, 0.26), yellow, 0, 0.235, 0));
+        g.add(at(new THREE.CylinderGeometry(0.035, 0.04, 0.05, 10), dark, 0, 0.17, -0.15).rotateX(Math.PI / 2));
+        const lens = at(new THREE.CircleGeometry(0.03, 10), mat({ color: 0xfff0c0, emissive: 0xffe090, emissiveIntensity: 1.6 }), 0, 0.17, -0.178); lens.rotation.y = Math.PI; g.add(lens);
     } else if (id === 'skullcrown') {
         const bone = mat({ color: 0xe6dcc0, roughness: 0.6 }), dark = mat({ color: 0x1a1412 });
         g.add(at(new THREE.CylinderGeometry(0.14, 0.15, 0.06, 16), bone, 0, 0.1, 0));
