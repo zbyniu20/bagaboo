@@ -390,9 +390,9 @@
     "semantic_hash": ""
   },
   "levels/lobby.js": {
-    "mtime": 1795467311.2275639,
-    "seen": 1795471245.2347233,
-    "ast_hash": "ca64f156bb6d1a093cb6dd70cc674c64",
+    "mtime": 1795632443.1511548,
+    "seen": 1795633462.828515,
+    "ast_hash": "1bd94d0c85299586db8bd469041046f3",
     "semantic_hash": ""
   },
   "levels/maze.js": {
@@ -456,9 +456,9 @@
     "semantic_hash": ""
   },
   "main.js": {
-    "mtime": 1795627040.4095407,
-    "seen": 1795628189.7194126,
-    "ast_hash": "aaaafa439ba09efffe938d5be2afe825",
+    "mtime": 1795632447.1641717,
+    "seen": 1795633462.8285336,
+    "ast_hash": "10b2b0b34e469e5c81ab60088701408e",
     "semantic_hash": ""
   },
   "tests/package.json": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795629665.406346,
-    "seen": 1795629726.8984022,
-    "ast_hash": "7e1510d0bc1252164f551fb5e4aa5657",
+    "mtime": 1795633403.2650595,
+    "seen": 1795633462.8288596,
+    "ast_hash": "7617b02721a8f5dbd4ed9056c499d7c9",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795628682.9625754,
-    "seen": 1795629726.89841,
-    "ast_hash": "22112776795d27a1bf8e09cd7bdfbf19",
+    "mtime": 1795632447.165102,
+    "seen": 1795633462.8288665,
+    "ast_hash": "69c799aa0cc21307da2cf1dfb198ff3f",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795629160.615473,
-    "seen": 1795629726.8981073,
-    "ast_hash": "c50913b7c36a9e06aff74768eec0d777",
+    "mtime": 1795632507.551799,
+    "seen": 1795633462.8286018,
+    "ast_hash": "fbf276b0d15f7b3294351277e527ed38",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795628682.9718575,
-    "seen": 1795629726.8981462,
-    "ast_hash": "dc4e28337a54fca0e70a7508d57b12dd",
+    "mtime": 1795632447.1660194,
+    "seen": 1795633462.8286488,
+    "ast_hash": "a6639f45d57548d8566e0fb936574208",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10617,6 +10617,48 @@
     "mtime": 1795629190.2537627,
     "seen": 1795629726.8981087,
     "ast_hash": "6d230209a3949789b8b4ad513c6566ad",
+    "semantic_hash": ""
+  },
+  "core/bestiary.js": {
+    "mtime": 1795633100.3597627,
+    "seen": 1795633462.8283095,
+    "ast_hash": "7c737c3114b04b4f5c60d97cc83a280d",
+    "semantic_hash": ""
+  },
+  "core/bestiarylogic.js": {
+    "mtime": 1795632303.1964648,
+    "seen": 1795633462.8283114,
+    "ast_hash": "51e80edad53cfa75de9f942b8fcd4037",
+    "semantic_hash": ""
+  },
+  "core/chestlogic.js": {
+    "mtime": 1795632454.315056,
+    "seen": 1795633462.8283143,
+    "ast_hash": "2178087040d8aa3979d9d71259b13881",
+    "semantic_hash": ""
+  },
+  "core/nightchest.js": {
+    "mtime": 1795633403.264004,
+    "seen": 1795633462.8284245,
+    "ast_hash": "d4d4a77bccdcbbe525a6e467a4be6d50",
+    "semantic_hash": ""
+  },
+  "core/secretlogic.js": {
+    "mtime": 1795632321.036466,
+    "seen": 1795633462.8284538,
+    "ast_hash": "c93c32b402f98e07ef5e025ccce33ba9",
+    "semantic_hash": ""
+  },
+  "core/secrets.js": {
+    "mtime": 1795632429.7804723,
+    "seen": 1795633462.8284552,
+    "ast_hash": "c4c9fab5e83b5589b397e8e6b5d95a67",
+    "semantic_hash": ""
+  },
+  "tests/lobbyextras.mjs": {
+    "mtime": 1795633100.3748097,
+    "seen": 1795633462.8286002,
+    "ast_hash": "d6fa5809b558285bd5dbb04b4fe8cab0",
     "semantic_hash": ""
   },
   "package-lock.json": {
