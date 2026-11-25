@@ -25,7 +25,12 @@ export function buildAnnexShell() {
     addCrispBlock(0, 22.5, cz, 40, 5, len, w, 0x440000);
     addCrispBlock(-17.5, 10, cz, 5, 20, len, w, 0x550000);
     addCrispBlock(17.5, 10, cz, 5, 20, len, w, 0x550000);
-    addCrispBlock(0, 10, 52.5, 40, 20, 5, w, 0x550000);
+    // Daleka ściana z wnęką na pokój w ścianie (A.WALL_ROOM): bloki po bokach, nad wnęką i za nią; panel od strony aneksu stawia core/annexroom.js
+    const R = A.WALL_ROOM, T0 = R.z0, T1 = 55;
+    addCrispBlock((-20 + R.x0) / 2, 10, (T0 + T1) / 2, R.x0 + 20, 20, T1 - T0, w, 0x550000);
+    addCrispBlock((R.x1 + 20) / 2, 10, (T0 + T1) / 2, 20 - R.x1, 20, T1 - T0, w, 0x550000);
+    addCrispBlock((R.x0 + R.x1) / 2, (R.h + 20) / 2, (T0 + T1) / 2, R.x1 - R.x0, 20 - R.h, T1 - T0, w, 0x550000);
+    addCrispBlock((R.x0 + R.x1) / 2, R.h / 2, (R.z1 + T1) / 2, R.x1 - R.x0, R.h, T1 - R.z1, w, 0x550000);
 }
 
 export function buildAnnex(flickers) {

@@ -71,6 +71,32 @@ const gar = await ev(async () => {
     return { e1, e2, still: p0 === p1, count: a.count, ph: b.ph, last: b.last, best: b.best, saved: JSON.stringify(E.SAVE.annex) };
 });
 ok('the statue garden starts on the pad, seen statues stay put, the bell ends the round and saves the best time', gar.e1 === 'start' && gar.count === 6 && gar.still && gar.e2 === 'won' && gar.last >= 2 && gar.best >= 2 && /statueBest/.test(gar.saved), gar);
+// Radio: stacje niosą prawdziwy kod dnia i melodię; organy: numery klawiszy
+const radio = await ev(async () => {
+    const R = await import('./core/annexradio.js'), A = await import('./core/annexroom.js');
+    R.debugTune(91.5); const n = R.debugRadio(); R.debugTune(104.3); const m = R.debugRadio(); R.debugTune(99.9); const b = R.debugRadio(); R.debugTune(95.0); const q = R.debugRadio();
+    return { n, m, b, q, code: A.debugVaultCode() };
+});
+const WORDS = ['ZERO', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
+ok('the radio reads the real daily code on 91.5, the melody key numbers on 104.3, the board hint on 99.9 and only static elsewhere', radio.n.station === 'numbers' && radio.n.words.filter(w => WORDS.includes(w)).map(w => WORDS.indexOf(w)).join('') === radio.code && radio.m.station === 'melody' && radio.m.words.join() === 'THREE,FIVE,FOUR,SEVEN,TWO,SIX' && radio.b.words.includes('NAME') && radio.q.station === '', radio);
+await shot('radio', 2, 1.6, 35, -1.57);
+
+// Pokój w ścianie: zamknięty z kolizją, melodia otwiera, stan się zapisuje; sejf płaci raz dziennie
+const room = await ev(async () => {
+    const P = await import('./core/annexplay.js'), A = await import('./core/annexroom.js'), K = await import('./core/deep.js'), E = await import('./core/economy.js'), PL = await import('./core/player.js'), w = (ms) => new Promise(r => setTimeout(r, ms));
+    const closed = A.debugRoom(), n0 = K.deepCountNow();
+    for (const k of [3, 5, 4, 7, 2, 6]) { P.debugOrganKey(k - 1); await w(60); }
+    await w(500); const opening = A.debugRoom();
+    for (let i = 0; i < 80 && A.debugRoom().slide < 1; i++) await w(300);
+    const open = A.debugRoom();
+    PL.setPlayerPosition(-10.9, 1.4, 52.5); await w(1200); const inside = PL.playerBody.position.z;
+    const w0 = E.SAVE.wallet, code = A.debugVaultCode(), wrong = code === '1234' ? '4321' : '1234';
+    const bad1 = A.debugVault(wrong), ok1 = A.debugVault(code), w1 = E.SAVE.wallet - w0, again = A.debugVault(code);
+    return { closed, opening, open, inside, bad1, ok1, w1, again, w2: E.SAVE.wallet - w0, n: K.deepCountNow() - n0, saved: JSON.stringify(E.SAVE.deep) };
+});
+ok('the melody opens the wall room (panel gone, no collider, saved), the player can stand inside it and the vault pays 200 (plus 50 for the secret) once per day for the right code only', room.closed.open === false && room.closed.panel === true && room.closed.blocked === true && room.opening.open === true && room.opening.blocked === false && room.open.panel === false && room.open.saved === true && room.inside > 51.5 && room.bad1 === 'Wrong code.' && room.ok1 === 'ok' && room.w1 === 250 && room.again === 'Already opened today.' && room.w2 === 250 && room.n === 3 && /"open":true/.test(room.saved) && /"vault":"\d{4}-\d{2}-\d{2}"/.test(room.saved), room);
+await shot('room', -10.9, 1.6, 48, Math.PI);
+await shot('roominside', -10.9, 1.6, 51, Math.PI);
 
 ok('no page errors', errors.length === 0, errors);
 console.log(fails ? 'FAILED: ' + fails : 'annexsecrets: all checks passed'); await browser.close(); server.close(); process.exit(fails ? 1 : 0);

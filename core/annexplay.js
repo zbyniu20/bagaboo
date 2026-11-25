@@ -17,6 +17,7 @@ import * as P from './puzzlelogic.js';
 import { getSecrets } from './secrets.js';
 import { SECRETS, isFound } from './secretlogic.js';
 import { statueStare } from './annexstatues.js';
+import { openRoom } from './annexroom.js';
 import { HAUNT_STATE } from './hauntlogic.js';
 
 let G = null;
@@ -36,7 +37,7 @@ function textTexture() { const c = T.makeCanvas(512, 128); return { c: c, x: c.g
 
 export function buildAnnexPlay(flickers) {
     const root = L.root, OA = A.OUIJA_AT, AO = A.ORGAN_AT;
-    G = { geos: [], mats: [], texs: [], clock: 0, o: O.newOuija(), pl: { u: 0, v: 0 }, target: { u: 0, v: 0 }, lastText: null, hold: 0, keys: [], last: [], organPlays: 0, ghostPlays: 0, ghostLock: '', checked: '', dimT: 0 };
+    G = { geos: [], mats: [], texs: [], clock: 0, o: O.newOuija(), pl: { u: 0, v: 0 }, target: { u: 0, v: 0 }, lastText: null, hold: 0, keys: [], last: [], organPlays: 0, ghostPlays: 0, ghostLock: '', checked: '', dimT: 0, mel: P.newMelody() };
     const geo = (g) => { G.geos.push(g); return g; }, mat = (m) => { G.mats.push(m); return m; };
     const wood = mat(new THREE.MeshStandardMaterial({ color: 0x3a2412, roughness: 0.7 })), dark = mat(new THREE.MeshStandardMaterial({ color: 0x1a1008, roughness: 0.6 }));
     // --- Stół spirytystyczny ---
@@ -54,12 +55,14 @@ export function buildAnnexPlay(flickers) {
     const panel = new THREE.Mesh(geo(new THREE.PlaneGeometry(1.8, 0.45)), mat(new THREE.MeshBasicMaterial({ map: tx.t, transparent: true, toneMapped: false, depthWrite: false }))); panel.position.set(OA.x, 2.0, OA.z); root.add(panel); G.panel = panel;
     const ol = new THREE.PointLight(0x6a50ff, 7, 7, 2); ol.position.set(OA.x, 2.4, OA.z); root.add(ol); flickers.push({ l: ol, base: 7, ph: Math.random() * 100, subtle: true });
     // --- Nawiedzone organy ---
-    const pos = G2.keyPositions(AO.x, AO.z), keyG = geo(new THREE.BoxGeometry(0.2, 0.07, 0.34)), poleG = geo(new THREE.CylinderGeometry(0.03, 0.03, 1, 6));
+    const labG = geo(new THREE.PlaneGeometry(0.17, 0.17)), pos = G2.keyPositions(AO.x, AO.z), keyG = geo(new THREE.BoxGeometry(0.2, 0.07, 0.34)), poleG = geo(new THREE.CylinderGeometry(0.03, 0.03, 1, 6));
     pos.forEach((p, i) => {
         const km = mat(new THREE.MeshStandardMaterial({ color: 0xd8c8a0, emissive: 0xff8030, emissiveIntensity: 0.1, roughness: 0.4 }));
         const k = new THREE.Mesh(keyG, km); k.position.set(p[0], p[1], p[2]); k.rotation.y = Math.atan2(p[0] - AO.x, p[2] - AO.z) + Math.PI; k.castShadow = true; root.add(k);
         const pole = new THREE.Mesh(poleG, dark); pole.scale.y = p[1] - 0.04; pole.position.set(p[0], (p[1] - 0.04) / 2, p[2]); root.add(pole);
         addStaticBody(p[0], (p[1] - 0.04) / 2, p[2], new CANNON.Box(new CANNON.Vec3(0.03, (p[1] - 0.04) / 2, 0.03)), pole, false);
+        const lc = T.makeCanvas(64, 64), lx = lc.getContext('2d'); lx.clearRect(0, 0, 64, 64); lx.fillStyle = '#ffd27a'; lx.font = 'bold 48px serif'; lx.textAlign = 'center'; lx.textBaseline = 'middle'; lx.fillText(String(i + 1), 32, 34);
+        const lt = T.toTex(lc, false); G.texs.push(lt); const lab = new THREE.Mesh(labG, mat(new THREE.MeshBasicMaterial({ map: lt, transparent: true, toneMapped: false, depthWrite: false }))); lab.position.set(p[0], p[1] + 0.2, p[2]); lab.rotation.y = Math.PI; root.add(lab);   // numer klawisza 1..8 (melodia z radia)
         G.keys.push({ p: p, m: km, glow: 0 }); G.last.push(-9);
     });
     G.keyPos = pos;
@@ -120,7 +123,10 @@ function wordEffect(w) {
     if (w === 'LEGION') { const st = getSecrets(), next = SECRETS.find(x => !isFound(st, x.id)); toast(next ? 'The board whispers: ' + next.hint : 'The board has nothing more to tell you.', '#c8d8ff'); SFX.whisper && SFX.whisper({ x: A.OUIJA_AT.x, y: 1.2, z: A.OUIJA_AT.z }); }
     else { G.dimT = 3; statueStare(4); toast('The lights remember their name...', '#ff6a52'); SFX.bell && SFX.bell(); }
 }
-function playKey(i) { G.last[i] = G.clock; G.keys[i].glow = 1; G.organPlays++; SFX.beep && SFX.beep(G2.noteHz(i), 0.07, 0.55); }
+function playKey(i) {
+    const mm = P.melodyStep(G.mel, i, G.clock); G.mel = mm.st;
+    if (mm.solved) { G.mel = P.newMelody(); findDeepSecret('melody'); openRoom(); }   // melodia rozwiązana: otwiera pokój w ścianie
+    G.last[i] = G.clock; G.keys[i].glow = 1; G.organPlays++; SFX.beep && SFX.beep(G2.noteHz(i), 0.07, 0.55); }
 
 export const annexDim = () => !G || G.dimT <= 0 ? 1 : (G.dimT > 0.6 ? 0.25 : 0.25 + 0.75 * (1 - G.dimT / 0.6));   // mnożnik świateł lobby po słowie BAGABOO
 export function disposeAnnexPlay() { HAUNT_STATE.scare = null; if (!G) return; for (const g of G.geos) g.dispose(); for (const m of G.mats) m.dispose(); for (const x of G.texs) if (x) x.dispose(); G = null; }
