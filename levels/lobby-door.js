@@ -30,7 +30,7 @@ const LAUNDRY_Z = 1.5;   // drzwi do Pralni we wschodniej ścianie
 export const ARRIVAL_LAUNDRY = [13.2, 1.2, LAUNDRY_Z];   // ...i z Pralni
 const HOME_Z = -7.5;                                     // drzwi do Mojego Pokoju we wschodniej ścianie
 export const ARRIVAL_HOME = [13.2, 1.2, HOME_Z];         // ...i z Mojego Pokoju
-const MIRROR = { x: -14.93, z: 3.2, w: 1.6, h: 2.3 };   // lustro na zachodniej ścianie, obok sklepu
+const MIRROR = { x: -14.93, z: 2.75, w: 1.6, h: 2.3 };   // lustro na zachodniej ścianie, obok sklepu
 const MIRROR_LAYER = 5;                          // warstwa widoczna tylko w lustrze (twoja głowa i tułów)
 const ENV = LP.envIntensity;
 let mirror = null, me = null, lookHooked = false;

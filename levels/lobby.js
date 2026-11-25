@@ -284,7 +284,7 @@ function buildComputerDesk(x, z) {
 }
 
 function buildScoreboard() {
-    const g = new THREE.Group(); g.position.set(14.9, 3.1, -7.5); g.rotation.y = -Math.PI / 2; L.root.add(g);
+    const g = new THREE.Group(); g.position.set(14.9, 6.3, -7.5); g.rotation.y = -Math.PI / 2; L.root.add(g);
     const frame = new THREE.Mesh(new RoundedBoxGeometry(5.4, 3.5, 0.14, 2, 0.05), new THREE.MeshStandardMaterial({ color: 0x2a221c, metalness: 0.5, roughness: 0.45, envMapIntensity: ENV }));
     frame.castShadow = true; frame.receiveShadow = true; g.add(frame);
     const b = new THREE.Mesh(new THREE.PlaneGeometry(5.12, 3.2), new THREE.MeshBasicMaterial({ map: board.tex, toneMapped: false, color: 0xdddddd }));
