@@ -60,6 +60,10 @@ const chest = await ev(async () => {
     return { r, r2: !!r2, w: E.SAVE.wallet - w0, o: E.SAVE.owned.length - o0, after: C.debugNightChest(), saved: E.SAVE.chest };
 });
 ok('the chest opens once per day (a second try during the animation changes nothing), pays out and remembers it', chest.r && chest.r.streak === 1 && ((chest.r.item && chest.o === 1 && chest.w === 0) || (!chest.r.item && chest.w === chest.r.bones && chest.r.bones >= 40)) && chest.r2 === true && chest.after.ready === false && chest.saved.streak === 1 && chest.saved.total === 1 && /^\d{4}-\d{2}-\d{2}$/.test(chest.saved.last), chest);
+await shot('egg_duck', -12.2, 1.6, 10.5, 3.14);
+await shot('egg_chalk', -10.5, 1.5, -11.5, 0);
+await shot('egg_hand', 14.3, 0.9, -10.6, 1.57);
+await shot('egg_mouse', -12.0, 0.9, -8.5, 1.57);
 await shot('chest_open', 1.5, 1.2, 12, 0);
 
 // Sekrety: czaszka znika po znalezieniu i płaci raz
@@ -70,12 +74,20 @@ const sec = await ev(async () => {
 });
 ok('a hidden skull pays once and disappears for good', sec.a === true && sec.b === false && sec.w === 40 && sec.vis.length === 6 && !sec.vis.includes('plush') && sec.found === 1, sec);
 
+// Easter eggi: znalezienie płaci raz, zapis przetrwa wyjście z lobby
+const egg = await ev(async () => {
+    const G = await import('./core/eggs.js'), E = await import('./core/economy.js'), w0 = E.SAVE.wallet;
+    const a = G.debugFindEgg('duck'), b = G.debugFindEgg('duck'), c = G.debugFindEgg('shout');
+    return { a, b, c, w: E.SAVE.wallet - w0, d: G.debugEggs() };
+});
+ok('an easter egg pays once and is counted', egg.a === true && egg.b === false && egg.c === true && egg.w === 50 && egg.d.count === 2, egg);
+
 // Po ponownym wejściu do lobby: zapis działa (znaleziona czaszka nie wraca, skrzynia zamknięta, potwór odkryty)
 await ev(async () => { const M = await import('./main.js'); await M.loadLevel('levels'); });
 await page.waitForTimeout(1500);
 await ev(async () => { const M = await import('./main.js'); await M.loadLevel('lobby'); });
 await page.waitForTimeout(4000);
-const again = await ev(async () => { const B = await import('./core/bestiary.js'), C = await import('./core/nightchest.js'), S = await import('./core/secrets.js'); return { b: B.debugBestiary(), c: C.debugNightChest(), s: S.debugSecrets() }; });
-ok('after leaving and coming back everything is remembered (and nothing leaks into other levels)', again.b && again.b.cases === 12 && again.b.seen === 2 && again.c.ready === false && again.c.lid < -1.5 && again.s.visible.length === 6, again);
+const again = await ev(async () => { const B = await import('./core/bestiary.js'), C = await import('./core/nightchest.js'), S = await import('./core/secrets.js'), G = await import('./core/eggs.js'); return { b: B.debugBestiary(), c: C.debugNightChest(), s: S.debugSecrets(), e: G.debugEggs() }; });
+ok('after leaving and coming back everything is remembered (and nothing leaks into other levels)', again.b && again.b.cases === 12 && again.b.seen === 2 && again.c.ready === false && again.c.lid < -1.5 && again.s.visible.length === 6 && again.e && again.e.count === 2, again);
 ok('no page errors', errors.length === 0, errors);
 console.log(fails ? 'FAILED: ' + fails : 'lobbyextras: all checks passed'); await browser.close(); server.close(); process.exit(fails ? 1 : 0);

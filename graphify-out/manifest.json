@@ -390,9 +390,9 @@
     "semantic_hash": ""
   },
   "levels/lobby.js": {
-    "mtime": 1795632443.1511548,
-    "seen": 1795633462.828515,
-    "ast_hash": "1bd94d0c85299586db8bd469041046f3",
+    "mtime": 1795634525.474402,
+    "seen": 1795635500.2281365,
+    "ast_hash": "70af1e3576fdec8d90757ebd46375b3f",
     "semantic_hash": ""
   },
   "levels/maze.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795633403.2650595,
-    "seen": 1795633462.8288596,
-    "ast_hash": "7617b02721a8f5dbd4ed9056c499d7c9",
+    "mtime": 1795635444.0093648,
+    "seen": 1795635500.2285016,
+    "ast_hash": "e4329d86ba2d6410108cbdc123c7e1ed",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795632447.165102,
-    "seen": 1795633462.8288665,
-    "ast_hash": "69c799aa0cc21307da2cf1dfb198ff3f",
+    "mtime": 1795634527.6524396,
+    "seen": 1795635500.2285101,
+    "ast_hash": "b8d0d32fbe83fad599a7959b02c29603",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795632507.551799,
-    "seen": 1795633462.8286018,
-    "ast_hash": "fbf276b0d15f7b3294351277e527ed38",
+    "mtime": 1795634552.485393,
+    "seen": 1795635500.2282004,
+    "ast_hash": "6965430c480502c27ba34799c06cf07d",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795632447.1660194,
-    "seen": 1795633462.8286488,
-    "ast_hash": "a6639f45d57548d8566e0fb936574208",
+    "mtime": 1795634522.2854974,
+    "seen": 1795635500.2282388,
+    "ast_hash": "e45fa54ada2e045ee5c45c5f5e251e14",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10638,9 +10638,9 @@
     "semantic_hash": ""
   },
   "core/nightchest.js": {
-    "mtime": 1795633403.264004,
-    "seen": 1795633462.8284245,
-    "ast_hash": "d4d4a77bccdcbbe525a6e467a4be6d50",
+    "mtime": 1795634522.284533,
+    "seen": 1795635500.2280507,
+    "ast_hash": "67f5db2a7f2f4d7185443130b166dac7",
     "semantic_hash": ""
   },
   "core/secretlogic.js": {
@@ -10656,9 +10656,21 @@
     "semantic_hash": ""
   },
   "tests/lobbyextras.mjs": {
-    "mtime": 1795633100.3748097,
-    "seen": 1795633462.8286002,
-    "ast_hash": "d6fa5809b558285bd5dbb04b4fe8cab0",
+    "mtime": 1795635125.7652013,
+    "seen": 1795635500.2281992,
+    "ast_hash": "bac2e5e2f317c97cddbba33f84d904cd",
+    "semantic_hash": ""
+  },
+  "core/egglogic.js": {
+    "mtime": 1795634479.932214,
+    "seen": 1795635500.2279665,
+    "ast_hash": "d570a0463c57d2ab3e48dc15bd4ff14d",
+    "semantic_hash": ""
+  },
+  "core/eggs.js": {
+    "mtime": 1795635125.7610652,
+    "seen": 1795635500.2279685,
+    "ast_hash": "fcf13703b798f71b0f2df8d53a132b82",
     "semantic_hash": ""
   },
   "package-lock.json": {

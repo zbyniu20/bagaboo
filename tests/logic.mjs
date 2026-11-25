@@ -861,5 +861,30 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     check('secrets: the saved state keeps real unique skulls and only milestones that were really reached', bad.found.join() === 'plush,beam' && bad.paid.length === 0 && S2.normalizeSecrets({ found: order, paid: [3, 3, 7] }).paid.join() === '3,7' && S2.normalizeSecrets('x').found.length === 0);
     const bestSrc = fs.readFileSync(path.join(ROOT, 'core/bestiary.js'), 'utf8'), chestSrc = fs.readFileSync(path.join(ROOT, 'core/nightchest.js'), 'utf8'), secSrc = fs.readFileSync(path.join(ROOT, 'core/secrets.js'), 'utf8'), lobSrc = fs.readFileSync(path.join(ROOT, 'levels/lobby.js'), 'utf8'), mainSrc = fs.readFileSync(path.join(ROOT, 'main.js'), 'utf8');
     check('lobby extras: built, updated and disposed with the lobby, the beast clock runs from main.js, saves go through the normalisers and every texture, geometry and terminal is released', /buildBestiary\(-6, 7\.8\); buildNightChest\(1\.5, 8\.0\); buildSecrets\(\)/.test(lobSrc) && /updateBestiary\(dt, t\); updateNightChest\(dt, t\); updateSecrets\(dt, t\)/.test(lobSrc) && /disposeBestiary\(\); disposeNightChest\(\); disposeSecrets\(\)/.test(lobSrc) && /bestiaryTick\(levelId, dt\)/.test(mainSrc) && /normalizeBestiary\(SAVE\.bestiary\)/.test(bestSrc) && /normalizeChest\(SAVE\.chest\)/.test(chestSrc) && /normalizeSecrets\(SAVE\.secrets\)/.test(secSrc) && /terminals\.splice/.test(bestSrc) && /terminals\.splice/.test(chestSrc) && /for \(const x of G\.texs\) x\.dispose\(\)/.test(bestSrc) && /canOpen\(st, today\)\) return null/.test(chestSrc) && /swapRoot\(fig, b\.model/.test(bestSrc));
+    // --- Easter eggi w lobby (core/egglogic.js, core/eggs.js) ---
+    const EG = await import(url('core/egglogic.js'));
+    check('eggs: seven unique eggs, objects inside the lobby, hints are sentences', EG.EGGS.length === 7 && new Set(EG.EGGS.map(e => e.id)).size === 7 && EG.EGGS.every(e => /[.]$/.test(e.hint) && (!e.pos || (e.pos.every(Number.isFinite) && Math.abs(e.pos[0]) < 15.5 && Math.abs(e.pos[2]) < 15.5))));
+    let es = EG.normalizeEggs(null), egPaid = 0, egAll = false;
+    for (const e of EG.EGGS) { const r = EG.findEgg(es, e.id); es = r.state; egPaid += r.bones; egAll = r.all; }
+    const egAgain = EG.findEgg(es, 'duck');
+    check('eggs: each egg pays once, the full set adds the bonus exactly once, unknown ids and repeats pay nothing', egPaid === 7 * EG.EGG_BONES + EG.ALL_BONUS && egAll && !egAgain.isNew && egAgain.bones === 0 && !EG.findEgg(es, 'nope').isNew && EG.allFound(es));
+    const egBad = EG.normalizeEggs({ found: ['duck', 'duck', 'x', 5], paid: ['mouse', 'duck'] });
+    check('eggs: the saved state keeps only real unique found eggs and paid only for found ones', egBad.found.join() === 'duck' && egBad.paid.join() === 'duck' && EG.normalizeEggs('x').found.length === 0);
+    const gz = EG.newDetector(); let gzFired = 0; for (let i = 0; i < 80; i++) if (EG.gazeStep(gz, 0.97, 0.1)) gzFired++;
+    const gz2 = EG.newDetector(); let gz2f = false; for (let i = 0; i < 200; i++) if (EG.gazeStep(gz2, i % 40 === 39 ? 0.2 : 0.97, 0.1)) gz2f = true;
+    check('eggs: looking up fires after 6 s once, and a glance down resets the timer', gzFired === 1 && !gz2f);
+    const stl = EG.newDetector(); let stlF = 0; for (let i = 0; i < 100; i++) if (EG.stillStep(stl, 0.02, 0.95, 1.5, 0.1)) stlF++;
+    const stl2 = EG.newDetector(); let stl2f = false; for (let i = 0; i < 100; i++) if (EG.stillStep(stl2, 0.02, 0.95, 4, 0.1)) stl2f = true;
+    const stl3 = EG.newDetector(); let stl3f = false; for (let i = 0; i < 100; i++) if (EG.stillStep(stl3, i === 50 ? 2 : 0.02, 0.95, 1.5, 0.1)) stl3f = true;
+    check('eggs: staring at the mirror needs 8 s, standing close, facing it and staying still', stlF === 1 && !stl2f && !stl3f);
+    const knockRun = (times) => { const k = EG.newDetector(); let f = 0; for (const t0 of times) { if (EG.knockStep(k, true, t0)) f++; if (EG.knockStep(k, false, t0 + 0.05)) f++; } return f; };
+    const kn3 = EG.newDetector(); let kn3f = false; for (let i = 0; i < 40; i++) if (EG.knockStep(kn3, true, i * 0.1)) kn3f = true;
+    check('eggs: three separate knocks inside the window fire once, slow knocks and a hand held on the door do not', knockRun([0, 0.4, 0.8]) === 1 && knockRun([0, 3, 6, 9]) === 0 && knockRun([0, 0.4]) === 0 && !kn3f);
+    const sh = EG.newDetector(); let shF = 0; for (let i = 0; i < 10; i++) if (EG.shoutStep(sh, 0.6, 0.1)) shF++;
+    const sh2 = EG.newDetector(); let sh2f = false; for (let i = 0; i < 100; i++) if (EG.shoutStep(sh2, i % 2 ? 0.6 : 0, 0.1)) sh2f = true;
+    const sh3 = EG.newDetector(); let sh3f = false; for (let i = 0; i < 100; i++) if (EG.shoutStep(sh3, 0.1, 0.1)) sh3f = true;
+    check('eggs: a sustained shout fires once, a quiet voice and single blips do not', shF === 1 && !sh3f);
+    const eggSrc = fs.readFileSync(path.join(ROOT, 'core/eggs.js'), 'utf8');
+    check('eggs: built, updated (with the mic level) and disposed with the lobby, saved through the normaliser, panel shows the count and the pure module is type-checked', /buildEggs\(\)/.test(lobSrc) && /updateEggs\(dt, t, SFX\.micLevel\(\)\)/.test(lobSrc) && /disposeEggs\(\)/.test(lobSrc) && /normalizeEggs\(SAVE\.eggs\)/.test(eggSrc) && /getEggs/.test(chestSrc) && !/nightchest/.test(eggSrc.replace(/\/\/.*$/gm, '')) && /egglogic\.js/.test(fs.readFileSync(path.join(ROOT, 'tests/tsconfig.json'), 'utf8')) && /eggs\.js/.test(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')) && /for \(const x of G\.texs\) x\.dispose\(\)/.test(eggSrc));
 }
 done('logic');

@@ -22,7 +22,7 @@
     "../core/minelogic.js",
     "../core/bestiarylogic.js",
     "../core/chestlogic.js",
-    "../core/secretlogic.js",
+    "../core/secretlogic.js", "../core/egglogic.js",
     "../core/gfxlogic.js",
     "../core/hauntlogic.js",
     "../core/musiclogic.js",

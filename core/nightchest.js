@@ -13,6 +13,8 @@ import * as SFX from './audio.js';
 import * as C from './chestlogic.js';
 import { foundCount, SECRETS } from './secretlogic.js';
 import { getSecrets } from './secrets.js';
+import { getEggs } from './eggs.js';
+import { foundCount as eggCount, EGGS } from './egglogic.js';
 
 let G = null;
 const _w = new THREE.Vector3(), MAX_PRICE = 900;
@@ -76,6 +78,7 @@ function draw(t) {
     }
     t.text(pityText(st, ready), 320, 300, 19, AMBER_DIM, 'center');
     t.text('Hidden skulls found: ' + foundCount(sec) + ' / ' + SECRETS.length, 320, 340, 22, foundCount(sec) === SECRETS.length ? OK_COL : AMBER, 'center', true);
+    t.text('Easter eggs found: ' + eggCount(getEggs()) + ' / ' + EGGS.length, 320, 372, 20, eggCount(getEggs()) === EGGS.length ? OK_COL : AMBER_DIM, 'center');
     t.scanlines();
 }
 // Ile dni z rzędu zostało do pewnej rzadkiej nagrody (licząc serię, którą da dzisiejsze otwarcie, gdy skrzynia czeka)
@@ -112,7 +115,7 @@ export function updateNightChest(dt, t) {
     }
     for (const s of G.stars) if (s.t > 0) { s.t -= dt; s.v.y -= 3 * dt; s.s.position.addScaledVector(s.v, dt); s.s.material.opacity = Math.max(0, Math.min(1, s.t)); if (s.t <= 0) s.s.visible = false; }
     if (!G.anim) applyLid();
-    const sig = ready + ':' + getChest().last + ':' + foundCount(getSecrets()); if (sig !== G.last) { G.last = sig; G.term.dirty = true; }
+    const sig = ready + ':' + getChest().last + ':' + foundCount(getSecrets()) + ':' + eggCount(getEggs()); if (sig !== G.last) { G.last = sig; G.term.dirty = true; }
 }
 export function disposeNightChest() {
     if (!G) return;
