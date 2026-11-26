@@ -132,6 +132,8 @@ export const CATALOG = [
     { slot: 'glasses', id: 'neonshades', name: 'Neon shades', price: 0, locked: true, hint: 'Scary GTA on Nightmare' },
     { slot: 'hat', id: 'palmhat', name: 'Palm hat', price: 0, locked: true, hint: 'Scary GTA: leave with all 6 bags' },
     { slot: 'mskin', id: 'zombiecop', name: 'Zombie cop (Scary GTA)', price: 0, locked: true, hint: 'Scary GTA: escape after 5 stars' },
+    { slot: 'hat', id: 'detectivehat', name: 'Detective hat', price: 0, locked: true, hint: 'Scary GTA: solve the missing detective case' },
+    { slot: 'glasses', id: 'stuntgoggles', name: 'Stunt goggles', price: 0, locked: true, hint: 'Scary GTA: land every stunt jump' },
     { slot: 'hat', id: 'minerhelmet', name: 'Miner helmet', price: 0, locked: true, hint: 'The Mine on Nightmare' },
     { slot: 'hat', id: 'skullcrown', name: 'Skull crown', price: 0, locked: true, hint: 'Catacombs on Nightmare' },
     { slot: 'hat', id: 'lanternhat', name: 'Lantern hat', price: 0, locked: true, hint: 'Cemetery on Nightmare' },
@@ -400,6 +402,8 @@ export const ACHIEVEMENTS = [
     { id: 'nm_scarygta', name: 'Ghost in the city', desc: 'Leave Scary GTA with a bag on Nightmare', reward: ['glasses', 'neonshades'], rewardName: 'Neon shades' },
     { id: 'gta_heist', name: 'Heist legend', desc: 'Leave Scary GTA with all 6 bags in one run', reward: ['hat', 'palmhat'], rewardName: 'Palm hat' },
     { id: 'gta_ghost', name: 'Burn it down', desc: 'Leave Scary GTA with a bag after reaching 5 stars', reward: ['mskin', 'zombiecop'], rewardName: 'Zombie cop skin' },
+    { id: 'gta_detective', name: 'Case closed', desc: 'Solve the missing detective case in Scary GTA', reward: ['hat', 'detectivehat'], rewardName: 'Detective hat' },
+    { id: 'gta_stunts', name: 'Stunt legend', desc: 'Land all five stunt jumps in Scary GTA', reward: ['glasses', 'stuntgoggles'], rewardName: 'Stunt goggles' },
     { id: 'nm_furas', name: 'Fluffy nightmare', desc: 'Escape The Fur Den on Nightmare', reward: ['badge', 'goldfish'], rewardName: 'Golden fish pin' },
     { id: 'nm_all', name: 'Nightmare master', desc: 'Clear all ' + DIFF_LEVEL_IDS.length + ' levels on Nightmare', reward: ['skin', 'nightmare'], rewardName: 'Nightmare ape', goal: DIFF_LEVEL_IDS.length, val: () => Object.keys(SAVE.nmWins || {}).length },
     // --- Tryby gry ---

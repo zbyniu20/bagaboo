@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "core/cosmetics.js": {
-    "mtime": 1795721602.7016833,
-    "seen": 1795721695.5544376,
-    "ast_hash": "76a8e39e7f15dbf0c4786401369bd236",
+    "mtime": 1795728452.3029056,
+    "seen": 1795730600.6941388,
+    "ast_hash": "f20ece1c19a5e13f9e59944b84adc7b3",
     "semantic_hash": ""
   },
   "core/debug.js": {
@@ -66,9 +66,9 @@
     "semantic_hash": "a5afb8e9bb215279e0fa2227cad1e3ed"
   },
   "core/economy.js": {
-    "mtime": 1795721602.7025125,
-    "seen": 1795721695.5544598,
-    "ast_hash": "af0bf0dadcae29d48e687417e9836766",
+    "mtime": 1795728441.3594244,
+    "seen": 1795730600.6941621,
+    "ast_hash": "c82c61f121f495c42e3338d45f8cc0d3",
     "semantic_hash": ""
   },
   "core/emotepanel.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795725098.8766701,
-    "seen": 1795725144.6116686,
-    "ast_hash": "d65887947649444e9085876b396155cf",
+    "mtime": 1795730543.9199567,
+    "seen": 1795730600.694701,
+    "ast_hash": "03039401e7c086be7141f45183533034",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795722100.2475364,
-    "seen": 1795725144.611676,
-    "ast_hash": "5a99f11254bcb5e0b40e81468e976ddc",
+    "mtime": 1795728583.491318,
+    "seen": 1795730600.6947076,
+    "ast_hash": "ae7e9a42fbd9d0507d1f57e2110764e2",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795722156.1154063,
-    "seen": 1795725144.6114562,
-    "ast_hash": "1bc6c5c990eaae12a48424f50813b34b",
+    "mtime": 1795728696.7793589,
+    "seen": 1795730600.6944823,
+    "ast_hash": "604817bbd07dd4ae744f3ad56e7ccb34",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795722100.2481499,
-    "seen": 1795725144.611491,
-    "ast_hash": "1d7d461ce46ef742a261dcad5a40cd4b",
+    "mtime": 1795728583.4919071,
+    "seen": 1795730600.6945183,
+    "ast_hash": "6c51756f86f8395b6ff16d561fe9bdd0",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795722187.4798934,
-    "seen": 1795725144.6113973,
-    "ast_hash": "c412b14e0b3c9a4102d1ea365b23c3cc",
+    "mtime": 1795728583.4904609,
+    "seen": 1795730600.6943905,
+    "ast_hash": "6545786b6e748ac22b208f4c8125b5f1",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -10920,21 +10920,21 @@
     "semantic_hash": ""
   },
   "core/gtaextras.js": {
-    "mtime": 1795722038.8816137,
-    "seen": 1795725144.611188,
-    "ast_hash": "11a20c907ea169d617fda3e78673c622",
+    "mtime": 1795728441.3580143,
+    "seen": 1795730600.6942008,
+    "ast_hash": "5549bd2ad71ffb7db06391d81bffd09f",
     "semantic_hash": ""
   },
   "core/gtaprops.js": {
-    "mtime": 1795722097.083644,
-    "seen": 1795725144.611195,
-    "ast_hash": "b7121d6e54db0d0399210d30c71481c3",
+    "mtime": 1795728583.490751,
+    "seen": 1795730600.6942115,
+    "ast_hash": "1519f4e0b541d6aebd2d0a188b87d44b",
     "semantic_hash": ""
   },
   "core/gtastore.js": {
-    "mtime": 1795722038.8819325,
-    "seen": 1795725144.611197,
-    "ast_hash": "b856959043fd7e00ed46fb212e590e81",
+    "mtime": 1795728441.358273,
+    "seen": 1795730600.6942136,
+    "ast_hash": "97e882ddcfd1889062587c1893aa93c9",
     "semantic_hash": ""
   },
   "tests/gtaextras.mjs": {
@@ -11019,6 +11019,48 @@
     "mtime": 1795724537.7739089,
     "seen": 1795725144.611436,
     "ast_hash": "12d59713968f807f9e156fcda8278179",
+    "semantic_hash": ""
+  },
+  "core/gtaencounters.js": {
+    "mtime": 1795728696.7746346,
+    "seen": 1795730600.694196,
+    "ast_hash": "07ccf5e27225875fdc8da3610d430337",
+    "semantic_hash": ""
+  },
+  "core/gtaencountersfx.js": {
+    "mtime": 1795730016.1671908,
+    "seen": 1795730600.6941984,
+    "ast_hash": "3861cdec60213d683a0114b4e2ef0f0d",
+    "semantic_hash": ""
+  },
+  "core/gtamystery.js": {
+    "mtime": 1795728595.326879,
+    "seen": 1795730600.6942065,
+    "ast_hash": "322bf58b6b3e23579684d253c92442bb",
+    "semantic_hash": ""
+  },
+  "core/gtamysteryfx.js": {
+    "mtime": 1795729600.0851562,
+    "seen": 1795730600.6942081,
+    "ast_hash": "e0ae53542592b4a335adc95463282e30",
+    "semantic_hash": ""
+  },
+  "core/gtastuntfx.js": {
+    "mtime": 1795728696.7753632,
+    "seen": 1795730600.6942155,
+    "ast_hash": "5276a8b093d111e3828b2721a06c58ed",
+    "semantic_hash": ""
+  },
+  "core/gtastunts.js": {
+    "mtime": 1795728696.7750416,
+    "seen": 1795730600.6942167,
+    "ast_hash": "f09fe9fc972454987fb9cadcfe76c468",
+    "semantic_hash": ""
+  },
+  "tests/gtasecrets.mjs": {
+    "mtime": 1795729600.0853841,
+    "seen": 1795730600.6944635,
+    "ast_hash": "e25429edf0b741d4a858689880f22dd7",
     "semantic_hash": ""
   },
   "package-lock.json": {
