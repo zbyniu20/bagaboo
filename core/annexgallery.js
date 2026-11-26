@@ -4,6 +4,7 @@
 // runda trwa 60 s od pierwszego trafienia, najlepszy wynik w SAVE.annex.galleryBest. Punkty liczy KAŻDY klient lokalnie (bez nagród, nic nie idzie przez sieć).
 // Piłki wracają na stojak, gdy leżą bezczynnie daleko od niego.
 // ==========================================
+import { markGate } from './gtastore.js';
 import { THREE, CANNON, L, tex, addBody, physicsMat, GROUP } from './engine.js';
 import * as T from './textures.js';
 import { toast } from './terminal.js';
@@ -67,6 +68,7 @@ export function updateAnnexGallery(dt, t) {
     // Trafienia: środek piłki w bryle stojącego widma
     for (const b of G.balls) { const p = b.userData.body.position; for (let i = 0; i < Gl.GAL.XS.length; i++) { if (Gl.hitsTarget(i, [p.x, p.y, p.z])) { const r = Gl.registerHit(G.st, i); if (r.hit) { G.st = r.st; G.hits++; SFX.beep && SFX.beep(900 + 120 * G.st.streak, 0.07, 0.12); onHit(i); } } } }
     if (prev === 'run' && G.st.ph === 'over') {
+        { const tr = markGate('gallery', G.st.last); if (tr.isNew) toast('Gate trial 2 of 3 passed: AIM', '#30ff70'); }   // brama do Scary GTA: 100+ punktów w jednej rundzie
         const best = getGallery().galleryBest; if (G.st.last > best) { SAVE.annex = Object.assign({}, getGallery(), { galleryBest: G.st.last }); saveGame(); toast('New Ghost Gallery best: ' + G.st.last, '#ffd27a'); SFX.bell && SFX.bell(); }
         else toast('Ghost Gallery: ' + G.st.last + ' (best ' + best + ')', '#7fff90');
     }

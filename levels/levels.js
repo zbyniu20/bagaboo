@@ -17,6 +17,7 @@ import { IS_QUEST } from '../core/device.js';
 import { CARDS } from '../core/levelcards.js';
 import { MUTATORS, MUT_LEVELS, mutatorChoice, setMutatorChoice, nextMutator } from '../core/mutators.js';
 import { ARRIVAL_LEVELS } from './lobby-door.js';
+import { gateOpen } from '../core/gtastore.js';   // Scary GTA jest zamknięte, dopóki brama w aneksie lobby nie zostanie otwarta (core/gtagate.js)
 
 const W = 10, D = 7, H = 6;   // sala 20 x 14 m, terminal na północnej ścianie
 export const info = { id: 'levels', name: 'Levels', spawn: [0, 1.0, 5.2] };
@@ -59,6 +60,7 @@ function enter() {
     const d = LV[TS.sel];
     if (d.secret) return knock();
     if (!S || S.leaving || !S.ctx) return;
+    if (d.target === 'scarygta' && !gateOpen()) { toast('LOCKED. Open the Scary GTA gate in the lobby annex first.', '#ff4a2a'); SFX.bang({ x: 0, y: 1.6, z: -D + 0.5 }); return; }
     S.leaving = true; TS.last = TS.sel;
     toast(d.msg, '#ffb454'); SFX.creak(0.8, { x: 0, y: 2, z: -D + 1 });
     S.ctx.goto(d.target);
@@ -97,7 +99,7 @@ function drawScreen(t) {
         tx(c, on ? '>' : ' ', 28, cy, 34, BLOOD); tx(c, String(i + 1).padStart(2, '0'), 66, cy, 30, col);
         if (on && gl) { tx(c, l.label, 154, cy, 36, 'rgba(0,240,224,0.45)', 'left', MONO); tx(c, l.label, 146, cy, 36, 'rgba(255,0,80,0.55)', 'left', MONO); }
         tx(c, l.label, 150, cy, 36, col, 'left', MONO, on ? 6 : 0);
-        tx(c, l.type, 640, cy, 24, on ? AMB : AMBD, 'left');
+        tx(c, l.target === 'scarygta' && !gateOpen() ? 'LOCKED' : l.type, 640, cy, 24, l.target === 'scarygta' && !gateOpen() ? BLOOD : (on ? AMB : AMBD), 'left');
         let pips = ''; if (l.secret) pips = '?????'; else for (let k = 0; k < 5; k++) pips += k < l.threat ? '|' : '.';
         tx(c, pips, W2 - 34, cy, 32, BLOOD, 'right');
         t.buttons.push({ id: 'row' + i, x: 10, y: y, w: W2 - 20, h: RH - 4, action: () => pick(i) });
