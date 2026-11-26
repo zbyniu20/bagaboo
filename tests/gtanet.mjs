@@ -55,7 +55,7 @@ const sh = await ev(async () => { const G = await import('./levels/scarygta.js')
 ok('a guest shout adds heat once per 3 s (rate limit on the host)', sh.b > sh.a && sh.c === sh.b, sh);
 // BUST gościa: policjant tuż obok niego
 await ev(async () => { const G = await import('./levels/scarygta.js'), S = G.testState(), g = (await import('./core/network.js')).playersState['g1']; G.debugHeat(0); S.sim.heats['g1'] = { v: 90, seenT: 0 }; G.debugSpawnCop(g.head.p[0] + 3, g.head.p[2]); });
-await ev(async () => { const G = await import('./levels/scarygta.js'); for (let i = 0; i < 300; i++) { if (G.debugOutbox().some(m => m.k === 'bust')) return; await new Promise(r => setTimeout(r, 200)); } });
+await ev(async () => { const G = await import('./levels/scarygta.js'), g = (await import('./core/network.js')).playersState['g1']; for (let i = 0; i < 300; i++) { if (G.debugOutbox().some(m => m.k === 'bust')) return; if (i % 25 === 24) G.debugSpawnCop(g.head.p[0] + 2, g.head.p[2]); await new Promise(r => setTimeout(r, 200)); } });   // ponawiamy policjanta obok gościa, gdy poprzedni się oddalił
 const bu = await ev(async () => { const G = await import('./levels/scarygta.js'), S = G.testState(); const m = G.debugOutbox().filter(m => m.k === 'bust').pop(); return { m: m || null, holder: S.bags.find(b => b.id === 'jewelry').holder }; });
 ok('a cop catching the guest sends BUST to that guest and the bag falls back to the street', bu.m && bu.m.id === 'g1' && bu.m.r === 'cop' && bu.holder === null, bu);
 // rozłączenie: gość z torbą znika

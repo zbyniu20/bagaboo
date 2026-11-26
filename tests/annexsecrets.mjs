@@ -89,7 +89,7 @@ const room = await ev(async () => {
     await w(500); const opening = A.debugRoom();
     for (let i = 0; i < 80 && A.debugRoom().slide < 1; i++) await w(300);
     const open = A.debugRoom();
-    PL.setPlayerPosition(-10.9, 1.4, 52.5); for (let i = 0; i < 60 && !K.getDeep().found.includes('room'); i++) await w(250); const inside = PL.playerBody.position.z;
+    /* dłoń musi dotknąć czaszki: obracamy widok, bo poprzednie kroki zostawiły dowolny kierunek */ const D = await import('./core/desktop.js'); PL.setPlayerPosition(-10.9, 1.4, 52.5); for (let i = 0; i < 80 && !K.getDeep().found.includes('room'); i++) { D.setDesktopFacing([0, 1.57, 3.14, -1.57][i % 4]); await w(250); } const inside = PL.playerBody.position.z;
     const w0 = E.SAVE.wallet, code = A.debugVaultCode(), wrong = code === '1234' ? '4321' : '1234';
     const bad1 = A.debugVault(wrong), ok1 = A.debugVault(code), w1 = E.SAVE.wallet - w0, again = A.debugVault(code);
     return { closed, opening, open, inside, bad1, ok1, w1, again, w2: E.SAVE.wallet - w0, n: K.deepCountNow() - n0, saved: JSON.stringify(E.SAVE.deep) };
