@@ -6,7 +6,7 @@
 // ==========================================
 import { THREE, CANNON, L, scene, camera, addStaticBody } from '../core/engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { levelReward, diffOf } from '../core/economy.js';
+import { levelReward, diffOf, unlockAchievement, recordTime } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import * as SFX from '../core/audio.js';
 import { PACE } from '../core/config.js';
@@ -118,7 +118,7 @@ export function build() {
     S.boxes = S.buildings.map(b => ({ x0: b.x0, x1: b.x1, y0: 0, y1: b.h, z0: b.z0, z1: b.z1 }));
     S.sim = createCitySim({ boxes: S.boxes, diff: df.id }); S.scare = createJumpscare({ seed: 4040, variant: 'warden' });
     S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
-    S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
+    S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
     S.heli = HL.newHeli(); S.heliV = createHeli(); S.eyeOnMe = false;
     S.gunS = { me: GU.newShooter() }; S.mode = GU.modeFor(df.id); S.fx = []; S.feed = []; S.hurtT = 0; S.killer = null; S.gunMesh = null;
@@ -211,6 +211,8 @@ function finish() {
     if (S.leaving) return; S.leaving = true;
     const n = S.got; toast('Heist complete: ' + n + ' bag' + (n === 1 ? '' : 's') + '!', '#7fff90');
     levelReward('scarygta', 120 * n, 60 * n, 'a heist with ' + n + ' bags');
+    if (n >= S.bags.length) { unlockAchievement('gta_heist'); recordTime('scarygta', S.clock); }   // komplet toreb: osiągnięcie i rekord czasu
+    if (S.peakStars >= 5) unlockAchievement('gta_ghost');
 }
 const ARROWS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
 function arrowTo(px, pz, tx, tz) {
@@ -261,9 +263,11 @@ export function update(dt, t, ctx) {
     netStep(dt, p, speed);
     S.heliV.update(S.heli, dt);
     S.eyeOnMe = HL.heliSees(S.heli, { x: p.x, y: p.y, z: p.z }, { hidden: !!S.sim.hiddenNow.me, blocked: AI2.lineBlocked([S.heli.x, S.heli.y, S.heli.z], [p.x, p.y + 0.5, p.z], S.boxes) });
+    // syreny: gdy policjant ściga gracza z bliska, naprzemienne tony (cichy sygnał ostrzegawczy; nie w trybie spokojnym gier, tu go nie ma)
+    S.sirenT = (S.sirenT || 0) - dt; if (S.sirenT <= 0 && S.sim.activeCops().some(c => c.st.mode === 'chase' && Math.hypot(c.bot.x - p.x, c.bot.z - p.z) < 45)) { S.sirenT = 0.5; S.sirenF = !S.sirenF; SFX.beep(S.sirenF ? 880 : 640, 0.04, 0.42); }
     ensureGun(); if (S.gunMesh) S.gunMesh.g.visible = S.busted < 0;
     if (N.NET.mode !== 'solo') { MOD.boost = MOD.fly = MOD.noclip = MOD.sizeOn = false; MOD.size = 1; PERSONAL.speed = 1; }   // PvP: bez prędkości, latania, przenikania i rozmiaru z menu admina
-    S.hidden = !!S.sim.hiddenNow.me;
+    S.hidden = !!S.sim.hiddenNow.me; S.peakStars = Math.max(S.peakStars, S.sim.starsOf('me'));
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.2; drawHud(p); }
 }
 // Złapanie (BUSTED): jumpscare (z uwzględnieniem ustawień), upuszczenie toreb, o jedną gwiazdkę mniej, odrodzenie w bezpiecznym punkcie po chwili
@@ -458,6 +462,7 @@ function onNet(msg, from) {
         const bu = GN.cleanBust(msg); if (bu && bu.id === N.myId()) bust({ reason: bu.reason, x: bu.x, z: bu.z }, true);
     }
 }
+export const debugFinish = (stars) => { if (!S) return false; if (stars !== undefined) S.peakStars = stars; finish(); return true; };
 export const testState = () => S;   // dla testów
 export const debugCity = () => S ? { chunks: S.chunks.length, visible: S.chunks.filter(c => c.g.visible).length, bags: S.bags.length, got: S.got, moveScale: L.moveScale, cars: S.carCount, buildings: S.buildings.length } : null;
 export const debugSim = () => S ? { stars: S.sim.starsOf('me'), heat: S.sim.heatOf('me').v, cops: S.sim.activeCops().length, modes: S.sim.activeCops().map(c => c.st.mode), busted: S.busted, busts: S.busts, hidden: S.hidden, got: S.got, gators: S.sim.gators.length, rails: S.sim.rails.map(r => r.st.ph), events: S.sim.events.length } : null;

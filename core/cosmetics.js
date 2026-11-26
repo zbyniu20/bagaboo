@@ -77,6 +77,10 @@ export function extraHat(id) {
         g.add(at(new THREE.CylinderGeometry(0.115, 0.13, 0.1, 18), white, 0, 0.14, 0));
         for (const y of [0.12, 0.155]) g.add(at(new THREE.CylinderGeometry(0.1165, 0.1315, 0.016, 18), black, 0, y, 0));
         g.add(at(new THREE.BoxGeometry(0.2, 0.012, 0.07), white, 0, 0.1, -0.14));
+    } else if (id === 'palmhat') {
+        const straw = mat({ color: 0xd8b86a, roughness: 0.9 }), leaf = mat({ color: 0x2f8a3a, roughness: 0.8, side: THREE.DoubleSide });
+        g.add(at(new THREE.CylinderGeometry(0.2, 0.2, 0.012, 20), straw, 0, 0.1, 0)); g.add(at(new THREE.CylinderGeometry(0.11, 0.12, 0.09, 16), straw, 0, 0.14, 0));
+        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, f = at(new THREE.BoxGeometry(0.05, 0.006, 0.22), leaf, Math.cos(a) * 0.1, 0.26, Math.sin(a) * 0.1); f.rotation.y = -a + Math.PI / 2; f.rotation.x = -0.7; g.add(f); }
     } else if (id === 'minerhelmet') {
         const yellow = mat({ color: 0xe8b820, roughness: 0.55 }), dark = mat({ color: 0x2a2a2e, metalness: 0.6, roughness: 0.45 });
         const dome = at(new THREE.SphereGeometry(0.135, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), yellow, 0, 0.1, 0); g.add(dome);
@@ -318,6 +322,10 @@ export function extraGlasses(id) {
         const gold = mat({ color: 0xd4a640, metalness: 1, roughness: 0.25 });
         g.add(at(new THREE.TorusGeometry(0.036, 0.004, 6, 22), gold, 0.045, 0.02, -0.13));
         g.add(at(new THREE.CylinderGeometry(0.0015, 0.0015, 0.14, 4), gold, 0.08, -0.05, -0.125));
+    } else if (id === 'neonshades') {
+        const frame = mat({ color: 0x14081c, roughness: 0.4 }), pink = mat({ color: 0xff2a9a, emissive: 0xff2a9a, emissiveIntensity: 1.2 }), cyan = mat({ color: 0x20e0ff, emissive: 0x20e0ff, emissiveIntensity: 1.2 });
+        g.add(at(new THREE.BoxGeometry(0.2, 0.012, 0.01), frame, 0, 0.045, -0.13));
+        g.add(at(new THREE.BoxGeometry(0.085, 0.04, 0.008), pink, -0.05, 0.02, -0.13)); g.add(at(new THREE.BoxGeometry(0.085, 0.04, 0.008), cyan, 0.05, 0.02, -0.13));
     } else if (id === 'heart') {
         const pink = mat({ color: 0xff3a7a, emissive: 0x80103a, emissiveIntensity: 0.7, roughness: 0.3 });
         for (const s of [-1, 1]) {

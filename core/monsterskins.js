@@ -33,6 +33,15 @@ function blind() {
     for (const sx of [-0.04, 0, 0.04]) g.add(cyl(0.006, 0.003, 0.2 + Math.abs(sx) * 2, bloodM, sx, -0.3, 0.2, 5));   // krew z paszczy
     return { group: g, animate: (t) => { mouth.scale.y = 0.8 + 0.3 * Math.sin(t * 9); head.rotation.z = Math.sin(t * 2) * 0.15; } };
 }
+// Zombie-policjant ze Scary GTA: manekin w granatowej czapce z daszkiem i odznaką, zielonkawa skóra, świecące zielone oczy
+function zombiecop() {
+    const m = buildMannequin(T.mkRng(7777)), g = new THREE.Group(); addMonsterFace(m.head, { width: 0.06, open: 0.05, teeth: 12, long: 1.8, tears: 0x1a3a0a });
+    m.group.position.y = -1.62; g.add(m.group);
+    const navy = new THREE.MeshStandardMaterial({ color: 0x14204a, roughness: 0.7 }), gold = new THREE.MeshStandardMaterial({ color: 0xe0b840, metalness: 0.8, roughness: 0.3 });
+    m.head.add(cyl(0.125, 0.135, 0.08, navy, 0, 0.21, 0, 14)); m.head.add(box(0.2, 0.012, 0.09, navy, 0, 0.185, 0.14)); m.head.add(ball(0.02, gold, 0, 0.215, 0.13));
+    for (const sx of [-1, 1]) { const e = glowEye(0x40ff50, 0.1); e.position.set(sx * 0.04, 0.152, 0.11); m.head.add(e); }
+    return { group: g, animate: (t) => { m.head.rotation.z = Math.sin(t * 5) * 0.1; } };
+}
 // Smolisty Pełzacz ze Studni: czarna, lśniąca maź w kształcie postaci, ociekająca, z zielonymi oczami
 function ooze() {
     const g = new THREE.Group(), tar = new THREE.MeshPhysicalMaterial({ color: 0x050505, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.05 });
@@ -94,5 +103,5 @@ export function lavaBeast() {
     for (const [a, sx] of [[armL, -1], [armR, 1]]) { a.add(cyl(0.07, 0.11, 1.0, rock, 0, -0.5, 0)); const claw = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 6), horn); claw.position.y = -1.05; claw.rotation.x = Math.PI; a.add(claw); a.rotation.z = sx * 0.25; g.add(a); }
     return { group: g, rock: rock, animate: (t) => { rock.emissiveIntensity = 1.2 + 0.5 * Math.sin(t * 4); armL.rotation.x = Math.sin(t * 5) * 0.6; armR.rotation.x = -Math.sin(t * 5) * 0.6; jaw.position.y = -0.18 - Math.abs(Math.sin(t * 3)) * 0.05; } };
 }
-export const MONSTER_SKINS = { mannequin: mannequin, blind: blind, ooze: ooze, thread: threadman, lava: lavaBeast };
+export const MONSTER_SKINS = { mannequin: mannequin, blind: blind, ooze: ooze, thread: threadman, lava: lavaBeast, zombiecop: zombiecop };
 export function buildMonsterSkin(id) { const f = MONSTER_SKINS[id]; return f ? f() : null; }

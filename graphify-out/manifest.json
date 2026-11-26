@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "core/cosmetics.js": {
-    "mtime": 1795628682.97081,
-    "seen": 1795629726.8978627,
-    "ast_hash": "430d42f349b830edcc5464d82602da5a",
+    "mtime": 1795686243.3791566,
+    "seen": 1795687149.2670815,
+    "ast_hash": "1700d321106f5c2585f57e587a1c53c5",
     "semantic_hash": ""
   },
   "core/debug.js": {
@@ -66,9 +66,9 @@
     "semantic_hash": "a5afb8e9bb215279e0fa2227cad1e3ed"
   },
   "core/economy.js": {
-    "mtime": 1795628682.9695904,
-    "seen": 1795629726.8978832,
-    "ast_hash": "09b1e29cf52d9a90eb7774c05a4f7ae5",
+    "mtime": 1795686224.7817025,
+    "seen": 1795687149.2671053,
+    "ast_hash": "9599affca0082b7cc6008dd6f80201bc",
     "semantic_hash": ""
   },
   "core/emotepanel.js": {
@@ -144,9 +144,9 @@
     "semantic_hash": "b470eeb0c98db5e45c6b7a74131fd80a"
   },
   "core/levelcards.js": {
-    "mtime": 1795657731.6942587,
-    "seen": 1795658069.9149528,
-    "ast_hash": "1d27b9ffd866b5e2db5a5406a3ae96e6",
+    "mtime": 1795686243.3785212,
+    "seen": 1795687149.267167,
+    "ast_hash": "7e57919de4bf50da922963f0cf9452bc",
     "semantic_hash": ""
   },
   "core/levelkit.js": {
@@ -186,9 +186,9 @@
     "semantic_hash": ""
   },
   "core/monsterskins.js": {
-    "mtime": 1795365787.6808906,
-    "seen": 1795365997.349298,
-    "ast_hash": "f0ebce0e2e49ed4e8a5880f325570a85",
+    "mtime": 1795686243.3794448,
+    "seen": 1795687149.2671938,
+    "ast_hash": "4c27fc4e6520f96aa4e77a10f8a1c51e",
     "semantic_hash": ""
   },
   "core/murals.js": {
@@ -234,9 +234,9 @@
     "semantic_hash": ""
   },
   "core/registry.js": {
-    "mtime": 1795657731.6932406,
-    "seen": 1795658069.915011,
-    "ast_hash": "1261677ce990a1ce15e4fcc410cb2923",
+    "mtime": 1795686224.7811863,
+    "seen": 1795687149.2672257,
+    "ast_hash": "4204b374ec3359a09222ad29682757b3",
     "semantic_hash": ""
   },
   "core/roundkit.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795686101.0742598,
-    "seen": 1795686152.2286494,
-    "ast_hash": "0a2b88e6931ae326fbf83d2b12a69483",
+    "mtime": 1795686517.8582747,
+    "seen": 1795687149.2676058,
+    "ast_hash": "9dd7ba2b6f358499b8d591e59356472f",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795685738.1342468,
-    "seen": 1795686152.228387,
-    "ast_hash": "d09a461089e8229e348bdaf9acafcc7f",
+    "mtime": 1795686261.6634767,
+    "seen": 1795687149.2673721,
+    "ast_hash": "f3175d51b90d9d365785b1bc8ee418cf",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795685750.982015,
-    "seen": 1795686152.2283268,
-    "ast_hash": "efe4daf23ca663e4ab1ecf4de86b9ee3",
+    "mtime": 1795686517.836784,
+    "seen": 1795687149.267313,
+    "ast_hash": "6ef43463c3bbbf4e5254a2999f181fe1",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -10854,9 +10854,9 @@
     "semantic_hash": ""
   },
   "tests/cops.mjs": {
-    "mtime": 1795683188.7101657,
-    "seen": 1795683470.6394827,
-    "ast_hash": "2a1cd93fca1b1857ab0f8fc5cacf3a4c",
+    "mtime": 1795686376.0745738,
+    "seen": 1795687149.2673416,
+    "ast_hash": "5f343df903d9c4f5ebf5562c99d37b95",
     "semantic_hash": ""
   },
   "core/gtanet.js": {

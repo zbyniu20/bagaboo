@@ -62,5 +62,10 @@ ok('after ~4.5 s the player is back at a safe house, heat reduced', b2.busted < 
 // linia transportu
 const r0 = await ev(async () => { const G = await import('./levels/scarygta.js'), P = await import('./core/player.js'); P.setPlayerPosition(12, 6, 40); await new Promise(r => setTimeout(r, 300)); G.debugRide(0); await new Promise(r => setTimeout(r, 2500)); return { s: G.debugSim().rails, z: P.playerBody.position.z }; });
 ok('the cable ride takes the player along the line', r0.z < 30 || r0.s.some(p => p && p !== 'idle'), r0);
+// nagrody: komplet toreb i 5 gwiazdek
+const fin = await ev(async () => { const G = await import('./levels/scarygta.js'), E = await import('./core/economy.js'), S = G.testState(); for (const b of S.bags) if (!b.got) G.debugTakeBag(b.id); await new Promise(r => setTimeout(r, 400)); G.debugFinish(5); return { heist: !!E.SAVE.achievements.gta_heist, ghost: !!E.SAVE.achievements.gta_ghost, palm: E.SAVE.owned.includes('hat:palmhat'), skin: E.SAVE.owned.includes('mskin:zombiecop'), got: S.got }; });
+ok('leaving with all six bags after 5 stars unlocks Heist legend (Palm hat) and Burn it down (Zombie cop skin)', fin.heist && fin.ghost && fin.palm && fin.skin && fin.got === 6, fin);
+const models = await ev(async () => { const C = await import('./core/cosmetics.js'), M = await import('./core/monsterskins.js'); const gl = C.extraGlasses('neonshades'), hat = C.extraHat('palmhat'), sk = M.MONSTER_SKINS.zombiecop(); sk.animate(1.2); return { gl: gl.children.length, hat: hat.children.length, sk: sk.group.children.length }; });
+ok('the new cosmetics (Neon shades, Palm hat) and the Zombie cop monster skin build', models.gl >= 3 && models.hat >= 6 && models.sk >= 1, models);
 ok('no page errors', errors.length === 0, errors);
 console.log(fails ? 'FAILED: ' + fails : 'cops: all checks passed'); await browser.close(); server.close(); process.exit(fails ? 1 : 0);
