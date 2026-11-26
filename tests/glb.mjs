@@ -77,12 +77,14 @@ console.log('generated glb bytes', glb.length);
 { const r = await run('bad', Buffer.from('this is not a glb file at all')); ok('a broken file is ignored and the mannequin stays', r.info && r.info.loaded === false, r.info); ok('broken: no page errors', r.errs.length === 0, r.errs); await r.page.close(); }
 // 5) prawdziwe pliki z assets/monsters w poziomach z manekinami
 for (const [lvl, min] of [['cemetery', 1], ['nursery', 1], ['hospital', 2], ['laundry', 1], ['furas', 1], ['room000', 1], ['silence', 1]]) {
-    const r = await run('real', null); await r.page.evaluate(async (l) => { const M = await import('./main.js'); await M.loadLevel(l); }, lvl); await r.page.waitForTimeout(4000);
+    const r = await run('real', null); await r.page.evaluate(async () => { const M = await import('./main.js'); await M.loadLevel('lobby'); }); await r.page.waitForTimeout(6000);
+    const base = await r.page.evaluate(async () => (await import('./core/glbmonster.js')).glbMonstersLive());   // lobby trzyma figurki bestiariusza (modele GLB): to baza, nie wyciek
+    await r.page.evaluate(async (l) => { const M = await import('./main.js'); await M.loadLevel(l); }, lvl); await r.page.waitForTimeout(4000);
     const n = await r.page.evaluate(async () => (await import('./core/glbmonster.js')).glbMonstersLive());
     ok(lvl + ': at least ' + min + ' mannequin(s) were replaced by models from files', n >= min, n);
     await r.page.evaluate(async () => { const M = await import('./main.js'); await M.loadLevel('lobby'); }); await r.page.waitForTimeout(1500);
     const n2 = await r.page.evaluate(async () => { await new Promise(res => setTimeout(res, 500)); return (await import('./core/glbmonster.js')).glbMonstersLive(); });
-    ok(lvl + ': leaving the level removes the models', n2 === 0, n2); ok(lvl + ': no page errors', r.errs.length === 0, r.errs); await r.page.close();
+    ok(lvl + ': leaving the level removes the level models (only the lobby bestiary figurines stay: ' + base + ')', n2 === base, { n2, base }); ok(lvl + ': no page errors', r.errs.length === 0, r.errs); await r.page.close();
 }
 // 6) głowa i oczy modeli: poświata oczu na kości głowy, obrót głowy z kodu poziomu wokół osi pionowej
 {

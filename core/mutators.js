@@ -12,7 +12,7 @@ export const MUTATORS = {
     loud: { id: 'loud', name: 'Restless', color: '#ff8a4a', events: 2.2, hear: 1.5, whisper: 1.7, info: 'More events and whispers, sharper ears.' },
 };
 export const MUT_ORDER = ['off', 'dark', 'loud'];
-export const MUT_LEVELS = ['hospital', 'cemetery', 'catacombs', 'nursery', 'laundry', 'hotel', 'furas', 'room000'];   // poziomy z potworami, bez dziennych (maze, well, memory) i bez Ciszy (mikrofon)
+export const MUT_LEVELS = ['hospital', 'cemetery', 'catacombs', 'nursery', 'laundry', 'hotel', 'furas', 'room000', 'scarygta'];   // poziomy z potworami, bez dziennych (maze, well, memory) i bez Ciszy (mikrofon)
 export const MOODS = {
     calm: { id: 'calm', name: 'quiet', events: 0.55, whisper: 0.7 },
     even: { id: 'even', name: null },

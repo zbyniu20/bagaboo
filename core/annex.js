@@ -4,6 +4,7 @@
 // je przyciemnia) i aktywności. Tunel w ścianie wycina levels/lobby.js; tu stoi to, co jest za nim. Wszystko LOKALNE (nic nie idzie przez sieć), bez Bagabucksów.
 // Climb Rush: tor wspinaczkowy po ścianie wschodniej, stoper od dotknięcia pierwszego uchwytu do dzwonu, rekord w SAVE.annex.climbBest.
 // ==========================================
+import { markGate } from './gtastore.js';
 import { THREE, CANNON, L, tex, addCrispBlock, addStaticBody } from './engine.js';
 import { LP } from './config.js';
 import * as T from './textures.js';
@@ -96,6 +97,7 @@ export function updateAnnex(dt, t) {
     if (r.event === 'start' || r.event === 'restart') { SFX.beep && SFX.beep(1200, 0.08, 0.08); if (r.event === 'restart') toast('Climb Rush: restart', '#ffb030'); }
     if (r.event === 'finish' || r.event === 'record') {
         SFX.bell && SFX.bell(); G.bell.rotation.z = 0.6;
+        { const tr = markGate('climb', G.st.last); if (tr.isNew) toast('Gate trial 1 of 3 passed: HANDS', '#30ff70'); }   // brama do Scary GTA: Climb Rush w mniej niż 45 s
         if (r.event === 'record') { SAVE.annex = Object.assign({}, getAnnex(), { climbBest: Math.round(G.st.last * 100) / 100 }); saveGame(); toast('New Climb Rush record: ' + C.formatTime(G.st.last) + ' s', '#ffd27a'); }
         else toast('Climb Rush: ' + C.formatTime(G.st.last) + ' s (best ' + C.formatTime(best) + ')', '#7fff90');
     }

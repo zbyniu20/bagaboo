@@ -315,8 +315,8 @@ def officer():
     for s_, g_ in ((-1, 'glow'), (1, 'glow')): m.add(ellipsoid((s_ * 0.2, 0.02, ch + 0.03), (0.045, 0.045, 0.03), 7, 4), 'chest', g_)   # światła na barkach
     m.add(cloth_cone((0, 0.0, 1.0), 0.5, 0.2, 0.3, 10, 0.12, m.rng), 'pelvis', 'cloth')                                   # poły munduru
     for s_, n in ((1, 'L'), (-1, 'R')): m.add(cloth_cone((s_ * 0.33, 0.08, f['ch'] - 0.3), 0.26, 0.05, 0.09, 6, 0.06, m.rng), 'forearm' + n, 'cloth')   # strzępy rękawów
-    spine_spikes(m, n=5, length=0.05, mat='claw'); hands(m, f, n=4, length=0.1, spread=0.05, mat='claw')
-    m.wound('head', 0.45, (0.8, 0.25, 0.25), 0.03)
+    spine_spikes(m, n=5, length=0.05, mat='dark'); hands(m, f, n=4, length=0.1, spread=0.05, mat='dark')   # kolce i pazury z ciemnego materiału: mniej materiałów = mniej wywołań rysowania na policjanta
+    m.wound('head', 0.45, (0.8, 0.25, 0.25), 0.03, rim='dark')
     finish(m, walk=0.5, run=1.0, arm_walk=0.2, arm_run=0.5, lean_run=0.25, idle_sway=0.04, twitch=0.2); return m
 
 RECIPES = {n: g for n, g in globals().items() if n in ('mannequin', 'gravedigger', 'warden', 'doll', 'patient', 'butler', 'blind', 'threadman', 'furas', 'ghost', 'lavabeast', 'officer')}

@@ -7,6 +7,7 @@ import { updateDebug } from './core/debug.js';
 import { THREE, scene, camera, renderer, L, clearLevel, applyLighting, lighting } from './core/engine.js';
 import { LIGHT_PRESETS, LIGHT_MODE } from './core/config.js';
 import * as ECO from './core/economy.js';
+import { gateOpen } from './core/gtastore.js';   // brama do Scary GTA (core/gtagate.js)
 import * as NETM from './core/network.js';
 import { createJumpscare } from './core/levelkit.js';
 import { updatePlayer, setPlayerPosition, faceWorldYaw, buildHands, hands, playerBody, releaseAll } from './core/player.js';
@@ -175,6 +176,7 @@ NETM.onFollow((level, data) => {
     if (NETM.NET.mode !== 'guest') return;
     if (level === levelId && !SEEDED[level]) return;   // już tu jesteśmy
     if (!started) { pendingFollow = { level: level, data: data }; return; }
+    if (level === 'scarygta' && !gateOpen()) { toast('The host entered Scary GTA, but its gate is still locked for you (lobby annex).', '#ff7ac8'); return; }
     toast('Following the host...', '#9fc8ff');
     goToLevel(level, null, { seed: data.seed, noFollow: true, data: data.data });
 });

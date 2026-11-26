@@ -21,7 +21,8 @@ export const ZONES = [
     { id: 'statues', name: 'Statue Garden', x0: -8.8, x1: -3.4, z0: 24, z1: 37.6, wall: null },
     { id: 'radio', name: 'Radio', x0: 5.5, x1: 8.5, z0: 33, z1: 37.5, wall: null },
     { id: 'gallery', name: 'Ghost Gallery', x0: -7, x1: 4.6, z0: 48.6, z1: 50, wall: 'south' },
-    { id: 'rack', name: 'Ball rack', x0: -5.5, x1: -3.2, z0: 43, z1: 47, wall: null }
+    { id: 'rack', name: 'Ball rack', x0: -5.5, x1: -3.2, z0: 43, z1: 47, wall: null },
+    { id: 'gate', name: 'Scary GTA gate', x0: -13, x1: -6.2, z0: 20, z1: 23, wall: 'north' }
 ];
 export const zoneById = (id) => ZONES.find(z => z.id === id) || null;
 
@@ -33,6 +34,8 @@ export const ORGAN_AT = { x: 10, z: 47 };
 export const WALL_ROOM = { x0: -13.2, x1: -8.6, z0: 50, z1: 54.6, h: 3.3, panel: 0.4 };
 export const KEYPAD_AT = { x: -10.9, y: 1.55, z: 54.55 };
 export const RADIO_AT = { x: 7, z: 35 };
+// Brama do Scary GTA w północnej ścianie aneksu (core/annexgate.js): drzwi, a obok tablica z instrukcją i klawiaturą (jeden Terminal); lampki prób nad drzwiami
+export const GATE_AT = { door: { x: -11.2, z: 20.02 }, board: { x: -7.7, y: 2.1, z: 20.06, w: 2.8, h: 1.75 }, lamps: { y: 3.35, dx: 0.45 } };
 export function wallRoomProblems() {
     const bad = [], R = WALL_ROOM, strip = { x0: R.x0, x1: R.x1, z0: ANNEX.z1 - WALL_STRIP, z1: ANNEX.z1 };
     if (R.z0 !== ANNEX.z1) bad.push('the room does not start at the far wall');

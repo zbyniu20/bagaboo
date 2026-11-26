@@ -32,7 +32,7 @@ await ev((q) => { try { localStorage.setItem('bagaboo_settings', JSON.stringify(
 await ev(async () => { const M = await import('./main.js'); await M.loadLevel('scarygta'); });
 await page.waitForTimeout(5000);
 const BUDGET = +(process.env.BUDGET || 260);
-const views = [['spawn on the beach', 0, 1.2, 56, Math.PI], ['street crossing', -31, 1.2, -39, 0], ['boulevard centre', 0, 1.2, 40, 1.57], ['bank roof 38 m', -6, 39.5, -52, 0], ['casino roof 46 m', 24, 47.5, -52, 3.14], ['plaza', -3, 1.2, 18, 1.0]];
+const views = [['car bank (a)', -38, 1.2, -57, 3.14], ['car bank (b)', -38, 1.2, -67, 0], ['car casino', 0, 1.2, -57, 3.14], ['car motel', 0, 1.2, -19, 3.14], ['casino interior (facing the door)', 53, 1.2, -65, 1.57], ['casino interior (facing the slots)', 50, 1.2, -65, 3.14], ['spawn on the beach', 0, 1.2, 56, Math.PI], ['street crossing', -31, 1.2, -39, 0], ['boulevard centre', 0, 1.2, 40, 1.57], ['bank roof 38 m', -6, 39.5, -52, 0], ['casino roof 46 m', 24, 47.5, -52, 3.14], ['plaza', -3, 1.2, 18, 1.0]];
 // z aktywnym helikopterem, policją i 5 gwiazdkami (najgorszy przypadek)
 await ev(async () => { const G = await import('./levels/scarygta.js'); G.debugHeat(100); const S = G.testState(); for (let i = 0; i < 100 && S.heli.mode === 'away'; i++) await new Promise(r => setTimeout(r, 100)); });
 const out = [];

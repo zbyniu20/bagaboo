@@ -35,6 +35,7 @@ const info = () => ev(async () => { const G = await import('./levels/scarygta.js
 
 const sim = () => ev(async () => (await import('./levels/scarygta.js')).debugSim());
 const w = (ms) => page.waitForTimeout(ms);
+await ev(async () => { (await import('./levels/scarygta.js')).debugGtaNight('calm', 1e9); });   // noc (blackout i horda) nie wchodzi w drogę testowi policji
 const a0 = await sim();
 ok('the sim starts calm: no stars, patrolling cops exist, 3 gators', a0 && a0.stars === 0 && a0.cops > 0 && a0.gators === 3 && a0.busted < 0, a0);
 await ev(async () => { const G = await import('./levels/scarygta.js'); G.debugHeat(60); }); await w(500);
@@ -64,7 +65,7 @@ const r0 = await ev(async () => { const G = await import('./levels/scarygta.js')
 ok('the cable ride takes the player along the line', r0.z < 30 || r0.s.some(p => p && p !== 'idle'), r0);
 // nagrody: komplet toreb i 5 gwiazdek
 const fin = await ev(async () => { const G = await import('./levels/scarygta.js'), E = await import('./core/economy.js'), S = G.testState(); for (const b of S.bags) if (!b.got) G.debugTakeBag(b.id); await new Promise(r => setTimeout(r, 400)); G.debugFinish(5); return { heist: !!E.SAVE.achievements.gta_heist, ghost: !!E.SAVE.achievements.gta_ghost, palm: E.SAVE.owned.includes('hat:palmhat'), skin: E.SAVE.owned.includes('mskin:zombiecop'), got: S.got }; });
-ok('leaving with all six bags after 5 stars unlocks Heist legend (Palm hat) and Burn it down (Zombie cop skin)', fin.heist && fin.ghost && fin.palm && fin.skin && fin.got === 6, fin);
+ok('leaving with all six bags after 5 stars unlocks Heist legend (Palm hat) and Burn it down (Zombie cop skin)', fin.heist && fin.ghost && fin.palm && fin.skin && fin.got === 0, fin);   // po wyjściu torby są zużyte (dostawa do trybu)
 const models = await ev(async () => { const C = await import('./core/cosmetics.js'), M = await import('./core/monsterskins.js'); const gl = C.extraGlasses('neonshades'), hat = C.extraHat('palmhat'), sk = M.MONSTER_SKINS.zombiecop(); sk.animate(1.2); return { gl: gl.children.length, hat: hat.children.length, sk: sk.group.children.length }; });
 ok('the new cosmetics (Neon shades, Palm hat) and the Zombie cop monster skin build', models.gl >= 3 && models.hat >= 6 && models.sk >= 1, models);
 ok('no page errors', errors.length === 0, errors);
