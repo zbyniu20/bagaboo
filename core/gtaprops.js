@@ -104,6 +104,10 @@ export function createGtaProps(o) {
         const dh = X.dailyHeist(dailyDate()), g = getGta();
         x.textAlign = 'left'; x.fillStyle = '#ffd27a'; x.font = 'bold 18px monospace'; x.fillText('DAILY: ' + dh.target.toUpperCase() + ' under ' + formatTime(dh.par) + (g.daily.date === dailyDate() ? '  (best ' + formatTime(g.daily.best) + ')' : ''), 14, 24);
         x.fillStyle = '#9ad0ff'; x.font = '15px monospace'; x.fillText('TAGS ' + G.tagsGot + '/' + spots.tags.length + '  CLIMB casino ' + (g.climbBest.casino ? formatTime(g.climbBest.casino) : '--') + ' radio ' + (g.climbBest.radio ? formatTime(g.climbBest.radio) : '--'), 14, S - 14);
+        const ei = api.eggs && api.eggs(); if (ei) {   // licznik jajek i podpowiedź do następnego (zawinięta na dwie linie nad linią TAGS)
+            x.fillStyle = '#ffb0b0'; x.font = '14px monospace'; x.fillText('EGGS ' + ei.n + '/' + ei.total + (ei.hint ? '' : '  all found'), 14, S - 34);
+            if (ei.hint) { const cut = ei.hint.length <= 56 ? ei.hint.length : (ei.hint.lastIndexOf(' ', 56) > 0 ? ei.hint.lastIndexOf(' ', 56) : 56); x.fillStyle = '#d8a0a0'; x.fillText(ei.hint.slice(0, cut), 14, S - 66); if (ei.hint.length > cut) x.fillText(ei.hint.slice(cut + 1), 14, S - 50); }
+        }
         const run = Object.keys(G.climbs).find(k => G.climbs[k].st.ph === 'run'); if (run) { x.fillStyle = '#7fff90'; x.font = 'bold 22px monospace'; x.fillText('CLIMB ' + run + ': ' + formatTime(G.climbs[run].st.t), 14, 52); }
         G.phone.update();
     }
