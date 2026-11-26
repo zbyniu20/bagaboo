@@ -1,7 +1,7 @@
 # Graph Report - bagaboo  (2026-11-26)
 
 ## Corpus Check
-- 596 files · ~1,468,874 words
+- 596 files · ~1,470,575 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 100 file(s) not represented in the graph (top: .css 84, .glb 13, (none) 3)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b5e1c5b3`
+- Built from commit: `ab2c3cd0`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -275,8 +275,8 @@
 5. `mkRng()` - 100 edges
 6. `buzz()` - 97 edges
 7. `toTex()` - 96 edges
-8. `L` - 79 edges
-9. `buildDoor()` - 79 edges
+8. `buildDoor()` - 79 edges
+9. `L` - 79 edges
 10. `levelReward()` - 65 edges
 
 ## Surprising Connections (you probably didn't know these)
@@ -425,7 +425,7 @@ Nodes (69): ALIAS, argv, byId, cmdPath(), craftFits(), craftOf(), CRAFTS, credit
 Cohesion: 0.03
 Nodes (62): argv, asJson, AUDIENCE, BANNED, BUSY_EDGE, BUSY_RNG, CATEGORY, CHECKS (+54 more)
 
-### Community 31 - "playwright"
+### Community 31 - "scripts"
 Cohesion: 0.05
 Nodes (39): playwright, typescript, DEPS, errors, HERE, MIME, ROOT, server (+31 more)
 
@@ -458,8 +458,8 @@ Cohesion: 0.09
 Nodes (35): addMarks(), animate(), buildDecor(), buildDecoys(), buildGhost(), buildHangers(), buildItems(), DOORS (+27 more)
 
 ### Community 39 - "lightbake.js"
-Cohesion: 0.12
-Nodes (27): FAMILIES, FAMILY_OF, familyFor(), lerp(), mixHex(), TILE, BAKE, bakeScale() (+19 more)
+Cohesion: 0.17
+Nodes (21): rayBox(), BAKE, bakeScale(), bakeVertex(), blocked(), boxVerts(), cellFor(), cullBoxes() (+13 more)
 
 ### Community 40 - "staff.js"
 Cohesion: 0.11
@@ -729,7 +729,7 @@ Nodes (19): alpha(), banned(), blendsClean(), companion(), darkLight(), fallback
 Cohesion: 0.20
 Nodes (18): mount(), params, makeTexture(), photoGL(), adapt(), bindTextures(), draw(), finish() (+10 more)
 
-### Community 107 - "ref_path"
+### Community 107 - "mine.mjs"
 Cohesion: 0.06
 Nodes (28): BUDGET, DEPS, errors, HERE, LEVELS, MIME, ROOT, server (+20 more)
 
@@ -1086,8 +1086,8 @@ Cohesion: 0.12
 Nodes (21): isReservedNick(), scene, _c, ensurePool(), _p, registerLevelLights(), sources, updateLightPool() (+13 more)
 
 ### Community 217 - "shots.mjs"
-Cohesion: 0.03
-Nodes (70): playwright, errs, EXTRA, HERE, MIME, ROOT, server, views (+62 more)
+Cohesion: 0.04
+Nodes (55): errs, EXTRA, HERE, MIME, ROOT, server, views, blobs (+47 more)
 
 ### Community 218 - "visuals.js"
 Cohesion: 0.17
@@ -1245,18 +1245,6 @@ Nodes (9): cdn, DIST, errors, failures, HERE, LEVELS, MIME, ROOT (+1 more)
 Cohesion: 0.20
 Nodes (8): DEPS, errors, ev(), HERE, MIME, ROOT, server, shot()
 
-### Community 255 - "silk-folds/effect.js"
-Cohesion: 0.52
-Nodes (6): cool(), mount(), params, sheenTurn(), tones(), uniforms()
-
-### Community 256 - "registry.mjs"
-Cohesion: 0.22
-Nodes (6): achievements, bad, ids, listed, ROOT, themes
-
-### Community 257 - "beep"
-Cohesion: 0.36
-Nodes (8): debugRadio(), draw(), tune(), updateAnnexRadio(), beep(), updateRails(), stationAt(), transmission()
-
 ### Community 258 - "_print-core/demo.js"
 Cohesion: 0.40
 Nodes (3): EFFECT_LABEL, PAPERS, EFFECTS
@@ -1278,24 +1266,24 @@ Cohesion: 0.13
 Nodes (23): addPoster(), castVote(), contestHost(), drawGallery(), nameOf(), restoreWall(), voteFor(), encodeRle() (+15 more)
 
 ## Knowledge Gaps
-- **57 isolated node(s):** `./core/auth.js`, `./core/annexzip.js`, `./core/annexslide.js`, `./core/deepskulls.js`, `./core/deep.js` (+52 more)
+- **57 isolated node(s):** `./core/annexradio.js`, `./core/annexroom.js`, `./core/annexslide.js`, `./core/annexstatues.js`, `./core/annextunnel.js` (+52 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2618 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **24 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `f()` connect `build.js` to `workshop.js`, `ref_path`, `static.mjs`, `copy-lint.mjs`, `gate.mjs`, `changed.mjs`, `ref_node_fs`?**
-  _High betweenness centrality (0.359) - this node is a cross-community bridge._
+- **Why does `f()` connect `build.js` to `workshop.js`, `mine.mjs`, `static.mjs`, `copy-lint.mjs`, `gate.mjs`, `changed.mjs`, `ref_node_fs`?**
+  _High betweenness centrality (0.318) - this node is a cross-community bridge._
 - **Are the 51 inferred relationships involving `lib()` (e.g. with `arrive()` and `audit()`) actually correct?**
   _`lib()` has 51 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `./core/auth.js`, `./core/annexzip.js`, `./core/annexslide.js` to the rest of the system?**
+- **What connects `./core/annexradio.js`, `./core/annexroom.js`, `./core/annexslide.js` to the rest of the system?**
   _57 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `network.js` be split into smaller, more focused modules?**
   _Cohesion score 0.04499217527386541 - nodes in this community are weakly interconnected._
 - **Why does `mode` connect `workshop.js` to `build.js`?**
-  _High betweenness centrality (0.288) - this node is a cross-community bridge._
+  _High betweenness centrality (0.238) - this node is a cross-community bridge._
 - **Should `economy.js` be split into smaller, more focused modules?**
   _Cohesion score 0.04804392587508579 - nodes in this community are weakly interconnected._
-- **Why does `L` connect `cemetery.js` to `network.js`, `silence.js`, `audio.js`, `workshop.js`, `range.js`, `banana.js`, `monster.js`, `main.js`, `annexlayout.js`, `puzzlelogic.js`, `redlight.js`, `addCrispBlock`, `terminal.js`, `hotel.js`, `graffiti.js`, `mine.js`, `furas.js`, `scarygta.js`, `memory.js`, `vehiclelogic.js`, `annexplay.js`, `catacombs.js`, `room000.js`, `lightbake.js`, `staff.js`, `well.js`, `home.js`, `lobby.js`, `citysim.js`, `toast`, `nightchest.js`, `xrperf.js`, `lobby-door.js`, `spectate.js`, `petstore.js`, `decallogic.js`, `annexgate.js`, `core/kit.js`, `annexgallery.js`, `player.js`, `visuals.js`, `levels.js`, `props.js`, `lobbygames.js`, `lobbyplay.js`, `bestiary.js`, `acoustics.js`, `helilogic.js`, `trainingdummy.js`, `pet.js`?**
-  _High betweenness centrality (0.048) - this node is a cross-community bridge._
+- **Why does `sub()` connect `build.js` to `init`?**
+  _High betweenness centrality (0.043) - this node is a cross-community bridge._
