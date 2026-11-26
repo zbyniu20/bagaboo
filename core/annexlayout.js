@@ -9,7 +9,7 @@ export const HALL = { x0: -15, x1: 15, z0: -15, z1: 15 };                 // daw
 export const ANNEX = { x0: -15, x1: 15, z0: 20, z1: 50, H: 20 };          // wnętrze aneksu; ściany 5 m grubości na zewnątrz (do +-20 i do z = 55)
 export const TUNNEL = { x0: -3, x1: 1, z0: 15, z1: 20, top: 4.6 };        // otwór w południowej ścianie: 4 m szerokości, 5 m długości, wysokość 4,6 m
 export const SPINE = { x0: -3, x1: 1 };                                   // wolny pas od tunelu do dalekiej ściany (równa szerokość tunelu)
-export const BOUNDS_MAX_Z = 49.6;                                         // twardy limit ruchu gracza na południu (L.bounds.maxZ)
+export const BOUNDS_MAX_Z = 54.4;                                         // twardy limit ruchu gracza na południu (L.bounds.maxZ): sięga do pokoju w ścianie (bryły ścian dalej blokują ruch)
 export const MOUTH_KEEPOUT = 3;                                           // w tej odległości od wylotu tunelu (z = ANNEX.z0) nic nie stoi
 
 // Strefy aktywności (prostokąty x0..x1, z0..z1). Przy ścianie stoją te, które się do niej opierają (climb: ściana wschodnia).
@@ -18,6 +18,8 @@ export const ZONES = [
     { id: 'ouija', name: 'Séance table', x0: -14.5, x1: -6, z0: 38.5, z1: 48.5, wall: null },
     { id: 'music', name: 'Haunted instruments', x0: 5, x1: 14.5, z0: 42, z1: 49, wall: null },
     { id: 'zipline', name: 'Zipline', x0: -15, x1: -9, z0: 23, z1: 37, wall: 'west' },
+    { id: 'statues', name: 'Statue Garden', x0: -8.8, x1: -3.4, z0: 24, z1: 37.6, wall: null },
+    { id: 'radio', name: 'Radio', x0: 5.5, x1: 8.5, z0: 33, z1: 37.5, wall: null },
     { id: 'gallery', name: 'Ghost Gallery', x0: -7, x1: 4.6, z0: 48.6, z1: 50, wall: 'south' },
     { id: 'rack', name: 'Ball rack', x0: -5.5, x1: -3.2, z0: 43, z1: 47, wall: null }
 ];
@@ -26,6 +28,25 @@ export const zoneById = (id) => ZONES.find(z => z.id === id) || null;
 // Stół spirytystyczny (okrągły blat, promień 1,1 m; plansza 1 m promienia) i organy (półkole klawiszy wokół środka, wymiary w core/organlogic.js)
 export const OUIJA_AT = { x: -10.5, z: 43.5, tableR: 1.1, topY: 0.9, standR: 0.8 };
 export const ORGAN_AT = { x: 10, z: 47 };
+
+// Pokój w dalekiej ścianie (grubość ściany z 50 do 55): wnęka 4,6 x 4,6 m i 3,3 m wysokości z panelem 0,4 m od strony aneksu (core/annexroom.js). Pozycje obiektów wewnątrz: SAFE_AT, KEYPAD_AT.
+export const WALL_ROOM = { x0: -13.2, x1: -8.6, z0: 50, z1: 54.6, h: 3.3, panel: 0.4 };
+export const KEYPAD_AT = { x: -10.9, y: 1.55, z: 54.55 };
+export const RADIO_AT = { x: 7, z: 35 };
+export function wallRoomProblems() {
+    const bad = [], R = WALL_ROOM, strip = { x0: R.x0, x1: R.x1, z0: ANNEX.z1 - WALL_STRIP, z1: ANNEX.z1 };
+    if (R.z0 !== ANNEX.z1) bad.push('the room does not start at the far wall');
+    if (R.z1 > ANNEX.z1 + 5 - 0.2 || R.x0 < ANNEX.x0 - 5 || R.x1 > ANNEX.x1 + 5) bad.push('the room is not inside the wall shell');
+    for (const z of ZONES) if (rectOverlap(z, strip)) bad.push('the room entrance strip is blocked by ' + z.id);
+    if (rectOverlap(strip, spineRect())) bad.push('the entrance strip is on the spine');
+    if (R.x0 < -7.7 && R.x1 > -7.7) bad.push('the room is under the gallery backdrop');
+    const sk = DEEP_SKULLS.room; if (sk[0] < R.x0 || sk[0] > R.x1 || sk[2] < R.z0 + R.panel || sk[2] > R.z1 || sk[1] > R.h - 0.3) bad.push('the room skull is outside the room');
+    if (KEYPAD_AT.x < R.x0 || KEYPAD_AT.x > R.x1 || KEYPAD_AT.z > R.z1 || KEYPAD_AT.y > R.h) bad.push('the keypad is outside the room');
+    if (BOUNDS_MAX_Z < R.z1 - 0.3) bad.push('the bounds do not reach into the room');
+    return bad;
+}
+// Srebrne czaszki głębokich sekretów (id = id sekretu z core/puzzlelogic.js). 'room' leży w pokoju w ścianie (core/annexroom.js).
+export const DEEP_SKULLS = { zipskull: [-12.8, 6.85, 30.5], ceil: [14.4, 15.05, 38.45], room: [-10.7, 0.9, 53.0] };
 
 // Światła aneksu: [x, y, z, kolor, moc, zasięg]. Idą przez tę samą listę co światła lobby (fx.flickers), więc Nocna Zmiana je przyciemnia.
 export const LIGHTS = [[-8, 12, 26, 0xffa860, 24, 16], [8, 12, 26, 0xffa860, 24, 16], [-8, 12, 43, 0xff9a50, 22, 15], [9, 12, 45, 0xff9a50, 22, 15], [0, 14, 36, 0xffb070, 20, 18], [12.5, 7, 31, 0xffa060, 16, 12]];

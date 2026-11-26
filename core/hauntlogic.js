@@ -14,7 +14,7 @@ export const HAUNT = {
     HOME: { EVERY: [18, 40], KINDS: ['shift', 'lights', 'writing', 'cups', 'statue'] },
     PET: { RANGE: 14, NEAR: 4 }
 };
-export const HAUNT_STATE = { night: 'calm', monster: null };   // monster: { x, z } tylko w fazie 'night'
+export const HAUNT_STATE = { night: 'calm', monster: null, scare: null };   // scare: { x, z, until (s), pet } chwilowy strach stworka (stół ouija w aneksie); osobne pole, bo lobbyplay.js co klatkę nadpisuje monster   // monster: { x, z } tylko w fazie 'night'
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
 const pt = (p) => !!p && num(p.x) && num(p.z);
 export const nextIn = (range, rand) => range[0] + rand() * (range[1] - range[0]);

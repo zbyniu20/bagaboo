@@ -5,10 +5,12 @@
 // Odkrycie: bestiaryTick(poziom, dt) wołane z main.js co klatkę liczy czas na poziomie; po UNLOCK_SECONDS potwór trafia do SAVE.bestiary.
 // Komplet daje jednorazowe REWARD Bagabucksów. Wszystko lokalne (nic nie idzie przez sieć).
 // ==========================================
-import { THREE, L, tex, addCollider } from './engine.js';
+import { THREE, L, tex, addCollider, camera } from './engine.js';
 import * as T from './textures.js';
 import { Terminal, terminals, toast, wrapText, AMBER, AMBER_DIM, GOLD, OK_COL } from './terminal.js';
-import { SAVE, saveGame, addBones } from './economy.js';
+import { SAVE, saveGame, addBones, getLook } from './economy.js';
+import { createHead } from './avatar.js';
+import { findDeepSecret } from './deep.js';
 import { hands } from './player.js';
 import { swapRoot } from './glbmonster.js';
 import * as SFX from './audio.js';
@@ -23,7 +25,7 @@ export function discoverBeast(id) {
     const r = B.unlockBeast(getBestiary(), id); if (!r.isNew) return false;
     SAVE.bestiary = r.state; const b = B.beastById(id);
     toast('New Bestiary entry: ' + b.name + ' (' + B.seenCount(r.state) + '/' + B.BEASTS.length + ')', '#ffd27a'); SFX.bell && SFX.bell();
-    if (r.complete) { SAVE.bestiary = B.markRewarded(SAVE.bestiary); addBones(B.REWARD, 'Bestiary complete'); toast('Bestiary complete! +' + B.REWARD + ' Bagabucks', '#7fff90'); }
+    if (r.complete) { ensureYou(); SAVE.bestiary = B.markRewarded(SAVE.bestiary); addBones(B.REWARD, 'Bestiary complete'); toast('Bestiary complete! +' + B.REWARD + ' Bagabucks', '#7fff90'); }
     saveGame(); if (G) G.term.dirty = true;
     return true;
 }
@@ -73,6 +75,22 @@ export function buildBestiary(cx, cz) {
     addCollider(cx - 0.12, 0, cz - 0.12, cx + 0.12, 1.2, cz + 0.12);
     L.reserved.push([cx, cz, 4.8]);
     G.term.dirty = true;
+    if (B.isComplete(st)) ensureYou();
+}
+
+// Trzynasta witryna (sekret you): pojawia się po odkryciu wszystkich 12 potworów, stoi obok pierwszego rzędu, a w środku jest popiersie gracza w jego własnej skórce
+function ensureYou() {
+    if (!G || G.you) return;
+    const x = G.cx - 3.5, z = G.cz - 1.9, g = new THREE.Group(); g.position.set(x, 0, z); L.root.add(g);
+    const gold = G.mats.find(m => m.metalness === 0.8 && m.roughness === 0.35), dark = G.mats[0];
+    const plinth = new THREE.Mesh(G.geos[0], dark); plinth.position.y = 0.45; g.add(plinth);
+    const trim = new THREE.Mesh(G.geos[1], gold || dark); trim.position.y = 0.92; g.add(trim);
+    const lt = labelTexture('YOU', true); G.texs.push(lt); const pm = new THREE.MeshBasicMaterial({ map: lt, toneMapped: false }); G.mats.push(pm);
+    const plate = new THREE.Mesh(G.geos[3], pm); plate.position.set(0, 0.55, 0.352); g.add(plate);
+    const glass = new THREE.Mesh(G.geos[2], G.mats[2].clone()); G.mats.push(glass.material); glass.position.y = 0.92 + 0.575; g.add(glass);
+    const head = createHead(getLook(), false); head.scale.setScalar(1.5); head.position.y = 1.35; head.rotation.y = Math.PI; g.add(head);
+    addCollider(x - 0.42, 0, z - 0.37, x + 0.42, 2.1, z + 0.37);
+    G.you = { g: g, x: x, z: z, head: head };
 }
 
 function draw(t) {
@@ -101,6 +119,7 @@ export function updateBestiary(dt, t) {
         const i = G.cases.findIndex(q => Math.hypot(_w.x - q.x, _w.z - q.z) < TOUCH && _w.y < 2.05);
         if (i >= 0 && i !== G.sel) { select(i); G.touchT = 0.4; break; }
     }
+    if (G.you) { G.you.head.rotation.y = Math.PI + Math.sin(G.clock * 0.6) * 0.5; camera.getWorldPosition(_w); if (Math.hypot(_w.x - G.you.x, _w.z - G.you.z) < 1.4 && _w.y < 3) findDeepSecret('you'); }
     // Wybrana witryna lekko lśni; figurki odkryte obracają się wolno
     const st = getBestiary();
     G.cases.forEach((q, i) => { q.glass.material.opacity = 0.13; q.fig.rotation.y = B.isSeen(st, q.id) ? Math.sin(G.clock * 0.5 + i) * 0.35 : 0; });
@@ -108,6 +127,7 @@ export function updateBestiary(dt, t) {
 }
 export function disposeBestiary() {
     if (!G) return;
+    if (G.you) G.you.head.traverse(o => { if (o.geometry) o.geometry.dispose(); const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; for (const m of ms) { if (m.map) m.map.dispose(); m.dispose(); } });
     const i = terminals.indexOf(G.term); if (i >= 0) terminals.splice(i, 1);
     for (const x of G.texs) x.dispose(); for (const g of G.geos) g.dispose(); for (const m of G.mats) m.dispose();
     G.term.tex.dispose();
@@ -115,4 +135,5 @@ export function disposeBestiary() {
 }
 export const debugBestiary = () => G ? { cases: G.cases.length, sel: G.sel, seen: B.seenCount(getBestiary()) } : null;   // dla testów
 export function debugFigureHeights() { return G ? G.cases.map(q => { const bb = new THREE.Box3().setFromObject(q.fig), s = bb.getSize(new THREE.Vector3()); return +s.y.toFixed(2); }) : []; }   // wysokości figurek (m), dla testów
+export const debugYou = () => G && G.you ? { x: G.you.x, z: G.you.z } : null;   // dla testów
 export function debugSelectBeast(i) { select(i); return G ? G.sel : -1; }

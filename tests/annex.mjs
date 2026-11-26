@@ -34,7 +34,7 @@ const shot = async (name, x, y, z, yaw) => { if (!SP) return; await ev(async ([x
 const state = () => ev(async () => { const E = await import('./core/engine.js'), P = await import('./core/player.js'), A = await import('./core/annex.js'); return { level: E.L.levelId, z: +P.playerBody.position.z.toFixed(2), maxZ: E.L.bounds.maxZ, a: A.debugAnnex() }; });
 
 const s0 = await state();
-ok('the lobby builds the annex with 13 climb holds and the bounds reach into it', s0.level === 'lobby' && s0.a && s0.a.holds === 13 && s0.maxZ === 49.6, s0);
+ok('the lobby builds the annex with 13 climb holds and the bounds reach into the far wall room', s0.level === 'lobby' && s0.a && s0.a.holds === 13 && s0.maxZ === 54.4, s0);
 await shot('tunnel', -1, 1.6, 11, Math.PI);
 await shot('mouth', -1, 1.6, 22, Math.PI);
 await shot('back', -1, 1.6, 40, 0);

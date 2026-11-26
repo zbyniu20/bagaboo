@@ -11,6 +11,8 @@ import { SAVE, saveGame } from './economy.js';
 import * as SFX from './audio.js';
 import * as Gl from './gallerylogic.js';
 import { normalizeAnnex } from './climblogic.js';
+import { findDeepSecret } from './deep.js';
+import * as P from './puzzlelogic.js';
 
 let G = null;
 const RACK = [[-4.4, 0.2, 44.2], [-4.4, 0.2, 45], [-4.4, 0.2, 45.8]];
@@ -27,11 +29,11 @@ function ghostTexture() {
 
 export function buildAnnexGallery(flickers) {
     const root = L.root;
-    G = { geos: [], mats: [], texs: [], st: Gl.newGallery(), vis: [0, 0, 0, 0, 0], balls: [], idle: [0, 0, 0], clock: 0, sig: '', hits: 0, lastPh: 'idle' };
+    G = { geos: [], mats: [], texs: [], st: Gl.newGallery(), vis: [0, 0, 0, 0, 0], balls: [], idle: [0, 0, 0], clock: 0, sig: '', hits: 0, lastPh: 'idle', times: [], gold: null, goldHits: 0 };
     const geo = (g) => { G.geos.push(g); return g; }, mat = (m) => { G.mats.push(m); return m; };
     const back = new THREE.Mesh(geo(new THREE.PlaneGeometry(13, 2.6)), mat(new THREE.MeshStandardMaterial({ color: 0x1a1014, roughness: 0.8 }))); back.position.set(-1.2, 1.5, 49.9); back.rotation.y = Math.PI; root.add(back);
-    const gt = ghostTexture(); G.texs.push(gt); const gm = mat(new THREE.MeshBasicMaterial({ map: gt, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, toneMapped: false })), gg = geo(new THREE.PlaneGeometry(Gl.GAL.W, Gl.GAL.H));
-    G.ghosts = Gl.GAL.XS.map((x) => { const piv = new THREE.Group(); piv.position.set(x, Gl.GAL.BASE, Gl.GAL.Z); root.add(piv); const m = new THREE.Mesh(gg, gm); m.position.y = Gl.GAL.H / 2; m.rotation.y = Math.PI; piv.add(m); piv.rotation.x = Math.PI / 2; return piv; });   // leżące = schowane
+    const gt = ghostTexture(); G.texs.push(gt); const gm = mat(new THREE.MeshBasicMaterial({ map: gt, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, toneMapped: false })), gmGold = mat(new THREE.MeshBasicMaterial({ map: gt, color: 0xffd040, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, toneMapped: false })); G.gm = gm; G.gmGold = gmGold; const gg = geo(new THREE.PlaneGeometry(Gl.GAL.W, Gl.GAL.H));
+    G.ghosts = Gl.GAL.XS.map((x) => { const piv = new THREE.Group(); piv.position.set(x, Gl.GAL.BASE, Gl.GAL.Z); root.add(piv); const m = new THREE.Mesh(gg, gm); m.position.y = Gl.GAL.H / 2; m.rotation.y = Math.PI; piv.add(m); piv.userData.mesh = m; piv.rotation.x = Math.PI / 2; return piv; });   // leżące = schowane
     // Tablica wyniku nad widmami
     G.cv = T.makeCanvas(1024, 256); G.cx = G.cv.getContext('2d'); G.tx = T.toTex(G.cv, false); G.texs.push(G.tx);
     const board = new THREE.Mesh(geo(new THREE.PlaneGeometry(5, 1.25)), mat(new THREE.MeshBasicMaterial({ map: G.tx, toneMapped: false }))); board.position.set(-1.2, 3.7, 49.85); board.rotation.y = Math.PI; root.add(board);
@@ -63,11 +65,13 @@ export function updateAnnexGallery(dt, t) {
     if (!G) return; G.clock += dt;
     const prev = G.st.ph; G.st = Gl.galleryStep(G.st, dt, Math.random);
     // Trafienia: środek piłki w bryle stojącego widma
-    for (const b of G.balls) { const p = b.userData.body.position; for (let i = 0; i < Gl.GAL.XS.length; i++) { if (Gl.hitsTarget(i, [p.x, p.y, p.z])) { const r = Gl.registerHit(G.st, i); if (r.hit) { G.st = r.st; G.hits++; SFX.beep && SFX.beep(900 + 120 * G.st.streak, 0.07, 0.12); } } } }
+    for (const b of G.balls) { const p = b.userData.body.position; for (let i = 0; i < Gl.GAL.XS.length; i++) { if (Gl.hitsTarget(i, [p.x, p.y, p.z])) { const r = Gl.registerHit(G.st, i); if (r.hit) { G.st = r.st; G.hits++; SFX.beep && SFX.beep(900 + 120 * G.st.streak, 0.07, 0.12); onHit(i); } } } }
     if (prev === 'run' && G.st.ph === 'over') {
         const best = getGallery().galleryBest; if (G.st.last > best) { SAVE.annex = Object.assign({}, getGallery(), { galleryBest: G.st.last }); saveGame(); toast('New Ghost Gallery best: ' + G.st.last, '#ffd27a'); SFX.bell && SFX.bell(); }
         else toast('Ghost Gallery: ' + G.st.last + ' (best ' + best + ')', '#7fff90');
     }
+    // Złote widmo: rzadszy cel na 5 s po trzech trafieniach w 3 s; trafienie daje 100 punktów (sekret gold)
+    if (G.gold) { G.gold.t -= dt; if (G.gold.t <= 0) endGold(); else { G.st.t[G.gold.i].up = true; G.st.t[G.gold.i].left = Math.max(G.st.t[G.gold.i].left, 0.6); } }
     // Widma wstają i chowają się płynnie
     G.ghosts.forEach((g, i) => { const want = G.st.t[i].up ? 0 : Math.PI / 2; G.vis[i] += (want - G.vis[i]) * Math.min(1, dt * 12); g.rotation.x = G.vis[i]; });
     // Piłki wracają na stojak, gdy długo leżą daleko od niego
@@ -78,8 +82,16 @@ export function updateAnnexGallery(dt, t) {
     });
     const sig = G.st.ph + ':' + G.st.score + ':' + Math.ceil(Gl.timeLeft(G.st)) + ':' + G.st.streak + ':' + getGallery().galleryBest; if (sig !== G.sig) { G.sig = sig; draw(); }
 }
+function startGold(i) { if (G.gold) return; G.gold = { i: i, t: 5 }; G.ghosts[i].userData.mesh.material = G.gmGold; G.st.t[i].up = true; G.st.t[i].left = 5; toast('A golden ghost appears!', '#ffd27a'); SFX.bell && SFX.bell(); }
+function endGold() { if (!G.gold) return; G.ghosts[G.gold.i].userData.mesh.material = G.gm; G.gold = null; }
+// Trafienie widma i: seria trzech w 3 s budzi złote; trafienie złotego daje bonus i sekret
+function onHit(i) {
+    if (G.gold && G.gold.i === i) { G.st.score += 90; G.goldHits++; endGold(); findDeepSecret('gold'); G.times = []; return; }
+    const r = P.comboStep(G.times, G.clock); G.times = r.times; if (r.fired) startGold((i + 2) % Gl.GAL.XS.length);
+}
 export function disposeAnnexGallery() { if (!G) return; for (const g of G.geos) g.dispose(); for (const m of G.mats) m.dispose(); for (const x of G.texs) x.dispose(); G = null; }
-export const debugAnnexGallery = () => G ? { ph: G.st.ph, score: G.st.score, last: G.st.last, hits: G.hits, balls: G.balls.length, up: G.st.t.map(q => q.up), best: getGallery().galleryBest } : null;   // dla testów
+export const debugAnnexGallery = () => G ? { ph: G.st.ph, score: G.st.score, last: G.st.last, hits: G.hits, balls: G.balls.length, up: G.st.t.map(q => q.up), best: getGallery().galleryBest, gold: G.gold ? G.gold.i : -1, goldHits: G.goldHits } : null;   // dla testów
 export function debugGalleryForceUp(i) { if (G) { G.st.t[i].up = true; G.st.t[i].left = 3; } }
 export function debugGalleryBall(i, x, y, z) { if (G) { const b = G.balls[i].userData.body; b.position.set(x, y, z); b.velocity.set(0, 0, 0); } }
+export const debugGalleryGold = (i) => { if (G) startGold(i); return G && G.gold ? G.gold.i : -1; };
 export function debugGalleryEnd() { if (G) { G.st.ph = 'run'; G.st.time = Gl.GAL.ROUND - 0.2; } }
