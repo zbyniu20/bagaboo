@@ -331,7 +331,13 @@ export function extraHat(id) {
     } else if (id === 'wantedhat') {   // Scary GTA: pięć złotych gwiazdek poszukiwania nad głową
         const star = new THREE.Shape(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 0.02 : 0.045, a = -Math.PI / 2 + i * Math.PI / 5; (i ? star.lineTo : star.moveTo).call(star, Math.cos(a) * r, Math.sin(a) * r); } star.closePath();
         const sg = new THREE.ExtrudeGeometry(star, { depth: 0.012, bevelEnabled: false }), glow = new THREE.MeshBasicMaterial({ color: 0xffd23a });
-        for (let i = 0; i < 5; i++) { const st = at(sg, glow, (i - 2) * 0.085, 0.36 + (2 - Math.abs(i - 2)) * 0.025, 0); st.rotation.z = (i - 2) * -0.15; st.castShadow = false; g.add(st); }
+        for (let i = 0; i < 5; i++) { const st = at(sg, glow, (i - 2) * 0.085, 0.36 + (2 - Math.abs(i - 2)) * 0.025, 0); st.rotation.z = (i - 2) * -0.15; st.castShadow = false; g.add(st); }    } else if (id === 'detectivehat') {   // Scary GTA (nagroda za rozwiązanie sprawy): filcowy kapelusz detektywa z kartą prasową za wstążką
+        const felt = mat({ color: 0x6a5a48, roughness: 0.95 }), band = mat({ color: 0x2a1414, roughness: 0.8 }), card = mat({ color: 0xf0ece0, roughness: 0.7 });
+        g.add(at(new THREE.CylinderGeometry(0.22, 0.22, 0.012, 26), felt, 0, 0.1, 0));
+        const crown = at(new THREE.CylinderGeometry(0.1, 0.12, 0.13, 20), felt, 0, 0.17, 0); g.add(crown);
+        g.add(at(new THREE.CylinderGeometry(0.122, 0.126, 0.035, 20), band, 0, 0.125, 0));
+        g.add(at(new THREE.BoxGeometry(0.06, 0.04, 0.004), card, 0.045, 0.19, -0.11).rotateX(0.2));
+        const dent = at(new THREE.BoxGeometry(0.08, 0.02, 0.1), felt, 0, 0.235, 0); g.add(dent);
     }
     return g;
 }
@@ -479,7 +485,11 @@ export function extraGlasses(id) {
         g.add(at(new THREE.CylinderGeometry(0.026, 0.03, 0.08, 12), body, 0.047, 0.03, -0.17).rotateX(Math.PI / 2));
         g.add(at(new THREE.CircleGeometry(0.02, 12), red, 0.047, 0.03, -0.211).rotateY(Math.PI));
         const b = at(new THREE.CylinderGeometry(0.0025, 0.0025, 0.35, 5), beam, 0.047, 0.03, -0.39); b.rotation.x = Math.PI / 2; b.castShadow = false; g.add(b);
-        g.add(at(new THREE.BoxGeometry(0.1, 0.012, 0.01), body, -0.03, 0.045, -0.131));
+        g.add(at(new THREE.BoxGeometry(0.1, 0.012, 0.01), body, -0.03, 0.045, -0.131));    } else if (id === 'stuntgoggles') {   // Scary GTA (nagroda za wszystkie skoki): skórzane gogle kaskadera z bursztynowymi szkłami i paskiem
+        const leather = mat({ color: 0x4a2a14, roughness: 0.8 }), amber = new THREE.MeshBasicMaterial({ color: 0xffb030 });
+        for (const sd of [-1, 1]) { g.add(at(new THREE.TorusGeometry(0.036, 0.009, 8, 20), leather, sd * 0.047, 0.03, -0.136)); g.add(at(new THREE.CircleGeometry(0.031, 18), amber, sd * 0.047, 0.03, -0.14).rotateY(Math.PI)); }
+        g.add(at(new THREE.BoxGeometry(0.03, 0.012, 0.012), leather, 0, 0.03, -0.136));
+        g.add(at(new THREE.BoxGeometry(0.3, 0.02, 0.02), leather, 0, 0.03, -0.03));
     }
     return g;
 }
