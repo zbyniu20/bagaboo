@@ -21,6 +21,10 @@ import { safeName } from '../core/netguard.js';
 import * as GU from '../core/gunlogic.js';
 import * as HL from '../core/helilogic.js';
 import { createHeli } from '../core/heli.js';
+import { createWeather } from '../core/weather.js';
+import * as WX from '../core/cityweatherlogic.js';
+import * as RD from '../core/radiologic.js';
+import { textToEvents } from '../core/voicelogic.js';
 import { createCitySim, updateRails, ridingAny, cancelRails } from '../core/citysim.js';
 import * as WL from '../core/wantedlogic.js';
 import * as AI2 from '../core/cityai.js';
@@ -120,6 +124,8 @@ export function build() {
     S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
     S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
+    S.wx = WX.newWeather(Math.random, Math.random() < 0.5 ? 'clear' : 'drizzle'); S.weather = createWeather();   // pogoda lokalna: każdy klient ma własną
+    S.radio = RD.newRadio(); S.radioText = null; S.radioEnd = 0; S.flags = { swat: false, shot: false, busted: false };
     S.heli = HL.newHeli(); S.heliV = createHeli(); S.eyeOnMe = false;
     S.gunS = { me: GU.newShooter() }; S.mode = GU.modeFor(df.id); S.fx = []; S.feed = []; S.hurtT = 0; S.killer = null; S.gunMesh = null;
     buildFx(); L.onTrigger = (i) => fire(i);
@@ -233,7 +239,7 @@ function drawHud(p) {
     const cops = S.sim.activeCops(), near = cops.filter(c => Math.hypot(c.bot.x - p.x, c.bot.z - p.z) < 30), chasing = cops.some(c => c.st.mode === 'chase');
     x.font = 'bold 26px "Courier New", monospace'; x.fillStyle = S.eyeOnMe ? '#ff2a2a' : S.hidden ? '#9ad0ff' : (chasing ? '#ff4a2a' : (near.length ? '#ffb030' : '#8a8090'));
     x.fillText(S.busted >= 0 ? 'BUSTED... back at a safe house soon' : (S.eyeOnMe ? 'THE EYE SEES YOU! Get under a roof or hide!' : S.hidden ? 'HIDDEN: stay still, they cannot see you' : (chasing ? 'THEY SEE YOU! Run, climb or hide!' : (near.length ? 'Cops nearby (' + near.length + '). Stay out of the light.' : 'Quiet. Keep it that way.'))), 30, 196);
-    x.font = '22px "Courier New", monospace'; x.fillStyle = '#8a7a9a'; x.fillText('Hide next to dumpsters. Cops cannot climb: use roofs and the cable rides.', 30, 232);
+    x.font = '22px "Courier New", monospace'; x.fillStyle = '#8a7a9a'; if (S.radioText && S.clock < S.radioText.until) { x.fillStyle = '#9ad0ff'; x.fillText('RADIO: ' + S.radioText.t, 30, 232); } else x.fillText('Hide next to dumpsters. Cops cannot climb: use roofs and the cable rides.', 30, 232);
     const gs = S.gunS.me, ready = gs.reloadAt < 0 || S.clock >= gs.reloadAt;
     x.font = 'bold 28px "Courier New", monospace'; x.fillStyle = gs.hp > 50 ? '#7fff90' : '#ff5a4a'; x.fillText('HP ' + Math.round(gs.hp), 30, 270);
     x.fillStyle = ready ? '#ffd27a' : '#ff9a3a'; x.fillText(ready ? 'AMMO ' + (gs.reloadAt >= 0 ? GU.GUN.MAG : gs.ammo) + '/' + GU.GUN.MAG : 'RELOADING', 190, 270);
@@ -245,6 +251,8 @@ export function update(dt, t, ctx) {
     if (!S || S.leaving) return;
     S.clock += dt; const p = ctx.body.position, v = ctx.body.velocity, speed = Math.hypot(v.x, v.z); _bp = { x: p.x, z: p.z };
     S.scare.update(dt);
+    S.weather.update(S.wx, WX.weatherStep(S.wx, dt), dt);
+    radioTick(dt);
     for (const f of S.fx) if (f.l.visible) { f.t -= dt; if (f.t <= 0) f.l.visible = false; }
     S.hurtT = Math.max(0, S.hurtT - dt);
     if (S.busted >= 0) { S.busted += dt; netStep(dt, p, 0); S.heliV.update(S.heli, dt); if (S.busted > 4.5) respawn(); S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.3; drawHud(p); } return; }
@@ -273,7 +281,7 @@ export function update(dt, t, ctx) {
 // Złapanie (BUSTED): jumpscare (z uwzględnieniem ustawień), upuszczenie toreb, o jedną gwiazdkę mniej, odrodzenie w bezpiecznym punkcie po chwili
 function bust(b, remote) {
     if (S.busted >= 0) return;
-    S.busted = 0; S.busts++; S.scare.trigger(); releaseAll(); cancelRails(S.sim);
+    S.busted = 0; S.busts++; S.flags.busted = true; S.scare.trigger(); releaseAll(); cancelRails(S.sim);
     const lost = S.got;
     if (!remote) { dropBags('me', b.x, b.y || 0, b.z); if (b.reason !== 'shot') S.sim.heats.me = WL.afterBust(S.sim.heatOf('me')); }
     S.gunS.me.deadUntil = S.clock + GU.GUN.RESPAWN;   // gość: torby i ciepło po stronie hosta (migawka)
@@ -322,7 +330,7 @@ function fire(i) {
     const sh = GU.cleanShot({ o: [o.x, o.y, o.z], d: [d.x, d.y, d.z] }); if (!sh) return;
     const me = S.gunS.me, c = GU.shotCheck(me, sh, S.clock, { x: _p.x, y: _p.y, z: _p.z });
     if (!c.ok) { if (c.reason === 'empty') toast('Reloading...', '#ffd27a'); return; }
-    SFX.shot(); buzz(1, 0.5, 40); drawTracer(sh.o, [sh.o[0] + sh.d[0] * 40, sh.o[1] + sh.d[1] * 40, sh.o[2] + sh.d[2] * 40]);
+    SFX.shot(); buzz(1, 0.5, 40); S.flags.shot = true; drawTracer(sh.o, [sh.o[0] + sh.d[0] * 40, sh.o[1] + sh.d[1] * 40, sh.o[2] + sh.d[2] * 40]);
     if (isAuth()) hostShot('me', sh, true); else send({ k: 'shot', o: sh.o.map(v => +v.toFixed(3)), d: sh.d.map(v => +v.toFixed(4)) });
 }
 const headOf = (id) => { if (id === 'me') { camera.getWorldPosition(_p); return { x: _p.x, y: _p.y, z: _p.z }; } const g = guestOf(id); return g ? g.head : null; };
@@ -366,6 +374,17 @@ function giveBag(b, who) {
     S.got = S.bags.filter(q => q.holder === 'me').length;
     if (who === 'me') bagToast(b);
 }
+// Radio policyjne: komunikaty z radiologic.js jako napis w HUD i głos z formantów (ten sam syntezator co potwory), z trzaskiem na początku i końcu
+const RADIO_VOICE = { f0: 150, formant: 1.0, rate: 9, breath: 0.45 };
+function radioTick(dt) {
+    const c = { stars: S.sim.starsOf('me'), heli: S.heli.mode !== 'away' && S.heli.mode !== 'leave', swat: S.flags.swat, shot: S.flags.shot, busted: S.flags.busted };
+    S.flags.swat = S.flags.shot = S.flags.busted = false;
+    if (S.radioEnd > 0 && S.clock >= S.radioEnd) { S.radioEnd = 0; SFX.beep(1300, 0.04, 0.05); }
+    const line = RD.radioStep(S.radio, dt, c);
+    if (!line) return;
+    S.radioText = { t: line.text, until: S.clock + RD.RADIO.SHOW }; SFX.beep(1700, 0.05, 0.06);
+    const dur = SFX.speak(textToEvents(line.text, RADIO_VOICE), RADIO_VOICE, undefined, 0.45); S.radioEnd = S.clock + (dur || 1.5) + 0.1;
+}
 function bagToast(b) { toast('Bag ' + S.got + '/' + S.bags.length + ': ' + b.id + (S.got === 1 ? '. You are slower while carrying loot. Head for the pier!' : ''), '#ffd27a'); SFX.bell && SFX.bell(); }
 // ---------- SIEĆ (etap 3a): host liczy policję, ciepło i torby dla wszystkich; goście dostają migawki (8 Hz) i odtwarzają je bez własnej AI ----------
 const BAG_IDS = () => S.bags.map(q => q.id);
@@ -406,6 +425,7 @@ function netStep(dt, p, speed) {
         for (const pl of players) { if (pl.busted) continue; const st = S.sim.starsOf(pl.id); if (st > maxStars || (st === maxStars && !lead)) { maxStars = st; lead = { x: pl.x, z: pl.z }; } }
         const ev = HL.heliStep(S.heli, dt, { stars: maxStars, lead: maxStars > 0 ? lead : null, seen: seenAny });
         if (ev.spawn) toast('A police helicopter is coming. Get under cover!', '#ff6a6a');
+        if (ev.swat) S.flags.swat = true;
         if (ev.swat && lead) { const n = S.sim.dropSwat(lead.x, lead.z, HL.HELI.SWAT_N); if (n) toast('SWAT is rappelling in!', '#ff3a3a'); }
         for (const b of out.busts) { if (b.id === 'me') { bust(b); break; } else hostBust(b); }
         S.netT -= dt; if (S.netT <= 0 && N.NET.mode === 'host') { S.netT = 1 / GN.GN.HZ; broadcastState(players); }
@@ -470,6 +490,8 @@ export function debugHeat(v) { if (S) S.sim.addHeat('me', v); }
 export function debugBust() { if (S) bust({ id: 'me', reason: 'cop', x: 0, z: 0 }); }
 export const debugNet = (msg, from) => { if (S) onNet(msg, from); };   // test: wiadomość jakby przyszła od `from`
 export const debugOutbox = () => S ? S.sent : [];
+export const debugWeather = () => S ? { state: S.wx.state, rain: +S.wx.rain.toFixed(2), fog: +S.wx.fog.toFixed(2), bolts: S.weather.bolts, thunders: S.weather.thunders, mesh: S.weather.mesh.visible, n: S.weather.n, radio: S.radioText ? S.radioText.t : null } : null;
+export const debugWx = (state, flash) => { if (!S) return; if (state) { S.wx.state = state; S.wx.hold = 1e6; } if (flash) { S.wx.flash = WX.WX.FLASH; S.weather.pending.push(0.1); S.weather.bolts++; } };
 export const debugHeli = () => S ? { mode: S.heli.mode, y: +S.heli.y.toFixed(1), x: +S.heli.x.toFixed(1), z: +S.heli.z.toFixed(1), eye: S.eyeOnMe, vis: S.heliV.root.visible, lx: +S.heli.lx.toFixed(1), lz: +S.heli.lz.toFixed(1) } : null;
 export const debugGun = () => S ? { hp: S.gunS.me.hp, ammo: S.gunS.me.ammo, mode: S.mode, shooters: Object.keys(S.gunS), feed: S.feed.map(f => f.s), hurt: S.hurtT } : null;
 export const debugShoot = (id, o, d) => { if (S) hostShot(id, { o, d }, false); };   // test: strzał jakby oddał go gracz `id` (host sprawdza jak dla prawdziwego)
@@ -479,6 +501,7 @@ export function debugTakeBag(id) { const b = S && S.bags.find(q => q.id === id &
 export function dispose() {
     N.onLevelMsg(null); L.onTrigger = null;
     if (S && S.heliV) S.heliV.dispose();
+    if (S && S.weather) S.weather.dispose();
     if (S && S.gunMesh) { S.gunMesh.g.removeFromParent(); for (const g of S.gunMesh.geos) g.dispose(); for (const m of S.gunMesh.mats) m.dispose(); }
     if (S) for (const f of S.fx) { f.l.geometry.dispose(); f.l.material.dispose(); }
     if (S) { S.sim.dispose(); S.scare.dispose(); S.hud.dispose(); for (const g of S.geos) g.dispose(); for (const m of S.mats) m.dispose(); for (const x of S.texs) x.dispose(); }

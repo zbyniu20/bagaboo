@@ -120,7 +120,7 @@ const you = await ev(async () => {
     PL.setPlayerPosition(-9.5, 1.3, 7.2); for (let i = 0; i < 40 && !K.getDeep().found.includes('you'); i++) await w(250);
     return { before, built, cases, found: K.getDeep().found.includes('you') };
 });
-ok('after meeting all 12 monsters the 13th case appears next to the row (the 12 stay 12) and standing in front of it awards the secret', you.before === null && you.built && you.cases === 12 && you.found === true, you);
+ok('after meeting all 13 monsters the YOU case appears next to the row (the 13 beast cases stay 13) and standing in front of it awards the secret', you.before === null && you.built && you.cases === 13 && you.found === true, you);
 await shot('you', -8, 1.6, 9.5, 0);
 const mouse = await ev(async () => {
     const G = await import('./core/eggs.js'), K = await import('./core/deep.js'), E = await import('./core/engine.js'), PL = await import('./core/player.js'), w = (ms) => new Promise(r => setTimeout(r, ms));

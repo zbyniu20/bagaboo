@@ -16,7 +16,7 @@ Skrypty budują modele BagaBoo w Blenderze uruchamianym bez okna (moduł `bpy`) 
 
 - `monsterlib.py`: biblioteka. Szkielet kości -> siatka z modyfikatora Skin (organiczne tuby) -> dodatki (zęby, rogi, oczy, całuny, igły) -> wagi (dwie najbliższe kości) ->
   kolory wierzchołków (brud i krew) -> szkielet i animacje Idle, Walk, Run, Attack (procedurą) -> eksport GLB (przód potwora = +Z gry).
-- `monsters.py`: przepisy: mannequin, gravedigger, warden, doll, patient, butler, blind, threadman, furas, ghost, lavabeast (2,3-4,8 tys. trójkątów każdy).
+- `monsters.py`: przepisy: mannequin, gravedigger, warden, doll, patient, butler, blind, threadman, furas, ghost, lavabeast, officer (2,3-4,8 tys. trójkątów każdy).
   Nowy potwór = funkcja w `monsters.py` i wpis w `RECIPES`, wpis w `MONSTERS` w `core/glblogic.js` (test pilnuje spójności), a w poziomie `swapModel(m, 'nazwa')` po `buildMannequin`.
 - Podgląd GLB w three.js: `cd tests && CHROMIUM_PATH=... node glbshot.mjs wynik.png Walk ../assets/monsters/a.glb ../assets/monsters/b.glb` (`CAM=head` = zbliżenie), w poziomach: `node monsterview.mjs katalog poziom1,poziom2`.
 - `shrink_glb.py`: po eksporcie `monsters.py` przepakowuje wagi kości i kolory wierzchołków na znormalizowane bajty (plik mniejszy o ok. 20%, bez rozszerzeń glTF). Dalsza kompresja (meshopt) jest możliwa zewnętrznym narzędziem, a loader już ją obsługuje (`MeshoptDecoder`).

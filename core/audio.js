@@ -483,6 +483,14 @@ export function micLevel() {
 export function markLoud() { if (ctx) lastLoud = ctx.currentTime; }
 
 // Strzał z pistoletu (krótki trzask) i trafienie potwora (pisk z miejsca trafienia)
+// Grzmot: niski szum z opadającym filtrem (3 s), idzie wprost do master
+export function thunder(vol) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime, n = ctx.createBufferSource(); n.buffer = noiseBuffer(3.5);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(420, t0); lp.frequency.exponentialRampToValueAtTime(70, t0 + 3);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(Math.max(0.01, Math.min(1, vol === undefined ? 0.7 : vol)), t0 + 0.15); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 3.3);
+    n.connect(lp); lp.connect(g); g.connect(master); n.start(t0); n.stop(t0 + 3.4);
+}
 export function shot() {
     if (!ctx) return;
     const t0 = ctx.currentTime, n = ctx.createBufferSource(); n.buffer = noiseBuffer(0.25);

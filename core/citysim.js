@@ -4,7 +4,7 @@
 // kryjówki (śmietniki w zaułkach) i znaczniki bezpiecznych punktów odrodzenia. update(dt, players) dostaje LISTĘ graczy { id, x, y, z, speed, busted, carrying },
 // więc ta sama symulacja obsłuży potem hosta z wieloma graczami (etap online): heat i gwiazdki są osobne dla każdego gracza. Złapanie zgłasza onBust(id, powód, pozycja).
 // ==========================================
-import { THREE, CANNON, L, addStaticBody } from './engine.js';
+import { THREE, CANNON, L, camera, addStaticBody } from './engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { buildMannequin, addMonsterFace } from './mannequin.js';
 import { swapModel } from './glbmonster.js';
@@ -21,6 +21,7 @@ const _w = new THREE.Vector3(), POOL = 10, RUN_SPEED = 4.3, HIDE_R = 1.7, WATER 
 const paint = (g, r, gr, b) => { const n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = r; a[i * 3 + 1] = gr; a[i * 3 + 2] = b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
 const DIFF_COPS = { easy: 0.6, normal: 1, nightmare: 1.3 };
 
+const COP_VIS = 65;   // policjanci dalej od kamery nie są rysowane (mgła i tak ich zakrywa; oszczędza wywołania rysowania: każdy model to kilka siatek)
 export function createCitySim(o) {
     const G = { geos: [], mats: [], cops: [], gators: [], rails: [], heats: {}, events: [], clock: 0, evT: 0, radioT: 0, boxes: o.boxes, graph: AI.streetGraph(), hides: C.hideSpots(), diff: o.diff || 'normal', busts: 0, extSeen: {}, lastBust: null, seenBy: {}, hiddenNow: {}, stat: { spawned: 0, caught: 0 } };
     const geo = (g) => { G.geos.push(g); return g; }, mat = (m) => { G.mats.push(m); return m; };
@@ -29,7 +30,7 @@ export function createCitySim(o) {
     const coneM = mat(new THREE.MeshBasicMaterial({ color: 0xfff0b0, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
     for (let i = 0; i < POOL; i++) {
         const m = buildMannequin(Math.random); m.group.visible = false; L.root.add(m.group);
-        addMonsterFace(m.head, { width: 0.05, open: 0.03, toothColor: 0xb8b090, long: 1.1, tears: 0x300808 }); swapModel(m, 'warden');
+        addMonsterFace(m.head, { width: 0.05, open: 0.03, toothColor: 0xb8b090, long: 1.1, tears: 0x300808 }); swapModel(m, 'officer');
         const cone = new THREE.Mesh(coneG, coneM); cone.position.y = 1.5; cone.visible = false; m.group.add(cone);
         const bot = createBot(0, 0); bot.listen = true;
         G.cops.push({ m: m, bot: bot, st: AI.newCop(0), active: false, cone: cone, sees: null, att: 0, tx: 0, tz: 0 });
@@ -89,7 +90,7 @@ export function createCitySim(o) {
             if (!c.active) { G.spawnCop(c, 0); b.x = e.x; b.z = e.z; b.dir = e.dir; }
             const d = Math.hypot(e.x - b.x, e.z - b.z), k = d > 8 ? 1 : Math.min(1, dt * 10);
             b.x += (e.x - b.x) * k; b.z += (e.z - b.z) * k; let da = e.dir - b.dir; da = Math.atan2(Math.sin(da), Math.cos(da)); b.dir += da * Math.min(1, dt * 12);
-            c.st.mode = e.mode; c.m.group.position.set(b.x, b.y, b.z); c.m.group.rotation.y = b.dir; c.cone.material.opacity = e.mode === 'chase' ? 0.16 : 0.1;
+            c.st.mode = e.mode; c.m.group.position.set(b.x, b.y, b.z); c.m.group.rotation.y = b.dir; c.m.group.visible = Math.hypot(b.x - camera.position.x, b.z - camera.position.z) < COP_VIS; c.cone.material.opacity = e.mode === 'chase' ? 0.16 : 0.1;
         });
     };
     G.update = (dt, players, rand) => update(G, dt, players, rand || Math.random);
@@ -132,7 +133,7 @@ function update(G, dt, players, rand) {
         else { const pt = AI.patrolTarget(G.graph, c.st, rand); if (pt) { tx = pt.x; tz = pt.z; if (Math.hypot(tx - b.x, tz - b.z) < 1.6) AI.patrolArrived(G.graph, c.st); } else { tx = b.x; tz = b.z; speed = 0; } }
         stepBot(b, dt, tx, tz, 0, speed, dcs.mode === 'chase');
         if (c.drop > 0) c.drop -= dt;   // SWAT zjeżdża z helikoptera: model opada z wysokości, a w tym czasie nie łapie
-        c.m.group.position.set(b.x, b.y + Math.max(0, c.drop || 0) * 14, b.z); c.m.group.rotation.y = b.dir; c.cone.visible = true; c.cone.material.opacity = dcs.mode === 'chase' ? 0.16 : 0.1;
+        c.m.group.position.set(b.x, b.y + Math.max(0, c.drop || 0) * 14, b.z); c.m.group.rotation.y = b.dir; c.m.group.visible = Math.hypot(b.x - camera.position.x, b.z - camera.position.z) < COP_VIS; c.cone.visible = true; c.cone.material.opacity = dcs.mode === 'chase' ? 0.16 : 0.1;
         if (b.y < -3 || Math.abs(b.x) > 90 || b.z > 80) G.despawn(c);
         if (!(c.drop > 0.3)) for (const p of live) if (AI.caughtBy({ x: b.x, z: b.z, y: b.y }, p)) { out.busts.push({ id: p.id, reason: 'cop', x: p.x, z: p.z }); G.stat.caught++; G.resetCopsNear(p.x, p.z, 30); break; }
     }
