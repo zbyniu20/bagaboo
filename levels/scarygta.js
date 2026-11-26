@@ -6,7 +6,8 @@
 // ==========================================
 import { THREE, CANNON, L, scene, camera, addStaticBody } from '../core/engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { levelReward, diffOf, unlockAchievement, recordTime } from '../core/economy.js';
+import { levelReward, diffOf, unlockAchievement, recordTime, addBones, dailyDate } from '../core/economy.js';
+import { getGta, setGta } from '../core/gtastore.js';
 import { toast } from '../core/terminal.js';
 import * as SFX from '../core/audio.js';
 import { PACE } from '../core/config.js';
@@ -22,9 +23,12 @@ import * as GU from '../core/gunlogic.js';
 import * as HL from '../core/helilogic.js';
 import { createHeli } from '../core/heli.js';
 import { createWeather } from '../core/weather.js';
+import { createGtaProps } from '../core/gtaprops.js';
+import * as X from '../core/gtaextras.js';
+import { mutatorActive, mutFactor } from '../core/mutators.js';
 import * as WX from '../core/cityweatherlogic.js';
 import * as RD from '../core/radiologic.js';
-import { textToEvents } from '../core/voicelogic.js';
+import { textToEvents, sanitizeName } from '../core/voicelogic.js';
 import { createCitySim, updateRails, ridingAny, cancelRails } from '../core/citysim.js';
 import * as WL from '../core/wantedlogic.js';
 import * as AI2 from '../core/cityai.js';
@@ -78,7 +82,7 @@ export function build() {
     L.bounds = { minX: CI.X0 + 0.6, maxX: CI.X1 - 0.6, minZ: CI.Z0 + 0.6, maxZ: CI.Z1 - 0.6, maxY: CI.MAX_H + 6 };
     L.ballBounds = { minX: CI.X0 + 0.3, maxX: CI.X1 - 0.3, minZ: CI.Z0 + 0.3, maxZ: CI.Z1 - 0.3, maxY: CI.MAX_H + 6 };   // piłki i torby nie są teleportowane do pokoju 30 x 30 (core/engine.js: containBall)
     scene.fog.density = 0.024;
-    S = { geos: [], mats: [], texs: [], chunks: [], bags: [], got: 0, clock: 0, visT: 0, hudT: 0, leaving: false, buildings: C.buildCity(1337) };
+    S = { neonMeshes: [], nlights: [], lampMesh: null, geos: [], mats: [], texs: [], chunks: [], bags: [], got: 0, clock: 0, visT: 0, hudT: 0, leaving: false, buildings: C.buildCity(1337) };
     const geo = (g) => { S.geos.push(g); return g; }, mat = (m) => { S.mats.push(m); return m; };
     const [wt, et] = windowTextures(); S.texs.push(wt, et);
     const facade = mat(new THREE.MeshStandardMaterial({ map: wt, emissiveMap: et, emissive: 0xffffff, emissiveIntensity: 1.1, vertexColors: true, roughness: 0.78, metalness: 0.08 }));
@@ -111,8 +115,8 @@ export function build() {
         }
         const grp = new THREE.Group(); L.root.add(grp);
         const fm = new THREE.Mesh(mergeGeometries(geos), facade); geo(fm.geometry); fm.castShadow = false; fm.receiveShadow = false; grp.add(fm);
-        if (neon.length) { const nm = new THREE.Mesh(mergeGeometries(neon), neonMat); geo(nm.geometry); grp.add(nm); }
-        const nl = new THREE.PointLight(NEON[(ch.i + ch.j * 3) % NEON.length], 16, 34, 2); nl.position.set(ch.center[0], 7, ch.center[1]); L.root.add(nl);
+        if (neon.length) { const nm = new THREE.Mesh(mergeGeometries(neon), neonMat); geo(nm.geometry); grp.add(nm); S.neonMeshes.push({ m: nm, chunk: ch.id }); }
+        const nl = new THREE.PointLight(NEON[(ch.i + ch.j * 3) % NEON.length], 16, 34, 2); nl.position.set(ch.center[0], 7, ch.center[1]); L.root.add(nl); S.nlights.push({ l: nl, base: 16, chunk: ch.id });
         S.chunks.push({ id: ch.id, c: ch.center, g: grp });
     }
     buildStreets(geo, mat, R); buildPier(geo, mat); buildMarina(geo, mat);
@@ -122,6 +126,16 @@ export function build() {
     S.boxes = S.buildings.map(b => ({ x0: b.x0, x1: b.x1, y0: 0, y1: b.h, z0: b.z0, z1: b.z1 }));
     S.sim = createCitySim({ boxes: S.boxes, diff: df.id }); S.scare = createJumpscare({ seed: 4040, variant: 'warden' });
     S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
+    // dodatki (core/gtaprops.js): kabiny, przebranie, wspinaczki, paczki, manekiny, sejf, prąd, dźwig, telefon; noc (blackout i horda)
+    S.sim.hearMul = mutatorActive() ? mutFactor('hear') : 1; S.night = X.newNight(); S.nightPh = 'calm'; S.powerOn = false; S.sprayAt = {}; S.alarmAt = {}; S.disUntil = {}; S.powerLeft = 0; S.powerCd = 0; S.disSent = false; S.powerSent = false;
+    S.gx = createGtaProps({ buildings: S.buildings, api: {
+        stars: () => S.sim.starsOf('me'), seenT: () => S.sim.heatOf('me').seenT,
+        clearHeat: () => { if (isAuth()) S.sim.heats.me = { v: 0, seenT: 99 }; else send({ k: 'ev', kind: 'spray' }); },
+        addHeat: (v) => { if (isAuth()) S.sim.addHeat('me', v); else send({ k: 'ev', kind: 'alarm' }); },
+        setSight: (m) => { if (isAuth()) S.sim.sightMul.me = m; else { if (m < 1 && !S.disSent) send({ k: 'ev', kind: 'dis' }); S.disSent = m < 1; } },
+        setPower: (on) => { if (on !== S.powerOn) { S.powerOn = on; applyLights(); if (isAuth()) powerZone(on ? 45 : 0); else if (on) send({ k: 'ev', kind: 'power' }); } },
+        bags: () => S.bags, cops: () => S.sim.activeCops().map(c => ({ x: c.bot.x, z: c.bot.z })), heli: () => S.heli.mode !== 'away' ? { x: S.heli.x, z: S.heli.z } : null
+    } });
     S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
     S.wx = WX.newWeather(Math.random, Math.random() < 0.5 ? 'clear' : 'drizzle'); S.weather = createWeather();   // pogoda lokalna: każdy klient ma własną
@@ -150,7 +164,7 @@ function buildStreets(geo, mat, R) {
     for (const x of vx) for (let z = CI.Z0 + 8; z < CI.BLV[0] - 4; z += 19) { post(x - 6.5, z); post(x + 6.5, z + 9); }
     for (const z of hz.concat([bz])) for (let x = CI.X0 + 10; x < CI.X1 - 6; x += 19) { post(x, z - 6.5); post(x + 9, z + 6.5); }
     const lm = new THREE.Mesh(geo(mergeGeometries(lines)), lineMat); L.root.add(lm);
-    const pm = new THREE.Mesh(geo(mergeGeometries(lamps)), lampMat); L.root.add(pm);
+    const pm = new THREE.Mesh(geo(mergeGeometries(lamps)), lampMat); L.root.add(pm); S.lampMesh = pm;
 }
 // ----- pirs: deski, słupki, łódź na końcu -----
 function buildPier(geo, mat) {
@@ -215,6 +229,8 @@ function buildBags(geo, mat) {
 // ----- przebieg -----
 function finish() {
     if (S.leaving) return; S.leaving = true;
+    // napad dnia: wyjście z torbą celu dnia (jedna z sześciu, z daty) daje 150 Bagabucksów raz na dobę i zapisuje najlepszy czas
+    if (!mutatorActive()) { const hr = X.heistResult(getGta(), dailyDate(), S.bags.filter(b => b.holder === 'me').map(b => b.id), S.clock); if (hr.won) { setGta(hr.gta); if (hr.reward) addBones(hr.reward, 'Daily heist'); toast('Daily target secured' + (hr.underPar ? ' under par!' : '.') + (hr.record ? ' New best time.' : ''), '#ffd27a'); } }
     const n = S.got; toast('Heist complete: ' + n + ' bag' + (n === 1 ? '' : 's') + '!', '#7fff90');
     levelReward('scarygta', 120 * n, 60 * n, 'a heist with ' + n + ' bags');
     if (n >= S.bags.length) { unlockAchievement('gta_heist'); recordTime('scarygta', S.clock); }   // komplet toreb: osiągnięcie i rekord czasu
@@ -252,6 +268,8 @@ export function update(dt, t, ctx) {
     S.clock += dt; const p = ctx.body.position, v = ctx.body.velocity, speed = Math.hypot(v.x, v.z); _bp = { x: p.x, z: p.z };
     S.scare.update(dt);
     S.weather.update(S.wx, WX.weatherStep(S.wx, dt), dt);
+    camera.getWorldDirection(_d); S.gx.update(dt, { x: ctx.body.position.x, y: ctx.body.position.y, z: ctx.body.position.z, speed: Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), yaw: Math.atan2(_d.x, _d.z), pitchDown: Math.asin(Math.max(-1, Math.min(1, -_d.y))) });
+    nightTick(dt);
     radioTick(dt);
     for (const f of S.fx) if (f.l.visible) { f.t -= dt; if (f.t <= 0) f.l.visible = false; }
     S.hurtT = Math.max(0, S.hurtT - dt);
@@ -382,8 +400,33 @@ function radioTick(dt) {
     if (S.radioEnd > 0 && S.clock >= S.radioEnd) { S.radioEnd = 0; SFX.beep(1300, 0.04, 0.05); }
     const line = RD.radioStep(S.radio, dt, c);
     if (!line) return;
-    S.radioText = { t: line.text, until: S.clock + RD.RADIO.SHOW }; SFX.beep(1700, 0.05, 0.06);
-    const dur = SFX.speak(textToEvents(line.text, RADIO_VOICE), RADIO_VOICE, undefined, 0.45); S.radioEnd = S.clock + (dur || 1.5) + 0.1;
+    const nm = sanitizeName(SAVE.profile.name || ''), text = line.text.replace('{name}', nm || 'you'); S.radioText = { t: text, until: S.clock + RD.RADIO.SHOW }; SFX.beep(1700, 0.05, 0.06);
+    const dur = SFX.speak(textToEvents(text, RADIO_VOICE), RADIO_VOICE, undefined, 0.45); S.radioEnd = S.clock + (dur || 1.5) + 0.1;
+}
+// Oświetlenie miasta: blackout (noc) i wyłączony prąd przy kasynie przyciemniają neony, latarnie i światła kwartałów
+function applyLights() {
+    const blackout = S.nightPh === 'blackout';
+    if (S.lampMesh) S.lampMesh.visible = !blackout;
+    for (const n of S.neonMeshes) n.m.visible = !(blackout || (S.powerOn && n.chunk === '2,0'));
+    for (const n of S.nlights) n.l.intensity = n.base * (blackout ? 0.15 : (S.powerOn && n.chunk === '2,0' ? 0.1 : 1));
+}
+function powerZone(sec) {
+    const p = X.powerSpot(); S.powerLeft = sec;
+    S.sim.darkZones = sec > 0 ? [{ x: p.x, z: p.z, r: X.POWER.ZONE_R, mul: X.POWER.DARK_MUL }] : [];
+}
+// Noc (host albo solo): po 150 s blackout (40 s), potem horda dodatkowych policjantów-zombie (60 s); goście dostają fazę w migawce
+function nightTick(dt) {
+    if (isAuth()) {
+        const r = X.nightStep(S.night, dt); S.night = r.st;
+        if (r.event) setNight(S.night.ph, true);
+        if (S.powerLeft > 0) { S.powerLeft -= dt; if (S.powerLeft <= 0) powerZone(0); }
+    }
+}
+function setNight(ph, announce) {
+    ph = X.cleanNight(ph); if (ph === S.nightPh) return; S.nightPh = ph;
+    S.sim.globalSight = ph === 'blackout' ? X.NIGHT.SIGHT_MUL : 1; S.sim.extraCops = ph === 'horde' && isAuth() ? X.NIGHT.HORDE_COPS : 0;
+    applyLights();
+    if (announce !== false) { if (ph === 'blackout') toast('BLACKOUT! The whole city went dark.', '#ffe040'); else if (ph === 'horde') { toast('Midnight: the dead cops are coming!', '#ff3a3a'); SFX.roar && SFX.roar(0.5); } else toast('The night calms down.', '#9ad0ff'); }
 }
 function bagToast(b) { toast('Bag ' + S.got + '/' + S.bags.length + ': ' + b.id + (S.got === 1 ? '. You are slower while carrying loot. Head for the pier!' : ''), '#ffd27a'); SFX.bell && SFX.bell(); }
 // ---------- SIEĆ (etap 3a): host liczy policję, ciepło i torby dla wszystkich; goście dostają migawki (8 Hz) i odtwarzają je bez własnej AI ----------
@@ -410,6 +453,7 @@ function netStep(dt, p, speed) {
         const players = [{ id: 'me', x: p.x, y: p.y, z: p.z, speed: speed, busted: S.busted >= 0, carrying: S.got }];
         const ids = new Set(['me']);
         for (const g of guests) {
+            S.sim.sightMul[g.id] = (S.disUntil[g.id] || 0) > S.clock ? X.DISGUISE.SIGHT : 1;
             ids.add(g.id); const tr = S.track[g.id] || (S.track[g.id] = GN.newTrack()), sp = GN.trackStep(tr, g.head.x, g.head.z, S.clock);
             players.push({ id: g.id, x: g.head.x, y: GN.bodyY(g.head.y), z: g.head.z, speed: (S.rideUntil[g.id] || 0) > S.clock ? 0 : sp, busted: (S.bustUntil[g.id] || 0) > S.clock, carrying: S.bags.filter(q => q.holder === g.id).length });
         }
@@ -441,7 +485,7 @@ function netStep(dt, p, speed) {
 function broadcastState(players) {
     const heats = {}; for (const pl of players) heats[toNet(pl.id)] = [+S.sim.heatOf(pl.id).v.toFixed(1), S.sim.hiddenNow[pl.id] ? 1 : 0];
     const hp = {}; for (const pl of players) hp[toNet(pl.id)] = (S.gunS[pl.id] || (S.gunS[pl.id] = GU.newShooter())).hp;
-    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli) });
+    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli), nt: S.nightPh, pw: S.powerLeft > 0 ? 1 : 0 });
 }
 function hostBust(b) {
     const g = guestOf(b.id); if (!g || (S.bustUntil[b.id] || 0) > S.clock) return;
@@ -459,6 +503,7 @@ function onNet(msg, from) {
         if (rq.k === 'take') { const b = S.bags.find(q => q.id === rq.b); if (b && !b.got && (S.bustUntil[g.id] || 0) <= S.clock && GN.validTake(b, g.head, b.holder)) { giveBag(b, g.id); send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(q => [q.id, q.x, q.y, q.z, q.holder ? toNet(q.holder) : null]), heats: {} }); } }
         else if (rq.k === 'ev' && rq.kind === 'shout') { if ((S.shoutAt[g.id] || 0) <= S.clock) { S.shoutAt[g.id] = S.clock + GN.GN.SHOUT_GAP; S.sim.addEvent('shout', g.head.x, g.head.z); S.sim.addHeat(g.id, WL.eventHeat('shout')); } }
         else if (rq.k === 'ev' && rq.kind === 'ride') S.rideUntil[g.id] = S.clock + 1;
+        else if (rq.k === 'ev') hostExtra(g, rq.kind);
         else if (rq.k === 'gbust') hostBust({ id: g.id, reason: 'gator', x: g.head.x, z: g.head.z });
         return;
     }
@@ -470,6 +515,7 @@ function onNet(msg, from) {
         for (const e of bags) { const b = S.bags.find(q => q.id === e.id); if (!b) continue; const mine = e.holder === N.myId(); b.holder = e.holder ? (mine ? 'me' : e.holder) : null; b.got = !!e.holder; b.x = e.x; b.y = e.y; b.z = e.z; b.g.visible = !e.holder; b.g.position.set(e.x, e.y, e.z); }
         if (bags.length) { const was = S.got; S.got = S.bags.filter(q => q.holder === 'me').length; if (S.got > was) { const nb = S.bags.find(q => q.holder === 'me'); if (nb) bagToast(nb); } }
         const hl = GN.cleanHeli(msg.hl); if (hl) { const h = S.heli; h.x = hl.x; h.y = hl.y; h.z = hl.z; h.yaw = hl.yaw; h.lx = hl.lx; h.lz = hl.lz; h.mode = hl.mode; } else if (msg.hl === null) S.heli.mode = 'away';
+        setNight(msg.nt); if (msg.pw === 1 || msg.pw === 0) { const on = msg.pw === 1; if (on !== S.powerOn && !S.gx.debug().power) { S.powerOn = on; applyLights(); } }
         const hpm = GU.cleanHp(msg.hp); if (Number.isFinite(hpm[N.myId()])) S.gunS.me.hp = hpm[N.myId()]; if (msg.m === 'coop' || msg.m === 'ffa') S.mode = msg.m;
         const mh = heats[N.myId()]; if (mh) { S.sim.heats.me = { v: mh.v, seenT: 0 }; S.sim.hiddenNow.me = mh.hidden; }
     } else if (msg.k === 'fx') {
@@ -492,6 +538,17 @@ export const debugNet = (msg, from) => { if (S) onNet(msg, from); };   // test: 
 export const debugOutbox = () => S ? S.sent : [];
 export const debugWeather = () => S ? { state: S.wx.state, rain: +S.wx.rain.toFixed(2), fog: +S.wx.fog.toFixed(2), bolts: S.weather.bolts, thunders: S.weather.thunders, mesh: S.weather.mesh.visible, n: S.weather.n, radio: S.radioText ? S.radioText.t : null } : null;
 export const debugWx = (state, flash) => { if (!S) return; if (state) { S.wx.state = state; S.wx.hold = 1e6; } if (flash) { S.wx.flash = WX.WX.FLASH; S.weather.pending.push(0.1); S.weather.bolts++; } };
+function hostExtra(g, kind) {
+    const near = (pts, r) => pts.some(q => Math.hypot(g.head.x - q.x, g.head.z - q.z) < r), id = g.id, bank = S.buildings.find(b => b.name === 'bank'), ps = X.powerSpot();
+    if (kind === 'spray' && near(X.SPRAY.SPOTS, X.SPRAY.R + 3) && (S.sprayAt[id] || 0) <= S.clock) { S.sprayAt[id] = S.clock + 60; S.sim.heats[id] = { v: 0, seenT: 99 }; }
+    else if (kind === 'alarm' && bank && near([{ x: (bank.x0 + bank.x1) / 2, z: (bank.z0 + bank.z1) / 2 }], 20) && (S.alarmAt[id] || 0) <= S.clock) { S.alarmAt[id] = S.clock + 5; S.sim.addHeat(id, X.GVAULT.HEAT); }
+    else if (kind === 'dis' && near(C.SAFEHOUSES, X.DISGUISE.R + 3)) { S.disUntil[id] = S.clock + X.DISGUISE.FOR; }
+    else if (kind === 'power' && near([ps], 4) && S.powerLeft <= 0 && S.powerCd <= S.clock) { S.powerCd = S.clock + X.POWER.COOLDOWN + X.POWER.DARK_FOR; powerZone(X.POWER.DARK_FOR); S.powerOn = true; applyLights(); }
+}
+export const debugGta = () => S ? Object.assign(S.gx.debug(), { night: S.nightPh, powerLeft: S.powerLeft, sight: S.sim.sightMul, extra: S.sim.extraCops, lamps: S.lampMesh ? S.lampMesh.visible : null, neonOn: S.neonMeshes.filter(n => n.m.visible).length, neonAll: S.neonMeshes.length, lightI: S.nlights.map(n => +n.l.intensity.toFixed(1)), dark: S.sim.darkZones.length, hear: S.sim.hearMul }) : null;
+export const debugGtaTouch = (fn) => import('../core/gtaprops.js').then(m => m.debugTouchProbe(fn));
+export const debugGtaNight = (ph) => { if (S) { S.night = { ph: ph, left: 99 }; setNight(ph, false); } };
+export const debugGtaKey = (k) => { if (S && S.gx && S.gx.press) S.gx.press(k); };
 export const debugHeli = () => S ? { mode: S.heli.mode, y: +S.heli.y.toFixed(1), x: +S.heli.x.toFixed(1), z: +S.heli.z.toFixed(1), eye: S.eyeOnMe, vis: S.heliV.root.visible, lx: +S.heli.lx.toFixed(1), lz: +S.heli.lz.toFixed(1) } : null;
 export const debugGun = () => S ? { hp: S.gunS.me.hp, ammo: S.gunS.me.ammo, mode: S.mode, shooters: Object.keys(S.gunS), feed: S.feed.map(f => f.s), hurt: S.hurtT } : null;
 export const debugShoot = (id, o, d) => { if (S) hostShot(id, { o, d }, false); };   // test: strzał jakby oddał go gracz `id` (host sprawdza jak dla prawdziwego)
@@ -502,6 +559,7 @@ export function dispose() {
     N.onLevelMsg(null); L.onTrigger = null;
     if (S && S.heliV) S.heliV.dispose();
     if (S && S.weather) S.weather.dispose();
+    if (S && S.gx) S.gx.dispose();
     if (S && S.gunMesh) { S.gunMesh.g.removeFromParent(); for (const g of S.gunMesh.geos) g.dispose(); for (const m of S.gunMesh.mats) m.dispose(); }
     if (S) for (const f of S.fx) { f.l.geometry.dispose(); f.l.material.dispose(); }
     if (S) { S.sim.dispose(); S.scare.dispose(); S.hud.dispose(); for (const g of S.geos) g.dispose(); for (const m of S.mats) m.dispose(); for (const x of S.texs) x.dispose(); }

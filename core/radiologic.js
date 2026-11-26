@@ -16,7 +16,8 @@ export const LINES = {
     clear: { pri: 1, text: 'Suspect gone. All units return to patrol.' },
     idle1: { pri: 0, text: 'Unit twelve, check the alley behind the casino.' },
     idle2: { pri: 0, text: 'He is still in the district. Eyes open.' },
-    idle3: { pri: 0, text: 'Block the boulevard. Do not let him reach the pier.' }
+    idle3: { pri: 0, text: 'Block the boulevard. Do not let him reach the pier.' },
+    idle4: { pri: 0, text: 'Hey {name}. We can see you.' }
 };
 export const newRadio = () => ({ prevStars: 0, cd: 0, idleT: 18, last: {}, queue: [], clock: 0, heli: false });
 // Krok: c = { stars, heli (bool: helikopter w powietrzu), swat, shot, busted }; zwraca { key, text } do wypowiedzenia albo null
@@ -28,7 +29,7 @@ export function radioStep(st, dt, c, rnd) {
     if (c.heli && !st.heli && c.stars >= 3) q('up3'); st.heli = !!c.heli;
     if (c.swat) q('swat'); if (c.shot) q('shots'); if (c.busted) q('busted');
     st.prevStars = c.stars;
-    if (c.stars > 0 && st.queue.length === 0) { st.idleT -= d; if (st.idleT <= 0) { st.idleT = RADIO.IDLE[0] + R() * (RADIO.IDLE[1] - RADIO.IDLE[0]); q('idle' + (1 + Math.floor(R() * 3))); } }
+    if (c.stars > 0 && st.queue.length === 0) { st.idleT -= d; if (st.idleT <= 0) { st.idleT = RADIO.IDLE[0] + R() * (RADIO.IDLE[1] - RADIO.IDLE[0]); q('idle' + (1 + Math.floor(R() * 4))); } }
     if (st.cd > 0 || !st.queue.length) return null;
     st.queue.sort((a, b) => LINES[b].pri - LINES[a].pri);
     while (st.queue.length) {

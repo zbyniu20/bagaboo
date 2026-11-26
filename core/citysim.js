@@ -23,15 +23,17 @@ const DIFF_COPS = { easy: 0.6, normal: 1, nightmare: 1.3 };
 
 const COP_VIS = 65;   // policjanci dalej od kamery nie są rysowane (mgła i tak ich zakrywa; oszczędza wywołania rysowania: każdy model to kilka siatek)
 export function createCitySim(o) {
-    const G = { geos: [], mats: [], cops: [], gators: [], rails: [], heats: {}, events: [], clock: 0, evT: 0, radioT: 0, boxes: o.boxes, graph: AI.streetGraph(), hides: C.hideSpots(), diff: o.diff || 'normal', busts: 0, extSeen: {}, lastBust: null, seenBy: {}, hiddenNow: {}, stat: { spawned: 0, caught: 0 } };
+    const G = { geos: [], mats: [], cops: [], gators: [], rails: [], heats: {}, events: [], clock: 0, evT: 0, radioT: 0, boxes: o.boxes, graph: AI.streetGraph(), hides: C.hideSpots(), diff: o.diff || 'normal', busts: 0, extSeen: {}, sightMul: {}, darkZones: [], globalSight: 1, hearMul: 1, extraCops: 0, lastBust: null, seenBy: {}, hiddenNow: {}, stat: { spawned: 0, caught: 0 } };
     const geo = (g) => { G.geos.push(g); return g; }, mat = (m) => { G.mats.push(m); return m; };
     // ----- policjanci: pula, nieaktywni ukryci -----
     const coneG = geo(new THREE.ConeGeometry(2.4, 13, 14, 1, true)); coneG.rotateX(Math.PI / 2); coneG.translate(0, 0, 6.5);
-    const coneM = mat(new THREE.MeshBasicMaterial({ color: 0xfff0b0, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    const coneM = mat(new THREE.MeshBasicMaterial({ color: 0xfff0b0, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    // stożki latarek wszystkich policjantów to JEDNA siatka instancjonowana (jedno wywołanie rysowania zamiast jednego na policjanta); jasność stożka niesie kolor instancji
+    G.cones = new THREE.InstancedMesh(coneG, coneM, POOL); G.cones.frustumCulled = false; G.cones.count = POOL; G.cones.setColorAt(0, new THREE.Color(1, 1, 1)); L.root.add(G.cones);
     for (let i = 0; i < POOL; i++) {
         const m = buildMannequin(Math.random); m.group.visible = false; L.root.add(m.group);
         addMonsterFace(m.head, { width: 0.05, open: 0.03, toothColor: 0xb8b090, long: 1.1, tears: 0x300808 }); swapModel(m, 'officer');
-        const cone = new THREE.Mesh(coneG, coneM); cone.position.y = 1.5; cone.visible = false; m.group.add(cone);
+        const cone = { visible: false, material: { opacity: 0.1 } };   // stan stożka (rysuje go G.cones przez syncCones)
         const bot = createBot(0, 0); bot.listen = true;
         G.cops.push({ m: m, bot: bot, st: AI.newCop(0), active: false, cone: cone, sees: null, att: 0, tx: 0, tz: 0 });
     }
@@ -78,6 +80,15 @@ export function createCitySim(o) {
         return done;
     };
     G.despawn = (c) => { c.active = false; c.m.group.visible = false; c.cone.visible = false; };
+    const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s1 = new THREE.Vector3(1, 1, 1), _s0 = new THREE.Vector3(0, 0, 0), _c = new THREE.Color();
+    G.syncCones = () => {
+        G.cops.forEach((c, i) => {
+            const on = c.active && c.m.group.visible && c.cone.visible, b = c.bot;
+            _e.set(0, b.dir, 0); _q.setFromEuler(_e); _p.set(b.x, b.y + 1.5 + Math.max(0, c.drop || 0) * 14, b.z); _m.compose(_p, _q, on ? _s1 : _s0);
+            G.cones.setMatrixAt(i, _m); const k = Math.min(1.5, c.cone.material.opacity / 0.16); _c.setRGB(k, k, k); G.cones.setColorAt(i, _c);
+        });
+        G.cones.instanceMatrix.needsUpdate = true; if (G.cones.instanceColor) G.cones.instanceColor.needsUpdate = true;
+    };
     G.reset = () => { for (const c of G.cops) G.despawn(c); };
     G.resetCopsNear = (x, z, r) => { for (const c of G.activeCops()) if (Math.hypot(c.bot.x - x, c.bot.z - z) < r) { c.st.mode = 'search'; c.st.searchT = 0; c.st.last = { x: x, z: z }; } };
     // Sieć: host wysyła migawkę policjantów, gość (G.puppet = true) tylko ją odtwarza (bez AI, bez łapania, bez ciepła)
@@ -92,9 +103,10 @@ export function createCitySim(o) {
             b.x += (e.x - b.x) * k; b.z += (e.z - b.z) * k; let da = e.dir - b.dir; da = Math.atan2(Math.sin(da), Math.cos(da)); b.dir += da * Math.min(1, dt * 12);
             c.st.mode = e.mode; c.m.group.position.set(b.x, b.y, b.z); c.m.group.rotation.y = b.dir; c.m.group.visible = Math.hypot(b.x - camera.position.x, b.z - camera.position.z) < COP_VIS; c.cone.material.opacity = e.mode === 'chase' ? 0.16 : 0.1;
         });
+        G.syncCones();
     };
-    G.update = (dt, players, rand) => update(G, dt, players, rand || Math.random);
-    G.dispose = () => { for (const g of G.geos) g.dispose(); for (const m of G.mats) m.dispose(); };
+    G.update = (dt, players, rand) => { const out = update(G, dt, players, rand || Math.random); G.syncCones(); return out; };
+    G.dispose = () => { G.cones.dispose(); for (const g of G.geos) g.dispose(); for (const m of G.mats) m.dispose(); };
     return G;
 }
 
@@ -108,12 +120,12 @@ function update(G, dt, players, rand) {
         G.hiddenNow[p.id] = near;
     }
     const maxStars = Math.max(0, ...live.map(p => G.starsOf(p.id)));
-    const want = Math.max(2, Math.round(WL.starRules(maxStars).maxCops * (DIFF_COPS[G.diff] || 1)));
+    const want = Math.min(POOL, Math.max(2, Math.round(WL.starRules(maxStars).maxCops * (DIFF_COPS[G.diff] || 1))) + (G.extraCops || 0));
     // populacja: dopełniaj przy graczach (pierścień 28-62 m), usuwaj dalekich
     if (live.length && !G.puppet) {
         const act = G.activeCops(); for (const c of act) if (!live.some(p => Math.hypot(p.x - c.bot.x, p.z - c.bot.z) < 115)) G.despawn(c);
         const cnt = G.activeCops().length;
-        if (cnt < want) { const free = G.cops.find(c => !c.active), pl = live[(rand() * live.length) | 0]; if (free) { const ring = AI.spawnNodes(G.graph, pl.x, pl.z, 28, 62); if (ring.length) { G.spawnCop(free, ring[(rand() * ring.length) | 0]); } } }
+        if (cnt < want) { const free = G.cops.find(c => !c.active), pl = live[(rand() * live.length) | 0]; if (free) { const ring = AI.spawnNodes(G.graph, pl.x, pl.z, 28, 62); if (ring.length) { G.spawnCop(free, ring[(rand() * ring.length) | 0]); if (G.extraCops) { free.st.mode = 'search'; free.st.searchT = 0; free.st.last = { x: pl.x, z: pl.z }; } } } }
         else if (cnt > want + 1) { const dMin = (c) => Math.min(...live.map(q => Math.hypot(c.bot.x - q.x, c.bot.z - q.z))); const far = G.activeCops().sort((a, b) => dMin(b) - dMin(a))[0]; if (far && dMin(far) > 45) G.despawn(far); }   // najdalszy od WSZYSTKICH graczy (nie tylko pierwszego)
     }
     G.radioT -= dt; const radio = G.radioT <= 0; if (radio) G.radioT = 6;
@@ -122,10 +134,10 @@ function update(G, dt, players, rand) {
         const b = c.bot; let tgt = null, bd = 1e9;
         for (const p of live) {
             const rules = WL.starRules(G.starsOf(p.id)), blocked = AI.lineBlocked([b.x, 1.5, b.z], [p.x, p.y, p.z], G.boxes);
-            if (AI.copSees({ x: b.x, z: b.z, y: b.y, dir: b.dir }, p, { sight: rules.sight, hidden: G.hiddenNow[p.id], blocked: blocked })) { const d = Math.hypot(p.x - b.x, p.z - b.z); if (d < bd) { bd = d; tgt = p; } }
+            if (AI.copSees({ x: b.x, z: b.z, y: b.y, dir: b.dir }, p, { sight: rules.sight * (G.sightMul[p.id] || 1) * G.globalSight, hidden: G.hiddenNow[p.id], blocked: blocked, dark: G.darkZones.reduce((m, z) => Math.hypot(p.x - z.x, p.z - z.z) < z.r ? m * z.mul : m, 1) })) { const d = Math.hypot(p.x - b.x, p.z - b.z); if (d < bd) { bd = d; tgt = p; } }
         }
         const lead = tgt || live.slice().sort((a, b2) => G.starsOf(b2.id) - G.starsOf(a.id))[0] || null, rules = WL.starRules(lead ? G.starsOf(lead.id) : 0);
-        const ev = G.events.find(e => AI.copHears(b, e)) || null, radioPos = radio && rules.radio && lead && G.starsOf(lead.id) > 0 ? { x: lead.x + (rand() - 0.5) * 2 * rules.radio, z: lead.z + (rand() - 0.5) * 2 * rules.radio } : null;
+        const ev = G.events.find(e => AI.copHears(b, e, G.hearMul)) || null, radioPos = radio && rules.radio && lead && G.starsOf(lead.id) > 0 ? { x: lead.x + (rand() - 0.5) * 2 * rules.radio, z: lead.z + (rand() - 0.5) * 2 * rules.radio } : null;
         const dcs = AI.copDecide(c.st, { rules: rules, sees: !!tgt, px: tgt ? tgt.x : 0, pz: tgt ? tgt.z : 0, heard: ev, radioPos: radioPos }, dt);
         if (tgt) seenNow[tgt.id] = true;
         let tx, tz, speed = dcs.speed * PACE;

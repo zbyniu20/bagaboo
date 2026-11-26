@@ -128,8 +128,10 @@ export const SAFEHOUSES = [{ id: 'S1', x: -38, z: -39 }, { id: 'S2', x: 38, z: -
 // Linie szybkiego transportu (zjazd na linie, ta sama szyna co tyrolka w aneksie: railStep w core/ziplogic.js)
 export const RAILS = [
     { id: 'casino', A: [12, 47.4, -59], B: [12, 4.6, 40], SPEED: 6.5, HANG: 0.8, COOLDOWN: 3, MAX_DT: 0.1 },
-    { id: 'bank', A: [-26, 39.4, -59], B: [-26, 4.6, 40], SPEED: 6.5, HANG: 0.8, COOLDOWN: 3, MAX_DT: 0.1 }
+    { id: 'bank', A: [-26, 39.4, -59], B: [-26, 4.6, 40], SPEED: 6.5, HANG: 0.8, COOLDOWN: 3, MAX_DT: 0.1 },
+    { id: 'crane', A: [-19, 30.9, 18], B: [-19, 4.6, 40], SPEED: 6.5, HANG: 0.8, COOLDOWN: 3, MAX_DT: 0.1, crane: true }   // z wierzchołka dźwigu na placu
 ];
+export const CRANE = { x: -19, z: 18, w: 3, h: 30 };   // wspinaczkowy dźwig w środku placu (kwartał 1,2): lita wieża 3 x 3 m, chwytna jak rusztowanie
 export function railProblems() {
     const bad = [], B = buildCity(1337);
     for (const r of RAILS) {
@@ -137,7 +139,7 @@ export function railProblems() {
         if (r.SPEED > 7) bad.push(r.id + ' is too fast'); if (len > 140) bad.push(r.id + ' is too long'); if (r.A[1] - r.B[1] < 20) bad.push(r.id + ' does not descend enough');
         if (r.B[1] - r.HANG < 1.2 || r.B[1] > 6) bad.push(r.id + ' ends at a bad height');
         if (r.B[2] < CITY.BLV[0] || r.B[2] > CITY.BLV[1]) bad.push(r.id + ' does not land on the boulevard');
-        const top = B.filter(b => r.A[0] >= b.x0 - 3 && r.A[0] <= b.x1 + 3 && r.A[2] >= b.z0 - 4 && r.A[2] <= b.z1 + 4).sort((a, c) => c.h - a.h)[0];
+        const top = r.crane ? { h: CRANE.h } : B.filter(b => r.A[0] >= b.x0 - 3 && r.A[0] <= b.x1 + 3 && r.A[2] >= b.z0 - 4 && r.A[2] <= b.z1 + 4).sort((a, c) => c.h - a.h)[0];
         if (!top || r.A[1] < top.h + 0.8 || r.A[1] > top.h + 2.5) bad.push(r.id + ' does not start near a roof');
         if (r.A[0] < CITY.X0 || r.A[0] > CITY.X1 || r.B[0] < CITY.X0 || r.B[0] > CITY.X1) bad.push(r.id + ' leaves the map');
     }

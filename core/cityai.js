@@ -51,7 +51,7 @@ export function copSees(cop, p, o) {
     if (d > AI.CLOSE) { const c = d > 1e-6 ? (Math.sin(cop.dir) * dx + Math.cos(cop.dir) * dz) / d : 1; if (c < AI.FOV_COS) return false; }
     return !o.blocked;
 }
-export const copHears = (cop, ev) => Math.hypot(ev.x - cop.x, ev.z - cop.z) <= (NOISE_R[ev.kind] || 10);
+export const copHears = (cop, ev, mul) => Math.hypot(ev.x - cop.x, ev.z - cop.z) <= (NOISE_R[ev.kind] || 10) * (mul || 1);
 // ----- maszyna stanów: zwraca { mode, goal:{x,z}|null, speed } i zmienia cop (mode, lostT, searchT, last) -----
 export function newCop(node) { return { mode: 'patrol', lostT: 0, searchT: 0, last: null, node: node, pathI: 0, path: [], goalNode: -1, wait: 0 }; }
 export function copDecide(cop, v, dt) {
