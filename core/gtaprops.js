@@ -22,7 +22,7 @@ export const debugTouchProbe = (fn) => { probe = fn; };
 const paint = (g, r, gr, b) => { const n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = r; a[i * 3 + 1] = gr; a[i * 3 + 2] = b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
 const box = (w, h, d, x, y, z, c) => paint(new THREE.BoxGeometry(w, h, d).translate(x, y, z), c[0], c[1], c[2]);
 const handPoints = () => { if (probe) return probe(); const out = []; for (const h of [hands.L, hands.R]) { if (!h) continue; h.getWorldPosition(_w); out.push([_w.x, _w.y, _w.z]); } return out; };
-const touching = (x, y, z, r) => handPoints().some(p => Math.hypot(p[0] - x, p[1] - y, p[2] - z) < r);
+export const touching = (x, y, z, r) => handPoints().some(p => Math.hypot(p[0] - x, p[1] - y, p[2] - z) < r);
 
 // o: { buildings, api }; api: { stars, seenT, clearHeat, addHeat, setSight, setPower(on), bags() -> [{id,x,z,got}], cops() -> [{x,z}], heli() -> {x,z}|null }
 export function createGtaProps(o) {
@@ -96,6 +96,7 @@ export function createGtaProps(o) {
         dot(spots.power.x, spots.power.z, '#ffe040', 5, '!');
         dot(C.CRANE.x, C.CRANE.z, '#ffb020', 6, 'C');
         for (const b of api.bags()) if (!b.got) dot(b.x, b.z, '#ffd060', 7, '$');
+        if (api.vehicles) for (const v of api.vehicles()) dot(v.x, v.z, '#7ad0ff', 6, 'V');
         const me = c;
         for (const q of api.cops()) if (Math.hypot(q.x - me.x, q.z - me.z) < 45) dot(q.x, q.z, '#ff3a3a', 4);
         const h = api.heli(); if (h) dot(h.x, h.z, '#ff3a3a', 8, 'H');

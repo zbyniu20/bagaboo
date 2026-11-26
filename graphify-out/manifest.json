@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795714469.4057848,
-    "seen": 1795715520.5872142,
-    "ast_hash": "11e1da23fbb3ca3933538e0dc96b124b",
+    "mtime": 1795717549.9362419,
+    "seen": 1795720665.6929767,
+    "ast_hash": "10071724369a2f3e0eb08934ed41d309",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795713645.8432102,
-    "seen": 1795715520.5872207,
-    "ast_hash": "6f26bdc41344615c68a6b7523ae05f74",
+    "mtime": 1795715764.9382515,
+    "seen": 1795720665.6929877,
+    "ast_hash": "26b00f8952f92021faa481b4fa4e5332",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795713692.4522622,
-    "seen": 1795715520.5869896,
-    "ast_hash": "75a60e38bd5a898a03072d7cc7da6ac8",
+    "mtime": 1795715689.2038467,
+    "seen": 1795720665.6926453,
+    "ast_hash": "d00a3a709fe31edc3ab9474837f265f6",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795713645.8423145,
-    "seen": 1795715520.587029,
-    "ast_hash": "db7fc39b1344bb9577ae9ea572ec299c",
+    "mtime": 1795715646.4732358,
+    "seen": 1795720665.6926935,
+    "ast_hash": "14f1b196cc3111f7e0df2d5a987ffc3f",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10296,9 +10296,9 @@
     "semantic_hash": ""
   },
   "tests/glb.mjs": {
-    "mtime": 1795538542.6711516,
-    "seen": 1795540900.6784701,
-    "ast_hash": "27b05db3b73b880c7ab23b702b8f529d",
+    "mtime": 1795720024.9578824,
+    "seen": 1795720665.6925714,
+    "ast_hash": "31e44e35b73771f45829d9bdbffe7040",
     "semantic_hash": ""
   },
   "assets/monsters/README.md": {
@@ -10326,9 +10326,9 @@
     "semantic_hash": ""
   },
   "tools/blender/monsters.py": {
-    "mtime": 1795695925.1248176,
-    "seen": 1795696096.3068388,
-    "ast_hash": "37a958fdb9bfdf14aa51f2d8b833de9d",
+    "mtime": 1795717366.6194408,
+    "seen": 1795720665.6927109,
+    "ast_hash": "32b1ce11fef426dd0375d4bc074da4ab",
     "semantic_hash": ""
   },
   "tests/account.mjs": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795713666.3239572,
-    "seen": 1795715520.5869267,
-    "ast_hash": "29db00e8c92598c7ba8b10c06e6f2924",
+    "mtime": 1795715811.0074396,
+    "seen": 1795720665.692526,
+    "ast_hash": "b50de9e1a8942065ff98a1608cae5344",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -10830,9 +10830,9 @@
     "semantic_hash": ""
   },
   "tests/citybudget.mjs": {
-    "mtime": 1795714364.0031695,
-    "seen": 1795715520.586952,
-    "ast_hash": "9817fe61ce1b7b14cbcc1811c285eeb6",
+    "mtime": 1795715944.933693,
+    "seen": 1795720665.6925602,
+    "ast_hash": "e84ac5e4b1ee23f6b6c83c5b937a7112",
     "semantic_hash": ""
   },
   "core/cityai.js": {
@@ -10842,9 +10842,9 @@
     "semantic_hash": ""
   },
   "core/citysim.js": {
-    "mtime": 1795708369.9640355,
-    "seen": 1795709513.1857288,
-    "ast_hash": "9459ff3ccf7d6734e231621614d1691c",
+    "mtime": 1795717399.3729794,
+    "seen": 1795720665.692218,
+    "ast_hash": "8dd65dfd00d37c75f3c6628f082735ab",
     "semantic_hash": ""
   },
   "core/wantedlogic.js": {
@@ -10860,9 +10860,9 @@
     "semantic_hash": ""
   },
   "core/gtanet.js": {
-    "mtime": 1795709581.5164979,
-    "seen": 1795711443.558115,
-    "ast_hash": "649332413b47eb08860d8e23d8bb7add",
+    "mtime": 1795715679.8098369,
+    "seen": 1795720665.6923246,
+    "ast_hash": "5b834b295366f6fecafb622fd69fc412",
     "semantic_hash": ""
   },
   "tests/gtanet.mjs": {
@@ -10926,9 +10926,9 @@
     "semantic_hash": ""
   },
   "core/gtaprops.js": {
-    "mtime": 1795708334.4314067,
-    "seen": 1795709513.18586,
-    "ast_hash": "5d94744c9d3e63a798fc02a355d9d0e8",
+    "mtime": 1795715731.3650873,
+    "seen": 1795720665.692326,
+    "ast_hash": "8e93898ca1508dc090861185ed1bd123",
     "semantic_hash": ""
   },
   "core/gtastore.js": {
@@ -10983,6 +10983,24 @@
     "mtime": 1795714225.133425,
     "seen": 1795715520.5869813,
     "ast_hash": "c8c4f74e40739fd31a165a5d217db200",
+    "semantic_hash": ""
+  },
+  "core/vehiclelogic.js": {
+    "mtime": 1795715659.1462834,
+    "seen": 1795720665.6924686,
+    "ast_hash": "a426f12203377d509716755a19a47c9a",
+    "semantic_hash": ""
+  },
+  "core/vehicles.js": {
+    "mtime": 1795715731.364843,
+    "seen": 1795720665.6924703,
+    "ast_hash": "4673cdadb160a2d135922a9ceaf87896",
+    "semantic_hash": ""
+  },
+  "tests/vehicles.mjs": {
+    "mtime": 1795715811.0399768,
+    "seen": 1795720665.6926987,
+    "ast_hash": "94e792269bee52007fb75b94b46469fe",
     "semantic_hash": ""
   },
   "package-lock.json": {

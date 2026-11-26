@@ -10,6 +10,8 @@ import { levelReward, diffOf, unlockAchievement, recordTime, addBones, dailyDate
 import { getGta, setGta } from '../core/gtastore.js';
 import { toast, Terminal, terminals, AMBER, AMBER_DIM, GOLD, OK_COL, BAD_COL } from '../core/terminal.js';
 import * as GM from '../core/gtamodes.js';
+import { createVehicles } from '../core/vehicles.js';
+import * as VL from '../core/vehiclelogic.js';
 import * as SFX from '../core/audio.js';
 import { PACE } from '../core/config.js';
 import { ARRIVAL_FROM_SCARYGTA } from './levels.js';
@@ -138,6 +140,7 @@ export function build() {
     S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
     // dodatki (core/gtaprops.js): kabiny, przebranie, wspinaczki, paczki, manekiny, sejf, prąd, dźwig, telefon; noc (blackout i horda)
     S.gm = GM.newModeState(); S.gmPhase = 'idle'; buildModePanel();
+    S.fleet = VL.newFleet(); S.vehs = createVehicles({ clock: () => S.clock, myKey: 'me', requestStart: requestDrive, onBoard: (car, route) => toast(VL.routeOf(car, route).name + '. Stand still and hold on (both grips to jump off).', '#7ad0ff'), onArrive: () => toast('You arrived.', '#7ad0ff'), dismount: dismountMe });
     S.sim.hearMul = mutatorActive() ? mutFactor('hear') : 1; S.night = X.newNight(); S.nightPh = 'calm'; S.powerOn = false; S.sprayAt = {}; S.alarmAt = {}; S.disUntil = {}; S.powerLeft = 0; S.powerCd = 0; S.disSent = false; S.powerSent = false;
     S.gx = createGtaProps({ buildings: S.buildings, api: {
         stars: () => S.sim.starsOf('me'), seenT: () => S.sim.heatOf('me').seenT,
@@ -145,7 +148,7 @@ export function build() {
         addHeat: (v) => { if (isAuth()) S.sim.addHeat('me', v); else send({ k: 'ev', kind: 'alarm' }); },
         setSight: (m) => { if (isAuth()) S.sim.sightMul.me = m; else { if (m < 1 && !S.disSent) send({ k: 'ev', kind: 'dis' }); S.disSent = m < 1; } },
         setPower: (on) => { if (on !== S.powerOn) { S.powerOn = on; applyLights(); if (isAuth()) powerZone(on ? 45 : 0); else if (on) send({ k: 'ev', kind: 'power' }); } },
-        bags: () => S.bags, cops: () => S.sim.activeCops().map(c => ({ x: c.bot.x, z: c.bot.z })), heli: () => S.heli.mode !== 'away' ? { x: S.heli.x, z: S.heli.z } : null
+        vehicles: () => S.vehs ? S.vehs.cars.map(c => ({ x: c.m.position.x, z: c.m.position.z })) : [], bags: () => S.bags, cops: () => S.sim.activeCops().map(c => ({ x: c.bot.x, z: c.bot.z })), heli: () => S.heli.mode !== 'away' ? { x: S.heli.x, z: S.heli.z } : null
     } });
     S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
@@ -204,10 +207,10 @@ function buildMarina(geo, mat) {
 }
 // ----- rekwizyty: samochody (instancje + kolizje), palmy (instancje) -----
 function buildProps(geo, mat, R) {
-    const CI = C.CITY, cars = [], palms = [];
+    const CI = C.CITY, cars = [], palms = [], vSpots = VL.VEHICLES.map(v => VL.startPoint(v.id));   // zaparkowane auta nie stoją przy stanowiskach pojazdów ucieczki (ten sam ciąg losowy: 3 losowania)
     const body = paint(new THREE.BoxGeometry(2, 0.7, 4.3).translate(0, 0.55, 0), 1, 1, 1), cab = paint(new THREE.BoxGeometry(1.7, 0.6, 2.2).translate(0, 1.15, -0.2), 0.45, 0.5, 0.55);
     const carG = geo(mergeGeometries([body, cab])), carI = new THREE.InstancedMesh(carG, mat(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.6 })), 60);
-    let n = 0; const col = new THREE.Color(), dummy = new THREE.Object3D(), put = (x, z, alongZ) => { if (n >= 60) return; dummy.position.set(x, 0, z); dummy.rotation.set(0, alongZ ? 0 : Math.PI / 2, (R() - 0.5) * 0.04); dummy.updateMatrix(); carI.setMatrixAt(n, dummy.matrix); col.setHSL(R(), 0.55, 0.28 + R() * 0.2); carI.setColorAt(n, col); n++; addStaticBody(x, 0.7, z, new CANNON.Box(new CANNON.Vec3(alongZ ? 1.0 : 2.15, 0.7, alongZ ? 2.15 : 1.0)), carI, false); };
+    let n = 0; const col = new THREE.Color(), dummy = new THREE.Object3D(), put = (x, z, alongZ) => { if (n >= 60) return; if (vSpots.some(s => Math.hypot(s.x - x, s.z - z) < 6)) { R(); R(); R(); return; } dummy.position.set(x, 0, z); dummy.rotation.set(0, alongZ ? 0 : Math.PI / 2, (R() - 0.5) * 0.04); dummy.updateMatrix(); carI.setMatrixAt(n, dummy.matrix); col.setHSL(R(), 0.55, 0.28 + R() * 0.2); carI.setColorAt(n, col); n++; addStaticBody(x, 0.7, z, new CANNON.Box(new CANNON.Vec3(alongZ ? 1.0 : 2.15, 0.7, alongZ ? 2.15 : 1.0)), carI, false); };
     const vx = [0, 1, 2].map(i => C.blockRect(i, 0).x1 + CI.STREET / 2), hz = [0, 1].map(j => C.blockRect(0, j).z1 + CI.STREET / 2);
     for (const x of vx) for (let z = CI.Z0 + 10; z < CI.BLV[0] - 6; z += 23) if (R() < 0.55) put(x + (R() < 0.5 ? -4.2 : 4.2), z + R() * 6, true);
     for (const z of hz) for (let x = CI.X0 + 12; x < CI.X1 - 10; x += 27) if (R() < 0.45) put(x + R() * 6, z + (R() < 0.5 ? -4.2 : 4.2), false);
@@ -300,6 +303,7 @@ export function update(dt, t, ctx) {
     S.micCd -= dt; const ml = SFX.micLevel ? SFX.micLevel() : 0;
     if (ml > 0.25 && S.micCd <= 0 && !S.hidden) { S.micCd = 3; if (isAuth()) { S.sim.addEvent('shout', p.x, p.z); S.sim.addHeat('me', WL.eventHeat('shout')); } else send({ k: 'ev', kind: 'shout' }); }
     netStep(dt, p, speed);
+    S.vehs.update(dt, S.fleet);
     S.heliV.update(S.heli, dt);
     S.eyeOnMe = HL.heliSees(S.heli, { x: p.x, y: p.y, z: p.z }, { hidden: !!S.sim.hiddenNow.me, blocked: AI2.lineBlocked([S.heli.x, S.heli.y, S.heli.z], [p.x, p.y + 0.5, p.z], S.boxes) });
     // syreny: gdy policjant ściga gracza z bliska, naprzemienne tony (cichy sygnał ostrzegawczy; nie w trybie spokojnym gier, tu go nie ma)
@@ -312,7 +316,7 @@ export function update(dt, t, ctx) {
 // Złapanie (BUSTED): jumpscare (z uwzględnieniem ustawień), upuszczenie toreb, o jedną gwiazdkę mniej, odrodzenie w bezpiecznym punkcie po chwili
 function bust(b, remote) {
     if (S.busted >= 0) return;
-    S.busted = 0; S.busts++; S.flags.busted = true; S.scare.trigger(); releaseAll(); cancelRails(S.sim);
+    S.busted = 0; S.busts++; S.flags.busted = true; S.fleet = VL.endDriveBy(S.fleet, 'me'); S.scare.trigger(); releaseAll(); cancelRails(S.sim);
     const lost = S.got;
     if (!remote) { dropBags('me', b.x, b.y || 0, b.z); if (b.reason !== 'shot') S.sim.heats.me = WL.afterBust(S.sim.heatOf('me')); }
     S.gunS.me.deadUntil = S.clock + GU.GUN.RESPAWN;   // gość: torby i ciepło po stronie hosta (migawka)
@@ -477,6 +481,19 @@ function buildModePanel() {
     }, 640, 420);
     const scr = S.mterm.createMesh(1.7, 1.115); scr.position.set(3.4, 1.55, 53.2); L.root.add(scr); S.mterm.dirty = true;
 }
+// ----- pojazdy ucieczki (core/vehicles.js, core/vehiclelogic.js): host trzyma flotę, goście proszą o start i odtwarzają migawkę -----
+const riderOf = (id) => !!S.fleet && S.fleet.some(c => c.occ === id);
+function dismountMe() { S.fleet = VL.endDriveBy(S.fleet, 'me'); if (!isAuth()) send({ k: 'ev', kind: 'dismount' }); }
+function requestDrive(carId, idx) {
+    const v = VL.VEHICLES.find(q => q.id === carId), route = v && v.routes[idx]; if (!route || S.busted >= 0) return;
+    if (isAuth()) { camera.getWorldPosition(_p); hostDrive('me', carId, route.id, { x: _p.x, z: _p.z }); } else send({ k: 'ev', kind: 'drive', car: carId, route: route.id });
+}
+function hostDrive(who, carId, routeId, head) {
+    const sp = VL.startPoint(carId); if (!sp || !head) return;
+    if (who !== 'me' && (S.bustUntil[who] || 0) > S.clock) return;
+    const r = VL.startDrive(S.fleet, carId, routeId, who, S.clock, Math.hypot(head.x - sp.x, head.z - sp.z)); if (!r.ok) return;
+    S.fleet = r.fleet; S.sim.addHeat(who, WL.eventHeat('alarm')); S.sim.addEvent('alarm', sp.x, sp.z);   // kradzież auta to alarm; jazda nic nie płaci
+}
 function bagToast(b) { toast('Bag ' + S.got + '/' + S.bags.length + ': ' + b.id + (S.got === 1 ? '. You are slower while carrying loot. Head for the pier!' : ''), '#ffd27a'); SFX.bell && SFX.bell(); }
 // ---------- SIEĆ (etap 3a): host liczy policję, ciepło i torby dla wszystkich; goście dostają migawki (8 Hz) i odtwarzają je bez własnej AI ----------
 const BAG_IDS = () => S.bags.map(q => q.id);
@@ -499,14 +516,15 @@ function netStep(dt, p, speed) {
     const auth = isAuth(), guests = auth ? remotes() : [];
     S.sim.puppet = !auth;
     if (auth) {
-        const players = [{ id: 'me', x: p.x, y: p.y, z: p.z, speed: speed, busted: S.busted >= 0 || roleOf('me') === 'cop', carrying: S.got }];
+        const players = [{ id: 'me', riding: riderOf('me'), x: p.x, y: p.y, z: p.z, speed: riderOf('me') ? 0 : speed, busted: S.busted >= 0 || roleOf('me') === 'cop', carrying: S.got }];
         const ids = new Set(['me']);
         for (const g of guests) {
             S.sim.sightMul[g.id] = (S.disUntil[g.id] || 0) > S.clock ? X.DISGUISE.SIGHT : 1;
             ids.add(g.id); const tr = S.track[g.id] || (S.track[g.id] = GN.newTrack()), sp = GN.trackStep(tr, g.head.x, g.head.z, S.clock);
-            players.push({ id: g.id, x: g.head.x, y: GN.bodyY(g.head.y), z: g.head.z, speed: (S.rideUntil[g.id] || 0) > S.clock ? 0 : sp, busted: (S.bustUntil[g.id] || 0) > S.clock || roleOf(g.id) === 'cop', carrying: S.bags.filter(q => q.holder === g.id).length });
+            players.push({ id: g.id, riding: riderOf(g.id), x: g.head.x, y: GN.bodyY(g.head.y), z: g.head.z, speed: (S.rideUntil[g.id] || 0) > S.clock || riderOf(g.id) ? 0 : sp, busted: (S.bustUntil[g.id] || 0) > S.clock || roleOf(g.id) === 'cop', carrying: S.bags.filter(q => q.holder === g.id).length });
         }
         for (const id of Object.keys(S.track)) if (!ids.has(id)) delete S.track[id];
+        S.fleet = VL.fleetStep(S.fleet, S.clock, ids);   // auta wolne po dojeździe i gdy pasażera już nie ma
         for (const id of Object.keys(S.gunS)) { if (id !== 'me' && !ids.has(id)) { delete S.gunS[id]; continue; } const st = S.gunS[id]; if (id !== 'me' && st.deadUntil > 0 && S.clock >= st.deadUntil) GU.revive(st, S.clock); }
         // gracz, który wyszedł z poziomu albo się rozłączył, traci torby (wracają na swoje miejsca)
         for (const b of S.bags) if (b.holder && !ids.has(b.holder)) { b.holder = null; b.got = false; b.g.visible = true; b.x = b.ox; b.y = b.oy; b.z = b.oz; b.g.position.set(b.x, b.y, b.z); }
@@ -544,11 +562,11 @@ function netStep(dt, p, speed) {
 function broadcastState(players) {
     const heats = {}; for (const pl of players) heats[toNet(pl.id)] = [+S.sim.heatOf(pl.id).v.toFixed(1), S.sim.hiddenNow[pl.id] ? 1 : 0];
     const hp = {}; for (const pl of players) hp[toNet(pl.id)] = (S.gunS[pl.id] || (S.gunS[pl.id] = GU.newShooter())).hp;
-    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli), nt: S.nightPh, pw: S.powerLeft > 0 ? 1 : 0, gm: modeSnapNet() });
+    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli), nt: S.nightPh, pw: S.powerLeft > 0 ? 1 : 0, gm: modeSnapNet(), veh: VL.fleetSnap(S.fleet.map(c => c.occ ? Object.assign({}, c, { occ: toNet(c.occ) }) : c), S.clock) });
 }
 function hostBust(b) {
     const g = guestOf(b.id); if (!g || (S.bustUntil[b.id] || 0) > S.clock) return;
-    S.bustUntil[b.id] = S.clock + GN.GN.BUST_PROTECT; dropBags(b.id, b.x, bodyYOf(g), b.z);
+    S.fleet = VL.endDriveBy(S.fleet, b.id); S.bustUntil[b.id] = S.clock + GN.GN.BUST_PROTECT; dropBags(b.id, b.x, bodyYOf(g), b.z);
     (S.gunS[b.id] || (S.gunS[b.id] = GU.newShooter())).deadUntil = S.clock + GU.GUN.RESPAWN;
     if (b.reason !== 'shot') S.sim.heats[b.id] = WL.afterBust(S.sim.heatOf(b.id)); send({ k: 'bust', id: b.id, r: b.reason === 'gator' || b.reason === 'shot' ? b.reason : 'cop', x: +b.x.toFixed(2), z: +b.z.toFixed(2) });
 }
@@ -562,7 +580,7 @@ function onNet(msg, from) {
         if (rq.k === 'take') { const b = S.bags.find(q => q.id === rq.b); if (b && !b.got && roleOf(g.id) !== 'cop' && (S.bustUntil[g.id] || 0) <= S.clock && GN.validTake(b, g.head, b.holder)) { giveBag(b, g.id); send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(q => [q.id, q.x, q.y, q.z, q.holder ? toNet(q.holder) : null]), heats: {} }); } }
         else if (rq.k === 'ev' && rq.kind === 'shout') { if ((S.shoutAt[g.id] || 0) <= S.clock) { S.shoutAt[g.id] = S.clock + GN.GN.SHOUT_GAP; S.sim.addEvent('shout', g.head.x, g.head.z); S.sim.addHeat(g.id, WL.eventHeat('shout')); } }
         else if (rq.k === 'ev' && rq.kind === 'ride') S.rideUntil[g.id] = S.clock + 1;
-        else if (rq.k === 'ev') hostExtra(g, rq.kind);
+        else if (rq.k === 'ev') hostExtra(g, rq.kind, rq);
         else if (rq.k === 'gbust') hostBust({ id: g.id, reason: 'gator', x: g.head.x, z: g.head.z });
         return;
     }
@@ -575,6 +593,7 @@ function onNet(msg, from) {
         if (bags.length) { const was = S.got; S.got = S.bags.filter(q => q.holder === 'me').length; if (S.got > was) { const nb = S.bags.find(q => q.holder === 'me'); if (nb) bagToast(nb); } }
         const hl = GN.cleanHeli(msg.hl); if (hl) { const h = S.heli; h.x = hl.x; h.y = hl.y; h.z = hl.z; h.yaw = hl.yaw; h.lx = hl.lx; h.lz = hl.lz; h.mode = hl.mode; } else if (msg.hl === null) S.heli.mode = 'away';
         { const ms = GM.cleanModeSnap(msg.gm), map = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [fromNet(k), v])); S.gm = Object.assign(ms, { roles: map(ms.roles), score: map(ms.score), winner: ms.winner === N.myId() ? 'me' : ms.winner }); modePhaseToast(); }
+        { const veh = VL.cleanVehicles(msg.veh); S.fleet = VL.newFleet().map(c => { const e = veh.find(q => q.car === c.id); return e ? { id: c.id, occ: fromNet(e.occ), route: e.route, t0: S.clock - e.age } : c; }); }
         setNight(msg.nt); if (msg.pw === 1 || msg.pw === 0) { const on = msg.pw === 1; if (on !== S.powerOn && !S.gx.debug().power) { S.powerOn = on; applyLights(); } }
         const hpm = GU.cleanHp(msg.hp); if (Number.isFinite(hpm[N.myId()])) S.gunS.me.hp = hpm[N.myId()]; if (msg.m === 'coop' || msg.m === 'ffa') S.mode = msg.m;
         const mh = heats[N.myId()]; if (mh) { S.sim.heats.me = { v: mh.v, seenT: 0 }; S.sim.hiddenNow.me = mh.hidden; }
@@ -598,7 +617,9 @@ export const debugNet = (msg, from) => { if (S) onNet(msg, from); };   // test: 
 export const debugOutbox = () => S ? S.sent : [];
 export const debugWeather = () => S ? { state: S.wx.state, rain: +S.wx.rain.toFixed(2), fog: +S.wx.fog.toFixed(2), bolts: S.weather.bolts, thunders: S.weather.thunders, mesh: S.weather.mesh.visible, n: S.weather.n, radio: S.radioText ? S.radioText.t : null } : null;
 export const debugWx = (state, flash) => { if (!S) return; if (state) { S.wx.state = state; S.wx.hold = 1e6; } if (flash) { S.wx.flash = WX.WX.FLASH; S.weather.pending.push(0.1); S.weather.bolts++; } };
-function hostExtra(g, kind) {
+function hostExtra(g, kind, rq) {
+    if (kind === 'drive') { hostDrive(g.id, rq.car, rq.route, g.head); return; }
+    if (kind === 'dismount') { S.fleet = VL.endDriveBy(S.fleet, g.id); return; }
     if (kind === 'deliver') { modeDeliver(g.id, S.bags.filter(b => b.holder === g.id).length); return; }
     const near = (pts, r) => pts.some(q => Math.hypot(g.head.x - q.x, g.head.z - q.z) < r), id = g.id, bank = S.buildings.find(b => b.name === 'bank'), ps = X.powerSpot();
     if (kind === 'spray' && near(X.SPRAY.SPOTS, X.SPRAY.R + 3) && (S.sprayAt[id] || 0) <= S.clock) { S.sprayAt[id] = S.clock + 60; S.sim.heats[id] = { v: 0, seenT: 99 }; }
@@ -608,6 +629,9 @@ function hostExtra(g, kind) {
 }
 export const debugMode = () => S ? { gm: S.gm, ids: modeIds(), myRole: roleOf('me') } : null;
 export const debugModeSet = (m, start) => { if (!S) return; setMode(m); if (start) toggleRound(); };
+export const debugDismount = () => { if (S) dismountMe(); };
+export const debugVeh = () => S ? { fleet: S.fleet, v: S.vehs.debug(), carCount: S.carCount } : null;
+export const debugDriveAs = (who, car, route, head) => { if (S) hostDrive(who, car, route, head); };
 export const debugBoxes = () => S ? S.boxes.length : 0;
 export const debugBuildings = () => S ? S.buildings.map(b => ({ id: b.id, interior: b.interior || '', hollow: !!b.hollow, x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, door: b.hollow ? b.hollow.door : '' })) : [];
 export const debugGta = () => S ? Object.assign(S.gx.debug(), { night: S.nightPh, powerLeft: S.powerLeft, sight: S.sim.sightMul, extra: S.sim.extraCops, lamps: S.lampMesh ? S.lampMesh.visible : null, neonOn: S.neonMeshes.filter(n => n.m.visible).length, neonAll: S.neonMeshes.length, lightI: S.nlights.map(n => +n.l.intensity.toFixed(1)), dark: S.sim.darkZones.length, hear: S.sim.hearMul }) : null;
@@ -625,6 +649,7 @@ export function dispose() {
     if (S && S.heliV) S.heliV.dispose();
     if (S && S.weather) S.weather.dispose();
     if (S && S.gx) S.gx.dispose();
+    if (S && S.vehs) S.vehs.dispose();
     if (S && S.mterm) { const i = terminals.indexOf(S.mterm); if (i >= 0) terminals.splice(i, 1); S.mterm.tex.dispose(); }
     if (S && S.gunMesh) { S.gunMesh.g.removeFromParent(); for (const g of S.gunMesh.geos) g.dispose(); for (const m of S.gunMesh.mats) m.dispose(); }
     if (S) for (const f of S.fx) { f.l.geometry.dispose(); f.l.material.dispose(); }
