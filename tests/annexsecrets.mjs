@@ -89,7 +89,7 @@ const room = await ev(async () => {
     await w(500); const opening = A.debugRoom();
     for (let i = 0; i < 80 && A.debugRoom().slide < 1; i++) await w(300);
     const open = A.debugRoom();
-    PL.setPlayerPosition(-10.9, 1.4, 52.5); await w(1200); const inside = PL.playerBody.position.z;
+    PL.setPlayerPosition(-10.9, 1.4, 52.5); for (let i = 0; i < 60 && !K.getDeep().found.includes('room'); i++) await w(250); const inside = PL.playerBody.position.z;
     const w0 = E.SAVE.wallet, code = A.debugVaultCode(), wrong = code === '1234' ? '4321' : '1234';
     const bad1 = A.debugVault(wrong), ok1 = A.debugVault(code), w1 = E.SAVE.wallet - w0, again = A.debugVault(code);
     return { closed, opening, open, inside, bad1, ok1, w1, again, w2: E.SAVE.wallet - w0, n: K.deepCountNow() - n0, saved: JSON.stringify(E.SAVE.deep) };
@@ -97,6 +97,39 @@ const room = await ev(async () => {
 ok('the melody opens the wall room (panel gone, no collider, saved), the player can stand inside it and the vault pays 200 (plus 50 for the secret) once per day for the right code only', room.closed.open === false && room.closed.panel === true && room.closed.blocked === true && room.opening.open === true && room.opening.blocked === false && room.open.panel === false && room.open.saved === true && room.inside > 51.5 && room.bad1 === 'Wrong code.' && room.ok1 === 'ok' && room.w1 === 250 && room.again === 'Already opened today.' && room.w2 === 250 && room.n === 3 && /"open":true/.test(room.saved) && /"vault":"\d{4}-\d{2}-\d{2}"/.test(room.saved), room);
 await shot('room', -10.9, 1.6, 48, Math.PI);
 await shot('roominside', -10.9, 1.6, 51, Math.PI);
+// Tunel: cztery przejścia, napis się zmienia, sekret; złoty duch; trzynasta witryna; wnętrze norki
+const tun = await ev(async () => {
+    const T = await import('./core/annextunnel.js'), K = await import('./core/deep.js'); const out = [];
+    for (const z of [10, 22, 10, 22, 10]) out.push(T.debugTunnelZ(z));
+    return { out, st: T.debugTunnel(), found: K.getDeep().found.includes('tunnel') };
+});
+ok('crossing the tunnel back and forth fires stage 3 on the third crossing and stage 4 (secret and footsteps) on the fourth', tun.out.join() === ',,,stage3,stage4'.replace(/^,/, '') || tun.out.join() === ',,,,stage3,stage4'.slice(1) || (tun.out.includes('stage3') && tun.out.includes('stage4') && tun.st.stage === 2 && tun.found), tun);
+const gold = await ev(async () => {
+    const G = await import('./core/annexgallery.js'), K = await import('./core/deep.js'), w = (ms) => new Promise(r => setTimeout(r, ms));
+    const s0 = G.debugAnnexGallery().score;
+    G.debugGalleryForceUp(0); G.debugGalleryForceUp(1); G.debugGalleryForceUp(3);
+    G.debugGalleryBall(0, -6, 1.2, 49.45); G.debugGalleryBall(1, -3.5, 1.2, 49.45); G.debugGalleryBall(2, 1.5, 1.2, 49.45);
+    for (let i = 0; i < 60 && !K.getDeep().found.includes('gold'); i++) await w(250);
+    return { s0, s1: G.debugAnnexGallery().score, found: K.getDeep().found.includes('gold'), hits: G.debugAnnexGallery().hits };
+});
+ok('three quick hits wake a golden ghost, hitting it adds 90 points and awards the secret', gold.found === true && gold.s1 - gold.s0 >= 120, gold);
+const you = await ev(async () => {
+    const B = await import('./core/bestiary.js'), L = await import('./core/bestiarylogic.js'), K = await import('./core/deep.js'), PL = await import('./core/player.js'), w = (ms) => new Promise(r => setTimeout(r, ms));
+    const before = B.debugYou(); for (const b of L.BEASTS) B.discoverBeast(b.id); await w(600);
+    const built = B.debugYou(), cases = B.debugBestiary().cases;
+    PL.setPlayerPosition(-9.5, 1.3, 7.2); for (let i = 0; i < 40 && !K.getDeep().found.includes('you'); i++) await w(250);
+    return { before, built, cases, found: K.getDeep().found.includes('you') };
+});
+ok('after meeting all 12 monsters the 13th case appears next to the row (the 12 stay 12) and standing in front of it awards the secret', you.before === null && you.built && you.cases === 12 && you.found === true, you);
+await shot('you', -8, 1.6, 9.5, 0);
+const mouse = await ev(async () => {
+    const G = await import('./core/eggs.js'), K = await import('./core/deep.js'), E = await import('./core/engine.js'), PL = await import('./core/player.js'), w = (ms) => new Promise(r => setTimeout(r, ms));
+    G.debugFindEgg('mouse'); PL.setPlayerPosition(-14.4, 0.3, -8.5); await w(400);
+    const cam = new (E.camera.position.constructor)(); E.camera.getWorldPosition(cam); const dy = cam.y - PL.playerBody.position.y;
+    PL.setPlayerPosition(-14.2, 1.0 - dy, -8.5); for (let i = 0; i < 40 && !K.getDeep().found.includes('mouse'); i++) await w(250);
+    return { found: K.getDeep().found.includes('mouse'), dy };
+});
+ok('crouching right at the mouse door after finding the egg awards the tiny room secret', mouse.found === true, mouse);
 
 ok('no page errors', errors.length === 0, errors);
 console.log(fails ? 'FAILED: ' + fails : 'annexsecrets: all checks passed'); await browser.close(); server.close(); process.exit(fails ? 1 : 0);

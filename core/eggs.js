@@ -11,6 +11,10 @@ import { SAVE, saveGame, addBones } from './economy.js';
 import { hands } from './player.js';
 import * as SFX from './audio.js';
 import * as E from './egglogic.js';
+import { getSecrets } from './secrets.js';
+import { SECRETS, isFound as skullFound } from './secretlogic.js';
+import { getDeep, findDeepSecret } from './deep.js';
+import { deepFound } from './puzzlelogic.js';
 
 let G = null;
 const _w = new THREE.Vector3(), _d = new THREE.Vector3(), _c = new THREE.Vector3(), MIRROR = [-14.9, 1.5, 2.75];
@@ -63,12 +67,21 @@ export function buildEggs() {
     const frame = new THREE.Mesh(geo(new THREE.BoxGeometry(0.16, 0.22, 0.03)), mat({ color: 0x3a2412, roughness: 0.8 })); door.add(frame);
     const leaf = new THREE.Group(); leaf.position.set(-0.06, 0, 0.02); door.add(leaf);
     const leafM = new THREE.Mesh(geo(new THREE.BoxGeometry(0.12, 0.18, 0.01)), mat({ color: 0x1a0c04, roughness: 0.7 })); leafM.position.x = 0.06; leaf.add(leafM);
-    const light = new THREE.Mesh(geo(new THREE.PlaneGeometry(0.1, 0.16)), new THREE.MeshBasicMaterial({ color: 0xffc060 })); G.mats.push(light.material); light.position.set(0, 0, 0.0165); door.add(light);
+    const room = mouseRoomTexture(); G.texs.push(room); const light0 = new THREE.Mesh(geo(new THREE.PlaneGeometry(0.1, 0.16)), new THREE.MeshBasicMaterial({ map: room, color: 0xffffff })); const light = light0; G.mats.push(light.material); light.position.set(0, 0, 0.0165); door.add(light);
     G.leaf = leaf;
     // Spadająca gwiazda (jeden sprite, ukryty do czasu)
     const star = new THREE.Mesh(geo(new THREE.PlaneGeometry(1.4, 0.05)), new THREE.MeshBasicMaterial({ color: 0xfff0c0, transparent: true, opacity: 0, depthWrite: false, fog: false })); G.mats.push(star.material); star.visible = false; root.add(star); G.star = star;
 }
 
+// Wnętrze mysiej norki (sekret mouse): maleńki pokój ze świeczką i kawałkiem sera, na którym napisana jest nazwa pierwszej nieznalezionej złotej czaszki
+function mouseRoomTexture() {
+    const c = T.makeCanvas(100, 160), x = c.getContext('2d');
+    x.fillStyle = '#2a1608'; x.fillRect(0, 0, 100, 160); x.fillStyle = '#4a2c14'; x.fillRect(0, 120, 100, 40); x.fillStyle = '#5a3a20'; x.fillRect(8, 96, 40, 18); x.fillStyle = '#8a2a2a'; x.fillRect(10, 90, 36, 8);
+    x.fillStyle = '#ffe9a0'; x.beginPath(); x.moveTo(52, 124); x.lineTo(92, 124); x.lineTo(92, 104); x.closePath(); x.fill(); x.fillStyle = '#e0c060'; x.fillRect(60, 112, 6, 6); x.fillRect(74, 116, 5, 5);
+    x.fillStyle = '#f0e8d8'; x.fillRect(70, 60, 6, 30); x.fillStyle = '#ffb030'; x.beginPath(); x.ellipse(73, 54, 5, 9, 0, 0, 7); x.fill(); x.fillStyle = 'rgba(255,200,80,0.25)'; x.beginPath(); x.arc(73, 56, 28, 0, 7); x.fill();
+    const next = SECRETS.find(q => !skullFound(getSecrets(), q.id)); x.fillStyle = '#3a2a10'; x.font = 'bold 7px "Courier New", monospace'; x.textAlign = 'center'; x.fillText(next ? next.name.slice(0, 18) : 'all found', 72, 120);
+    return T.toTex(c, false);
+}
 function nearHand(p, r) {
     for (const h of [hands.L, hands.R]) { if (!h) continue; h.getWorldPosition(_w); if (E.nearPoint([_w.x, _w.y, _w.z], p, r)) return true; }
     return false;
@@ -91,6 +104,8 @@ export function updateEggs(dt, t, mic) {
     const k = E.eggById('knock').pos;
     if (!E.isFound(st, 'knock') && E.knockStep(G.d.knock, nearHand([k[0], 1.2, k[2] + 0.1], 0.3), now)) { SFX.whisper && SFX.whisper({ x: k[0], y: 1.2, z: k[2] }); findEgg('knock'); }
     // 6) Drzwiczki myszki: dotknięcie otwiera je i świeci
+    // Podejrzenie do norki: po znalezieniu jajka drzwiczki otwierają się, gdy głowa jest blisko, a z 0,65 m i poniżej 1,15 m (trzeba przykucnąć) zalicza się sekret mouse
+    if (E.isFound(st, 'mouse')) { const mp = E.eggById('mouse').pos, dh = Math.hypot(_c.x - mp[0], _c.z - mp[2]); if (dh < 1.0 && _c.y < 1.6) G.mouseOpen = 1; if (dh < 0.65 && _c.y < 1.15 && !deepFound(getDeep(), 'mouse')) findDeepSecret('mouse'); }   // głowa nisko (przykucnięcie) tuż przy norce
     if (!E.isFound(st, 'mouse') && nearHand(E.eggById('mouse').pos, 0.18)) { G.mouseOpen = 1; SFX.beep && SFX.beep(2400, 0.05, 0.04); findEgg('mouse'); }
     // 3) Patrzenie w niebo
     if (!E.isFound(st, 'stars') && E.gazeStep(G.d.stars, _d.y, dt)) { G.shoot = { t: 0, x0: _c.x - 7, z0: _c.z - 4 }; G.star.visible = true; SFX.beep && SFX.beep(2600, 0.05, 0.3); findEgg('stars'); }
