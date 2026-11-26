@@ -21,13 +21,14 @@ import * as NET from '../core/network.js';
 import { ARRIVAL_FROM_MAZE as ARRIVAL } from './levels.js';
 import { buildDoor, createJumpscare, takeRespawn, addStoryProps } from '../core/levelkit.js';
 import { setDread } from '../core/ambience.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 const NP = LIGHT_PRESETS.night;
 const N = 25, CELL = 4, HALF = 50, WT = 0.6, H = 20;   // 25 x 25 komórek po 4 m = 100 x 100 m
 const START_I = 12;
 const REWARD_FIRST = 2000, REWARD_REPEAT = 200;   // pierwsze przejście / każde kolejne
 const CAGE_TIME = 15;          // po ilu sekundach manekin się uwalnia
-const SPEED_START = 3.0, SPEED_MAX = 5.0, SPEED_RAMP = 90;   // m/s, rośnie przez 1,5 minuty
+const SPEED_START = 3.0 * PACE, SPEED_MAX = 5.0 * PACE, SPEED_RAMP = 90;   // m/s, rośnie przez 1,5 minuty
 const LOST_TIME = 10;          // ile sekund błądzenia poza główną drogą do jumpscare'a
 const SCARE_COOLDOWN = 15;     // minimalna przerwa między jumpscare'ami
 const DEADEND_CHANCE = 0.6;    // szansa na jumpscare po wejściu w ślepy zaułek

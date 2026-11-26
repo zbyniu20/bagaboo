@@ -23,6 +23,7 @@ import { ARRIVAL_FROM_MEMORY } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
 import { setDread } from '../core/ambience.js';
 import { swapRoot } from '../core/glbmonster.js';
+import { PACE } from '../core/config.js';   // ruch gracza jak w lobby (core/config.js)
 
 // ---------- USTAWIENIA ----------
 // 6 ścieżek po 20 kamieni wypełnia prawie cały basen. Kamienie 1,5 x 1,5 m, między nimi 1,1 m lawy
@@ -44,7 +45,7 @@ const SCARE_MIN = 5, SCARE_MAX = 8;                      // jumpscare losowo co 
 const BEAST_SPEED = 2.4, BEAST_MAX = 4.0, BEAST_RAMP = 40;   // Bestia: m/s, przyspiesza przez 40 s
 const CATCH_DIST = 1.7, ARRIVE_TIME = 1.0;               // po wpadnięciu do lawy Bestia jest przy tobie w 1 s
 // Ograniczony skok (ok. 2,3 m lotu): przerwa 1,1 m (także na skos) w zasięgu, linia albo kolumna dalej (3,7 m) już nie
-const MOVE_SCALE = 0.95, MAX_UP = 4.0, MAX_SPEED_XZ = 4.0, EXTRA_GRAVITY = 4.0;
+const MOVE_SCALE = PACE, MAX_UP = 4.0, MAX_SPEED_XZ = 4.0, EXTRA_GRAVITY = 4.0;
 const REWARD_FIRST = 2200, REWARD_REPEAT = 220;
 export const info = { id: 'memory', name: 'Burning Memory', spawn: [0, 1.4, 3.0] };
 let S = null;

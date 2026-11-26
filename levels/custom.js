@@ -12,13 +12,14 @@ import { LEVEL_DATA } from '../core/leveldata.js';
 import { currentMap } from '../core/workshopstore.js';
 import { demoMap, levelOf, atFinish, parOf } from '../core/workshoplogic.js';
 import { ARRIVAL_FROM_CUSTOM } from './games.js';
+import { PACE } from '../core/config.js';   // ruch gracza jak w lobby (core/config.js)
 
 const SPAWN = [0, 1.9, 3], BOUNDS = { minX: -30, maxX: 30, minZ: -40, maxZ: 30, maxY: 40 }, DOOR = { x: 0, y: 1, z: 6, rotY: Math.PI };   // pola mutowane w build() według mapy
 
 const mode = createRaceMode({
     id: 'custom', name: 'Custom Race', color: '#7ad0ff',
     spawn: SPAWN, startSpread: 1, arrival: ARRIVAL_FROM_CUSTOM, bounds: BOUNDS,
-    moveScale: 0.8, maxUp: 4.2, maxSpeedXZ: 3.8, extraGravity: 1.5, floorY: -40,   // te same stałe co w dawny Parkour Race
+    moveScale: PACE, maxUp: 4.2, maxSpeedXZ: 3.8, extraGravity: 1.5, floorY: -40,   // te same stałe co w dawny Parkour Race
     par: 90, roundMax: 240, reward: 0, noRecord: true, respawn: 'platform', fallY: -5,
     door: DOOR,
     introStyle: { bg: 'rgba(4,14,24,0.9)', border: '#7ad0ff', title: '#d8f0ff', text: '#dcecf4', footer: '#ffb030', size: 29 },

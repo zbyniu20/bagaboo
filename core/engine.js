@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { GFX, LP } from './config.js';
+import { GFX, LP, LOBBY_MOVE_SCALE } from './config.js';
 import * as T from './textures.js';
 import { aoFor } from './gfxlogic.js';
 import { familyFor, gradeColor, familyName, tileStrength, TILE } from './artlogic.js';
@@ -109,6 +109,7 @@ export function clearLevel() {
     L.gen = (L.gen || 0) + 1;   // numer pokolenia poziomu: asynchroniczne dekoracje (rekwizyty, elementy architektury) sprawdzają go po wczytaniu pliku
     L.bounds = { minX: -14.6, maxX: 14.6, minZ: -14.6, maxZ: 14.6, maxY: 19.6 };
     L.ballMaxZ = undefined;
+    L.moveScale = LOBBY_MOVE_SCALE;   // domyślny ruch gracza jak w lobby (poziom może ustawić własny; kolejność w main.js: dispose, clearLevel, build)
     // Zwolnienie pamięci karty graficznej po starym poziomie
     L.root.traverse((o) => {
         if (o.geometry) o.geometry.dispose();

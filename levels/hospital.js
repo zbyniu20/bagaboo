@@ -19,13 +19,14 @@ import { createEvents } from '../core/events.js';
 import { ARRIVAL_FROM_HOSPITAL } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
 import { setDread } from '../core/ambience.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 const X0 = -11, X1 = 11, Z0 = 5, Z1 = -52, H = 3.4, CORR = 2.5;       // budynek 22 x 57 m, korytarz 5 m szerokości
 const ROOM_Z = [0, -12, -24, -36, -48];                               // granice sal wzdłuż korytarza
 const CARDS = [[-6.5, 1.0, -18], [6.5, 1.0, -30], [-6.5, 1.0, -42]];
 const CP = [[0, 1.0, -18.5], [0, 1.0, -30.5], [0, 1.0, -42.5]];       // punkty kontrolne w korytarzu przy salach z kartami
 const STATUES = [[0, -22], [-5, -16], [5, -33], [-5, -45]];           // 4. posąg tylko na Nightmare
-const WALK = 3.6, WALK_PER_CARD = 0.3, LUNGE_DIST = 6, LUNGE_MUL = 1.35, CATCH_DIST = 1.0, SEE_DIST = 30;   // prędkość posągów (m/s): rośnie z każdą kartą, a w odległości do LUNGE_DIST nieoświetlony posąg rzuca się szybciej
+const WALK = 3.6 * PACE, WALK_PER_CARD = 0.3 * PACE, LUNGE_DIST = 6, LUNGE_MUL = 1.35, CATCH_DIST = 1.0, SEE_DIST = 30;   // prędkość posągów (m/s): rośnie z każdą kartą, a w odległości do LUNGE_DIST nieoświetlony posąg rzuca się szybciej
 const SEE_CONE = { easy: 0.82, normal: 0.9, nightmare: 0.93 };   // cos kąta stożka latarki (35° / 26° / 21°): węższy = trzeba trafić precyzyjniej
 const WAKE_CARDS = [0, 1], WAKE_BEHIND = 14;                       // po zabraniu tych kart budzi się dodatkowy posąg za plecami gracza (nie na Easy)
 const GATE_Z = -48.4, EXIT_Z = -51.9;

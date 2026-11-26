@@ -20,12 +20,13 @@ import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, int
 import * as M from '../core/room000map.js';
 import { setDread } from '../core/ambience.js';
 import { swapRoot } from '../core/glbmonster.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 const PLAN = M.buildPlan(), GRID = M.rasterize(PLAN), DOORS = M.doorSpots(PLAN, GRID), H = M.GEO.H, G = M.GEO.CELL;
 const SEE_DIST = 17, HEAR_RUN = 13, LOSE_TIME = 9, MEMORY_TIME = 5, CATCH_DIST = 1.0, ITEMS = 5;
 // Prędkości Ducha (m/s) dopasowane do gracza: pościg nigdy nie przekracza GHOST_MAX_CHASE (bot w Become the Monster ma 4,2-5,4), więc da się mu uciec biegiem; wyszukiwanie ma osobny, niższy limit.
-const WALK = 1.9, INVESTIGATE = 3.0, CHASE = 3.5, ITEM_BOOST = 0.03;   // każdy przedmiot przyspiesza Ducha o 3%
-const GHOST_MAX_CHASE = 4.2, GHOST_MAX_SEARCH = 3.5;
+const WALK = 1.9 * PACE, INVESTIGATE = 3.0 * PACE, CHASE = 3.5 * PACE, ITEM_BOOST = 0.03;   // każdy przedmiot przyspiesza Ducha o 3%
+const GHOST_MAX_CHASE = 4.2 * PACE, GHOST_MAX_SEARCH = 3.5 * PACE;
 const PICK_R = 0.8, CUE_DIST = 7, GHOST_SHOW = 10;   // przedmiot zbierasz z 0,8 m; z 7 m w linii prostej dostajesz wskazówkę; duch poza 10 m pokazuje się tylko błyskami
 const REWARD_FIRST = 4000, REWARD_REPEAT = 400, INTRO_TIME = 10, DECOR_SEED = 31337;
 const NAMES = { book: 'a book', pistol: 'the pistol', knife: 'the knife' };

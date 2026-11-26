@@ -20,6 +20,7 @@ import { ARRIVAL_FROM_SILENCE as ARRIVAL_SILENCE } from './levels.js';
 import { buildDoor, addDoorPortal, createJumpscare, cameraPanel, panelBg, drawInstructions , introSeen, addStoryProps } from '../core/levelkit.js';
 import { setDread } from '../core/ambience.js';
 import { swapRoot } from '../core/glbmonster.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 // ---------- USTAWIENIA ----------
 const NP = LIGHT_PRESETS.night;
@@ -29,7 +30,7 @@ const INTRO_TIME = 10, RESTART_INTRO = 6;    // instrukcja na start / krótka pr
 const FUSE_COUNT = 4, FUSE_CUT = 15;          // każdy bezpiecznik: -15 s na zegarze (+40 Bagabucks, dzienny limit w economy.js)
 const REWARD_FIRST = 1800, REWARD_REPEAT = 180;
 const CATCH_Y = 4.3, CATCH_R = 1.5;          // poniżej tej wysokości potwór cię dosięgnie
-const SPEED = { patrol: 1.8, investigate: 2.4, decoy: 3.6, chase: 5.0, camp: 1.5 };
+const SPEED = { patrol: 1.8 * PACE, investigate: 2.4 * PACE, decoy: 3.6 * PACE, chase: 5.0 * PACE, camp: 1.5 * PACE };
 const CAMP_TIME = 12;                        // tyle czeka pod liną, zanim odejdzie
 const GRIP_TIME = 14;                        // tyle możesz wisieć na linie
 const HAND_QUIET = 0.7, HAND_LOUD = 3.0;     // prędkość dłoni (m/s): poniżej cicho, powyżej maksymalny hałas

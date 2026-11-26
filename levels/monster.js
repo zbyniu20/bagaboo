@@ -31,10 +31,11 @@ import { startSpectate, stopSpectate, isSpectating } from '../core/spectate.js';
 import { forwardFromQuat } from '../core/spectatelogic.js';
 import { RESCUE, newFallen, nearestRescuer, rescueStep, secondsLeft, cleanFallen, canMark } from '../core/rescuelogic.js';
 import { pickDismember, cleanDismember, lostLeft, lostRight, lostHead, dismemberText, catchOutcome, GRACE } from '../core/dismemberlogic.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 const WAIT = 10, WAIT_AFTER_VOTE = 6, ROUND = 120, RESULTS = 8, REWARD = 200;
 const CATCH_DIST = 0.5;                     // dłoń potwora tak blisko głowy lub tułowia = złapany
-const BOT_SPEED = 4.2, BOT_SPEED_MAX = 5.4;   // trochę wolniej od szybkiego biegu gracza: da się uciec, ale z wysiłkiem   // bot jest trochę szybszy od gracza i przyspiesza w trakcie rundy
+const BOT_SPEED = 4.2 * PACE, BOT_SPEED_MAX = 5.4 * PACE;   // trochę wolniej od szybkiego biegu gracza: da się uciec, ale z wysiłkiem   // bot jest trochę szybszy od gracza i przyspiesza w trakcie rundy
 const BOT_GRAVITY = 18, BOT_JUMP_MAX = 4.2;   // BOT_JUMP_MAX: domyślnie, mapa może dać własny (md.botJump)
 const _unusedJump = 0;    // bot skacze na perony, wagony i schody (do 4,2 m w górę)
 const MONSTER_BOOST = 1.15;                 // potwór jest trochę szybszy
@@ -635,7 +636,7 @@ export function update(dt, t, ctx) {
     S.auraLight.intensity = mpos && mon !== 'me' ? 5 : 0;
     if (mpos) { S.tag.position.copy(mpos).y += 0.55; S.aura.position.copy(mpos); S.auraLight.position.copy(mpos); }
     setTint(mon === 'me');
-    L.moveScale = mon === 'me' ? monsterBoost(MONSTER_BOOST, S.t) : 1;
+    L.moveScale = (mon === 'me' ? monsterBoost(MONSTER_BOOST, S.t) : 1) * PACE;   // uciekinier ma ruch jak w lobby, potwór jest o MONSTER_BOOST szybszy od niego
     tickHunt(dt, t, mon, mpos, p);
     tickRescueMarks(dt);
     if (mpos && mon !== 'me' && !S.caught.has('me')) { _h.copy(mpos); SFX.heartbeat(Math.max(0, 1 - _h.distanceTo(p) / 12)); }

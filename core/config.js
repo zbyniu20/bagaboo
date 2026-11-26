@@ -228,3 +228,6 @@ export const LP = LIGHT_PRESETS[LIGHT_MODE];
 
 // Mnożnik ruchu napędzanego dłońmi w lobby, Games i garderobie (poziomy z własnym ruchem ustawiają swoje wartości)
 export const LOBBY_MOVE_SCALE = 1.15;
+// PACE: ruch gracza we WSZYSTKICH poziomach jest taki jak w lobby (L.moveScale = LOBBY_MOVE_SCALE ustawia clearLevel), więc prędkości potworów i progi hałasu
+// liczone względem prędkości ciała gracza mnożymy przez PACE (stałe w poziomach zapisane jako baza * PACE). Wyjątek: poziomy z limitami prędkości gracza (lava, memory, wyścig własny).
+export const PACE = LOBBY_MOVE_SCALE;

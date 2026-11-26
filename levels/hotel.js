@@ -25,6 +25,7 @@ import { ARRIVAL_FROM_HOTEL } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn } from '../core/levelkit.js';
 import { setDread, heardVoice, DREAD } from '../core/ambience.js';
 import { VOICE, nextIn } from '../core/hauntlogic.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 const RW = 12, H = 3.4, HALF = RW / 2, DOOR_W = 1.7, DOOR_H = 2.6, WALL_T = 0.4;   // szerokość zwykłego pokoju 12 m, wysokość 3,4 m
 const N_ROOMS = 100, LEN_NORMAL = 12, LEN_HUB = 20, LEN_BIG = 40;                  // liczba pokoi (drzwi 100 = wyjście) i długości: zwykły, hol z kluczem, wielki pokój 50
@@ -33,8 +34,8 @@ const BIG = 50, BIG_HALF = 12;                                                  
 const SIDE_W = 9, DOORWAY = 2.6, KEYS_NEEDED = 3;                                     // szerokość pokoju pobocznego, szerokość przejścia z holu, tyle kluczy otwiera drzwi 100
 const CHECKPOINT_EVERY = 10;                                                          // co tyle drzwi punkt kontrolny
 const FAKE = { chance: 0.2, breathEvery: [7, 12], near: 4.5 };   // fałszywa kryjówka: co piąta szafa ma już kogoś w środku (cichy oddech zdradza to z bliska)
-const RUSH = { wait: [18, 35], warn: 5, speed: 26 }, SCREECH = { chance: 0.35, window: 1.8 }, WEEPER = { walk: 2.0, chase: 4.8, hear: 10 };   // warn: 5 s migania świateł przed Łomotem
-const FIGURE = { quiet: 1.3, walk: 1.6, investigate: 3.2, chase: 5.5, loud: 3.2 };   // Ślepy w pokoju 50: cisza poniżej quiet (m/s ciała), każdy szybszy ruch go przyciąga, od loud goni
+const RUSH = { wait: [18, 35], warn: 5, speed: 26 * PACE }, SCREECH = { chance: 0.35, window: 1.8 }, WEEPER = { walk: 2.0 * PACE, chase: 4.8 * PACE, hear: 10 };   // warn: 5 s migania świateł przed Łomotem
+const FIGURE = { quiet: 1.3 * PACE, walk: 1.6 * PACE, investigate: 3.2 * PACE, chase: 5.5 * PACE, loud: 3.2 * PACE };   // Ślepy w pokoju 50: cisza poniżej quiet (m/s ciała), każdy szybszy ruch go przyciąga, od loud goni
 const REWARD_FIRST = 6000, REWARD_REPEAT = 600, INTRO_TIME = 10, MAX_HP = { easy: 3, normal: 2, nightmare: 2 };   // serca zależą od trudności; punkt kontrolny leczy o 1 serce (na Easy wszystkie)
 export const info = { id: 'hotel', name: 'The Hotel', spawn: [0, 1.0, -1.6] };
 let S = null;

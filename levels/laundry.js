@@ -21,10 +21,11 @@ import { ARRIVAL_FROM_LAUNDRY as ARRIVAL_LAUNDRY } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare , introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
 import { setDread } from '../core/ambience.js';
 import { swapRoot } from '../core/glbmonster.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 // ---------- USTAWIENIA ----------
 const X0 = -16, X1 = 16, Z0 = 6, Z1 = -54, H = 9;   // hala 32 x 60 m, 9 m wysokości
-const WALK0 = 3.4, INVESTIGATE0 = 5.2, SPRINT0 = 8.8, RAGE0 = 8.0;   // prędkości Szmaciarza (m/s): w sprincie szybszy od gracza
+const WALK0 = 3.4 * PACE, INVESTIGATE0 = 5.2 * PACE, SPRINT0 = 8.8 * PACE, RAGE0 = 8.0 * PACE;   // prędkości Szmaciarza (m/s): w sprincie szybszy od gracza
 const SEE_DIST = 14, CATCH_DIST = 1.3, SAFE_HEIGHT = 2.6;       // widzi na 14 m (para), nie sięga wyżej niż 2,6 m
 const LOSE_TIME = 7;                                            // tyle sekund szuka cię po stracie z oczu
 const BLACKOUT_MIN = 28, BLACKOUT_MAX = 50;                     // co ile sekund gasną światła

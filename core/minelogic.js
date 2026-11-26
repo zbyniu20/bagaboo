@@ -68,7 +68,8 @@ export const lampReach = (bat) => bat <= 0 ? 0 : 0.45 + 0.55 * Math.min(1, bat /
 export const lampFlickers = (bat, r) => bat > 0 && bat < BATTERY.FLICKER && r < 0.35;
 
 // ---------- PERCEPCJA POTWORA ----------
-export const SENSE = { BREATH: 3.2, LIGHT_NEAR: 8, LIGHT_FAR: 17, HEAR_RUN: 11, RUN_SPEED: 3.8, FALL_SPEED: 6, LANDING: 26, CELL: 32 };
+const PACE = 1.15;   // = PACE z core/config.js (ruch gracza jak w lobby; test w tests/logic.mjs pilnuje zgodności): progi i prędkości względem ciała gracza rosną razem z nim
+export const SENSE = { BREATH: 3.2, LIGHT_NEAR: 8, LIGHT_FAR: 17, HEAR_RUN: 11, RUN_SPEED: 3.8 * PACE, FALL_SPEED: 6 * PACE, LANDING: 26, CELL: 32 };
 // o: { d (odległość 3D), lamp (świeci), runSpeed (m/s poziomo), vy (m/s w pionie), voice (głos z mikrofonu usłyszany), mul (trudność: zasięg) }
 // Zwraca 'breath' (oddech: potwór czuje cię z bliska), 'light-near' (światło tuż obok: pościg), 'light' (światło z daleka: idzie sprawdzić), 'voice', 'run' albo null
 export function perceive(o) {
@@ -82,5 +83,5 @@ export function perceive(o) {
 }
 // Zasięg widzenia i słuchu zależny od trudności; prędkości potwora (m/s) w patrolu, sprawdzaniu i pościgu
 export const DIFF_MUL = { easy: 0.8, normal: 1, nightmare: 1.25 };
-export const SPEEDS = { patrol: 1.7, investigate: 2.6, chase: 3.5, ladder: 0.55 };
+export const SPEEDS = { patrol: 1.7 * PACE, investigate: 2.6 * PACE, chase: 3.5 * PACE, ladder: 0.55 };
 export const speedFor = (mode, kind, id) => (SPEEDS[mode] || SPEEDS.patrol) * (kind === 'ladder' ? SPEEDS.ladder : 1) * (id === 'easy' ? 0.8 : (id === 'nightmare' ? 1.2 : 1));

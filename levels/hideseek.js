@@ -19,13 +19,14 @@ import { createEvents } from '../core/events.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen } from '../core/levelkit.js';
 import { ARRIVAL_FROM_HIDESEEK } from './games.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 const A = 20, H = 8;                          // magazyn 40 x 40 m
 const WAIT = 10, HIDE = 25, SEEK = 120, RESULTS = 8, REWARD = 200;
 const CATCH_DIST = 0.5;                       // dłoń szukającego tak blisko głowy lub tułowia = znaleziony
 const SEEKER_SPAWN = [0, 1.0, -17.5];         // tu stoi szukający podczas chowania
 const HIDER_SPAWNS = [[-17, 1.0, 17], [17, 1.0, 17], [-17, 1.0, 5], [17, 1.0, 5], [-17, 1.0, -8], [17, 1.0, -8], [-8, 1.0, 17.5], [8, 1.0, 17.5]];
-const BOT = { walk: 2.6, search: 3.6, chase: 5.0, see: 13, lose: 6 };   // bot: m/s, zasięg wzroku (m), sekundy do utraty śladu
+const BOT = { walk: 2.6 * PACE, search: 3.6 * PACE, chase: 5.0 * PACE, see: 13, lose: 6 };   // bot: m/s, zasięg wzroku (m), sekundy do utraty śladu
 export const info = { id: 'hideseek', name: 'Hide and Seek', spawn: [0, 1.0, 18.5] };
 let S = null;
 const _p = new THREE.Vector3(), _q = new THREE.Vector3();

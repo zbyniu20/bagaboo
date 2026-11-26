@@ -21,10 +21,11 @@ import { ARRIVAL_FROM_CATACOMBS } from './levels.js';
 import { createGridMaze } from '../core/gridmaze.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
 import { setDread, heardVoice } from '../core/ambience.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 const N = 8, P = 5.5, WT = 0.8, H = 3.4, X = N * P / 2;              // siatka 8 x 8 komórek po 5,5 m (44 x 44 m), ściany 0,8 m
 const SEE_DIST = 14, HEAR_RUN = 10, HEAR_BONE = 22, LOSE_TIME = 8, SMELL_TIME = 4, CATCH_DIST = 1.0, KEYS = 4;   // SMELL_TIME: kilka sekund po utracie wzroku wciąż czuje, mniej więcej gdzie jesteś
-const WALK = 2.2, INVESTIGATE = 3.3, CHASE = 4.8, KEY_BOOST = 0.08;   // każdy klucz przyspiesza Strażników o 8%
+const WALK = 2.2 * PACE, INVESTIGATE = 3.3 * PACE, CHASE = 4.8 * PACE, KEY_BOOST = 0.08;   // każdy klucz przyspiesza Strażników o 8%
 const WAKE_KEYS = 3;   // po tylu kluczach budzi się kolejny Strażnik (Normal: drugi, Nightmare: trzeci; nie na Easy)
 const REWARD_FIRST = 3000, REWARD_REPEAT = 300, INTRO_TIME = 10;
 export const info = { id: 'catacombs', name: 'The Catacombs', spawn: [-X + P / 2, 1.0, -1.6] };
