@@ -36,9 +36,9 @@
     "semantic_hash": "d5d631eabcc794a6df15b9a02d235980"
   },
   "core/config.js": {
-    "mtime": 1795628862.7674901,
-    "seen": 1795629726.897861,
-    "ast_hash": "2f475eb295ad6cc9d9e226ec3bf540e7",
+    "mtime": 1795655215.5489087,
+    "seen": 1795656261.3695755,
+    "ast_hash": "262f9fee9c05122003ff449540fe8371",
     "semantic_hash": ""
   },
   "core/cosmetics.js": {
@@ -84,9 +84,9 @@
     "semantic_hash": "cf2aaa4822beaa982090fd4c2f6b5ac4"
   },
   "core/engine.js": {
-    "mtime": 1795642888.735473,
-    "seen": 1795643342.422768,
-    "ast_hash": "08762ec05ecef6faa1df6cd73452e8f6",
+    "mtime": 1795655215.5492678,
+    "seen": 1795656261.3696404,
+    "ast_hash": "4b13f455c27de5090f85857f177fb6e3",
     "semantic_hash": ""
   },
   "core/envcapture.js": {
@@ -306,21 +306,21 @@
     "semantic_hash": ""
   },
   "levels/banana.js": {
-    "mtime": 1795016110.9177861,
-    "seen": 1795275190.733337,
-    "ast_hash": "39426a8638d99bac99c4485c2870e7fa",
-    "semantic_hash": "39426a8638d99bac99c4485c2870e7fa"
+    "mtime": 1795655215.5566776,
+    "seen": 1795656261.3698123,
+    "ast_hash": "70edda2d36d970c81959a257a0856482",
+    "semantic_hash": ""
   },
   "levels/catacombs.js": {
-    "mtime": 1795451128.196581,
-    "seen": 1795452817.6044843,
-    "ast_hash": "e92f2d5fcd043b734bea32758f336b0a",
+    "mtime": 1795655215.5507357,
+    "seen": 1795656261.3698182,
+    "ast_hash": "467293555693cc1190135818d090e082",
     "semantic_hash": ""
   },
   "levels/cemetery.js": {
-    "mtime": 1795451128.1949522,
-    "seen": 1795452817.6044872,
-    "ast_hash": "f0914400eafaea39140683d3cd7dd103",
+    "mtime": 1795655215.5511715,
+    "seen": 1795656261.3698196,
+    "ast_hash": "26e0d2d4d53da33da236ed2ee8dd46db",
     "semantic_hash": ""
   },
   "levels/dodgeball.js": {
@@ -330,9 +330,9 @@
     "semantic_hash": "d03727271d0dc9a4301c9c0f2302e6ff"
   },
   "levels/furas.js": {
-    "mtime": 1795461641.156347,
-    "seen": 1795467200.1396415,
-    "ast_hash": "0a9075703e9eee357b27c4a63c2f33e2",
+    "mtime": 1795655215.552016,
+    "seen": 1795656261.3698244,
+    "ast_hash": "cef57539fd810dc0fdfa427e54f0e954",
     "semantic_hash": ""
   },
   "levels/games.js": {
@@ -342,21 +342,21 @@
     "semantic_hash": ""
   },
   "levels/hideseek.js": {
-    "mtime": 1795016110.9195015,
-    "seen": 1795275190.7333522,
-    "ast_hash": "baaf9b08ddeeb6235cb8ca0347159b3f",
-    "semantic_hash": "baaf9b08ddeeb6235cb8ca0347159b3f"
+    "mtime": 1795655215.5524406,
+    "seen": 1795656261.3698277,
+    "ast_hash": "dffac22198ffed11757a33cf1e37fa7d",
+    "semantic_hash": ""
   },
   "levels/hospital.js": {
-    "mtime": 1795451128.2006998,
-    "seen": 1795452817.6045058,
-    "ast_hash": "dd31cb90655d78c2cfd0741a9f343e9b",
+    "mtime": 1795655215.5527685,
+    "seen": 1795656261.369831,
+    "ast_hash": "7e8f42722eb45983756f4c18f6028319",
     "semantic_hash": ""
   },
   "levels/hotel.js": {
-    "mtime": 1795451136.925598,
-    "seen": 1795452817.6045082,
-    "ast_hash": "35e42ba2a9680b62008b85d0b2df3425",
+    "mtime": 1795655215.5533438,
+    "seen": 1795656261.3698323,
+    "ast_hash": "e53b83244697147e3682265f7a64963f",
     "semantic_hash": ""
   },
   "levels/lasttile.js": {
@@ -366,16 +366,16 @@
     "semantic_hash": "4a89a2231e55fc6b65648f11874fbcfc"
   },
   "levels/laundry.js": {
-    "mtime": 1795522557.508735,
-    "seen": 1795522817.3313642,
-    "ast_hash": "0f42bf356e247f158fe1427e3328a094",
+    "mtime": 1795655215.556348,
+    "seen": 1795656261.369835,
+    "ast_hash": "7044e05f59c21f492bf2d7351583eeba",
     "semantic_hash": ""
   },
   "levels/lava.js": {
-    "mtime": 1795016110.9195015,
-    "seen": 1795275190.7333593,
-    "ast_hash": "3b7c5d5c60e34cdbe76b3e0e363a4bb6",
-    "semantic_hash": "3b7c5d5c60e34cdbe76b3e0e363a4bb6"
+    "mtime": 1795655228.240367,
+    "seen": 1795656261.3698366,
+    "ast_hash": "a500a3f3a45aa808858a9e8536732d0f",
+    "semantic_hash": ""
   },
   "levels/levels.js": {
     "mtime": 1795628682.9615617,
@@ -396,27 +396,27 @@
     "semantic_hash": ""
   },
   "levels/maze.js": {
-    "mtime": 1795451136.9232893,
-    "seen": 1795452817.6045265,
-    "ast_hash": "f03a47cb308766f7614ce016e1abb8fc",
+    "mtime": 1795655215.5539043,
+    "seen": 1795656261.3698425,
+    "ast_hash": "21a0edfaa7aedd38ac664e536b6d540c",
     "semantic_hash": ""
   },
   "levels/memory.js": {
-    "mtime": 1795515998.3973918,
-    "seen": 1795518684.3107812,
-    "ast_hash": "0ad2a662ce4902df697c1219d3bccdbf",
+    "mtime": 1795655228.2413306,
+    "seen": 1795656261.369844,
+    "ast_hash": "7dcfba25d9ef10901bff56f1f6215f13",
     "semantic_hash": ""
   },
   "levels/monster.js": {
-    "mtime": 1795626895.2211099,
-    "seen": 1795628189.7193894,
-    "ast_hash": "ed4a7f69140642242fc7c676196a079d",
+    "mtime": 1795655219.93748,
+    "seen": 1795656261.3698473,
+    "ast_hash": "efb6fad7a421d10976409fc1ec44d580",
     "semantic_hash": ""
   },
   "levels/nursery.js": {
-    "mtime": 1795451128.199318,
-    "seen": 1795452817.6045532,
-    "ast_hash": "76576e43b110201262643c1677352134",
+    "mtime": 1795655215.5558772,
+    "seen": 1795656261.3698485,
+    "ast_hash": "824532924b44a40a2ccdfa462a991a55",
     "semantic_hash": ""
   },
   "levels/range.js": {
@@ -432,9 +432,9 @@
     "semantic_hash": ""
   },
   "levels/silence.js": {
-    "mtime": 1795461641.156973,
-    "seen": 1795467200.1396663,
-    "ast_hash": "b693d883247dae675c7cb86f5392bce7",
+    "mtime": 1795655215.5556216,
+    "seen": 1795656261.3698542,
+    "ast_hash": "743be3cc4400c24a7df33074b9a2b00c",
     "semantic_hash": ""
   },
   "levels/staff.js": {
@@ -450,9 +450,9 @@
     "semantic_hash": "e44bb448264a5e8b9b7c0d6f373aa200"
   },
   "levels/well.js": {
-    "mtime": 1795377494.1075764,
-    "seen": 1795377979.4042978,
-    "ast_hash": "f89bc9676407a3f8715e91ed598a4b9c",
+    "mtime": 1795655219.940931,
+    "seen": 1795656261.3698578,
+    "ast_hash": "109e6d45e81baf9a4a69af46112fc88b",
     "semantic_hash": ""
   },
   "main.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795651713.6816587,
-    "seen": 1795651723.5512743,
-    "ast_hash": "99a9ec561f2dd4a910a7629fc505ef50",
+    "mtime": 1795656250.9606566,
+    "seen": 1795656261.3701782,
+    "ast_hash": "b83e3e561244f3e7c0299d286d6bd114",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795649838.7591379,
-    "seen": 1795651723.5510356,
-    "ast_hash": "b48cb5845ed8abf9af08132fdfb156e6",
+    "mtime": 1795655251.1278346,
+    "seen": 1795656261.369909,
+    "ast_hash": "51bd9d1b635a6b5dffdc3e77d87b12dd",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -606,9 +606,9 @@
     "semantic_hash": ""
   },
   "levels/custom.js": {
-    "mtime": 1795274239.2713687,
-    "seen": 1795275190.7333403,
-    "ast_hash": "1019e872fe26d070fd2f8fffa68ec4f8",
+    "mtime": 1795655228.2415879,
+    "seen": 1795656261.3698215,
+    "ast_hash": "dd32f671e272ddc6b4739a42e383e324",
     "semantic_hash": ""
   },
   "levels/workshop.js": {
@@ -10008,9 +10008,9 @@
     "semantic_hash": ""
   },
   "levels/room000.js": {
-    "mtime": 1795467408.902258,
-    "seen": 1795471245.2347314,
-    "ast_hash": "6bc7e7797d0b47fca89868e841196d2f",
+    "mtime": 1795655215.5552297,
+    "seen": 1795656261.369853,
+    "ast_hash": "ac5715695d95867287f667dcabe55013",
     "semantic_hash": ""
   },
   "tests/modes/room000.mjs": {
@@ -10602,9 +10602,9 @@
     "semantic_hash": ""
   },
   "core/minelogic.js": {
-    "mtime": 1795628504.341586,
-    "seen": 1795629726.8979502,
-    "ast_hash": "fb782f594d47b28942484c7a5a0e9369",
+    "mtime": 1795655228.239873,
+    "seen": 1795656261.369713,
+    "ast_hash": "15b5ded6cff56aca82ae4f27d03d6d0a",
     "semantic_hash": ""
   },
   "levels/mine.js": {
@@ -10803,6 +10803,12 @@
     "mtime": 1795649309.6904557,
     "seen": 1795651723.550712,
     "ast_hash": "0e66520f10d3553b12001d448dec2ad5",
+    "semantic_hash": ""
+  },
+  "tests/pace.mjs": {
+    "mtime": 1795655261.686912,
+    "seen": 1795656261.3699276,
+    "ast_hash": "97a22c72310bf603481dbc8b0348d7f1",
     "semantic_hash": ""
   },
   "package-lock.json": {

@@ -21,6 +21,7 @@ import { ARRIVAL_FROM_FURAS } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
 import { setDread, heardVoice } from '../core/ambience.js';
 import { swapRoot } from '../core/glbmonster.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 const X = 20, Z0 = 4, Z1 = -64, WALL_H = 4.6;                         // legowisko 40 x 68 m
 const DIV_H = 4.0, DIV_T = 0.7;                                       // ścianki z kartonów: za wysokie, by Furas je przeskoczył (skacze do 3,6 m)
@@ -32,7 +33,7 @@ const NODES = [[0, -8], [0, -16], [-10, -25], [10, -25], [-17, -34], [17, -34], 
 const LINKS = [[0, 1], [1, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7], [6, 8], [7, 8], [8, 9], [9, 10], [9, 11]];
 const ADJ = NODES.map(() => []); LINKS.forEach(([a, b]) => { ADJ[a].push(b); ADJ[b].push(a); });
 const SEE_DIST = 18, HEAR_DIST = 10, LOSE_TIME = 9, SMELL_TIME = 4, CATCH_DIST = 1.1, POUNCE_CATCH = 1.6;   // SMELL_TIME: tyle sekund po utracie wzroku wciąż czuje, gdzie jesteś
-const WALK = 2.6, INVESTIGATE = 3.7, CHASE = 5.4, POUNCE_SPEED = 11.5, POUNCE_RANGE = 7.5, POUNCE_MIN = 2.2;
+const WALK = 2.6 * PACE, INVESTIGATE = 3.7 * PACE, CHASE = 5.4 * PACE, POUNCE_SPEED = 11.5 * PACE, POUNCE_RANGE = 7.5 * PACE, POUNCE_MIN = 2.2;
 const TELEGRAPH = 0.7, POUNCE_T = 0.55, RECOVER_T = 1.0, POUNCE_CD = 3.5;
 const FISH_BOOST = 0.07, RAGE_BOOST = 0.3;   // każda ryba przyspiesza Furasa o 7%, po wszystkich rybach dostaje szału (+30%)
 const REWARD_FIRST = 3000, REWARD_REPEAT = 300, INTRO_TIME = 10;

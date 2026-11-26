@@ -21,9 +21,10 @@ import { createGridMaze } from '../core/gridmaze.js';
 import { ARRIVAL_FROM_NURSERY } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
 import { setDread } from '../core/ambience.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 const N = 7, P = 6.5, WT = 0.6, H = 3.2, X = N * P / 2;               // siatka 7 x 7 pokoi po 6,5 m (45,5 x 45,5 m)
-const KEYS = 4, CATCH_DIST = 0.95, CREEP = 1.6, CHASE = 5.0, FREEZE_AT = 0.3;   // FREEZE_AT: poniżej tej części muzyki Lalka zaczyna się skradać
+const KEYS = 4, CATCH_DIST = 0.95, CREEP = 1.6 * PACE, CHASE = 5.0 * PACE, FREEZE_AT = 0.3;   // FREEZE_AT: poniżej tej części muzyki Lalka zaczyna się skradać
 const MUSIC = { easy: 60, normal: 38, nightmare: 28 }, COOLDOWN = { easy: 14, normal: 26, nightmare: 32 }, TEDDY_BITE = 0.2;   // sekundy muzyki, odpoczynek stacji, część muzyki zjadana przez misia
 const REWARD_FIRST = 3200, REWARD_REPEAT = 320, INTRO_TIME = 10;
 export const info = { id: 'nursery', name: 'The Nursery', spawn: [-X + P / 2, 1.0, -1.6] };

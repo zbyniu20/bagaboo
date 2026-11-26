@@ -21,6 +21,7 @@ import { createEvents } from '../core/events.js';
 import * as N from '../core/network.js';
 import { ARRIVAL_FROM_WELL as ARRIVAL_WELL } from './levels.js';
 import { buildDoor, createJumpscare, cameraPanel, panelBg, drawInstructions , introSeen, signTexture, takeRespawn } from '../core/levelkit.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 // ---------- USTAWIENIA (trudność) ----------
 const NP = LIGHT_PRESETS.night;
@@ -30,10 +31,10 @@ const PULLS_PER_GRATE = 1, HATCH_PULLS = 1;   // jedno pociągnięcie zielonej d
 const MIN_TIME = 190;                      // klapa na szczycie nie otworzy się wcześniej (ponad 3 minuty)
 const INTRO_TIME = 10, RESTART_INTRO = 3;
 const WALL_GRIP = 0.75, HOLD_GRIP = 1.0, PIPE_GRIP = 1.0;  // przyczepność: śliska ściana / kość / rura
-const MOVE_SCALE = 1.0;                    // siła odepchnięć (1.0 = jak w lobby)
+const MOVE_SCALE = PACE;      // siła odepchnięć: jak w lobby
 const MAX_UP = 6.5;                        // maks. prędkość w górę (m/s)
 const EXTRA_GRAVITY = -3.0;                // ujemne = lżej niż w lobby (grawitacja 9 zamiast 12 m/s²)
-const OOZE_SPEED = 0.16, OOZE_ACCEL = 0.0004;        // maź: prędkość startowa i przyspieszenie (m/s, m/s²); na Normal ok. 42 z 64 m, gdy po 190 s otwiera się klapa
+const OOZE_SPEED = 0.16 * PACE, OOZE_ACCEL = 0.0004 * PACE;        // maź: prędkość startowa i przyspieszenie (m/s, m/s²); na Normal ok. 42 z 64 m, gdy po 190 s otwiera się klapa
 const SURGE_MIN = 40, SURGE_MAX = 60, SURGE_HEIGHT = 1.5;
 const SCARE_MIN = 22, SCARE_MAX = 38;      // co ile sekund jumpscare
 const CRUMBLE_TIME = 3.0;                  // tyle wytrzyma pękająca kość

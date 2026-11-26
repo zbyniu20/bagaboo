@@ -20,6 +20,7 @@ import { createBot, stepBot } from '../core/botkit.js';
 import { ARRIVAL_FROM_CEMETERY } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, createJumpscare, introSeen, takeRespawn, addStoryProps } from '../core/levelkit.js';
 import { setDread, heardVoice } from '../core/ambience.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 const X = 24, Z0 = 4, Z1 = -62;                                       // cmentarz 48 x 66 m
 const AISLES_Z = [-4, -12, -20, -28, -36, -44, -52], AISLES_X = [-21, 0, 21];   // alejki (poziome i pionowe), tędy patrolują grabarze
@@ -28,7 +29,7 @@ const CRYPTS = [[-10, -16, 1], [10, -16, 1], [-10, -32, -1], [10, -32, 1], [-10,
 const RELICS = [[-13, -12], [14, -20], [-12, -36], [13, -44], [-14, -52]];
 const GATE_Z = -57.2, EXIT_Z = Z1 + 0.03;
 const SEE_DIST = 16, HEAR_DIST = 9, LOSE_TIME = 8, SMELL_TIME = 4, CATCH_DIST = 1.0;   // SMELL_TIME: tyle sekund po utracie wzroku wciąż czuje, mniej więcej gdzie jesteś
-const WALK = 2.6, INVESTIGATE = 3.4, CHASE = 5.0, RELIC_BOOST = 0.07;   // każda relikwia przyspiesza Grabarzy o 7%
+const WALK = 2.6 * PACE, INVESTIGATE = 3.4 * PACE, CHASE = 5.0 * PACE, RELIC_BOOST = 0.07;   // każda relikwia przyspiesza Grabarzy o 7%
 const DIGGER_STARTS = [[-14, -26], [14, -50], [-21, -52]], WAKE_SPOTS = [[-21, -4], [21, -4], [-21, -52], [21, -52], [0, -28]], WAKE_RELICS = 3;   // dodatkowy Grabarz budzi się po 3 relikwiach (poza Easy)
 const DORMANT = [0, 0, 400];   // uśpiony Grabarz czeka daleko poza mapą (jego lampa jest od początku w scenie, więc przebudzenie nie przeładowuje świateł)
 const REWARD_FIRST = 2400, REWARD_REPEAT = 240, INTRO_TIME = 10;

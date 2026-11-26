@@ -16,6 +16,7 @@ import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { ARRIVAL_FROM_LAVA } from './games.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions , introSeen } from '../core/levelkit.js';
+import { PACE } from '../core/config.js';   // ruch gracza jak w lobby (core/config.js)
 
 // ---------- USTAWIENIA ----------
 const LAVA_Y = 0.25, SURGE_UP = 0.55;        // poziom lawy i o ile podnosi się przy "wzbieraniu"
@@ -25,7 +26,7 @@ const MOVE_AMP = 3, MOVE_SPEED = 0.6;        // ruchome platformy: zasięg (m) i
 const REWARD_FIRST = 1500, REWARD_REPEAT = 150;
 const INTRO_TIME = 10;
 // Cięższy ruch: nie da się przeskoczyć kilku bloków naraz
-const MOVE_SCALE = 0.8, MAX_UP = 4.2, MAX_SPEED_XZ = 3.8, EXTRA_GRAVITY = 3.0;
+const MOVE_SCALE = PACE, MAX_UP = 4.2, MAX_SPEED_XZ = 3.8, EXTRA_GRAVITY = 3.0;
 export const info = { id: 'lava', name: 'Floor is Lava', spawn: [0, 1.9, 2.6] };
 
 let S = null;

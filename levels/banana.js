@@ -18,6 +18,7 @@ import { buzz } from '../core/haptics.js';
 import { createBot, stepBot } from '../core/botkit.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions, introSeen } from '../core/levelkit.js';
 import { ARRIVAL_FROM_BANANA } from './games.js';
+import { PACE } from '../core/config.js';   // mnożnik tempa ruchu gracza (core/config.js): prędkości potworów skalowane razem z ruchem
 
 const AX = 12, AZ = 26, H = 10;                // arena 24 x 52 m
 const WAIT = 15, SOLO_WAIT = 4, ROUND = 180, RESULTS = 8, REWARD = 200, WIN_SCORE = 3;
@@ -204,8 +205,8 @@ function think(dt, p) {
 function botThink(dt, p) {
     const b = S.bot, base = BASES[1], d = Math.hypot(p.x - b.x, p.z - b.z), carrier = S.carrier[1] === 'me';
     if (carrier || d < 7) b.mode = 'chase'; else if (d > 12) b.mode = 'patrol';
-    let tx, tz, speed = 2.4;
-    if (b.mode === 'chase') { tx = p.x; tz = p.z; speed = carrier ? 4.1 : 3.6; }
+    let tx, tz, speed = 2.4 * PACE;
+    if (b.mode === 'chase') { tx = p.x; tz = p.z; speed = (carrier ? 4.1 : 3.6) * PACE; }
     else { if (!b.goal || Math.hypot(b.goal[0] - b.x, b.goal[1] - b.z) < 1.2) b.goal = [base[0] + (Math.random() * 2 - 1) * 5, base[1] + (Math.random() * 2 - 1) * 4]; tx = b.goal[0]; tz = b.goal[1]; }
     stepBot(b, dt, tx, tz, p.y - 0.35, speed, b.mode === 'chase');
     if (d < 1.0 && Math.abs(p.y - (b.y + 1.0)) < 1.5 && S.t < ROUND - 3) {
