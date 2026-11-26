@@ -27,6 +27,7 @@ import * as HL from '../core/helilogic.js';
 import { createHeli } from '../core/heli.js';
 import { createWeather } from '../core/weather.js';
 import { createGtaProps } from '../core/gtaprops.js';
+import { createGtaEggs } from '../core/gtaeggfx.js';
 import * as X from '../core/gtaextras.js';
 import { mutatorActive, mutFactor } from '../core/mutators.js';
 import * as WX from '../core/cityweatherlogic.js';
@@ -148,8 +149,10 @@ export function build() {
         addHeat: (v) => { if (isAuth()) S.sim.addHeat('me', v); else send({ k: 'ev', kind: 'alarm' }); },
         setSight: (m) => { if (isAuth()) S.sim.sightMul.me = m; else { if (m < 1 && !S.disSent) send({ k: 'ev', kind: 'dis' }); S.disSent = m < 1; } },
         setPower: (on) => { if (on !== S.powerOn) { S.powerOn = on; applyLights(); if (isAuth()) powerZone(on ? 45 : 0); else if (on) send({ k: 'ev', kind: 'power' }); } },
-        vehicles: () => S.vehs ? S.vehs.cars.map(c => ({ x: c.m.position.x, z: c.m.position.z })) : [], bags: () => S.bags, cops: () => S.sim.activeCops().map(c => ({ x: c.bot.x, z: c.bot.z })), heli: () => S.heli.mode !== 'away' ? { x: S.heli.x, z: S.heli.z } : null
+        vehicles: () => S.vehs ? S.vehs.cars.map(c => ({ x: c.m.position.x, z: c.m.position.z })) : [], bags: () => S.bags, cops: () => S.sim.activeCops().map(c => ({ x: c.bot.x, z: c.bot.z })), heli: () => S.heli.mode !== 'away' ? { x: S.heli.x, z: S.heli.z } : null,
+        eggs: () => S.eggs ? S.eggs.info() : null
     } });
+    S.eggs = createGtaEggs({ buildings: S.buildings, api: { stars: () => S.sim.starsOf('me'), night: () => S.nightPh, ride: eggRide } });
     S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
     S.wx = WX.newWeather(Math.random, Math.random() < 0.5 ? 'clear' : 'drizzle'); S.weather = createWeather();   // pogoda lokalna: każdy klient ma własną
@@ -285,6 +288,7 @@ export function update(dt, t, ctx) {
     S.scare.update(dt);
     S.weather.update(S.wx, WX.weatherStep(S.wx, dt), dt);
     camera.getWorldDirection(_d); S.gx.update(dt, { x: ctx.body.position.x, y: ctx.body.position.y, z: ctx.body.position.z, speed: Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), yaw: Math.atan2(_d.x, _d.z), pitchDown: Math.asin(Math.max(-1, Math.min(1, -_d.y))) });
+    S.eggs.update(dt, { x: ctx.body.position.x, y: ctx.body.position.y, z: ctx.body.position.z, speed: Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), dx: _d.x, dy: _d.y, dz: _d.z, mic: SFX.voiceSpeaking && SFX.voiceSpeaking() ? 0 : (SFX.micLevel ? SFX.micLevel() : 0) });
     nightTick(dt);
     radioTick(dt);
     for (const f of S.fx) if (f.l.visible) { f.t -= dt; if (f.t <= 0) f.l.visible = false; }
@@ -483,6 +487,7 @@ function buildModePanel() {
 }
 // ----- pojazdy ucieczki (core/vehicles.js, core/vehiclelogic.js): host trzyma flotę, goście proszą o start i odtwarzają migawkę -----
 const riderOf = (id) => !!S.fleet && S.fleet.some(c => c.occ === id);
+function eggRide() { const f = S.fleet && S.fleet.find(q => q.occ === 'me'); if (!f || !S.vehs) return null; const c = S.vehs.cars.find(q => q.id === f.id); return c ? { x: c.m.position.x, z: c.m.position.z, yaw: c.m.rotation.y } : null; }
 function dismountMe() { S.fleet = VL.endDriveBy(S.fleet, 'me'); if (!isAuth()) send({ k: 'ev', kind: 'dismount' }); }
 function requestDrive(carId, idx) {
     const v = VL.VEHICLES.find(q => q.id === carId), route = v && v.routes[idx]; if (!route || S.busted >= 0) return;
@@ -637,6 +642,9 @@ export const debugBuildings = () => S ? S.buildings.map(b => ({ id: b.id, interi
 export const debugGta = () => S ? Object.assign(S.gx.debug(), { night: S.nightPh, powerLeft: S.powerLeft, sight: S.sim.sightMul, extra: S.sim.extraCops, lamps: S.lampMesh ? S.lampMesh.visible : null, neonOn: S.neonMeshes.filter(n => n.m.visible).length, neonAll: S.neonMeshes.length, lightI: S.nlights.map(n => +n.l.intensity.toFixed(1)), dark: S.sim.darkZones.length, hear: S.sim.hearMul }) : null;
 export const debugGtaTouch = (fn) => import('../core/gtaprops.js').then(m => m.debugTouchProbe(fn));
 export const debugGtaNight = (ph, left) => { if (S) { S.night = { ph: ph, left: left || 99 }; setNight(ph, false); } };   // left: czas fazy (testy dają 1e9, żeby noc nie wchodziła w drogę)
+export const debugEggs = () => S && S.eggs ? S.eggs.debug() : null;
+export const debugEggSpots = () => S && S.eggs ? S.eggs.spots : null;
+export const debugEggStep = (n, dt, c) => { if (!S || !S.eggs) return null; for (let i = 0; i < n; i++) S.eggs.update(dt, c); return S.eggs.debug(); };   // test: krokuje jajka deterministycznie z podanym wejściem (x, y, z, speed, dx, dy, dz, mic, stars, ride, night)
 export const debugGtaKey = (k) => { if (S && S.gx && S.gx.press) S.gx.press(k); };
 export const debugHeli = () => S ? { mode: S.heli.mode, y: +S.heli.y.toFixed(1), x: +S.heli.x.toFixed(1), z: +S.heli.z.toFixed(1), eye: S.eyeOnMe, vis: S.heliV.root.visible, lx: +S.heli.lx.toFixed(1), lz: +S.heli.lz.toFixed(1) } : null;
 export const debugGun = () => S ? { hp: S.gunS.me.hp, ammo: S.gunS.me.ammo, mode: S.mode, shooters: Object.keys(S.gunS), feed: S.feed.map(f => f.s), hurt: S.hurtT } : null;
@@ -648,6 +656,7 @@ export function dispose() {
     N.onLevelMsg(null); L.onTrigger = null;
     if (S && S.heliV) S.heliV.dispose();
     if (S && S.weather) S.weather.dispose();
+    if (S && S.eggs) S.eggs.dispose();
     if (S && S.gx) S.gx.dispose();
     if (S && S.vehs) S.vehs.dispose();
     if (S && S.mterm) { const i = terminals.indexOf(S.mterm); if (i >= 0) terminals.splice(i, 1); S.mterm.tex.dispose(); }
