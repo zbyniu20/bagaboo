@@ -103,7 +103,7 @@
 - player.js
 - moments/lib.js
 - _demo/shoot.mjs
-- dismemberlogic.js
+- build
 - rng
 - scripts/shoot.mjs
 - backgrounds/check.mjs
@@ -349,8 +349,8 @@ Cohesion: 0.03
 Nodes (91): updateListener(), accountsOn(), GFX, isReservedNick(), box, c, errors, mesh (+83 more)
 
 ### Community 14 - "pause.js"
-Cohesion: 0.19
-Nodes (18): autoStartTutorial(), debugTutorial(), enterStep(), finish(), metrics(), nextStep(), skipTutorial(), ST (+10 more)
+Cohesion: 0.21
+Nodes (17): autoStartTutorial(), debugTutorial(), enterStep(), finish(), metrics(), nextStep(), skipTutorial(), ST (+9 more)
 
 ### Community 15 - "L"
 Cohesion: 0.08
@@ -1093,8 +1093,8 @@ Cohesion: 0.29
 Nodes (16): buildHatRaw(), place(), seg(), V3(), buildArm(), buildLeg(), jit(), buildArm() (+8 more)
 
 ### Community 221 - "staffhaunt.mjs"
-Cohesion: 0.09
-Nodes (20): ./core/ambience.js, ./core/economy.js, ./core/mutators.js, ./core/terminal.js, fog(), ./levels/staff.js, DEPS, errors (+12 more)
+Cohesion: 0.06
+Nodes (28): ./core/ambience.js, ./core/botkit.js, ./core/economy.js, ./core/levelkit.js, ./core/mutators.js, ./core/terminal.js, DEPS, errors (+20 more)
 
 ### Community 222 - "onNet"
 Cohesion: 0.13
@@ -1177,8 +1177,8 @@ Cohesion: 0.21
 Nodes (15): bestiaryTick(), buildBestiary(), debugBestiary(), debugSelectBeast(), discoverBeast(), draw(), ensureYou(), getBestiary() (+7 more)
 
 ### Community 242 - "heightlogic.js"
-Cohesion: 0.27
-Nodes (10): fbm(), HEIGHT, heightField(), noise(), normalsFromHeight(), sample(), smooth(), SURFACES (+2 more)
+Cohesion: 0.13
+Nodes (18): fbm(), HEIGHT, heightField(), noise(), normalsFromHeight(), sample(), smooth(), SURFACES (+10 more)
 
 ### Community 243 - "monsterskins.js"
 Cohesion: 0.36
