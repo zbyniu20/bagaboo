@@ -47,7 +47,7 @@
 - avatar.js
 - photos.mjs
 - consistency.mjs
-- playwright
+- scripts
 - dotted-globe/effect.js
 - vehiclelogic.js
 - icons.mjs
@@ -123,7 +123,7 @@
 - Objects and prints (`assets/objects`)
 - soft-light-bars/effect.js
 - photoGL
-- ref_path
+- mine.mjs
 - film-light-leak/effect.js
 - sleep
 - lobbyplay.js
@@ -458,8 +458,8 @@ Cohesion: 0.09
 Nodes (35): addMarks(), animate(), buildDecor(), buildDecoys(), buildGhost(), buildHangers(), buildItems(), DOORS (+27 more)
 
 ### Community 39 - "lightbake.js"
-Cohesion: 0.17
-Nodes (21): rayBox(), BAKE, bakeScale(), bakeVertex(), blocked(), boxVerts(), cellFor(), cullBoxes() (+13 more)
+Cohesion: 0.12
+Nodes (27): FAMILIES, FAMILY_OF, familyFor(), lerp(), mixHex(), TILE, BAKE, bakeScale() (+19 more)
 
 ### Community 40 - "staff.js"
 Cohesion: 0.11
@@ -1086,8 +1086,8 @@ Cohesion: 0.12
 Nodes (21): isReservedNick(), scene, _c, ensurePool(), _p, registerLevelLights(), sources, updateLightPool() (+13 more)
 
 ### Community 217 - "shots.mjs"
-Cohesion: 0.04
-Nodes (55): errs, EXTRA, HERE, MIME, ROOT, server, views, blobs (+47 more)
+Cohesion: 0.03
+Nodes (70): playwright, errs, EXTRA, HERE, MIME, ROOT, server, views (+62 more)
 
 ### Community 218 - "visuals.js"
 Cohesion: 0.17
@@ -1244,6 +1244,18 @@ Nodes (9): cdn, DIST, errors, failures, HERE, LEVELS, MIME, ROOT (+1 more)
 ### Community 257 - "gtamodes.mjs"
 Cohesion: 0.20
 Nodes (8): DEPS, errors, ev(), HERE, MIME, ROOT, server, shot()
+
+### Community 255 - "silk-folds/effect.js"
+Cohesion: 0.52
+Nodes (6): cool(), mount(), params, sheenTurn(), tones(), uniforms()
+
+### Community 256 - "registry.mjs"
+Cohesion: 0.22
+Nodes (6): achievements, bad, ids, listed, ROOT, themes
+
+### Community 257 - "beep"
+Cohesion: 0.36
+Nodes (8): debugRadio(), draw(), tune(), updateAnnexRadio(), beep(), updateRails(), stationAt(), transmission()
 
 ### Community 258 - "_print-core/demo.js"
 Cohesion: 0.40
