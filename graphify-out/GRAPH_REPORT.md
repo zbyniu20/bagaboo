@@ -320,9 +320,9 @@ Nodes (89): buildAnnexGallery(), ghostTexture(), boardTexture(), buildAnnexPlay(
 Cohesion: 0.10
 Nodes (38): rewardActivity(), isOnRope(), releaseRope(), avoidObstacles(), BALLS, buildScare(), _c, catchPlayer() (+30 more)
 
-### Community 4 - "minelogic.js"
-Cohesion: 0.09
-Nodes (28): ADJ, BATTERY, batteryAdd(), batteryStep(), DIFF_MUL, edgeKind(), EDGES, findPath() (+20 more)
+### Community 4 - "mine.js"
+Cohesion: 0.05
+Nodes (56): addInstancedBlocks(), ADJ, BATTERY, batteryAdd(), batteryStep(), DIFF_MUL, edgeKind(), EDGES (+48 more)
 
 ### Community 5 - "handleGuest"
 Cohesion: 0.09
@@ -489,12 +489,12 @@ Cohesion: 0.07
 Nodes (45): BASE_UNIFORMS, CALM_SPOTS, clamp(), compose(), cssToHex(), DEFAULT_PALETTE, enforceBudget(), FOCAL (+37 more)
 
 ### Community 46 - "start.mjs"
-Cohesion: 0.05
-Nodes (45): ALIAS, allTypes, args, axisOrder(), axisVal(), block(), buttonInk(), dealTypes() (+37 more)
+Cohesion: 0.06
+Nodes (33): ALIAS, allTypes, args, block(), buttonInk(), dealTypes(), DEFAULT_MONO, FONT_TAGS() (+25 more)
 
 ### Community 47 - "copy-lint.mjs"
 Cohesion: 0.07
-Nodes (47): APART, args, attrOf(), BLOCK, brandsOf(), CAST, CAST_CO, clip() (+39 more)
+Nodes (35): APART, args, BLOCK, CAST, CAST_CO, clip(), COINED, cross (+27 more)
 
 ### Community 48 - "photo.js"
 Cohesion: 0.06
@@ -613,12 +613,12 @@ Cohesion: 0.13
 Nodes (25): isModMenuUser(), bPressed(), buildXray(), closeMenu(), _d, draw(), ensureMenu(), nameTexture() (+17 more)
 
 ### Community 77 - "split-reveal/object.js"
-Cohesion: 0.18
-Nodes (29): DEFAULT_SEQUENCE, mount(), cutOut(), DEFAULT_PHOTO, lin(), LUT, mount(), build() (+21 more)
+Cohesion: 0.19
+Nodes (28): DEFAULT_SEQUENCE, mount(), cutOut(), DEFAULT_PHOTO, lin(), LUT, mount(), build() (+20 more)
 
 ### Community 78 - "kit.js"
 Cohesion: 0.08
-Nodes (28): demo(), esc(), q, creditsLine(), photoCredit(), demo(), esc(), PALETTES (+20 more)
+Nodes (27): demo(), esc(), q, creditsLine(), photoCredit(), demo(), esc(), PALETTES (+19 more)
 
 ### Community 79 - "annexgallery.js"
 Cohesion: 0.19
@@ -685,8 +685,8 @@ Cohesion: 0.14
 Nodes (26): actionbar(), DAY_NAMES, DAYS, daySet(), faq(), forms(), glowOnHover(), GROUNDS (+18 more)
 
 ### Community 95 - "ref_node_fs"
-Cohesion: 0.06
-Nodes (25): DARK, deal(), FLAT_TYPES, HERE, OWN_LOUD, random(), roleOf(), strHash() (+17 more)
+Cohesion: 0.09
+Nodes (20): DARK, deal(), FLAT_TYPES, HERE, OWN_LOUD, random(), roleOf(), strHash() (+12 more)
 
 ### Community 96 - "color"
 Cohesion: 0.19
@@ -781,8 +781,8 @@ Cohesion: 0.12
 Nodes (27): account(), accountsOn(), API_URL, b64uToBytes(), call(), finish(), isLoggedIn(), listeners (+19 more)
 
 ### Community 119 - "stage"
-Cohesion: 0.33
-Nodes (13): renderScale(), hasWebGL(), reducedMotion(), stage(), draw(), fallBack(), fit(), flatFrame() (+5 more)
+Cohesion: 0.30
+Nodes (14): renderScale(), hasWebGL(), injectStyles(), reducedMotion(), stage(), draw(), fallBack(), fit() (+6 more)
 
 ### Community 120 - "4. Place"
 Cohesion: 0.14
