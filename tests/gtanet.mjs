@@ -59,7 +59,7 @@ await ev(async () => { const G = await import('./levels/scarygta.js'); for (let 
 const bu = await ev(async () => { const G = await import('./levels/scarygta.js'), S = G.testState(); const m = G.debugOutbox().filter(m => m.k === 'bust').pop(); return { m: m || null, holder: S.bags.find(b => b.id === 'jewelry').holder }; });
 ok('a cop catching the guest sends BUST to that guest and the bag falls back to the street', bu.m && bu.m.id === 'g1' && bu.m.r === 'cop' && bu.holder === null, bu);
 // rozłączenie: gość z torbą znika
-const dc = await ev(async () => { const G = await import('./levels/scarygta.js'), N = await import('./core/network.js'), S = G.testState(), jw = S.bags.find(b => b.id === 'jewelry'); for (let i = 0; i < 400 && (S.bustUntil['g1'] || 0) > S.clock; i++) await new Promise(r => setTimeout(r, 100)); G.debugNet({ k: 'take', b: 'jewelry' }, 'g1'); const had = jw.holder; delete N.playersState['g1']; await new Promise(r => setTimeout(r, 800)); return { had, holder: jw.holder, home: Math.hypot(jw.x - jw.ox, jw.z - jw.oz) < 0.01 && jw.g.visible }; });
+const dc = await ev(async () => { const G = await import('./levels/scarygta.js'), N = await import('./core/network.js'), S = G.testState(), jw = S.bags.find(b => b.id === 'jewelry'); S.sim.reset(); S.sim.heats['g1'] = { v: 0, seenT: 99 }; for (let i = 0; i < 600 && (S.bustUntil['g1'] || 0) > S.clock; i++) await new Promise(r => setTimeout(r, 100)); G.debugNet({ k: 'take', b: 'jewelry' }, 'g1'); const had = jw.holder; delete N.playersState['g1']; await new Promise(r => setTimeout(r, 800)); return { had, holder: jw.holder, home: Math.hypot(jw.x - jw.ox, jw.z - jw.oz) < 0.01 && jw.g.visible }; });
 ok('a guest who leaves while carrying loses the bag: it returns to its home spot', dc.had === 'g1' && dc.holder === null && dc.home, dc);
 // ścieżka gościa: migawki hosta
 const gu = await ev(async () => {
@@ -73,5 +73,42 @@ const gu = await ev(async () => {
     N.NET.mode = 'solo'; return a;
 });
 ok('a guest follows the host snapshot (one cop in chase, its bag, 4 stars), ignores garbage and a forged sender, and a BUST for it starts the busted state', gu.cops === 1 && gu.modes[0] === 'chase' && gu.got === 1 && gu.stars === 4 && gu.bank === 'me' && gu.puppet === true && gu.busted >= 0, gu);
+
+// ----- etap 3b: broń i PvP -----
+const gun = await ev(async () => {
+    const N = await import('./core/network.js'), G = await import('./levels/scarygta.js'), P = await import('./core/player.js'), E = await import('./core/engine.js'), D = await import('./core/desktop.js');
+    const S = G.testState(), w = (ms) => new Promise(r => setTimeout(r, ms)), clock = async (t) => { for (let i = 0; i < 600 && S.clock < t; i++) await w(100); };
+    N.NET.mode = 'host'; for (let i = 0; i < 600 && S.busted >= 0; i++) await w(100); S.sim.reset(); P.setPlayerPosition(-38, 1.2, 0); D.setDesktopFacing(0); await w(800);
+    delete N.playersState['g1']; S.gunS = { me: S.gunS.me }; S.bustUntil = {}; S.mode = 'ffa'; S.sim.heats = {};
+    N.playersState['g1'] = { lvl: 'scarygta', head: { p: [-38, 1.6, 10] }, h1: { p: [0, 0, 0] }, h2: { p: [0, 0, 0] }, profile: { name: 'Bob' } };
+    await w(600);
+    const c = E.camera.getWorldPosition(new E.THREE.Vector3()), aim = (ty) => { const v = [0, ty - c.y, 10 - c.z], l = Math.hypot(...v); return v.map(q => q / l); };
+    const o = [c.x, c.y, c.z], out = {};
+    // trafienie w głowę: -50 HP
+    G.debugShoot('me', o, aim(1.6)); out.hp1 = S.gunS['g1'] && S.gunS['g1'].hp;
+    G.debugShoot('me', o, aim(1.6)); out.rate = S.gunS['g1'].hp;   // zbyt szybko: odrzucony
+    await clock(S.clock + 0.4); G.debugShoot('me', o, aim(1.6)); out.dead = S.gunS['g1'].hp;
+    out.bust = G.debugOutbox().filter(m => m.k === 'bust').pop(); out.fx = G.debugOutbox().filter(m => m.k === 'fx').length; out.feed = G.debugGun().feed;
+    out.heatMe = S.sim.heatOf('me').v;
+    // poza własną głową (podrobiony początek lufy) i śmieciowe dane
+    await clock(S.clock + 0.4); const before = S.gunS['me'].ammo; G.debugShoot('me', [c.x + 20, c.y, c.z], aim(1.6)); out.forged = S.gunS['me'].ammo === before;
+    G.debugNet({ k: 'shot', o: [NaN, 1, 1], d: [0, 0, 1] }, 'g1'); G.debugNet({ k: 'shot', o: [1, 1, 1], d: [0, 0, 0] }, 'g1'); G.debugNet({ k: 'shot', o: [1, 1, 1], d: [0, 0, 1] }, 'ghost');
+    // gość strzela w hosta (FFA): host traci HP
+    await clock(S.bustUntil['g1'] + 0.2); { const g = N.playersState['g1']; g.head.p = [-38, 1.6, 10]; }
+    const hp0 = S.gunS.me.hp, gs = S.gunS['g1']; gs.deadUntil = 0; gs.protectUntil = 0; S.bustUntil['g1'] = 0;
+    const v = [c.x + 0 - -38, c.y - 1.6, c.z - 10], l = Math.hypot(...v), d = v.map(q => q / l);
+    G.debugNet({ k: 'shot', o: [-38, 1.6, 10.2], d: d.map(q => +q.toFixed(4)) }, 'g1'); out.hostHp = [hp0, S.gunS.me.hp];
+    // CO-OP: bez ognia przyjacielskiego
+    S.mode = 'coop'; await clock(S.clock + 0.4); const hp1 = S.gunS['g1'].hp; G.debugShoot('me', o, aim(1.6)); out.coop = S.gunS['g1'].hp === hp1;
+    // opcje admina w grze online są neutralizowane
+    const M = await import('./core/modstate.js'); M.MOD.fly = true; M.MOD.boost = true; M.MOD.size = 5; M.PERSONAL.speed = 2; await w(500); out.admin = [M.MOD.fly, M.MOD.boost, M.MOD.size, M.PERSONAL.speed];
+    N.NET.mode = 'solo'; return out;
+});
+ok('a headshot takes 50 HP, a second shot right after is rejected by the host (rate limit)', gun.hp1 === 50 && gun.rate === 50, gun);
+ok('the second headshot kills the guest: BUST (shot) goes to them, a kill feed line appears, the shooter gets wanted heat', gun.dead === 0 && gun.bust && gun.bust.id === 'g1' && gun.bust.r === 'shot' && gun.feed.some(f => /HEADSHOT/.test(f) && /Bob/.test(f)) && gun.heatMe > 20 && gun.fx === 2, gun);
+ok('a forged muzzle origin is rejected without using ammo, garbage and unknown senders do nothing', gun.forged === true, gun);
+ok('a guest shot at the host hurts the host in FFA (25 body or 50 head damage)', gun.hostHp && gun.hostHp[1] < gun.hostHp[0], gun.hostHp);
+ok('in CO-OP mode players cannot hurt each other', gun.coop === true, gun);
+ok('in online play the ultimate speed, flying, boost and size are neutralized in this level', gun.admin && gun.admin[0] === false && gun.admin[1] === false && gun.admin[2] === 1 && gun.admin[3] === 1, gun.admin);
 ok('no page errors', errors.length === 0, errors);
 console.log(fails ? 'FAILED: ' + fails : 'gtanet: all checks passed'); await browser.close(); server.close(); process.exit(fails ? 1 : 0);

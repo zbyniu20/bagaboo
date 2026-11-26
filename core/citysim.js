@@ -66,7 +66,7 @@ export function createCitySim(o) {
     G.starsOf = (id) => WL.starsOf(G.heatOf(id).v);
     G.activeCops = () => G.cops.filter(c => c.active);
     G.copPositions = () => G.activeCops().map(c => ({ x: c.bot.x, y: c.bot.y + 1, z: c.bot.z }));
-    G.spawnCop = (c, node) => { const n = G.graph.nodes[node]; c.active = true; c.bot.x = n.x; c.bot.z = n.z; c.bot.y = 0; c.bot.vy = 0; c.bot.mode = 'patrol'; c.st = AI.newCop(node); c.m.group.visible = true; c.cone.visible = true; G.stat.spawned++; };
+    G.spawnCop = (c, node) => { const n = G.graph.nodes[node]; c.active = true; c.hp = 100; c.bot.x = n.x; c.bot.z = n.z; c.bot.y = 0; c.bot.vy = 0; c.bot.mode = 'patrol'; c.st = AI.newCop(node); c.m.group.visible = true; c.cone.visible = true; G.stat.spawned++; };
     G.despawn = (c) => { c.active = false; c.m.group.visible = false; c.cone.visible = false; };
     G.reset = () => { for (const c of G.cops) G.despawn(c); };
     G.resetCopsNear = (x, z, r) => { for (const c of G.activeCops()) if (Math.hypot(c.bot.x - x, c.bot.z - z) < r) { c.st.mode = 'search'; c.st.searchT = 0; c.st.last = { x: x, z: z }; } };

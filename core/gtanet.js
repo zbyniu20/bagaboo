@@ -42,7 +42,7 @@ export const cleanIds = (a) => Array.isArray(a) ? a.slice(0, GN.MAX_PLAYERS).map
 export function cleanBust(m) {
     if (!m || typeof m !== 'object') return null; const id = tidy(m.id);
     if (!id || !fin(m.x) || !fin(m.z)) return null;
-    return { id, reason: m.r === 'gator' ? 'gator' : 'cop', x: cx(m.x), z: cz(m.z) };
+    return { id, reason: m.r === 'gator' ? 'gator' : (m.r === 'shot' ? 'shot' : 'cop'), x: cx(m.x), z: cz(m.z) };
 }
 // Prędkość gościa z różnic pozycji głowy, wygładzona (host nie ufa prędkości od klienta)
 export const newTrack = () => ({ x: 0, z: 0, t: -1, v: 0 });

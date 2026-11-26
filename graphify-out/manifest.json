@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795684257.830194,
-    "seen": 1795684305.1667497,
-    "ast_hash": "320d7ed9e4dff40e7067d1cb5908700b",
+    "mtime": 1795685534.7051847,
+    "seen": 1795685586.2860668,
+    "ast_hash": "23cad32c44aca840bc75c95332bf1c26",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795683653.9782891,
-    "seen": 1795684305.166756,
-    "ast_hash": "91ddab993db88d145722f1430f77fa55",
+    "mtime": 1795684415.5266066,
+    "seen": 1795685586.286072,
+    "ast_hash": "c8c55cc1a4e46adb8697dd22004fe768",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795683745.2010136,
-    "seen": 1795684305.1665268,
-    "ast_hash": "5adde6a764a791d9f20949f042bc29e4",
+    "mtime": 1795684435.1665351,
+    "seen": 1795685586.2858582,
+    "ast_hash": "28fba7c180f1d41f39a03a2ad68b2f74",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795683653.977623,
-    "seen": 1795684305.166569,
-    "ast_hash": "b6c1b95b9595b0ec9bca03e7b5656bb4",
+    "mtime": 1795684415.5261357,
+    "seen": 1795685586.285891,
+    "ast_hash": "138a51db8f72a9274a76c89ea3a03fda",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795683761.9504297,
-    "seen": 1795684305.1664708,
-    "ast_hash": "a28626bdf17a049a66b01a0c7ab5bfab",
+    "mtime": 1795684518.498967,
+    "seen": 1795685586.2858076,
+    "ast_hash": "49eabcb6fb97d4b11acf8f0a5051eb23",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -10842,9 +10842,9 @@
     "semantic_hash": ""
   },
   "core/citysim.js": {
-    "mtime": 1795683683.45115,
-    "seen": 1795684305.1662264,
-    "ast_hash": "58e6e6739ea7b95cd83273ecffe339c0",
+    "mtime": 1795684497.15941,
+    "seen": 1795685586.2855942,
+    "ast_hash": "91df3317ebd41fe04f1d1e8aef685ca8",
     "semantic_hash": ""
   },
   "core/wantedlogic.js": {
@@ -10860,15 +10860,21 @@
     "semantic_hash": ""
   },
   "core/gtanet.js": {
-    "mtime": 1795683745.1991577,
-    "seen": 1795684305.1662905,
-    "ast_hash": "ee90ba3a5baecc263329cb2223371729",
+    "mtime": 1795684415.526865,
+    "seen": 1795685586.285649,
+    "ast_hash": "699f23f1a49b722b8b82cb3c8c34d59b",
     "semantic_hash": ""
   },
   "tests/gtanet.mjs": {
-    "mtime": 1795683938.8435621,
-    "seen": 1795684305.1665118,
-    "ast_hash": "b8c97ab03f3017e8a86c0bc8bec498c3",
+    "mtime": 1795685032.657088,
+    "seen": 1795685586.285845,
+    "ast_hash": "47ef600cce484139b2f55b5b7fabaac7",
+    "semantic_hash": ""
+  },
+  "core/gunlogic.js": {
+    "mtime": 1795684435.1631293,
+    "seen": 1795685586.285651,
+    "ast_hash": "cae4d5bb063d9c7e5975f1f6994d9364",
     "semantic_hash": ""
   },
   "package-lock.json": {

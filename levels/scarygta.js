@@ -13,7 +13,12 @@ import { PACE } from '../core/config.js';
 import { ARRIVAL_FROM_SCARYGTA } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, createJumpscare } from '../core/levelkit.js';
 import { setDread } from '../core/ambience.js';
-import { setPlayerPosition, releaseAll } from '../core/player.js';
+import { setPlayerPosition, releaseAll, hands, gripDown } from '../core/player.js';
+import { buzz } from '../core/haptics.js';
+import { MOD, PERSONAL } from '../core/modstate.js';
+import { SAVE } from '../core/economy.js';
+import { safeName } from '../core/netguard.js';
+import * as GU from '../core/gunlogic.js';
 import { createCitySim, updateRails, ridingAny, cancelRails } from '../core/citysim.js';
 import * as WL from '../core/wantedlogic.js';
 import * as AI2 from '../core/cityai.js';
@@ -113,12 +118,14 @@ export function build() {
     S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
     S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
+    S.gunS = { me: GU.newShooter() }; S.mode = GU.modeFor(df.id); S.fx = []; S.feed = []; S.hurtT = 0; S.killer = null; S.gunMesh = null;
+    buildFx(); L.onTrigger = (i) => fire(i);
     setDread(() => S.sim.copPositions());   // reżyser grozy: kroki, oddech i napięcie od policjantów
     // drzwi: wyjście na pirsie (wymaga torby) i powrót do Levels na plaży
     buildDoor({ x: 0, z: CI.EXIT[2] - 2, rotY: Math.PI, label: 'EXIT', color: '#ff9a60', glow: 0xff7030, wood: 0x2a1e18, light: true, collider: true,
         portal: { target: 'levels', spawn: ARRIVAL_FROM_SCARYGTA, cond: () => S && S.got > 0, deny: 'Take at least one bag before you leave.', onEnter: finish } });
     buildDoor({ x: -7, z: CI.BEACH_Z + 1, rotY: 0, label: 'LEVELS', color: '#bfe8ff', wood: 0x3a3228, collider: true, portal: { target: 'levels', spawn: ARRIVAL_FROM_SCARYGTA, onEnter: () => toast('Back to the levels') } });
-    S.hud = cameraPanel(1024, 250, 0.42, 0.102, 0.2, -0.75, 990);
+    S.hud = cameraPanel(1024, 300, 0.42, 0.123, 0.2, -0.75, 990);
     toast('Steal the bags. Reach the pier. Walls are slippery: climb the scaffolds.', '#ff7ac8');
 }
 
@@ -208,7 +215,7 @@ function arrowTo(px, pz, tx, tz) {
     let rel = brg - head; rel = Math.atan2(Math.sin(rel), Math.cos(rel)); return ARROWS[((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8];   // kierunek w lewo to dodatni kąt w tym układzie, więc strzałki są lustrzane do bearingu
 }
 function drawHud(p) {
-    const x = S.hud.ctx; panelBg(S.hud, 'rgba(12,8,20,0.74)', '#ff2a9a');
+    const x = S.hud.ctx; panelBg(S.hud, S.hurtT > 0 ? 'rgba(90,10,14,0.82)' : 'rgba(12,8,20,0.74)', S.hurtT > 0 ? '#ff2a2a' : '#ff2a9a');
     x.textBaseline = 'middle'; x.textAlign = 'left';
     const stars = S.sim.starsOf('me'), heat = S.sim.heatOf('me');
     x.font = 'bold 60px "Courier New", monospace'; x.fillStyle = S.got === S.bags.length ? '#7fff90' : '#ff7ac8'; x.fillText('BAGS ' + S.got + '/' + S.bags.length, 30, 56);
@@ -222,12 +229,19 @@ function drawHud(p) {
     x.font = 'bold 26px "Courier New", monospace'; x.fillStyle = S.hidden ? '#9ad0ff' : (chasing ? '#ff4a2a' : (near.length ? '#ffb030' : '#8a8090'));
     x.fillText(S.busted >= 0 ? 'BUSTED... back at a safe house soon' : (S.hidden ? 'HIDDEN: stay still, they cannot see you' : (chasing ? 'THEY SEE YOU! Run, climb or hide!' : (near.length ? 'Cops nearby (' + near.length + '). Stay out of the light.' : 'Quiet. Keep it that way.'))), 30, 196);
     x.font = '22px "Courier New", monospace'; x.fillStyle = '#8a7a9a'; x.fillText('Hide next to dumpsters. Cops cannot climb: use roofs and the cable rides.', 30, 232);
+    const gs = S.gunS.me, ready = gs.reloadAt < 0 || S.clock >= gs.reloadAt;
+    x.font = 'bold 28px "Courier New", monospace'; x.fillStyle = gs.hp > 50 ? '#7fff90' : '#ff5a4a'; x.fillText('HP ' + Math.round(gs.hp), 30, 270);
+    x.fillStyle = ready ? '#ffd27a' : '#ff9a3a'; x.fillText(ready ? 'AMMO ' + (gs.reloadAt >= 0 ? GU.GUN.MAG : gs.ammo) + '/' + GU.GUN.MAG : 'RELOADING', 190, 270);
+    x.fillStyle = S.mode === 'ffa' ? '#ff6a6a' : '#8ad0ff'; x.fillText(S.mode === 'ffa' ? 'PVP' : 'CO-OP', 430, 270);
+    x.font = '22px "Courier New", monospace'; x.fillStyle = '#ffb0a0'; S.feed.filter(f => S.clock - f.t < 8).forEach((f, k) => x.fillText(f.s, 560, 232 + k * 26));
     S.hud.update();
 }
 export function update(dt, t, ctx) {
     if (!S || S.leaving) return;
     S.clock += dt; const p = ctx.body.position, v = ctx.body.velocity, speed = Math.hypot(v.x, v.z); _bp = { x: p.x, z: p.z };
     S.scare.update(dt);
+    for (const f of S.fx) if (f.l.visible) { f.t -= dt; if (f.t <= 0) f.l.visible = false; }
+    S.hurtT = Math.max(0, S.hurtT - dt);
     if (S.busted >= 0) { S.busted += dt; netStep(dt, p, 0); if (S.busted > 4.5) respawn(); S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.3; drawHud(p); } return; }
     L.moveScale = PACE * (S.got > 0 ? CARRY_SLOW : 1);   // ciężar łupu: -8% ruchu z torbą
     S.visT -= dt;
@@ -242,6 +256,8 @@ export function update(dt, t, ctx) {
     S.micCd -= dt; const ml = SFX.micLevel ? SFX.micLevel() : 0;
     if (ml > 0.25 && S.micCd <= 0 && !S.hidden) { S.micCd = 3; if (isAuth()) { S.sim.addEvent('shout', p.x, p.z); S.sim.addHeat('me', WL.eventHeat('shout')); } else send({ k: 'ev', kind: 'shout' }); }
     netStep(dt, p, speed);
+    ensureGun(); if (S.gunMesh) S.gunMesh.g.visible = S.busted < 0;
+    if (N.NET.mode !== 'solo') { MOD.boost = MOD.fly = MOD.noclip = MOD.sizeOn = false; MOD.size = 1; PERSONAL.speed = 1; }   // PvP: bez prędkości, latania, przenikania i rozmiaru z menu admina
     S.hidden = !!S.sim.hiddenNow.me;
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.2; drawHud(p); }
 }
@@ -250,9 +266,10 @@ function bust(b, remote) {
     if (S.busted >= 0) return;
     S.busted = 0; S.busts++; S.scare.trigger(); releaseAll(); cancelRails(S.sim);
     const lost = S.got;
-    if (!remote) { dropBags('me', b.x, 0, b.z); S.sim.heats.me = WL.afterBust(S.sim.heatOf('me')); }   // gość: torby i ciepło po stronie hosta (migawka)
+    if (!remote) { dropBags('me', b.x, b.y || 0, b.z); if (b.reason !== 'shot') S.sim.heats.me = WL.afterBust(S.sim.heatOf('me')); }
+    S.gunS.me.deadUntil = S.clock + GU.GUN.RESPAWN;   // gość: torby i ciepło po stronie hosta (migawka)
     S.got = remote ? 0 : S.got;
-    toast(b.reason === 'gator' ? 'A gator got you!' : 'BUSTED!' + (lost ? ' You dropped ' + lost + ' bag' + (lost === 1 ? '' : 's') + ' here.' : ''), '#ff3a3a');
+    toast(b.reason === 'gator' ? 'A gator got you!' : (b.reason === 'shot' ? 'You were SHOT! Respawning...' : 'BUSTED!') + (lost ? ' You dropped ' + lost + ' bag' + (lost === 1 ? '' : 's') + ' here.' : ''), '#ff3a3a');
 }
 // Torby nosiciela wypadają w miejscu złapania (albo wracają na swoje miejsce, gdy gracz był na dachu)
 function dropBags(who, x, y, z) {
@@ -265,11 +282,75 @@ function dropBags(who, x, y, z) {
 }
 function respawn() {
     const p = playerBodyPos(); let best = null, bd = 1e9;
-    for (const sf of C.SAFEHOUSES) { const d = Math.hypot(sf.x - p.x, sf.z - p.z); const copNear = S.sim.activeCops().some(c => Math.hypot(c.bot.x - sf.x, c.bot.z - sf.z) < 25); if (!copNear && d < bd) { bd = d; best = sf; } }
+    for (const sf of C.SAFEHOUSES) { const d = Math.hypot(sf.x - p.x, sf.z - p.z); const copNear = S.sim.activeCops().some(c => Math.hypot(c.bot.x - sf.x, c.bot.z - sf.z) < 25), killerNear = S.killer && Math.hypot(S.killer.x - sf.x, S.killer.z - sf.z) < 40; if (!copNear && !killerNear && d < bd) { bd = d; best = sf; } }
+    GU.revive(S.gunS.me, S.clock); S.killer = null;
     if (!best) best = C.SAFEHOUSES[0];
     setPlayerPosition(best.x, 1.1, best.z); S.busted = -1; S.sim.resetCopsNear(p.x, p.z, 40); toast('You got away to safe house ' + best.id + '. Lie low.', '#9ad0ff');
 }
 let _bp = { x: 0, z: 0 }; const playerBodyPos = () => _bp;
+// ---------- BROŃ (etap 3b): pistolet w prawej dłoni, strzał spustem (na komputerze lewy przycisk), chwyt wstrzymuje strzał; trafienia liczy host ----------
+function buildFx() {
+    const mk = () => { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0xffe0a0, transparent: true, opacity: 0.85 })); l.visible = false; l.frustumCulled = false; L.root.add(l); return { l, t: 0 }; };
+    for (let i = 0; i < 8; i++) S.fx.push(mk());
+}
+function ensureGun() {
+    if (S.gunMesh || !hands.R) return;
+    const g = new THREE.Group(), metal = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, metalness: 0.8, roughness: 0.35 }), wood = new THREE.MeshStandardMaterial({ color: 0x5a3a20, roughness: 0.7 });
+    const parts = [[new THREE.BoxGeometry(0.04, 0.05, 0.18), metal, 0, 0.02, -0.08, 0], [new THREE.BoxGeometry(0.035, 0.09, 0.045), wood, 0, -0.03, 0, 0.25]];
+    for (const [ge, ma, x, y, z, rx] of parts) { const m = new THREE.Mesh(ge, ma); m.position.set(x, y, z); m.rotation.x = rx; g.add(m); }
+    const br = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.08, 10), metal); br.rotation.x = Math.PI / 2; br.position.set(0, 0.03, -0.2); g.add(br);
+    hands.R.add(g); S.gunMesh = { g, geos: parts.map(q => q[0]).concat([br.geometry]), mats: [metal, wood] };
+}
+const nameOf = (id) => id === 'me' ? safeName(SAVE.profile.name || 'You') : safeName(((N.playersState[id] || {}).profile || {}).name);
+function drawTracer(o, e) {
+    const f = S.fx.find(q => !q.l.visible) || S.fx[0], a = f.l.geometry.attributes.position; a.setXYZ(0, o[0], o[1], o[2]); a.setXYZ(1, e[0], e[1], e[2]); a.needsUpdate = true; f.l.visible = true; f.t = 0.07;
+}
+function fire(i) {
+    if (!S || S.busted >= 0 || S.leaving || i !== 1 || !hands.R || gripDown(1)) return;
+    const q = new THREE.Quaternion(); hands.R.getWorldQuaternion(q);
+    const o = new THREE.Vector3(0, 0.03, -0.24).applyQuaternion(q).add(hands.R.position), d = new THREE.Vector3(0, 0, -1).applyQuaternion(q).normalize();
+    camera.getWorldPosition(_p);
+    const sh = GU.cleanShot({ o: [o.x, o.y, o.z], d: [d.x, d.y, d.z] }); if (!sh) return;
+    const me = S.gunS.me, c = GU.shotCheck(me, sh, S.clock, { x: _p.x, y: _p.y, z: _p.z });
+    if (!c.ok) { if (c.reason === 'empty') toast('Reloading...', '#ffd27a'); return; }
+    SFX.shot(); buzz(1, 0.5, 40); drawTracer(sh.o, [sh.o[0] + sh.d[0] * 40, sh.o[1] + sh.d[1] * 40, sh.o[2] + sh.d[2] * 40]);
+    if (isAuth()) hostShot('me', sh, true); else send({ k: 'shot', o: sh.o.map(v => +v.toFixed(3)), d: sh.d.map(v => +v.toFixed(4)) });
+}
+const headOf = (id) => { if (id === 'me') { camera.getWorldPosition(_p); return { x: _p.x, y: _p.y, z: _p.z }; } const g = guestOf(id); return g ? g.head : null; };
+function hostShot(id, sh, checked) {
+    const head = headOf(id); if (!head) return;
+    const st = S.gunS[id] || (S.gunS[id] = GU.newShooter());
+    if (!checked && !GU.shotCheck(st, sh, S.clock, head).ok) return;
+    if ((S.bustUntil[id] || 0) > S.clock || (id === 'me' && S.busted >= 0)) return;
+    S.sim.addEvent('shot', head.x, head.z); S.sim.addHeat(id, WL.eventHeat('shot'));
+    const targets = [];
+    if (GU.friendlyFire(S.mode)) {
+        const mine = { id: 'me', kind: 'player', head: headOf('me'), ignore: S.busted >= 0 || S.clock < S.gunS.me.protectUntil || S.clock < S.gunS.me.deadUntil }; targets.push(mine);
+        for (const g of remotes()) { const gs = S.gunS[g.id] || (S.gunS[g.id] = GU.newShooter()); targets.push({ id: g.id, kind: 'player', head: g.head, ignore: (S.bustUntil[g.id] || 0) > S.clock || S.clock < gs.protectUntil || S.clock < gs.deadUntil }); }
+    }
+    S.sim.cops.forEach((c, k) => { if (c.active) targets.push({ id: 'c' + k, kind: 'cop', pos: { x: c.bot.x, z: c.bot.z } }); });
+    const res = GU.resolveShot(sh.o, sh.d, targets, S.boxes, id);
+    const end = res ? res.e : [sh.o[0] + sh.d[0] * 40, sh.o[1] + sh.d[1] * 40, sh.o[2] + sh.d[2] * 40];
+    let kill = false;
+    if (res && res.kind === 'cop') {
+        const c = S.sim.cops[+res.id.slice(1)]; c.hp = (c.hp === undefined ? GU.GUN.COP_HP : c.hp) - GU.damageOf(res.zone);
+        if (c.hp <= 0) { kill = true; S.sim.despawn(c); S.sim.addHeat(id, WL.eventHeat('kill')); }
+    } else if (res) {
+        const vs = S.gunS[res.id] || (S.gunS[res.id] = GU.newShooter()), r = GU.hurt(vs, GU.damageOf(res.zone), S.clock);
+        if (!r.ignored) {
+            if (res.id === 'me') { S.hurtT = 0.45; buzz('both', 0.7, 120); S.killer = { x: head.x, z: head.z }; }
+            if (r.dead) {
+                kill = true; S.sim.addHeat(id, WL.eventHeat('kill'));
+                const line = GU.feedLine(nameOf(id), nameOf(res.id), res.zone === 'head'); pushFeed(line); send({ k: 'feed', t: line });
+                const hv = headOf(res.id), px = hv ? hv.x : 0, pz = hv ? hv.z : 0, py = hv ? GN.bodyY(hv.y) : 0;
+                if (res.id === 'me') bust({ reason: 'shot', x: px, z: pz, y: py }); else hostBust({ id: res.id, reason: 'shot', x: px, z: pz });
+            }
+        }
+    }
+    send({ k: 'fx', s: toNet(id), o: sh.o.map(v => +v.toFixed(2)), e: end.map(v => +v.toFixed(2)), h: res && res.kind === 'player' ? toNet(res.id) : null, z: res && res.zone === 'head' ? 'h' : 'b', kill });
+    if (id !== 'me') { drawTracer(sh.o, end); camera.getWorldPosition(_p); if (Math.hypot(_p.x - sh.o[0], _p.z - sh.o[2]) < 45) SFX.shot(); }
+}
+function pushFeed(line) { S.feed.push({ t: S.clock, s: String(line).replace(/[^\w \-!]/g, '').slice(0, 40) }); if (S.feed.length > 3) S.feed.shift(); }
 function giveBag(b, who) {
     if (b.got) return;
     b.got = true; b.holder = who; b.g.visible = false; S.sim.addHeat(who, WL.eventHeat('alarm')); S.sim.addEvent('alarm', b.x, b.z);   // alarm przy zabraniu torby
@@ -305,6 +386,7 @@ function netStep(dt, p, speed) {
             players.push({ id: g.id, x: g.head.x, y: GN.bodyY(g.head.y), z: g.head.z, speed: (S.rideUntil[g.id] || 0) > S.clock ? 0 : sp, busted: (S.bustUntil[g.id] || 0) > S.clock, carrying: S.bags.filter(q => q.holder === g.id).length });
         }
         for (const id of Object.keys(S.track)) if (!ids.has(id)) delete S.track[id];
+        for (const id of Object.keys(S.gunS)) { if (id !== 'me' && !ids.has(id)) { delete S.gunS[id]; continue; } const st = S.gunS[id]; if (id !== 'me' && st.deadUntil > 0 && S.clock >= st.deadUntil) GU.revive(st, S.clock); }
         // gracz, który wyszedł z poziomu albo się rozłączył, traci torby (wracają na swoje miejsca)
         for (const b of S.bags) if (b.holder && !ids.has(b.holder)) { b.holder = null; b.got = false; b.g.visible = true; b.x = b.ox; b.y = b.oy; b.z = b.oz; b.g.position.set(b.x, b.y, b.z); }
         if (speed > 4.3 && !ridingAny(S.sim) && S.sim.activeCops().some(c => Math.hypot(c.bot.x - p.x, c.bot.z - p.z) < 12) && !S.sim.hiddenNow.me) S.sim.addHeat('me', WL.eventHeat('run', dt));
@@ -323,19 +405,22 @@ function netStep(dt, p, speed) {
 }
 function broadcastState(players) {
     const heats = {}; for (const pl of players) heats[toNet(pl.id)] = [+S.sim.heatOf(pl.id).v.toFixed(1), S.sim.hiddenNow[pl.id] ? 1 : 0];
-    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats });
+    const hp = {}; for (const pl of players) hp[toNet(pl.id)] = (S.gunS[pl.id] || (S.gunS[pl.id] = GU.newShooter())).hp;
+    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode });
 }
 function hostBust(b) {
     const g = guestOf(b.id); if (!g || (S.bustUntil[b.id] || 0) > S.clock) return;
     S.bustUntil[b.id] = S.clock + GN.GN.BUST_PROTECT; dropBags(b.id, b.x, bodyYOf(g), b.z);
-    S.sim.heats[b.id] = WL.afterBust(S.sim.heatOf(b.id)); send({ k: 'bust', id: b.id, r: b.reason, x: +b.x.toFixed(2), z: +b.z.toFixed(2) });
+    (S.gunS[b.id] || (S.gunS[b.id] = GU.newShooter())).deadUntil = S.clock + GU.GUN.RESPAWN;
+    if (b.reason !== 'shot') S.sim.heats[b.id] = WL.afterBust(S.sim.heatOf(b.id)); send({ k: 'bust', id: b.id, r: b.reason === 'gator' || b.reason === 'shot' ? b.reason : 'cop', x: +b.x.toFixed(2), z: +b.z.toFixed(2) });
 }
 const bodyYOf = (g) => GN.bodyY(g.head.y);
 // Wiadomości: host przyjmuje żądania gości (z weryfikacją przez własny widok gracza), gość przyjmuje migawki hosta
 function onNet(msg, from) {
     if (!S || !msg || typeof msg !== 'object') return;
     if (N.NET.mode === 'host') {
-        const g = guestOf(from), rq = GN.cleanRequest(msg, BAG_IDS()); if (!g || !rq) return;
+        const g = guestOf(from); if (g && msg.k === 'shot') { const sh = GU.cleanShot(msg); if (sh) hostShot(g.id, sh, false); return; }
+        const rq = GN.cleanRequest(msg, BAG_IDS()); if (!g || !rq) return;
         if (rq.k === 'take') { const b = S.bags.find(q => q.id === rq.b); if (b && !b.got && (S.bustUntil[g.id] || 0) <= S.clock && GN.validTake(b, g.head, b.holder)) { giveBag(b, g.id); send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(q => [q.id, q.x, q.y, q.z, q.holder ? toNet(q.holder) : null]), heats: {} }); } }
         else if (rq.k === 'ev' && rq.kind === 'shout') { if ((S.shoutAt[g.id] || 0) <= S.clock) { S.shoutAt[g.id] = S.clock + GN.GN.SHOUT_GAP; S.sim.addEvent('shout', g.head.x, g.head.z); S.sim.addHeat(g.id, WL.eventHeat('shout')); } }
         else if (rq.k === 'ev' && rq.kind === 'ride') S.rideUntil[g.id] = S.clock + 1;
@@ -349,7 +434,14 @@ function onNet(msg, from) {
         S.snap = { cops };
         for (const e of bags) { const b = S.bags.find(q => q.id === e.id); if (!b) continue; const mine = e.holder === N.myId(); b.holder = e.holder ? (mine ? 'me' : e.holder) : null; b.got = !!e.holder; b.x = e.x; b.y = e.y; b.z = e.z; b.g.visible = !e.holder; b.g.position.set(e.x, e.y, e.z); }
         if (bags.length) { const was = S.got; S.got = S.bags.filter(q => q.holder === 'me').length; if (S.got > was) { const nb = S.bags.find(q => q.holder === 'me'); if (nb) bagToast(nb); } }
+        const hpm = GU.cleanHp(msg.hp); if (Number.isFinite(hpm[N.myId()])) S.gunS.me.hp = hpm[N.myId()]; if (msg.m === 'coop' || msg.m === 'ffa') S.mode = msg.m;
         const mh = heats[N.myId()]; if (mh) { S.sim.heats.me = { v: mh.v, seenT: 0 }; S.sim.hiddenNow.me = mh.hidden; }
+    } else if (msg.k === 'fx') {
+        const fx = GU.cleanFx(msg); if (!fx) return;
+        if (fromNet(fx.s) !== 'me') { drawTracer(fx.o, fx.e); camera.getWorldPosition(_p); if (Math.hypot(_p.x - fx.o[0], _p.z - fx.o[2]) < 45) SFX.shot(); }
+        if (fx.hit === N.myId()) { S.hurtT = 0.45; buzz('both', 0.7, 120); }
+    } else if (msg.k === 'feed') {
+        if (typeof msg.t === 'string') pushFeed(msg.t);
     } else if (msg.k === 'bust') {
         const bu = GN.cleanBust(msg); if (bu && bu.id === N.myId()) bust({ reason: bu.reason, x: bu.x, z: bu.z }, true);
     }
@@ -361,11 +453,15 @@ export function debugHeat(v) { if (S) S.sim.addHeat('me', v); }
 export function debugBust() { if (S) bust({ id: 'me', reason: 'cop', x: 0, z: 0 }); }
 export const debugNet = (msg, from) => { if (S) onNet(msg, from); };   // test: wiadomość jakby przyszła od `from`
 export const debugOutbox = () => S ? S.sent : [];
+export const debugGun = () => S ? { hp: S.gunS.me.hp, ammo: S.gunS.me.ammo, mode: S.mode, shooters: Object.keys(S.gunS), feed: S.feed.map(f => f.s), hurt: S.hurtT } : null;
+export const debugShoot = (id, o, d) => { if (S) hostShot(id, { o, d }, false); };   // test: strzał jakby oddał go gracz `id` (host sprawdza jak dla prawdziwego)
 export function debugRide(i) { if (S) S.forceRail = i; }
 export function debugSpawnCop(x, z) { if (!S) return false; const c = S.sim.cops.find(q => !q.active); if (!c) return false; S.sim.spawnCop(c, AI2.nearestNode(S.sim.graph, x, z)); c.bot.x = x; c.bot.z = z; return true; }
 export function debugTakeBag(id) { const b = S && S.bags.find(q => q.id === id && !q.got); if (!b) return false; giveBag(b, 'me'); return true; }
 export function dispose() {
-    N.onLevelMsg(null);
+    N.onLevelMsg(null); L.onTrigger = null;
+    if (S && S.gunMesh) { S.gunMesh.g.removeFromParent(); for (const g of S.gunMesh.geos) g.dispose(); for (const m of S.gunMesh.mats) m.dispose(); }
+    if (S) for (const f of S.fx) { f.l.geometry.dispose(); f.l.material.dispose(); }
     if (S) { S.sim.dispose(); S.scare.dispose(); S.hud.dispose(); for (const g of S.geos) g.dispose(); for (const m of S.mats) m.dispose(); for (const x of S.texs) x.dispose(); }
     S = null;
 }
