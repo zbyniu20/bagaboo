@@ -18,6 +18,8 @@ import { createCitySim, updateRails, ridingAny, cancelRails } from '../core/city
 import * as WL from '../core/wantedlogic.js';
 import * as AI2 from '../core/cityai.js';
 import * as C from '../core/citylayout.js';
+import * as N from '../core/network.js';
+import * as GN from '../core/gtanet.js';
 
 export const info = { id: 'scarygta', name: 'Scary GTA', spawn: [0, 1, 56] };   // = CITY.SPAWN (test w tests/logic.mjs pilnuje zgodności)
 const TILE = 8, CARRY_SLOW = 0.92, NEON = [0xff2a9a, 0x20e0ff, 0xff8a20, 0xa050ff, 0x40ff80, 0xff3050];
@@ -109,6 +111,8 @@ export function build() {
     S.boxes = S.buildings.map(b => ({ x0: b.x0, x1: b.x1, y0: 0, y1: b.h, z0: b.z0, z1: b.z1 }));
     S.sim = createCitySim({ boxes: S.boxes, diff: df.id }); S.scare = createJumpscare({ seed: 4040, variant: 'warden' });
     S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
+    S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
+    N.onLevelMsg(onNet);
     setDread(() => S.sim.copPositions());   // reżyser grozy: kroki, oddech i napięcie od policjantów
     // drzwi: wyjście na pirsie (wymaga torby) i powrót do Levels na plaży
     buildDoor({ x: 0, z: CI.EXIT[2] - 2, rotY: Math.PI, label: 'EXIT', color: '#ff9a60', glow: 0xff7030, wood: 0x2a1e18, light: true, collider: true,
@@ -188,7 +192,7 @@ function buildBags(geo, mat) {
         const r = new THREE.Mesh(ring, gm); r.rotation.x = Math.PI / 2; r.position.y = -0.1; g.add(r);
         const b = new THREE.Mesh(beam, bm); b.position.y = 18; g.add(b);
         const l = new THREE.PointLight(0xffc040, 9, 12, 2); l.position.y = 0.6; g.add(l);
-        S.bags.push({ id: s.id, x: s.x, y: s.y, z: s.z, g: g, got: false });
+        S.bags.push({ id: s.id, x: s.x, y: s.y, z: s.z, ox: s.x, oy: s.y, oz: s.z, g: g, got: false, holder: null });
     }
 }
 
@@ -224,32 +228,40 @@ export function update(dt, t, ctx) {
     if (!S || S.leaving) return;
     S.clock += dt; const p = ctx.body.position, v = ctx.body.velocity, speed = Math.hypot(v.x, v.z); _bp = { x: p.x, z: p.z };
     S.scare.update(dt);
-    if (S.busted >= 0) { S.busted += dt; if (S.busted > 4.5) respawn(); S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.3; drawHud(p); } return; }
+    if (S.busted >= 0) { S.busted += dt; netStep(dt, p, 0); if (S.busted > 4.5) respawn(); S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.3; drawHud(p); } return; }
     L.moveScale = PACE * (S.got > 0 ? CARRY_SLOW : 1);   // ciężar łupu: -8% ruchu z torbą
     S.visT -= dt;
     if (S.visT <= 0) { S.visT = 0.3; camera.getWorldPosition(_p); for (const c of S.chunks) c.g.visible = Math.hypot(_p.x - c.c[0], _p.z - c.c[1]) < C.CITY.VIS_R + 20; }   // chunki poza zasięgiem znikają z renderu
     for (const b of S.bags) {
         if (b.got) continue;
         b.g.rotation.y = t * 1.4; b.g.position.y = b.y + Math.sin(t * 2 + b.x) * 0.07;
-        if (Math.hypot(p.x - b.x, p.z - b.z) < 1.5 && Math.abs((p.y - 1.0) - b.y) < 2.4) takeBag(b);
+        if (Math.hypot(p.x - b.x, p.z - b.z) < 1.5 && Math.abs((p.y - 1.0) - b.y) < 2.4) { if (isAuth()) giveBag(b, 'me'); else requestTake(b); }
     }
     updateRails(S.sim, dt, S.forceRail); S.forceRail = undefined;
     // hałas gracza: krzyk do mikrofonu (co najwyżej co 3 s), bieg przy policji
     S.micCd -= dt; const ml = SFX.micLevel ? SFX.micLevel() : 0;
-    if (ml > 0.25 && S.micCd <= 0 && !S.hidden) { S.micCd = 3; S.sim.addEvent('shout', p.x, p.z); S.sim.addHeat('me', WL.eventHeat('shout')); }
-    if (speed > 4.3 && !S.hidden && !ridingAny(S.sim) && S.sim.activeCops().some(c => Math.hypot(c.bot.x - p.x, c.bot.z - p.z) < 12)) S.sim.addHeat('me', WL.eventHeat('run', dt));
-    const out = S.sim.update(dt, [{ id: 'me', x: p.x, y: p.y, z: p.z, speed: speed, busted: false, carrying: S.got }]);
+    if (ml > 0.25 && S.micCd <= 0 && !S.hidden) { S.micCd = 3; if (isAuth()) { S.sim.addEvent('shout', p.x, p.z); S.sim.addHeat('me', WL.eventHeat('shout')); } else send({ k: 'ev', kind: 'shout' }); }
+    netStep(dt, p, speed);
     S.hidden = !!S.sim.hiddenNow.me;
-    for (const b of out.busts) { bust(b); break; }
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.2; drawHud(p); }
 }
 // Złapanie (BUSTED): jumpscare (z uwzględnieniem ustawień), upuszczenie toreb, o jedną gwiazdkę mniej, odrodzenie w bezpiecznym punkcie po chwili
-function bust(b) {
+function bust(b, remote) {
     if (S.busted >= 0) return;
     S.busted = 0; S.busts++; S.scare.trigger(); releaseAll(); cancelRails(S.sim);
-    for (const g of S.bags) if (g.got) { g.got = false; g.g.visible = true; g.x = Math.max(C.CITY.X0 + 3, Math.min(C.CITY.X1 - 3, b.x + (Math.random() - 0.5) * 3)); g.z = Math.max(C.CITY.Z0 + 3, Math.min(C.CITY.Z1 - 3, b.z + (Math.random() - 0.5) * 3)); g.y = 0.7; g.g.position.set(g.x, g.y, g.z); }
-    const lost = S.got; S.got = 0; S.sim.heats.me = WL.afterBust(S.sim.heatOf('me'));
+    const lost = S.got;
+    if (!remote) { dropBags('me', b.x, 0, b.z); S.sim.heats.me = WL.afterBust(S.sim.heatOf('me')); }   // gość: torby i ciepło po stronie hosta (migawka)
+    S.got = remote ? 0 : S.got;
     toast(b.reason === 'gator' ? 'A gator got you!' : 'BUSTED!' + (lost ? ' You dropped ' + lost + ' bag' + (lost === 1 ? '' : 's') + ' here.' : ''), '#ff3a3a');
+}
+// Torby nosiciela wypadają w miejscu złapania (albo wracają na swoje miejsce, gdy gracz był na dachu)
+function dropBags(who, x, y, z) {
+    for (const g of S.bags) if (g.holder === who) {
+        g.holder = null; g.got = false; g.g.visible = true;
+        if (y > 3) { g.x = g.ox; g.y = g.oy; g.z = g.oz; } else { g.x = Math.max(C.CITY.X0 + 3, Math.min(C.CITY.X1 - 3, x + (Math.random() - 0.5) * 3)); g.z = Math.max(C.CITY.Z0 + 3, Math.min(C.CITY.Z1 - 3, z + (Math.random() - 0.5) * 3)); g.y = 0.7; }
+        g.g.position.set(g.x, g.y, g.z);
+    }
+    S.got = S.bags.filter(q => q.holder === 'me').length;
 }
 function respawn() {
     const p = playerBodyPos(); let best = null, bd = 1e9;
@@ -258,19 +270,102 @@ function respawn() {
     setPlayerPosition(best.x, 1.1, best.z); S.busted = -1; S.sim.resetCopsNear(p.x, p.z, 40); toast('You got away to safe house ' + best.id + '. Lie low.', '#9ad0ff');
 }
 let _bp = { x: 0, z: 0 }; const playerBodyPos = () => _bp;
-function takeBag(b) {
-    b.got = true; b.g.visible = false; S.got++; S.sim.addHeat('me', WL.eventHeat('alarm')); S.sim.addEvent('alarm', b.x, b.z);   // alarm przy zabraniu torby
-    toast('Bag ' + S.got + '/' + S.bags.length + ': ' + b.id + (S.got === 1 ? '. You are slower while carrying loot. Head for the pier!' : ''), '#ffd27a'); SFX.bell && SFX.bell();
+function giveBag(b, who) {
+    if (b.got) return;
+    b.got = true; b.holder = who; b.g.visible = false; S.sim.addHeat(who, WL.eventHeat('alarm')); S.sim.addEvent('alarm', b.x, b.z);   // alarm przy zabraniu torby
+    S.got = S.bags.filter(q => q.holder === 'me').length;
+    if (who === 'me') bagToast(b);
+}
+function bagToast(b) { toast('Bag ' + S.got + '/' + S.bags.length + ': ' + b.id + (S.got === 1 ? '. You are slower while carrying loot. Head for the pier!' : ''), '#ffd27a'); SFX.bell && SFX.bell(); }
+// ---------- SIEĆ (etap 3a): host liczy policję, ciepło i torby dla wszystkich; goście dostają migawki (8 Hz) i odtwarzają je bez własnej AI ----------
+const BAG_IDS = () => S.bags.map(q => q.id);
+const toNet = (id) => id === 'me' ? N.myId() : id;
+const fromNet = (id) => id === N.myId() ? 'me' : id;
+function isAuth() {
+    if (N.NET.mode !== 'guest') return true;
+    const hs = N.hostState();
+    return !(hs && hs.lvl === 'scarygta' && S.clock - S.lastHostMsg < GN.GN.HOST_LOST);
+}
+function remotes() {
+    const out = [];
+    if (N.NET.mode === 'host') for (const id in N.playersState) { if (id === N.myId()) continue; const st = N.playersState[id]; if (st && st.lvl === 'scarygta' && st.head && Array.isArray(st.head.p) && st.head.p.every(Number.isFinite)) out.push({ id, head: { x: st.head.p[0], y: st.head.p[1], z: st.head.p[2] } }); }
+    return out;
+}
+const guestOf = (id) => remotes().find(r => r.id === id) || null;
+const send = (m) => { S.sent.push(m); if (S.sent.length > 60) S.sent.shift(); N.sendLevelMsg(m); };   // skrzynka nadawcza dla testów (ostatnie 60)
+function requestTake(b) { if (S.takeCd[b.id] > S.clock) return; S.takeCd[b.id] = S.clock + 0.6; send({ k: 'take', b: b.id }); }
+function netStep(dt, p, speed) {
+    const auth = isAuth(), guests = auth ? remotes() : [];
+    S.sim.puppet = !auth;
+    if (auth) {
+        const players = [{ id: 'me', x: p.x, y: p.y, z: p.z, speed: speed, busted: S.busted >= 0, carrying: S.got }];
+        const ids = new Set(['me']);
+        for (const g of guests) {
+            ids.add(g.id); const tr = S.track[g.id] || (S.track[g.id] = GN.newTrack()), sp = GN.trackStep(tr, g.head.x, g.head.z, S.clock);
+            players.push({ id: g.id, x: g.head.x, y: GN.bodyY(g.head.y), z: g.head.z, speed: (S.rideUntil[g.id] || 0) > S.clock ? 0 : sp, busted: (S.bustUntil[g.id] || 0) > S.clock, carrying: S.bags.filter(q => q.holder === g.id).length });
+        }
+        for (const id of Object.keys(S.track)) if (!ids.has(id)) delete S.track[id];
+        // gracz, który wyszedł z poziomu albo się rozłączył, traci torby (wracają na swoje miejsca)
+        for (const b of S.bags) if (b.holder && !ids.has(b.holder)) { b.holder = null; b.got = false; b.g.visible = true; b.x = b.ox; b.y = b.oy; b.z = b.oz; b.g.position.set(b.x, b.y, b.z); }
+        if (speed > 4.3 && !ridingAny(S.sim) && S.sim.activeCops().some(c => Math.hypot(c.bot.x - p.x, c.bot.z - p.z) < 12) && !S.sim.hiddenNow.me) S.sim.addHeat('me', WL.eventHeat('run', dt));
+        for (const g of players.slice(1)) if (g.speed > 4.3 && !S.sim.hiddenNow[g.id] && S.sim.activeCops().some(c => Math.hypot(c.bot.x - g.x, c.bot.z - g.z) < 12)) S.sim.addHeat(g.id, WL.eventHeat('run', dt));
+        const out = S.sim.update(dt, players);
+        for (const b of out.busts) { if (b.id === 'me') { bust(b); break; } else hostBust(b); }
+        S.netT -= dt; if (S.netT <= 0 && N.NET.mode === 'host') { S.netT = 1 / GN.GN.HZ; broadcastState(players); }
+    } else {
+        // gość: policja i ciepło z migawki; tylko aligatory liczy lokalnie (zgłasza własne złapanie)
+        const sn = S.snap; if (sn) S.sim.applyCops(sn.cops, dt);
+        const out = S.sim.update(dt, [{ id: 'me', x: p.x, y: p.y, z: p.z, speed: ridingAny(S.sim) ? 0 : speed, busted: S.busted >= 0, carrying: S.got }]);
+        for (const b of out.busts) if (b.reason === 'gator') { bust(b, true); send({ k: 'gbust' }); break; }
+        S.micCd = Math.max(0, S.micCd);
+        S.rideT -= dt; if (ridingAny(S.sim) && S.rideT <= 0) { S.rideT = 0.4; send({ k: 'ev', kind: 'ride' }); }
+    }
+}
+function broadcastState(players) {
+    const heats = {}; for (const pl of players) heats[toNet(pl.id)] = [+S.sim.heatOf(pl.id).v.toFixed(1), S.sim.hiddenNow[pl.id] ? 1 : 0];
+    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats });
+}
+function hostBust(b) {
+    const g = guestOf(b.id); if (!g || (S.bustUntil[b.id] || 0) > S.clock) return;
+    S.bustUntil[b.id] = S.clock + GN.GN.BUST_PROTECT; dropBags(b.id, b.x, bodyYOf(g), b.z);
+    S.sim.heats[b.id] = WL.afterBust(S.sim.heatOf(b.id)); send({ k: 'bust', id: b.id, r: b.reason, x: +b.x.toFixed(2), z: +b.z.toFixed(2) });
+}
+const bodyYOf = (g) => GN.bodyY(g.head.y);
+// Wiadomości: host przyjmuje żądania gości (z weryfikacją przez własny widok gracza), gość przyjmuje migawki hosta
+function onNet(msg, from) {
+    if (!S || !msg || typeof msg !== 'object') return;
+    if (N.NET.mode === 'host') {
+        const g = guestOf(from), rq = GN.cleanRequest(msg, BAG_IDS()); if (!g || !rq) return;
+        if (rq.k === 'take') { const b = S.bags.find(q => q.id === rq.b); if (b && !b.got && (S.bustUntil[g.id] || 0) <= S.clock && GN.validTake(b, g.head, b.holder)) { giveBag(b, g.id); send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(q => [q.id, q.x, q.y, q.z, q.holder ? toNet(q.holder) : null]), heats: {} }); } }
+        else if (rq.k === 'ev' && rq.kind === 'shout') { if ((S.shoutAt[g.id] || 0) <= S.clock) { S.shoutAt[g.id] = S.clock + GN.GN.SHOUT_GAP; S.sim.addEvent('shout', g.head.x, g.head.z); S.sim.addHeat(g.id, WL.eventHeat('shout')); } }
+        else if (rq.k === 'ev' && rq.kind === 'ride') S.rideUntil[g.id] = S.clock + 1;
+        else if (rq.k === 'gbust') hostBust({ id: g.id, reason: 'gator', x: g.head.x, z: g.head.z });
+        return;
+    }
+    if (N.NET.mode !== 'guest' || from !== 'host') return;
+    if (msg.k === 'st') {
+        S.lastHostMsg = S.clock;
+        const cops = GN.cleanCops(msg.cops), bags = GN.cleanBags(msg.bags, BAG_IDS()), heats = GN.cleanHeats(msg.heats);
+        S.snap = { cops };
+        for (const e of bags) { const b = S.bags.find(q => q.id === e.id); if (!b) continue; const mine = e.holder === N.myId(); b.holder = e.holder ? (mine ? 'me' : e.holder) : null; b.got = !!e.holder; b.x = e.x; b.y = e.y; b.z = e.z; b.g.visible = !e.holder; b.g.position.set(e.x, e.y, e.z); }
+        if (bags.length) { const was = S.got; S.got = S.bags.filter(q => q.holder === 'me').length; if (S.got > was) { const nb = S.bags.find(q => q.holder === 'me'); if (nb) bagToast(nb); } }
+        const mh = heats[N.myId()]; if (mh) { S.sim.heats.me = { v: mh.v, seenT: 0 }; S.sim.hiddenNow.me = mh.hidden; }
+    } else if (msg.k === 'bust') {
+        const bu = GN.cleanBust(msg); if (bu && bu.id === N.myId()) bust({ reason: bu.reason, x: bu.x, z: bu.z }, true);
+    }
 }
 export const testState = () => S;   // dla testów
 export const debugCity = () => S ? { chunks: S.chunks.length, visible: S.chunks.filter(c => c.g.visible).length, bags: S.bags.length, got: S.got, moveScale: L.moveScale, cars: S.carCount, buildings: S.buildings.length } : null;
 export const debugSim = () => S ? { stars: S.sim.starsOf('me'), heat: S.sim.heatOf('me').v, cops: S.sim.activeCops().length, modes: S.sim.activeCops().map(c => c.st.mode), busted: S.busted, busts: S.busts, hidden: S.hidden, got: S.got, gators: S.sim.gators.length, rails: S.sim.rails.map(r => r.st.ph), events: S.sim.events.length } : null;
 export function debugHeat(v) { if (S) S.sim.addHeat('me', v); }
 export function debugBust() { if (S) bust({ id: 'me', reason: 'cop', x: 0, z: 0 }); }
+export const debugNet = (msg, from) => { if (S) onNet(msg, from); };   // test: wiadomość jakby przyszła od `from`
+export const debugOutbox = () => S ? S.sent : [];
 export function debugRide(i) { if (S) S.forceRail = i; }
 export function debugSpawnCop(x, z) { if (!S) return false; const c = S.sim.cops.find(q => !q.active); if (!c) return false; S.sim.spawnCop(c, AI2.nearestNode(S.sim.graph, x, z)); c.bot.x = x; c.bot.z = z; return true; }
-export function debugTakeBag(id) { const b = S && S.bags.find(q => q.id === id && !q.got); if (!b) return false; takeBag(b); return true; }
+export function debugTakeBag(id) { const b = S && S.bags.find(q => q.id === id && !q.got); if (!b) return false; giveBag(b, 'me'); return true; }
 export function dispose() {
+    N.onLevelMsg(null);
     if (S) { S.sim.dispose(); S.scare.dispose(); S.hud.dispose(); for (const g of S.geos) g.dispose(); for (const m of S.mats) m.dispose(); for (const x of S.texs) x.dispose(); }
     S = null;
 }

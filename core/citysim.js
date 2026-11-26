@@ -70,6 +70,19 @@ export function createCitySim(o) {
     G.despawn = (c) => { c.active = false; c.m.group.visible = false; c.cone.visible = false; };
     G.reset = () => { for (const c of G.cops) G.despawn(c); };
     G.resetCopsNear = (x, z, r) => { for (const c of G.activeCops()) if (Math.hypot(c.bot.x - x, c.bot.z - z) < r) { c.st.mode = 'search'; c.st.searchT = 0; c.st.last = { x: x, z: z }; } };
+    // Sieć: host wysyła migawkę policjantów, gość (G.puppet = true) tylko ją odtwarza (bez AI, bez łapania, bez ciepła)
+    G.copSnap = () => G.cops.map((c, i) => c.active ? [i, +c.bot.x.toFixed(2), +c.bot.z.toFixed(2), +c.bot.dir.toFixed(2), c.st.mode] : null).filter(Boolean);
+    G.applyCops = (list, dt) => {
+        const seen = new Set(list.map(e => e.i));
+        G.cops.forEach((c, i) => {
+            if (!seen.has(i)) { if (c.active) G.despawn(c); return; }
+            const e = list.find(q => q.i === i), b = c.bot;
+            if (!c.active) { G.spawnCop(c, 0); b.x = e.x; b.z = e.z; b.dir = e.dir; }
+            const d = Math.hypot(e.x - b.x, e.z - b.z), k = d > 8 ? 1 : Math.min(1, dt * 10);
+            b.x += (e.x - b.x) * k; b.z += (e.z - b.z) * k; let da = e.dir - b.dir; da = Math.atan2(Math.sin(da), Math.cos(da)); b.dir += da * Math.min(1, dt * 12);
+            c.st.mode = e.mode; c.m.group.position.set(b.x, b.y, b.z); c.m.group.rotation.y = b.dir; c.cone.material.opacity = e.mode === 'chase' ? 0.16 : 0.1;
+        });
+    };
     G.update = (dt, players, rand) => update(G, dt, players, rand || Math.random);
     G.dispose = () => { for (const g of G.geos) g.dispose(); for (const m of G.mats) m.dispose(); };
     return G;
@@ -87,15 +100,15 @@ function update(G, dt, players, rand) {
     const maxStars = Math.max(0, ...live.map(p => G.starsOf(p.id)));
     const want = Math.max(2, Math.round(WL.starRules(maxStars).maxCops * (DIFF_COPS[G.diff] || 1)));
     // populacja: dopełniaj przy graczach (pierścień 28-62 m), usuwaj dalekich
-    if (live.length) {
+    if (live.length && !G.puppet) {
         const act = G.activeCops(); for (const c of act) if (!live.some(p => Math.hypot(p.x - c.bot.x, p.z - c.bot.z) < 115)) G.despawn(c);
         const cnt = G.activeCops().length;
         if (cnt < want) { const free = G.cops.find(c => !c.active), pl = live[(rand() * live.length) | 0]; if (free) { const ring = AI.spawnNodes(G.graph, pl.x, pl.z, 28, 62); if (ring.length) { G.spawnCop(free, ring[(rand() * ring.length) | 0]); } } }
-        else if (cnt > want + 1) { const far = G.activeCops().sort((a, b) => Math.hypot(b.bot.x - live[0].x, b.bot.z - live[0].z) - Math.hypot(a.bot.x - live[0].x, a.bot.z - live[0].z))[0]; if (far && Math.hypot(far.bot.x - live[0].x, far.bot.z - live[0].z) > 45) G.despawn(far); }
+        else if (cnt > want + 1) { const dMin = (c) => Math.min(...live.map(q => Math.hypot(c.bot.x - q.x, c.bot.z - q.z))); const far = G.activeCops().sort((a, b) => dMin(b) - dMin(a))[0]; if (far && dMin(far) > 45) G.despawn(far); }   // najdalszy od WSZYSTKICH graczy (nie tylko pierwszego)
     }
     G.radioT -= dt; const radio = G.radioT <= 0; if (radio) G.radioT = 6;
     const seenNow = {};
-    for (const c of G.activeCops()) {
+    for (const c of (G.puppet ? [] : G.activeCops())) {
         const b = c.bot; let tgt = null, bd = 1e9;
         for (const p of live) {
             const rules = WL.starRules(G.starsOf(p.id)), blocked = AI.lineBlocked([b.x, 1.5, b.z], [p.x, p.y, p.z], G.boxes);
@@ -114,7 +127,7 @@ function update(G, dt, players, rand) {
         for (const p of live) if (AI.caughtBy({ x: b.x, z: b.z, y: b.y }, p)) { out.busts.push({ id: p.id, reason: 'cop', x: p.x, z: p.z }); G.stat.caught++; G.resetCopsNear(p.x, p.z, 30); break; }
     }
     // poziom poszukiwania: widzenie (policja) odnawia heat, kryjówka go obniża
-    for (const p of live) { const h = G.heatOf(p.id); G.heats[p.id] = WL.heatStep(h, dt, { seen: !!seenNow[p.id], hidden: !!G.hiddenNow[p.id] }); if (p.carrying) G.heats[p.id] = { v: WL.clampHeat(G.heats[p.id].v + WL.eventHeat('carry', dt) * 0), seenT: G.heats[p.id].seenT }; }
+    if (!G.puppet) for (const p of live) { const h = G.heatOf(p.id); G.heats[p.id] = WL.heatStep(h, dt, { seen: !!seenNow[p.id], hidden: !!G.hiddenNow[p.id] }); if (p.carrying) G.heats[p.id] = { v: WL.clampHeat(G.heats[p.id].v + WL.eventHeat('carry', dt) * 0), seenT: G.heats[p.id].seenT }; }
     out.seen = seenNow;
     // aligatory: patrol po wodzie, polowanie na wchodzących do wody
     for (const a of G.gators) {
