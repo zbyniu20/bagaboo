@@ -33,6 +33,8 @@ await ev(async () => { const M = await import('./main.js'); await M.loadLevel('s
 await page.waitForTimeout(5000);
 const BUDGET = +(process.env.BUDGET || 260);
 const views = [['spawn on the beach', 0, 1.2, 56, Math.PI], ['street crossing', -31, 1.2, -39, 0], ['boulevard centre', 0, 1.2, 40, 1.57], ['bank roof 38 m', -6, 39.5, -52, 0], ['casino roof 46 m', 24, 47.5, -52, 3.14], ['plaza', -3, 1.2, 18, 1.0]];
+// z aktywnym helikopterem, policją i 5 gwiazdkami (najgorszy przypadek)
+await ev(async () => { const G = await import('./levels/scarygta.js'); G.debugHeat(100); const S = G.testState(); for (let i = 0; i < 100 && S.heli.mode === 'away'; i++) await new Promise(r => setTimeout(r, 100)); });
 const out = [];
 for (const v of views) {
     const r = await ev(async ([x, y, z, yaw]) => {

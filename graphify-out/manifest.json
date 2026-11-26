@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795686517.8582747,
-    "seen": 1795687149.2676058,
-    "ast_hash": "9dd7ba2b6f358499b8d591e59356472f",
+    "mtime": 1795691836.786118,
+    "seen": 1795691848.05806,
+    "ast_hash": "2792aa8dec052c6cd4f0499a8bb44713",
     "semantic_hash": ""
   },
   "README.md": {
@@ -10830,9 +10830,9 @@
     "semantic_hash": ""
   },
   "tests/citybudget.mjs": {
-    "mtime": 1795657896.750944,
-    "seen": 1795658069.91511,
-    "ast_hash": "9f87b8386ab74b37b05cbc3d1989a118",
+    "mtime": 1795691720.7932065,
+    "seen": 1795691848.0577567,
+    "ast_hash": "39ecf2ac298414f10713bb430ed5c049",
     "semantic_hash": ""
   },
   "core/cityai.js": {

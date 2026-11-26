@@ -1,7 +1,7 @@
 # Graph Report - bagaboo  (2026-11-26)
 
 ## Corpus Check
-- 578 files · ~1,436,431 words
+- 578 files · ~1,436,493 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 99 file(s) not represented in the graph (top: .css 84, .glb 12, (none) 3)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `98420c8c`
+- Built from commit: `7c1a1239`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1192,7 +1192,7 @@ Cohesion: 0.40
 Nodes (3): EFFECT_LABEL, PAPERS, EFFECTS
 
 ## Knowledge Gaps
-- **53 isolated node(s):** `./core/citylayout.js`, `./core/cosmetics.js`, `./core/monsterskins.js`, `./core/emotes.js`, `./core/gorillamachine.js` (+48 more)
+- **53 isolated node(s):** `./core/emotes.js`, `./core/gorillamachine.js`, `./core/highfive.js`, `./core/leveldata.js`, `./core/ui.js` (+48 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2546 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **25 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -1200,16 +1200,16 @@ Nodes (3): EFFECT_LABEL, PAPERS, EFFECTS
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `f()` connect `build.js` to `static.mjs`, `ref_url`, `copy-lint.mjs`, `gate.mjs`, `changed.mjs`, `workshop.js`, `ref_node_fs`?**
-  _High betweenness centrality (0.331) - this node is a cross-community bridge._
+  _High betweenness centrality (0.366) - this node is a cross-community bridge._
 - **Are the 51 inferred relationships involving `lib()` (e.g. with `arrive()` and `audit()`) actually correct?**
   _`lib()` has 51 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `./core/citylayout.js`, `./core/cosmetics.js`, `./core/monsterskins.js` to the rest of the system?**
+- **What connects `./core/emotes.js`, `./core/gorillamachine.js`, `./core/highfive.js` to the rest of the system?**
   _53 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `network.js` be split into smaller, more focused modules?**
   _Cohesion score 0.04586576898800757 - nodes in this community are weakly interconnected._
 - **Why does `mode` connect `workshop.js` to `build.js`?**
-  _High betweenness centrality (0.274) - this node is a cross-community bridge._
+  _High betweenness centrality (0.299) - this node is a cross-community bridge._
 - **Should `economy.js` be split into smaller, more focused modules?**
   _Cohesion score 0.047685834502103785 - nodes in this community are weakly interconnected._
 - **Why does `L` connect `puzzlelogic.js` to `network.js`, `silence.js`, `ambience.js`, `mine.js`, `hideseek.js`, `banana.js`, `monster.js`, `main.js`, `visuals.js`, `L`, `dodgeball.js`, `terminal.js`, `hotel.js`, `graffiti.js`, `toast`, `furas.js`, `scarygta.js`, `pet.js`, `annexplay.js`, `addCrispBlock`, `well.js`, `lightbake.js`, `staff.js`, `lobby-door.js`, `home.js`, `engine.js`, `nightchest.js`, `levels.js`, `room000.js`, `spectate.js`, `core_engine_three`, `cemetery.js`, `annexgallery.js`, `cityai.js`, `engine.js`, `settings.js`, `core/kit.js`, `maze.js`, `nursery.js`, `petnest.js`, `props.js`, `lobbyplay.js`, `catacombs.js`, `lobbygames.js`, `bestiary.js`, `acoustics.js`, `helilogic.js`, `trainingdummy.js`, `workshop.js`?**
-  _High betweenness centrality (0.047) - this node is a cross-community bridge._
+  _High betweenness centrality (0.048) - this node is a cross-community bridge._
