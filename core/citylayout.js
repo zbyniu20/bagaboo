@@ -120,3 +120,26 @@ export function cityProblems(seed) {
     return bad;
 }
 export const cityChunks = () => { const o = []; for (let j = 0; j < CITY.ROWS; j++) for (let i = 0; i < CITY.COLS; i++) o.push({ id: chunkId(i, j), i: i, j: j, center: chunkCenter(i, j), role: ROLES[j][i] }); return o; };
+
+// Kryjówki w zaułkach (śmietnik pośrodku zaułka kwartału) i punkty odrodzenia po złapaniu (kryjówki bezpieczne): jedna na każdy kwartał z pustym środkiem zaułka
+export const alleyCenter = (i, j) => { const b = blockRect(i, j); return [(b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2]; };
+export function hideSpots() { const out = []; for (let j = 0; j < CITY.ROWS; j++) for (let i = 0; i < CITY.COLS; i++) { const role = ROLES[j][i]; if (role === 'plaza' || role === 'marina') continue; const c = alleyCenter(i, j); out.push({ id: 'h' + i + j, x: c[0], z: c[1] + 3.2 }); } return out; }
+export const SAFEHOUSES = [{ id: 'S1', x: -38, z: -39 }, { id: 'S2', x: 38, z: -1 }, { id: 'S3', x: 0, z: -39 }, { id: 'S4', x: -38, z: 40 }, { id: 'S5', x: 38, z: 40 }, { id: 'S6', x: 0, z: 40 }];   // rogi ulic: bezpieczne punkty odrodzenia po złapaniu
+// Linie szybkiego transportu (zjazd na linie, ta sama szyna co tyrolka w aneksie: railStep w core/ziplogic.js)
+export const RAILS = [
+    { id: 'casino', A: [12, 47.4, -59], B: [12, 4.6, 40], SPEED: 6.5, HANG: 0.8, COOLDOWN: 3, MAX_DT: 0.1 },
+    { id: 'bank', A: [-26, 39.4, -59], B: [-26, 4.6, 40], SPEED: 6.5, HANG: 0.8, COOLDOWN: 3, MAX_DT: 0.1 }
+];
+export function railProblems() {
+    const bad = [], B = buildCity(1337);
+    for (const r of RAILS) {
+        const len = Math.hypot(r.B[0] - r.A[0], r.B[1] - r.A[1], r.B[2] - r.A[2]);
+        if (r.SPEED > 7) bad.push(r.id + ' is too fast'); if (len > 140) bad.push(r.id + ' is too long'); if (r.A[1] - r.B[1] < 20) bad.push(r.id + ' does not descend enough');
+        if (r.B[1] - r.HANG < 1.2 || r.B[1] > 6) bad.push(r.id + ' ends at a bad height');
+        if (r.B[2] < CITY.BLV[0] || r.B[2] > CITY.BLV[1]) bad.push(r.id + ' does not land on the boulevard');
+        const top = B.filter(b => r.A[0] >= b.x0 - 3 && r.A[0] <= b.x1 + 3 && r.A[2] >= b.z0 - 4 && r.A[2] <= b.z1 + 4).sort((a, c) => c.h - a.h)[0];
+        if (!top || r.A[1] < top.h + 0.8 || r.A[1] > top.h + 2.5) bad.push(r.id + ' does not start near a roof');
+        if (r.A[0] < CITY.X0 || r.A[0] > CITY.X1 || r.B[0] < CITY.X0 || r.B[0] > CITY.X1) bad.push(r.id + ' leaves the map');
+    }
+    return bad;
+}

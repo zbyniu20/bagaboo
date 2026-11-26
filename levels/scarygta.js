@@ -6,12 +6,17 @@
 // ==========================================
 import { THREE, CANNON, L, scene, camera, addStaticBody } from '../core/engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { levelReward } from '../core/economy.js';
+import { levelReward, diffOf } from '../core/economy.js';
 import { toast } from '../core/terminal.js';
 import * as SFX from '../core/audio.js';
 import { PACE } from '../core/config.js';
 import { ARRIVAL_FROM_SCARYGTA } from './levels.js';
-import { buildDoor, cameraPanel, panelBg } from '../core/levelkit.js';
+import { buildDoor, cameraPanel, panelBg, createJumpscare } from '../core/levelkit.js';
+import { setDread } from '../core/ambience.js';
+import { setPlayerPosition, releaseAll } from '../core/player.js';
+import { createCitySim, updateRails, ridingAny, cancelRails } from '../core/citysim.js';
+import * as WL from '../core/wantedlogic.js';
+import * as AI2 from '../core/cityai.js';
 import * as C from '../core/citylayout.js';
 
 export const info = { id: 'scarygta', name: 'Scary GTA', spawn: [0, 1, 56] };   // = CITY.SPAWN (test w tests/logic.mjs pilnuje zgodności)
@@ -100,11 +105,16 @@ export function build() {
     buildStreets(geo, mat, R); buildPier(geo, mat); buildMarina(geo, mat);
     buildProps(geo, mat, R);
     buildBags(geo, mat);
+    const df = diffOf('scarygta');
+    S.boxes = S.buildings.map(b => ({ x0: b.x0, x1: b.x1, y0: 0, y1: b.h, z0: b.z0, z1: b.z1 }));
+    S.sim = createCitySim({ boxes: S.boxes, diff: df.id }); S.scare = createJumpscare({ seed: 4040, variant: 'warden' });
+    S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
+    setDread(() => S.sim.copPositions());   // reżyser grozy: kroki, oddech i napięcie od policjantów
     // drzwi: wyjście na pirsie (wymaga torby) i powrót do Levels na plaży
     buildDoor({ x: 0, z: CI.EXIT[2] - 2, rotY: Math.PI, label: 'EXIT', color: '#ff9a60', glow: 0xff7030, wood: 0x2a1e18, light: true, collider: true,
         portal: { target: 'levels', spawn: ARRIVAL_FROM_SCARYGTA, cond: () => S && S.got > 0, deny: 'Take at least one bag before you leave.', onEnter: finish } });
     buildDoor({ x: -7, z: CI.BEACH_Z + 1, rotY: 0, label: 'LEVELS', color: '#bfe8ff', wood: 0x3a3228, collider: true, portal: { target: 'levels', spawn: ARRIVAL_FROM_SCARYGTA, onEnter: () => toast('Back to the levels') } });
-    S.hud = cameraPanel(1024, 190, 0.42, 0.078, 0.2, -0.75, 990);
+    S.hud = cameraPanel(1024, 250, 0.42, 0.102, 0.2, -0.75, 990);
     toast('Steal the bags. Reach the pier. Walls are slippery: climb the scaffolds.', '#ff7ac8');
 }
 
@@ -196,16 +206,25 @@ function arrowTo(px, pz, tx, tz) {
 function drawHud(p) {
     const x = S.hud.ctx; panelBg(S.hud, 'rgba(12,8,20,0.74)', '#ff2a9a');
     x.textBaseline = 'middle'; x.textAlign = 'left';
-    x.font = 'bold 64px "Courier New", monospace'; x.fillStyle = S.got === S.bags.length ? '#7fff90' : '#ff7ac8'; x.fillText('BAGS ' + S.got + '/' + S.bags.length, 30, 62);
+    const stars = S.sim.starsOf('me'), heat = S.sim.heatOf('me');
+    x.font = 'bold 60px "Courier New", monospace'; x.fillStyle = S.got === S.bags.length ? '#7fff90' : '#ff7ac8'; x.fillText('BAGS ' + S.got + '/' + S.bags.length, 30, 56);
+    x.font = 'bold 56px "Courier New", monospace'; x.fillStyle = stars > 0 ? '#ff3a3a' : '#5a4a6a'; x.fillText('\u2605'.repeat(stars) + '\u2606'.repeat(5 - stars), 520, 56);
+    x.fillStyle = '#2a2030'; x.fillRect(520, 90, 460, 14); x.fillStyle = stars >= 4 ? '#ff2a2a' : '#ff9a3a'; x.fillRect(520, 90, 460 * WL.heatBar(heat), 14);
     let best = null, bd = 1e9; for (const b of S.bags) if (!b.got) { const d = Math.hypot(b.x - p.x, b.z - p.z); if (d < bd) { bd = d; best = b; } }
     x.font = 'bold 28px "Courier New", monospace'; x.fillStyle = '#ffd27a';
-    if (best) x.fillText('NEAREST ' + arrowTo(p.x, p.z, best.x, best.z) + ' ' + Math.round(bd) + ' m   (' + best.id.toUpperCase() + ')', 30, 118);
-    const ex = C.CITY.EXIT; x.fillStyle = S.got > 0 ? '#7fff90' : '#8a8090'; x.fillText('PIER ' + arrowTo(p.x, p.z, ex[0], ex[2]) + ' ' + Math.round(Math.hypot(ex[0] - p.x, ex[2] - p.z)) + ' m' + (S.got > 0 ? '  (carrying: slower)' : ''), 30, 158);
+    if (best) x.fillText('NEAREST ' + arrowTo(p.x, p.z, best.x, best.z) + ' ' + Math.round(bd) + ' m   (' + best.id.toUpperCase() + ')', 30, 112);
+    const ex = C.CITY.EXIT; x.fillStyle = S.got > 0 ? '#7fff90' : '#8a8090'; x.fillText('PIER ' + arrowTo(p.x, p.z, ex[0], ex[2]) + ' ' + Math.round(Math.hypot(ex[0] - p.x, ex[2] - p.z)) + ' m' + (S.got > 0 ? '  (carrying: slower)' : ''), 30, 152);
+    const cops = S.sim.activeCops(), near = cops.filter(c => Math.hypot(c.bot.x - p.x, c.bot.z - p.z) < 30), chasing = cops.some(c => c.st.mode === 'chase');
+    x.font = 'bold 26px "Courier New", monospace'; x.fillStyle = S.hidden ? '#9ad0ff' : (chasing ? '#ff4a2a' : (near.length ? '#ffb030' : '#8a8090'));
+    x.fillText(S.busted >= 0 ? 'BUSTED... back at a safe house soon' : (S.hidden ? 'HIDDEN: stay still, they cannot see you' : (chasing ? 'THEY SEE YOU! Run, climb or hide!' : (near.length ? 'Cops nearby (' + near.length + '). Stay out of the light.' : 'Quiet. Keep it that way.'))), 30, 196);
+    x.font = '22px "Courier New", monospace'; x.fillStyle = '#8a7a9a'; x.fillText('Hide next to dumpsters. Cops cannot climb: use roofs and the cable rides.', 30, 232);
     S.hud.update();
 }
 export function update(dt, t, ctx) {
     if (!S || S.leaving) return;
-    S.clock += dt; const p = ctx.body.position;
+    S.clock += dt; const p = ctx.body.position, v = ctx.body.velocity, speed = Math.hypot(v.x, v.z); _bp = { x: p.x, z: p.z };
+    S.scare.update(dt);
+    if (S.busted >= 0) { S.busted += dt; if (S.busted > 4.5) respawn(); S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.3; drawHud(p); } return; }
     L.moveScale = PACE * (S.got > 0 ? CARRY_SLOW : 1);   // ciężar łupu: -8% ruchu z torbą
     S.visT -= dt;
     if (S.visT <= 0) { S.visT = 0.3; camera.getWorldPosition(_p); for (const c of S.chunks) c.g.visible = Math.hypot(_p.x - c.c[0], _p.z - c.c[1]) < C.CITY.VIS_R + 20; }   // chunki poza zasięgiem znikają z renderu
@@ -214,16 +233,44 @@ export function update(dt, t, ctx) {
         b.g.rotation.y = t * 1.4; b.g.position.y = b.y + Math.sin(t * 2 + b.x) * 0.07;
         if (Math.hypot(p.x - b.x, p.z - b.z) < 1.5 && Math.abs((p.y - 1.0) - b.y) < 2.4) takeBag(b);
     }
+    updateRails(S.sim, dt, S.forceRail); S.forceRail = undefined;
+    // hałas gracza: krzyk do mikrofonu (co najwyżej co 3 s), bieg przy policji
+    S.micCd -= dt; const ml = SFX.micLevel ? SFX.micLevel() : 0;
+    if (ml > 0.25 && S.micCd <= 0 && !S.hidden) { S.micCd = 3; S.sim.addEvent('shout', p.x, p.z); S.sim.addHeat('me', WL.eventHeat('shout')); }
+    if (speed > 4.3 && !S.hidden && !ridingAny(S.sim) && S.sim.activeCops().some(c => Math.hypot(c.bot.x - p.x, c.bot.z - p.z) < 12)) S.sim.addHeat('me', WL.eventHeat('run', dt));
+    const out = S.sim.update(dt, [{ id: 'me', x: p.x, y: p.y, z: p.z, speed: speed, busted: false, carrying: S.got }]);
+    S.hidden = !!S.sim.hiddenNow.me;
+    for (const b of out.busts) { bust(b); break; }
     S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.2; drawHud(p); }
 }
+// Złapanie (BUSTED): jumpscare (z uwzględnieniem ustawień), upuszczenie toreb, o jedną gwiazdkę mniej, odrodzenie w bezpiecznym punkcie po chwili
+function bust(b) {
+    if (S.busted >= 0) return;
+    S.busted = 0; S.busts++; S.scare.trigger(); releaseAll(); cancelRails(S.sim);
+    for (const g of S.bags) if (g.got) { g.got = false; g.g.visible = true; g.x = Math.max(C.CITY.X0 + 3, Math.min(C.CITY.X1 - 3, b.x + (Math.random() - 0.5) * 3)); g.z = Math.max(C.CITY.Z0 + 3, Math.min(C.CITY.Z1 - 3, b.z + (Math.random() - 0.5) * 3)); g.y = 0.7; g.g.position.set(g.x, g.y, g.z); }
+    const lost = S.got; S.got = 0; S.sim.heats.me = WL.afterBust(S.sim.heatOf('me'));
+    toast(b.reason === 'gator' ? 'A gator got you!' : 'BUSTED!' + (lost ? ' You dropped ' + lost + ' bag' + (lost === 1 ? '' : 's') + ' here.' : ''), '#ff3a3a');
+}
+function respawn() {
+    const p = playerBodyPos(); let best = null, bd = 1e9;
+    for (const sf of C.SAFEHOUSES) { const d = Math.hypot(sf.x - p.x, sf.z - p.z); const copNear = S.sim.activeCops().some(c => Math.hypot(c.bot.x - sf.x, c.bot.z - sf.z) < 25); if (!copNear && d < bd) { bd = d; best = sf; } }
+    if (!best) best = C.SAFEHOUSES[0];
+    setPlayerPosition(best.x, 1.1, best.z); S.busted = -1; S.sim.resetCopsNear(p.x, p.z, 40); toast('You got away to safe house ' + best.id + '. Lie low.', '#9ad0ff');
+}
+let _bp = { x: 0, z: 0 }; const playerBodyPos = () => _bp;
 function takeBag(b) {
-    b.got = true; b.g.visible = false; S.got++;
+    b.got = true; b.g.visible = false; S.got++; S.sim.addHeat('me', WL.eventHeat('alarm')); S.sim.addEvent('alarm', b.x, b.z);   // alarm przy zabraniu torby
     toast('Bag ' + S.got + '/' + S.bags.length + ': ' + b.id + (S.got === 1 ? '. You are slower while carrying loot. Head for the pier!' : ''), '#ffd27a'); SFX.bell && SFX.bell();
 }
 export const testState = () => S;   // dla testów
 export const debugCity = () => S ? { chunks: S.chunks.length, visible: S.chunks.filter(c => c.g.visible).length, bags: S.bags.length, got: S.got, moveScale: L.moveScale, cars: S.carCount, buildings: S.buildings.length } : null;
+export const debugSim = () => S ? { stars: S.sim.starsOf('me'), heat: S.sim.heatOf('me').v, cops: S.sim.activeCops().length, modes: S.sim.activeCops().map(c => c.st.mode), busted: S.busted, busts: S.busts, hidden: S.hidden, got: S.got, gators: S.sim.gators.length, rails: S.sim.rails.map(r => r.st.ph), events: S.sim.events.length } : null;
+export function debugHeat(v) { if (S) S.sim.addHeat('me', v); }
+export function debugBust() { if (S) bust({ id: 'me', reason: 'cop', x: 0, z: 0 }); }
+export function debugRide(i) { if (S) S.forceRail = i; }
+export function debugSpawnCop(x, z) { if (!S) return false; const c = S.sim.cops.find(q => !q.active); if (!c) return false; S.sim.spawnCop(c, AI2.nearestNode(S.sim.graph, x, z)); c.bot.x = x; c.bot.z = z; return true; }
 export function debugTakeBag(id) { const b = S && S.bags.find(q => q.id === id && !q.got); if (!b) return false; takeBag(b); return true; }
 export function dispose() {
-    if (S) { S.hud.dispose(); for (const g of S.geos) g.dispose(); for (const m of S.mats) m.dispose(); for (const x of S.texs) x.dispose(); }
+    if (S) { S.sim.dispose(); S.scare.dispose(); S.hud.dispose(); for (const g of S.geos) g.dispose(); for (const m of S.mats) m.dispose(); for (const x of S.texs) x.dispose(); }
     S = null;
 }

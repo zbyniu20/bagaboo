@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795658018.5967617,
-    "seen": 1795658069.915419,
-    "ast_hash": "da8b1b2e960680f7c21af05ddd1489db",
+    "mtime": 1795683417.6621637,
+    "seen": 1795683470.6399724,
+    "ast_hash": "dd3614888d3351b7bec1b22fe6c7657c",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795657731.6950748,
-    "seen": 1795658069.915427,
-    "ast_hash": "f96b02b9ef2a0477d6efe47719f7150b",
+    "mtime": 1795682572.0565007,
+    "seen": 1795683470.6399834,
+    "ast_hash": "47d3cfe719e77d9396ee3c9c03d8028b",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795657744.9039786,
-    "seen": 1795658069.9151378,
-    "ast_hash": "61c3288de1dc961aed7b719207d06f27",
+    "mtime": 1795682450.881332,
+    "seen": 1795683470.639532,
+    "ast_hash": "8990ec96cb8f13bf57153d5987e69af7",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795657731.6953256,
-    "seen": 1795658069.915176,
-    "ast_hash": "48758f556da3de1e4a09b61bcc6dcee6",
+    "mtime": 1795682365.7952662,
+    "seen": 1795683470.6396031,
+    "ast_hash": "361e1ddb1ea518299e534b9ae62f43dd",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10812,15 +10812,15 @@
     "semantic_hash": ""
   },
   "core/citylayout.js": {
-    "mtime": 1795657543.4887335,
-    "seen": 1795658069.9148676,
-    "ast_hash": "724fb8e4eb591251d06e0034b3ab058b",
+    "mtime": 1795682450.8789864,
+    "seen": 1795683470.6389458,
+    "ast_hash": "2a207800e523de2c22418592204b01f8",
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795657744.8832948,
-    "seen": 1795658069.9150853,
-    "ast_hash": "45305dbf1ba34018b22e452a8f3f3835",
+    "mtime": 1795682572.0559552,
+    "seen": 1795683470.6394293,
+    "ast_hash": "0b5afe5a7b1bf2c23312f617d7bb4aab",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -10833,6 +10833,30 @@
     "mtime": 1795657896.750944,
     "seen": 1795658069.91511,
     "ast_hash": "9f87b8386ab74b37b05cbc3d1989a118",
+    "semantic_hash": ""
+  },
+  "core/cityai.js": {
+    "mtime": 1795682365.7563734,
+    "seen": 1795683470.6389425,
+    "ast_hash": "37bbf2b3aafcb5f2cd476062e0c1bc35",
+    "semantic_hash": ""
+  },
+  "core/citysim.js": {
+    "mtime": 1795682536.4781322,
+    "seen": 1795683470.6389482,
+    "ast_hash": "07634e571fd3435db0d82d7543d1af03",
+    "semantic_hash": ""
+  },
+  "core/wantedlogic.js": {
+    "mtime": 1795682365.7541263,
+    "seen": 1795683470.6393588,
+    "ast_hash": "b7a7df0d536add17cfabea8c34fc7bcc",
+    "semantic_hash": ""
+  },
+  "tests/cops.mjs": {
+    "mtime": 1795683188.7101657,
+    "seen": 1795683470.6394827,
+    "ast_hash": "2a1cd93fca1b1857ab0f8fc5cacf3a4c",
     "semantic_hash": ""
   },
   "package-lock.json": {
