@@ -275,10 +275,10 @@
 10. `shader()` - 60 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `7. Wspólny pokój ekipy` --references--> `normalizeHome()`  [INFERRED]
-  docs/POMYSLY.md → core/homelogic.js
 - `1. Warsztat 2.0: publikacja map i społeczność (ZAPAMIĘTANE, robimy jako pierwszy)` --references--> `decodeMap()`  [INFERRED]
   docs/POMYSLY.md → core/workshoplogic.js
+- `7. Wspólny pokój ekipy` --references--> `normalizeHome()`  [INFERRED]
+  docs/POMYSLY.md → core/homelogic.js
 - `The eleven heroes` --references--> `collage()`  [INFERRED]
   .claude/skills/taste-skill/references/layout-v4.md → .claude/skills/taste-skill/assets/layout/layout.js
 - `Modele potworów (GLB)` --references--> `shotStep()`  [INFERRED]
@@ -362,7 +362,7 @@ Nodes (53): DEPS, errors, HERE, LEVELS, MIME, ROOT, run(), server (+45 more)
 
 ### Community 17 - "glb.mjs"
 Cohesion: 0.06
-Nodes (30): DEPS, errors, errs, fresh(), HERE, hit(), MIME, ROOT (+22 more)
+Nodes (35): DEPS, errors, errs, fresh(), HERE, hit(), MIME, ROOT (+27 more)
 
 ### Community 18 - "config.js"
 Cohesion: 0.06
@@ -545,8 +545,8 @@ Cohesion: 0.13
 Nodes (36): calmMax(), clamp01(), coverScale(), finish(), guard(), hueDist(), isMuddy(), isViolet() (+28 more)
 
 ### Community 63 - "staffkey.js"
-Cohesion: 0.16
-Nodes (32): ALG, b64u(), canCreate(), changePin(), cleared(), createKey(), enc(), exportKey() (+24 more)
+Cohesion: 0.07
+Nodes (58): API_URL, b64uToBytes(), call(), errorText(), finish(), isLoggedIn(), listeners, login() (+50 more)
 
 ### Community 64 - "steps"
 Cohesion: 0.12
@@ -582,7 +582,7 @@ Nodes (31): analyse(), args, B, child, count(), cpuSnap(), die(), exited (+23 mo
 
 ### Community 72 - "ref_url"
 Cohesion: 0.04
-Nodes (34): defs, HERE, num(), range(), ROOT, check(), done(), bot (+26 more)
+Nodes (40): defs, HERE, num(), range(), ROOT, check(), done(), bot (+32 more)
 
 ### Community 73 - "gradient-mesh/effect.js"
 Cohesion: 0.33
@@ -625,8 +625,8 @@ Cohesion: 0.07
 Nodes (20): AMB, CAT, CEM, FUR, GRF, HOM, HTL, IN (+12 more)
 
 ### Community 83 - "monstermaps.js"
-Cohesion: 0.19
-Nodes (24): aisles(), box(), carnival(), free(), gbox(), GEN, HEDGE, hedge() (+16 more)
+Cohesion: 0.20
+Nodes (23): aisles(), box(), carnival(), free(), gbox(), GEN, HEDGE, hedge() (+15 more)
 
 ### Community 84 - "player.js"
 Cohesion: 0.07
@@ -825,8 +825,8 @@ Cohesion: 0.18
 Nodes (20): BOARD, buildLobbyGames(), drawBoard(), lobbyGamesNet(), updateLobbyGames(), addHoop(), addTarget(), BALL_COOLDOWN (+12 more)
 
 ### Community 133 - "murals.js"
-Cohesion: 0.30
-Nodes (14): bezPt(), bloodText(), createMural(), drawShadowPerson(), glowEye(), monsterCrowd(), monsterDemon(), monsterEldritch() (+6 more)
+Cohesion: 0.33
+Nodes (13): bezPt(), bloodText(), drawShadowPerson(), glowEye(), monsterCrowd(), monsterDemon(), monsterEldritch(), monsterScream() (+5 more)
 
 ### Community 134 - "tone"
 Cohesion: 0.25
@@ -1201,8 +1201,8 @@ Cohesion: 0.11
 Nodes (26): buildMonsterSkin(), canMark(), cleanFallen(), nearestRescuer(), newFallen(), RESCUE, rescueStep(), secondsLeft() (+18 more)
 
 ### Community 249 - "proplogic.js"
-Cohesion: 0.27
-Nodes (13): baseLevelId(), mulberry(), pickKind(), placeProps(), PROP_SETS, propCount(), PROPS, propsEnabled() (+5 more)
+Cohesion: 0.25
+Nodes (14): baseLevelId(), mulberry(), pickKind(), placeProps(), PROP_SETS, propCount(), PROPS, propsEnabled() (+6 more)
 
 ### Community 250 - "onGraffitiMsg"
 Cohesion: 0.21
