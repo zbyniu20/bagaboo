@@ -84,9 +84,9 @@
     "semantic_hash": "cf2aaa4822beaa982090fd4c2f6b5ac4"
   },
   "core/engine.js": {
-    "mtime": 1795655215.5492678,
-    "seen": 1795656261.3696404,
-    "ast_hash": "4b13f455c27de5090f85857f177fb6e3",
+    "mtime": 1795657594.2715297,
+    "seen": 1795658069.9149063,
+    "ast_hash": "19286ec91e0c0a5c93514bbf1c9d41fd",
     "semantic_hash": ""
   },
   "core/envcapture.js": {
@@ -144,9 +144,9 @@
     "semantic_hash": "b470eeb0c98db5e45c6b7a74131fd80a"
   },
   "core/levelcards.js": {
-    "mtime": 1795628682.9682488,
-    "seen": 1795629726.8979328,
-    "ast_hash": "a043ab9e3178c34a79191a504967d9a7",
+    "mtime": 1795657731.6942587,
+    "seen": 1795658069.9149528,
+    "ast_hash": "1d27b9ffd866b5e2db5a5406a3ae96e6",
     "semantic_hash": ""
   },
   "core/levelkit.js": {
@@ -234,9 +234,9 @@
     "semantic_hash": ""
   },
   "core/registry.js": {
-    "mtime": 1795628682.960589,
-    "seen": 1795629726.8979857,
-    "ast_hash": "863dde2ed92da3c70ad94751c0dcab56",
+    "mtime": 1795657731.6932406,
+    "seen": 1795658069.915011,
+    "ast_hash": "1261677ce990a1ce15e4fcc410cb2923",
     "semantic_hash": ""
   },
   "core/roundkit.js": {
@@ -378,9 +378,9 @@
     "semantic_hash": ""
   },
   "levels/levels.js": {
-    "mtime": 1795628682.9615617,
-    "seen": 1795629726.8980446,
-    "ast_hash": "2f81d9b6451449d987225a0cd60f252c",
+    "mtime": 1795657731.6940522,
+    "seen": 1795658069.915072,
+    "ast_hash": "48bd6a97f349505344312e7bb950b47e",
     "semantic_hash": ""
   },
   "levels/lobby-door.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795656250.9606566,
-    "seen": 1795656261.3701782,
-    "ast_hash": "b83e3e561244f3e7c0299d286d6bd114",
+    "mtime": 1795658018.5967617,
+    "seen": 1795658069.915419,
+    "ast_hash": "da8b1b2e960680f7c21af05ddd1489db",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795649326.1935847,
-    "seen": 1795651723.5512812,
-    "ast_hash": "ca954b583288e5a05aa20be695df5869",
+    "mtime": 1795657731.6950748,
+    "seen": 1795658069.915427,
+    "ast_hash": "f96b02b9ef2a0477d6efe47719f7150b",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795655251.1278346,
-    "seen": 1795656261.369909,
-    "ast_hash": "51bd9d1b635a6b5dffdc3e77d87b12dd",
+    "mtime": 1795657744.9039786,
+    "seen": 1795658069.9151378,
+    "ast_hash": "61c3288de1dc961aed7b719207d06f27",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795647632.9418545,
-    "seen": 1795648376.5684361,
-    "ast_hash": "57577131fd4534e93dc2a5fefe9827e7",
+    "mtime": 1795657731.6953256,
+    "seen": 1795658069.915176,
+    "ast_hash": "48758f556da3de1e4a09b61bcc6dcee6",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10260,9 +10260,9 @@
     "semantic_hash": ""
   },
   "core/artlogic.js": {
-    "mtime": 1795628682.9688632,
-    "seen": 1795629726.8978422,
-    "ast_hash": "88ef2bb7481d166b1ff337cdd7374847",
+    "mtime": 1795657731.6945884,
+    "seen": 1795658069.9148488,
+    "ast_hash": "00625651afaf446a6d6f523dc8a99b9d",
     "semantic_hash": ""
   },
   "core/bakelogic.js": {
@@ -10809,6 +10809,30 @@
     "mtime": 1795655261.686912,
     "seen": 1795656261.3699276,
     "ast_hash": "97a22c72310bf603481dbc8b0348d7f1",
+    "semantic_hash": ""
+  },
+  "core/citylayout.js": {
+    "mtime": 1795657543.4887335,
+    "seen": 1795658069.9148676,
+    "ast_hash": "724fb8e4eb591251d06e0034b3ab058b",
+    "semantic_hash": ""
+  },
+  "levels/scarygta.js": {
+    "mtime": 1795657744.8832948,
+    "seen": 1795658069.9150853,
+    "ast_hash": "45305dbf1ba34018b22e452a8f3f3835",
+    "semantic_hash": ""
+  },
+  "tests/city.mjs": {
+    "mtime": 1795657761.7416034,
+    "seen": 1795658069.915109,
+    "ast_hash": "04106144fe4a8b04254d900280a65ed8",
+    "semantic_hash": ""
+  },
+  "tests/citybudget.mjs": {
+    "mtime": 1795657896.750944,
+    "seen": 1795658069.91511,
+    "ast_hash": "9f87b8386ab74b37b05cbc3d1989a118",
     "semantic_hash": ""
   },
   "package-lock.json": {

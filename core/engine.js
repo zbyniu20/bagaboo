@@ -109,6 +109,7 @@ export function clearLevel() {
     L.gen = (L.gen || 0) + 1;   // numer pokolenia poziomu: asynchroniczne dekoracje (rekwizyty, elementy architektury) sprawdzają go po wczytaniu pliku
     L.bounds = { minX: -14.6, maxX: 14.6, minZ: -14.6, maxZ: 14.6, maxY: 19.6 };
     L.ballMaxZ = undefined;
+    L.ballBounds = undefined;
     L.moveScale = LOBBY_MOVE_SCALE;   // domyślny ruch gracza jak w lobby (poziom może ustawić własny; kolejność w main.js: dispose, clearLevel, build)
     // Zwolnienie pamięci karty graficznej po starym poziomie
     L.root.traverse((o) => {
@@ -237,12 +238,13 @@ export function addBlobAO(x, z, size) {
 
 // Piłki nie mogą opuścić pomieszczenia (odbijają się od niewidzialnych granic)
 export function containBall(b) {
-    const p = b.position, v = b.velocity, L0 = 14.78, TOP = 19.78;
-    if (p.x < -L0) { p.x = -L0; if (v.x < 0) v.x = -v.x * 0.5; }
-    if (p.x > L0) { p.x = L0; if (v.x > 0) v.x = -v.x * 0.5; }
-    if (p.z < -L0) { p.z = -L0; if (v.z < 0) v.z = -v.z * 0.5; }
-    const ZM = L.ballMaxZ !== undefined ? L.ballMaxZ : L0;   // poziom z dłuższą halą (lobby z aneksem) podnosi południową granicę
+    const p = b.position, v = b.velocity, L0 = 14.78, TOP = 19.78, BB = L.ballBounds;   // BB: poziom z dużą mapą (Scary GTA) podaje własne granice { minX, maxX, minZ, maxZ, maxY }
+    const XN = BB ? BB.minX : -L0, XX = BB ? BB.maxX : L0, ZN = BB ? BB.minZ : -L0, TP = BB && BB.maxY ? BB.maxY : TOP;
+    if (p.x < XN) { p.x = XN; if (v.x < 0) v.x = -v.x * 0.5; }
+    if (p.x > XX) { p.x = XX; if (v.x > 0) v.x = -v.x * 0.5; }
+    if (p.z < ZN) { p.z = ZN; if (v.z < 0) v.z = -v.z * 0.5; }
+    const ZM = L.ballMaxZ !== undefined ? L.ballMaxZ : (BB ? BB.maxZ : L0);   // poziom z dłuższą halą (lobby z aneksem) podnosi południową granicę
     if (p.z > ZM) { p.z = ZM; if (v.z > 0) v.z = -v.z * 0.5; }
     if (p.y < 0.2) { p.y = 0.2; if (v.y < 0) v.y = -v.y * 0.4; }
-    if (p.y > TOP) { p.y = TOP; if (v.y > 0) v.y = -v.y * 0.5; }
+    if (p.y > TP) { p.y = TP; if (v.y > 0) v.y = -v.y * 0.5; }
 }
