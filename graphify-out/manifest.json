@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "core/cosmetics.js": {
-    "mtime": 1795686243.3791566,
-    "seen": 1795687149.2670815,
-    "ast_hash": "1700d321106f5c2585f57e587a1c53c5",
+    "mtime": 1795721602.7016833,
+    "seen": 1795721695.5544376,
+    "ast_hash": "76a8e39e7f15dbf0c4786401369bd236",
     "semantic_hash": ""
   },
   "core/debug.js": {
@@ -66,9 +66,9 @@
     "semantic_hash": "a5afb8e9bb215279e0fa2227cad1e3ed"
   },
   "core/economy.js": {
-    "mtime": 1795686224.7817025,
-    "seen": 1795687149.2671053,
-    "ast_hash": "9599affca0082b7cc6008dd6f80201bc",
+    "mtime": 1795721602.7025125,
+    "seen": 1795721695.5544598,
+    "ast_hash": "af0bf0dadcae29d48e687417e9836766",
     "semantic_hash": ""
   },
   "core/emotepanel.js": {
@@ -144,8 +144,8 @@
     "semantic_hash": "b470eeb0c98db5e45c6b7a74131fd80a"
   },
   "core/levelcards.js": {
-    "mtime": 1795708592.920127,
-    "seen": 1795709513.1859226,
+    "mtime": 1795720717.1405134,
+    "seen": 1795721695.5545723,
     "ast_hash": "8497d993f02d61c27fca6046e30c4cd8",
     "semantic_hash": ""
   },
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795717549.9362419,
-    "seen": 1795720665.6929767,
-    "ast_hash": "10071724369a2f3e0eb08934ed41d309",
+    "mtime": 1795721680.5085478,
+    "seen": 1795721695.555075,
+    "ast_hash": "a878f09a5359c35d51bf69e0dbce0e54",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,8 +486,8 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795715764.9382515,
-    "seen": 1795720665.6929877,
+    "mtime": 1795720717.1525133,
+    "seen": 1795721695.555081,
     "ast_hash": "26b00f8952f92021faa481b4fa4e5332",
     "semantic_hash": ""
   },
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795715689.2038467,
-    "seen": 1795720665.6926453,
-    "ast_hash": "d00a3a709fe31edc3ab9474837f265f6",
+    "mtime": 1795721602.7053502,
+    "seen": 1795721695.5548348,
+    "ast_hash": "c05fe1323cc3c05608bf5d5eeadc0f08",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,8 +10050,8 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795715646.4732358,
-    "seen": 1795720665.6926935,
+    "mtime": 1795720717.1565135,
+    "seen": 1795721695.554883,
     "ast_hash": "14f1b196cc3111f7e0df2d5a987ffc3f",
     "semantic_hash": ""
   },
@@ -10326,8 +10326,8 @@
     "semantic_hash": ""
   },
   "tools/blender/monsters.py": {
-    "mtime": 1795717366.6194408,
-    "seen": 1795720665.6927109,
+    "mtime": 1795720717.1565135,
+    "seen": 1795721695.5549004,
     "ast_hash": "32b1ce11fef426dd0375d4bc074da4ab",
     "semantic_hash": ""
   },
@@ -10812,14 +10812,14 @@
     "semantic_hash": ""
   },
   "core/citylayout.js": {
-    "mtime": 1795713652.608379,
-    "seen": 1795715520.5866551,
+    "mtime": 1795720717.1365135,
+    "seen": 1795721695.5544262,
     "ast_hash": "e0559360eb737b4a799217b444609bdc",
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795715811.0074396,
-    "seen": 1795720665.692526,
+    "mtime": 1795720717.1525133,
+    "seen": 1795721695.554734,
     "ast_hash": "b50de9e1a8942065ff98a1608cae5344",
     "semantic_hash": ""
   },
@@ -10830,20 +10830,20 @@
     "semantic_hash": ""
   },
   "tests/citybudget.mjs": {
-    "mtime": 1795715944.933693,
-    "seen": 1795720665.6925602,
+    "mtime": 1795720717.1525133,
+    "seen": 1795721695.5547912,
     "ast_hash": "e84ac5e4b1ee23f6b6c83c5b937a7112",
     "semantic_hash": ""
   },
   "core/cityai.js": {
-    "mtime": 1795708369.9636662,
-    "seen": 1795709513.1857183,
+    "mtime": 1795720717.1365135,
+    "seen": 1795721695.5544236,
     "ast_hash": "0256d394b1ffeb287e4b014c2321ff3b",
     "semantic_hash": ""
   },
   "core/citysim.js": {
-    "mtime": 1795717399.3729794,
-    "seen": 1795720665.692218,
+    "mtime": 1795720717.1405134,
+    "seen": 1795721695.5544279,
     "ast_hash": "8dd65dfd00d37c75f3c6628f082735ab",
     "semantic_hash": ""
   },
@@ -10854,14 +10854,14 @@
     "semantic_hash": ""
   },
   "tests/cops.mjs": {
-    "mtime": 1795711263.8748496,
-    "seen": 1795711443.5583088,
+    "mtime": 1795720717.1525133,
+    "seen": 1795721695.5547934,
     "ast_hash": "5af75d42b7e5784f8b3451a562ad1da9",
     "semantic_hash": ""
   },
   "core/gtanet.js": {
-    "mtime": 1795715679.8098369,
-    "seen": 1795720665.6923246,
+    "mtime": 1795720717.1405134,
+    "seen": 1795721695.554496,
     "ast_hash": "5b834b295366f6fecafb622fd69fc412",
     "semantic_hash": ""
   },
@@ -10890,8 +10890,8 @@
     "semantic_hash": ""
   },
   "tests/heli.mjs": {
-    "mtime": 1795715356.493591,
-    "seen": 1795715520.5869763,
+    "mtime": 1795720717.1525133,
+    "seen": 1795721695.5548196,
     "ast_hash": "3c9b8d77aa256065181cda459b0035e6",
     "semantic_hash": ""
   },
@@ -10902,8 +10902,8 @@
     "semantic_hash": ""
   },
   "core/radiologic.js": {
-    "mtime": 1795708369.9642043,
-    "seen": 1795709513.186059,
+    "mtime": 1795720717.1405134,
+    "seen": 1795721695.554641,
     "ast_hash": "ce41aeefb729387b0429f03bd7ced7ea",
     "semantic_hash": ""
   },

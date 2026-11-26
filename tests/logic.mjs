@@ -385,6 +385,12 @@ const NEW2 = { skin: ['demonape', 'skeletape', 'plagueape'], hat: ['bolts', 'spi
 check('cosmetics: the second pack of very scary items is in the shop, buyable and priced sanely', Object.entries(NEW2).every(([slot, ids]) => ids.every(id => { const it = E.CATALOG.find(i => i.slot === slot && i.id === id); return it && !it.locked && !it.season && it.price >= 2000 && it.price <= 5500 && it.name.length <= 24; })));
 const NEW3 = { skin: ['voidape', 'rustape', 'frozenape'], hat: ['noosehat', 'rodhead', 'maggothat', 'ribcrown', 'bleedhalo', 'reaperhood'], mask: ['pigmask', 'melted', 'crackeddoll'], glasses: ['wormeyes', 'nailedeyes', 'cyclops'], sleeve: ['barbed'], gloves: ['veined'] };
 check('cosmetics: the third pack of very scary items is in the shop, buyable and priced sanely', Object.entries(NEW3).every(([slot, ids]) => ids.every(id => { const it = E.CATALOG.find(i => i.slot === slot && i.id === id); return it && !it.locked && !it.season && it.price >= 2000 && it.price <= 6000 && it.name.length <= 24; })));
+const GTA_PACK = { hat: ['sirenhat', 'lootbag', 'rotorhat', 'wantedhat'], glasses: ['nightvision', 'laserscope'], mask: ['heistmask', 'bandit', 'copzombie'], sleeve: ['copuniform'], gloves: ['cashgloves'], skin: ['prisonape', 'swatape', 'neonape', 'vaultape'] };
+check('cosmetics: the Scary GTA pack (15 items) is in the shop, buyable, priced sanely and has a model or palette each', (() => {
+    const cosm = fs.readFileSync(path.join(ROOT, 'core/cosmetics.js'), 'utf8');
+    return Object.entries(GTA_PACK).every(([slot, ids]) => ids.every(id => { const it = E.CATALOG.find(i => i.slot === slot && i.id === id); return it && !it.locked && !it.season && it.price >= 2000 && it.price <= 6000 && it.name.length <= 24 && new RegExp("id === '" + id + "'|\\b" + id + "\\s*:").test(cosm); }))
+        && Object.values(GTA_PACK).flat().length === 15 && new Set(E.CATALOG.map(i => i.slot + ':' + i.id)).size === E.CATALOG.length;
+})());
 check('cosmetics: no hat, mask or glasses model scales the whole group (g.add(...).scale bug)', !/g\.add\([^;]*\)\)\.scale\./.test(fs.readFileSync(path.join(ROOT, 'core/cosmetics.js'), 'utf8')));
 check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail) and no other sold skin does', /furasek: \{[^}]*tail: true, catMask: true/.test(src) && !/(bubblegum|cottoncandy|honeyape|mintape|cadaver): \{[^}]*catMask/.test(src) && /k\.catMask && \(!look\.mask/.test(src));
 }

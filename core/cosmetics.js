@@ -311,6 +311,27 @@ export function extraHat(id) {
         const cowl = at(new THREE.SphereGeometry(0.2, 22, 14, Math.PI * 1.5 + 0.95, Math.PI * 2 - 1.9, 0, Math.PI * 0.78), cloth, 0, 0.02, 0.035); cowl.scale.set(1, 1.05, 1.1); g.add(cowl);
         g.add(at(new THREE.ConeGeometry(0.07, 0.2, 10), cloth, 0, 0.2, 0.15).rotateX(0.9));
         g.add(at(new THREE.TorusGeometry(0.15, 0.012, 6, 20, Math.PI * 1.4), cloth, 0, 0.04, -0.03).rotateX(Math.PI / 2));
+    } else if (id === 'sirenhat') {   // Scary GTA: koguty policyjne na czubku głowy (świecą na czerwono i niebiesko)
+        const base = mat({ color: 0x1a1a22, metalness: 0.5, roughness: 0.4 }), red = new THREE.MeshBasicMaterial({ color: 0xff2020 }), blue = new THREE.MeshBasicMaterial({ color: 0x2060ff });
+        g.add(at(new THREE.BoxGeometry(0.3, 0.03, 0.12), base, 0, 0.15, 0));
+        g.add(at(new THREE.BoxGeometry(0.12, 0.07, 0.1), red, -0.075, 0.2, 0)); g.add(at(new THREE.BoxGeometry(0.12, 0.07, 0.1), blue, 0.075, 0.2, 0));
+        for (const [x, c] of [[-0.075, 0xff2010], [0.075, 0x2050ff]]) { const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.dot, color: c, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.5 })); gl.scale.set(0.4, 0.4, 1); gl.position.set(x, 0.22, 0); g.add(gl); }
+    } else if (id === 'lootbag') {   // Scary GTA: worek z łupem na głowie, z którego wystają monety i banknoty
+        const sack = mat({ color: 0x8a6a3a, roughness: 1 }), rope = mat({ color: 0x4a3418, roughness: 1 }), gold = mat({ color: 0xe0b030, metalness: 1, roughness: 0.25 }), bill = mat({ color: 0x3a8a4a, roughness: 0.8, side: THREE.DoubleSide });
+        const bag = at(new THREE.SphereGeometry(0.16, 16, 12), sack, 0, 0.22, 0); bag.scale.set(1, 0.9, 1); g.add(bag);
+        g.add(at(new THREE.CylinderGeometry(0.05, 0.09, 0.08, 10), sack, 0, 0.37, 0)); g.add(at(new THREE.TorusGeometry(0.06, 0.012, 6, 14), rope, 0, 0.35, 0).rotateX(Math.PI / 2));
+        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, c = at(new THREE.CylinderGeometry(0.022, 0.022, 0.006, 10), gold, Math.cos(a) * 0.035, 0.43 + (i % 2) * 0.02, Math.sin(a) * 0.035); c.rotation.set(Math.sin(a) * 0.9, 0, Math.cos(a) * 0.9); g.add(c); }
+        for (let i = 0; i < 3; i++) { const b = at(new THREE.BoxGeometry(0.07, 0.003, 0.035), bill, (i - 1) * 0.02, 0.45, 0); b.rotation.set(0.3 * (i - 1), i * 1.1, 0.4 * (1 - i)); g.add(b); }
+    } else if (id === 'rotorhat') {   // Scary GTA: czapka z wirnikiem helikoptera Oko
+        const cap = mat({ color: 0x20242c, roughness: 0.5, metalness: 0.3 }), blade = mat({ color: 0x0e0e12, roughness: 0.6 });
+        g.add(at(new THREE.SphereGeometry(0.15, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), cap, 0, 0.1, 0));
+        g.add(at(new THREE.CylinderGeometry(0.012, 0.016, 0.1, 8), cap, 0, 0.27, 0));
+        for (let i = 0; i < 2; i++) { const b = at(new THREE.BoxGeometry(0.46, 0.006, 0.035), blade, 0, 0.325, 0); b.rotation.y = 0.5 + i * Math.PI / 2; g.add(b); }
+        g.add(at(new THREE.SphereGeometry(0.014, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff2020 }), 0, 0.12, 0.15));
+    } else if (id === 'wantedhat') {   // Scary GTA: pięć złotych gwiazdek poszukiwania nad głową
+        const star = new THREE.Shape(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 0.02 : 0.045, a = -Math.PI / 2 + i * Math.PI / 5; (i ? star.lineTo : star.moveTo).call(star, Math.cos(a) * r, Math.sin(a) * r); } star.closePath();
+        const sg = new THREE.ExtrudeGeometry(star, { depth: 0.012, bevelEnabled: false }), glow = new THREE.MeshBasicMaterial({ color: 0xffd23a });
+        for (let i = 0; i < 5; i++) { const st = at(sg, glow, (i - 2) * 0.085, 0.36 + (2 - Math.abs(i - 2)) * 0.025, 0); st.rotation.z = (i - 2) * -0.15; st.castShadow = false; g.add(st); }
     }
     return g;
 }
@@ -448,6 +469,17 @@ export function extraGlasses(id) {
         g.add(at(new THREE.SphereGeometry(0.05, 16, 12), white, 0, 0.045, -0.145)); g.add(at(new THREE.SphereGeometry(0.03, 12, 10), iris, 0, 0.045, -0.185));
         const slit = at(new THREE.SphereGeometry(0.012, 8, 6), pupil, 0, 0.045, -0.2); slit.scale.set(0.4, 1.8, 0.4); g.add(slit);
         g.add(at(new THREE.TorusGeometry(0.052, 0.008, 6, 20), lid, 0, 0.045, -0.145));
+    } else if (id === 'nightvision') {   // Scary GTA: noktowizor, dwa zielone obiektywy
+        const body = mat({ color: 0x16181a, metalness: 0.5, roughness: 0.4 }), lens = new THREE.MeshBasicMaterial({ color: 0x40ff60 });
+        g.add(at(new THREE.BoxGeometry(0.2, 0.05, 0.02), body, 0, 0.03, -0.135));
+        for (const sd of [-1, 1]) { g.add(at(new THREE.CylinderGeometry(0.03, 0.034, 0.07, 14), body, sd * 0.047, 0.03, -0.17).rotateX(Math.PI / 2)); g.add(at(new THREE.CircleGeometry(0.026, 14), lens, sd * 0.047, 0.03, -0.206).rotateY(Math.PI)); }
+        g.add(at(new THREE.BoxGeometry(0.02, 0.03, 0.03), body, 0, 0.075, -0.13));
+    } else if (id === 'laserscope') {   // Scary GTA: celownik laserowy: jedno czerwone oko z wiązką
+        const body = mat({ color: 0x16181a, metalness: 0.6, roughness: 0.35 }), red = new THREE.MeshBasicMaterial({ color: 0xff1a1a }), beam = new THREE.MeshBasicMaterial({ color: 0xff3030, transparent: true, opacity: 0.55 });
+        g.add(at(new THREE.CylinderGeometry(0.026, 0.03, 0.08, 12), body, 0.047, 0.03, -0.17).rotateX(Math.PI / 2));
+        g.add(at(new THREE.CircleGeometry(0.02, 12), red, 0.047, 0.03, -0.211).rotateY(Math.PI));
+        const b = at(new THREE.CylinderGeometry(0.0025, 0.0025, 0.35, 5), beam, 0.047, 0.03, -0.39); b.rotation.x = Math.PI / 2; b.castShadow = false; g.add(b);
+        g.add(at(new THREE.BoxGeometry(0.1, 0.012, 0.01), body, -0.03, 0.045, -0.131));
     }
     return g;
 }
@@ -616,6 +648,26 @@ export function extraMask(id) {
         const crack = [[-0.02, 0.1, 0.5], [0.03, 0.06, -0.4], [-0.05, 0.0, 0.8], [0.06, -0.03, -0.9], [0.0, -0.1, 0.3]];
         for (const [x, y, r] of crack) { const c = at(new THREE.BoxGeometry(0.004, 0.05, 0.003), d, x, y, -0.16); c.rotation.z = r; g.add(c); }
         g.add(at(new THREE.BoxGeometry(0.006, 0.07, 0.004), gore, -0.045, -0.02, -0.158));
+    } else if (id === 'heistmask') {   // Scary GTA: kominiarka rabusia ze świecącymi czerwonymi oczami
+        shell(mat({ color: 0x0c0c0e, roughness: 1 }), 0.14, 0.165, 0.07).position.z = -0.1;
+        const skin = mat({ color: 0xc89878, roughness: 0.7 }), glow = new THREE.MeshBasicMaterial({ color: 0xff2a10 });
+        g.add(at(new THREE.BoxGeometry(0.14, 0.04, 0.01), skin, 0, 0.035, -0.162)); g.add(at(new THREE.BoxGeometry(0.06, 0.02, 0.01), skin, 0, -0.06, -0.165));
+        for (const sd of [-1, 1]) g.add(at(new THREE.SphereGeometry(0.012, 8, 6), glow, sd * 0.045, 0.035, -0.168));
+        for (let i = 0; i < 7; i++) g.add(at(new THREE.BoxGeometry(0.012, 0.004, 0.004), mat({ color: 0x3a3a40 }), (i - 3) * 0.03, 0.01, -0.166));
+    } else if (id === 'bandit') {   // Scary GTA: czerwona bandana z czaszką na dolnej części twarzy
+        const red = mat({ color: 0xb01818, roughness: 0.95, side: THREE.DoubleSide }), bone = mat({ color: 0xf0e8d8, roughness: 0.6 });
+        const cloth = at(new THREE.SphereGeometry(1, 22, 10, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.4), red, 0, 0.0, -0.1); cloth.scale.set(0.145, 0.17, 0.08); g.add(cloth);
+        const sk = at(new THREE.SphereGeometry(0.022, 10, 8), bone, 0, -0.04, -0.168); sk.scale.set(1, 0.9, 0.4); g.add(sk);
+        for (const sd of [-1, 1]) g.add(at(new THREE.SphereGeometry(0.006, 6, 5), d, sd * 0.009, -0.037, -0.178));
+        for (let i = 0; i < 3; i++) g.add(at(new THREE.BoxGeometry(0.006, 0.01, 0.004), bone, (i - 1) * 0.008, -0.062, -0.172));
+        g.add(at(new THREE.BoxGeometry(0.04, 0.05, 0.03), red, 0.1, -0.03, 0.02).rotateZ(0.4));
+    } else if (id === 'copzombie') {   // Scary GTA: twarz zombie-policjanta: czapka, czerwono-niebieskie oczy, wyszczerzone zęby
+        shell(mat({ color: 0x7a8a7a, roughness: 0.85 }), 0.13, 0.155, 0.065).position.z = -0.1;
+        const navy = mat({ color: 0x141c3a, roughness: 0.6 }), tooth = mat({ color: 0xe8e0c0, roughness: 0.5 }), gore = mat({ color: 0x7a0808, roughness: 0.3 });
+        g.add(at(new THREE.BoxGeometry(0.27, 0.03, 0.09), navy, 0, 0.1, -0.15)); g.add(at(new THREE.BoxGeometry(0.1, 0.03, 0.01), mat({ color: 0xc8ccd4, metalness: 0.9, roughness: 0.3 }), 0, 0.112, -0.2));
+        g.add(at(new THREE.SphereGeometry(0.02, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff2010 }), -0.045, 0.035, -0.158)); g.add(at(new THREE.SphereGeometry(0.02, 8, 6), new THREE.MeshBasicMaterial({ color: 0x2060ff }), 0.045, 0.035, -0.158));
+        for (let i = 0; i < 8; i++) g.add(at(new THREE.BoxGeometry(0.011, 0.02 + (i % 2) * 0.008, 0.006), tooth, (i - 3.5) * 0.017, -0.065, -0.162));
+        g.add(at(new THREE.BoxGeometry(0.01, 0.07, 0.004), gore, 0.06, -0.01, -0.16));
     }
     return g;
 }
@@ -678,6 +730,10 @@ export function extraSleeveMat(id, base) {
         x.fillStyle = '#c8c0b0'; x.fillRect(0, 0, S, S); x.strokeStyle = 'rgba(70,60,50,0.5)'; x.lineWidth = 2;
         for (let i = 0; i < S; i += 12) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + 40, S); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(S, i + 40); x.stroke(); }
     }) }));
+    if (id === 'copuniform') return new THREE.MeshStandardMaterial(Object.assign(base, { roughness: 0.85, map: patternTex('copuniform', (x, S) => {   // Scary GTA: granatowy mundur ze srebrnym paskiem i krwią
+        x.fillStyle = '#101a3a'; x.fillRect(0, 0, S, S); x.fillStyle = '#c0c8d8'; x.fillRect(0, S * 0.45, S, 10); x.fillRect(0, S * 0.45 + 18, S, 4);
+        x.fillStyle = '#6a0808'; for (let i = 0; i < 9; i++) { x.beginPath(); x.ellipse((i * 97) % S, (i * 53) % S, 10 + i % 4 * 6, 6 + i % 3 * 5, i, 0, 7); x.fill(); }
+    }) }));
     return null;
 }
 
@@ -698,6 +754,10 @@ export function extraGloveMat(id) {
     if (id === 'veined') return new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, emissive: 0x1a0820, envMapIntensity: ENV, map: patternTex('veined', (x, S) => {
         x.fillStyle = '#d8d0d8'; x.fillRect(0, 0, S, S); x.strokeStyle = '#1a0a1e'; x.lineCap = 'round';
         for (let i = 0; i < 22; i++) { let px = (i * 71) % S, py = (i * 53) % S; x.lineWidth = 2 + (i % 3); x.beginPath(); x.moveTo(px, py); for (let k = 0; k < 6; k++) { px += ((i * 13 + k * 29) % 41) - 20; py += 14 + (i + k * 7) % 14; x.lineTo(px, py); } x.stroke(); }
+    }) });
+    if (id === 'cashgloves') return new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, envMapIntensity: ENV, map: patternTex('cashgloves', (x, S) => {   // Scary GTA: dłonie z banknotów
+        x.fillStyle = '#4a9a5a'; x.fillRect(0, 0, S, S); x.strokeStyle = '#1e5a2a'; x.lineWidth = 6; x.strokeRect(8, 8, S - 16, S - 16);
+        x.fillStyle = '#2a6a3a'; x.beginPath(); x.arc(S / 2, S / 2, 70, 0, 7); x.fill(); x.fillStyle = '#c8f0c8'; x.font = 'bold 110px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('$', S / 2, S / 2 + 6);
     }) });
     if (id === 'candy') return new THREE.MeshStandardMaterial({ color: 0xff7ac8, roughness: 0.22, emissive: 0x401030, envMapIntensity: ENV });
     if (id === 'rainbow') return new THREE.MeshStandardMaterial({ roughness: 0.4, map: patternTex('rainbow', (x, S) => { ['#ff3a3a', '#ff9a2a', '#ffe23a', '#3ad84a', '#3a8aff', '#9a4aff'].forEach((c, i) => { x.fillStyle = c; x.fillRect(0, i * S / 6, S, S / 6 + 1); }); }), envMapIntensity: ENV });
@@ -728,6 +788,10 @@ export const EXTRA_SKINS = {
     honeyape: { fur: 0xf0b830, face: 0x6a3a10 },
     mintape: { fur: 0x9ae8c8, face: 0x5a3a2a },
     cadaver: { fur: 0x8a9088, face: 0x1e221e, glowEyes: true },   // trup: szare, rozkładające się futro i świecące oczy
+    prisonape: { fur: 0xe8721a, face: 0x3a1a08 },   // Scary GTA: pomarańczowy kombinezon więźnia
+    swatape: { fur: 0x161c2a, face: 0x080a10, glowEyes: true },   // Scary GTA: oddział SWAT w ciemnym granacie
+    neonape: { fur: 0x1a0a3a, face: 0xff2a9a, glowEyes: true },   // Scary GTA: neonowe miasto nocą
+    vaultape: { fur: 0xd4a640, face: 0x4a3008, metal: true },   // Scary GTA: złoty skarbiec
     furas: { fur: 0xf6e2cc, face: 0xc89a88, tail: true, catMask: true }   // ranga FURAS (BoyIsGamer): kremowe futro; maskę kota i puchaty ogon dokłada avatar.js
 };
 
