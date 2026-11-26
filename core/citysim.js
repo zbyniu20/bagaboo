@@ -22,7 +22,7 @@ const paint = (g, r, gr, b) => { const n = g.attributes.position.count, a = new 
 const DIFF_COPS = { easy: 0.6, normal: 1, nightmare: 1.3 };
 
 export function createCitySim(o) {
-    const G = { geos: [], mats: [], cops: [], gators: [], rails: [], heats: {}, events: [], clock: 0, evT: 0, radioT: 0, boxes: o.boxes, graph: AI.streetGraph(), hides: C.hideSpots(), diff: o.diff || 'normal', busts: 0, lastBust: null, seenBy: {}, hiddenNow: {}, stat: { spawned: 0, caught: 0 } };
+    const G = { geos: [], mats: [], cops: [], gators: [], rails: [], heats: {}, events: [], clock: 0, evT: 0, radioT: 0, boxes: o.boxes, graph: AI.streetGraph(), hides: C.hideSpots(), diff: o.diff || 'normal', busts: 0, extSeen: {}, lastBust: null, seenBy: {}, hiddenNow: {}, stat: { spawned: 0, caught: 0 } };
     const geo = (g) => { G.geos.push(g); return g; }, mat = (m) => { G.mats.push(m); return m; };
     // ----- policjanci: pula, nieaktywni ukryci -----
     const coneG = geo(new THREE.ConeGeometry(2.4, 13, 14, 1, true)); coneG.rotateX(Math.PI / 2); coneG.translate(0, 0, 6.5);
@@ -66,7 +66,16 @@ export function createCitySim(o) {
     G.starsOf = (id) => WL.starsOf(G.heatOf(id).v);
     G.activeCops = () => G.cops.filter(c => c.active);
     G.copPositions = () => G.activeCops().map(c => ({ x: c.bot.x, y: c.bot.y + 1, z: c.bot.z }));
-    G.spawnCop = (c, node) => { const n = G.graph.nodes[node]; c.active = true; c.hp = 100; c.bot.x = n.x; c.bot.z = n.z; c.bot.y = 0; c.bot.vy = 0; c.bot.mode = 'patrol'; c.st = AI.newCop(node); c.m.group.visible = true; c.cone.visible = true; G.stat.spawned++; };
+    G.spawnCop = (c, node) => { const n = G.graph.nodes[node]; c.active = true; c.hp = 100; c.drop = 0; c.bot.x = n.x; c.bot.z = n.z; c.bot.y = 0; c.bot.vy = 0; c.bot.mode = 'patrol'; c.st = AI.newCop(node); c.m.group.visible = true; c.cone.visible = true; G.stat.spawned++; };
+    // SWAT: n policjantów zjeżdża na linach obok celu (zajmują wolne miejsca w puli albo najdalszych policjantów), od razu szukają gracza
+    G.dropSwat = (x, z, n) => {
+        const ring = AI.spawnNodes(G.graph, x, z, 8, 22); if (!ring.length) return 0; let done = 0;
+        for (let k = 0; k < n; k++) {
+            let c = G.cops.find(q => !q.active); if (!c) { c = G.activeCops().sort((a, b) => Math.hypot(b.bot.x - x, b.bot.z - z) - Math.hypot(a.bot.x - x, a.bot.z - z))[0]; if (!c) break; G.despawn(c); }
+            G.spawnCop(c, ring[(Math.random() * ring.length) | 0]); c.drop = 2.6; c.st.mode = 'search'; c.st.searchT = 0; c.st.last = { x: x, z: z }; done++;
+        }
+        return done;
+    };
     G.despawn = (c) => { c.active = false; c.m.group.visible = false; c.cone.visible = false; };
     G.reset = () => { for (const c of G.cops) G.despawn(c); };
     G.resetCopsNear = (x, z, r) => { for (const c of G.activeCops()) if (Math.hypot(c.bot.x - x, c.bot.z - z) < r) { c.st.mode = 'search'; c.st.searchT = 0; c.st.last = { x: x, z: z }; } };
@@ -122,10 +131,12 @@ function update(G, dt, players, rand) {
         if (dcs.goal) { tx = dcs.goal.x; tz = dcs.goal.z; if (tgt && AI.playerOnRoof(tgt)) { const nn = G.graph.nodes[AI.nearestNode(G.graph, tgt.x, tgt.z)]; tx = nn.x; tz = nn.z; speed *= 0.5; } }
         else { const pt = AI.patrolTarget(G.graph, c.st, rand); if (pt) { tx = pt.x; tz = pt.z; if (Math.hypot(tx - b.x, tz - b.z) < 1.6) AI.patrolArrived(G.graph, c.st); } else { tx = b.x; tz = b.z; speed = 0; } }
         stepBot(b, dt, tx, tz, 0, speed, dcs.mode === 'chase');
-        c.m.group.position.set(b.x, b.y, b.z); c.m.group.rotation.y = b.dir; c.cone.visible = true; c.cone.material.opacity = dcs.mode === 'chase' ? 0.16 : 0.1;
+        if (c.drop > 0) c.drop -= dt;   // SWAT zjeżdża z helikoptera: model opada z wysokości, a w tym czasie nie łapie
+        c.m.group.position.set(b.x, b.y + Math.max(0, c.drop || 0) * 14, b.z); c.m.group.rotation.y = b.dir; c.cone.visible = true; c.cone.material.opacity = dcs.mode === 'chase' ? 0.16 : 0.1;
         if (b.y < -3 || Math.abs(b.x) > 90 || b.z > 80) G.despawn(c);
-        for (const p of live) if (AI.caughtBy({ x: b.x, z: b.z, y: b.y }, p)) { out.busts.push({ id: p.id, reason: 'cop', x: p.x, z: p.z }); G.stat.caught++; G.resetCopsNear(p.x, p.z, 30); break; }
+        if (!(c.drop > 0.3)) for (const p of live) if (AI.caughtBy({ x: b.x, z: b.z, y: b.y }, p)) { out.busts.push({ id: p.id, reason: 'cop', x: p.x, z: p.z }); G.stat.caught++; G.resetCopsNear(p.x, p.z, 30); break; }
     }
+    for (const id in G.extSeen) seenNow[id] = true; G.extSeen = {};   // widziany przez helikopter też odnawia ciepło
     // poziom poszukiwania: widzenie (policja) odnawia heat, kryjówka go obniża
     if (!G.puppet) for (const p of live) { const h = G.heatOf(p.id); G.heats[p.id] = WL.heatStep(h, dt, { seen: !!seenNow[p.id], hidden: !!G.hiddenNow[p.id] }); if (p.carrying) G.heats[p.id] = { v: WL.clampHeat(G.heats[p.id].v + WL.eventHeat('carry', dt) * 0), seenT: G.heats[p.id].seenT }; }
     out.seen = seenNow;

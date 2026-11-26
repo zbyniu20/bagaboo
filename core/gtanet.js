@@ -66,3 +66,8 @@ export function cleanRequest(m, bagIds) {
     if (m.k === 'gbust') return { k: 'gbust' };
     return null;
 }
+// Helikopter z migawki hosta: [x, y, z, kierunek, światło x, światło z, tryb]
+export function cleanHeli(a) {
+    if (!Array.isArray(a) || a.length !== 7 || !a.slice(0, 6).every(fin) || !['arrive', 'investigate', 'chase', 'leave'].includes(a[6])) return null;
+    return { x: clamp(a[0], -220, 220), y: clamp(a[1], 0, 100), z: clamp(a[2], -220, 240), yaw: clamp(a[3], -7, 7), lx: clamp(a[4], -220, 220), lz: clamp(a[5], -220, 240), mode: a[6] };
+}

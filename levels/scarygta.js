@@ -19,6 +19,8 @@ import { MOD, PERSONAL } from '../core/modstate.js';
 import { SAVE } from '../core/economy.js';
 import { safeName } from '../core/netguard.js';
 import * as GU from '../core/gunlogic.js';
+import * as HL from '../core/helilogic.js';
+import { createHeli } from '../core/heli.js';
 import { createCitySim, updateRails, ridingAny, cancelRails } from '../core/citysim.js';
 import * as WL from '../core/wantedlogic.js';
 import * as AI2 from '../core/cityai.js';
@@ -118,6 +120,7 @@ export function build() {
     S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
     S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
+    S.heli = HL.newHeli(); S.heliV = createHeli(); S.eyeOnMe = false;
     S.gunS = { me: GU.newShooter() }; S.mode = GU.modeFor(df.id); S.fx = []; S.feed = []; S.hurtT = 0; S.killer = null; S.gunMesh = null;
     buildFx(); L.onTrigger = (i) => fire(i);
     setDread(() => S.sim.copPositions());   // reżyser grozy: kroki, oddech i napięcie od policjantów
@@ -226,8 +229,8 @@ function drawHud(p) {
     if (best) x.fillText('NEAREST ' + arrowTo(p.x, p.z, best.x, best.z) + ' ' + Math.round(bd) + ' m   (' + best.id.toUpperCase() + ')', 30, 112);
     const ex = C.CITY.EXIT; x.fillStyle = S.got > 0 ? '#7fff90' : '#8a8090'; x.fillText('PIER ' + arrowTo(p.x, p.z, ex[0], ex[2]) + ' ' + Math.round(Math.hypot(ex[0] - p.x, ex[2] - p.z)) + ' m' + (S.got > 0 ? '  (carrying: slower)' : ''), 30, 152);
     const cops = S.sim.activeCops(), near = cops.filter(c => Math.hypot(c.bot.x - p.x, c.bot.z - p.z) < 30), chasing = cops.some(c => c.st.mode === 'chase');
-    x.font = 'bold 26px "Courier New", monospace'; x.fillStyle = S.hidden ? '#9ad0ff' : (chasing ? '#ff4a2a' : (near.length ? '#ffb030' : '#8a8090'));
-    x.fillText(S.busted >= 0 ? 'BUSTED... back at a safe house soon' : (S.hidden ? 'HIDDEN: stay still, they cannot see you' : (chasing ? 'THEY SEE YOU! Run, climb or hide!' : (near.length ? 'Cops nearby (' + near.length + '). Stay out of the light.' : 'Quiet. Keep it that way.'))), 30, 196);
+    x.font = 'bold 26px "Courier New", monospace'; x.fillStyle = S.eyeOnMe ? '#ff2a2a' : S.hidden ? '#9ad0ff' : (chasing ? '#ff4a2a' : (near.length ? '#ffb030' : '#8a8090'));
+    x.fillText(S.busted >= 0 ? 'BUSTED... back at a safe house soon' : (S.eyeOnMe ? 'THE EYE SEES YOU! Get under a roof or hide!' : S.hidden ? 'HIDDEN: stay still, they cannot see you' : (chasing ? 'THEY SEE YOU! Run, climb or hide!' : (near.length ? 'Cops nearby (' + near.length + '). Stay out of the light.' : 'Quiet. Keep it that way.'))), 30, 196);
     x.font = '22px "Courier New", monospace'; x.fillStyle = '#8a7a9a'; x.fillText('Hide next to dumpsters. Cops cannot climb: use roofs and the cable rides.', 30, 232);
     const gs = S.gunS.me, ready = gs.reloadAt < 0 || S.clock >= gs.reloadAt;
     x.font = 'bold 28px "Courier New", monospace'; x.fillStyle = gs.hp > 50 ? '#7fff90' : '#ff5a4a'; x.fillText('HP ' + Math.round(gs.hp), 30, 270);
@@ -242,7 +245,7 @@ export function update(dt, t, ctx) {
     S.scare.update(dt);
     for (const f of S.fx) if (f.l.visible) { f.t -= dt; if (f.t <= 0) f.l.visible = false; }
     S.hurtT = Math.max(0, S.hurtT - dt);
-    if (S.busted >= 0) { S.busted += dt; netStep(dt, p, 0); if (S.busted > 4.5) respawn(); S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.3; drawHud(p); } return; }
+    if (S.busted >= 0) { S.busted += dt; netStep(dt, p, 0); S.heliV.update(S.heli, dt); if (S.busted > 4.5) respawn(); S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.3; drawHud(p); } return; }
     L.moveScale = PACE * (S.got > 0 ? CARRY_SLOW : 1);   // ciężar łupu: -8% ruchu z torbą
     S.visT -= dt;
     if (S.visT <= 0) { S.visT = 0.3; camera.getWorldPosition(_p); for (const c of S.chunks) c.g.visible = Math.hypot(_p.x - c.c[0], _p.z - c.c[1]) < C.CITY.VIS_R + 20; }   // chunki poza zasięgiem znikają z renderu
@@ -256,6 +259,8 @@ export function update(dt, t, ctx) {
     S.micCd -= dt; const ml = SFX.micLevel ? SFX.micLevel() : 0;
     if (ml > 0.25 && S.micCd <= 0 && !S.hidden) { S.micCd = 3; if (isAuth()) { S.sim.addEvent('shout', p.x, p.z); S.sim.addHeat('me', WL.eventHeat('shout')); } else send({ k: 'ev', kind: 'shout' }); }
     netStep(dt, p, speed);
+    S.heliV.update(S.heli, dt);
+    S.eyeOnMe = HL.heliSees(S.heli, { x: p.x, y: p.y, z: p.z }, { hidden: !!S.sim.hiddenNow.me, blocked: AI2.lineBlocked([S.heli.x, S.heli.y, S.heli.z], [p.x, p.y + 0.5, p.z], S.boxes) });
     ensureGun(); if (S.gunMesh) S.gunMesh.g.visible = S.busted < 0;
     if (N.NET.mode !== 'solo') { MOD.boost = MOD.fly = MOD.noclip = MOD.sizeOn = false; MOD.size = 1; PERSONAL.speed = 1; }   // PvP: bez prędkości, latania, przenikania i rozmiaru z menu admina
     S.hidden = !!S.sim.hiddenNow.me;
@@ -391,7 +396,13 @@ function netStep(dt, p, speed) {
         for (const b of S.bags) if (b.holder && !ids.has(b.holder)) { b.holder = null; b.got = false; b.g.visible = true; b.x = b.ox; b.y = b.oy; b.z = b.oz; b.g.position.set(b.x, b.y, b.z); }
         if (speed > 4.3 && !ridingAny(S.sim) && S.sim.activeCops().some(c => Math.hypot(c.bot.x - p.x, c.bot.z - p.z) < 12) && !S.sim.hiddenNow.me) S.sim.addHeat('me', WL.eventHeat('run', dt));
         for (const g of players.slice(1)) if (g.speed > 4.3 && !S.sim.hiddenNow[g.id] && S.sim.activeCops().some(c => Math.hypot(c.bot.x - g.x, c.bot.z - g.z) < 12)) S.sim.addHeat(g.id, WL.eventHeat('run', dt));
+        let seenAny = false, lead = null, maxStars = 0;
+        for (const pl of players) { if (pl.busted) continue; const hid = !!S.sim.hiddenNow[pl.id], blocked = AI2.lineBlocked([S.heli.x, S.heli.y, S.heli.z], [pl.x, pl.y + 0.5, pl.z], S.boxes); if (HL.heliSees(S.heli, pl, { hidden: hid, blocked })) { S.sim.extSeen[pl.id] = true; S.sim.addHeat(pl.id, WL.eventHeat('heli', dt)); seenAny = true; } }
         const out = S.sim.update(dt, players);
+        for (const pl of players) { if (pl.busted) continue; const st = S.sim.starsOf(pl.id); if (st > maxStars || (st === maxStars && !lead)) { maxStars = st; lead = { x: pl.x, z: pl.z }; } }
+        const ev = HL.heliStep(S.heli, dt, { stars: maxStars, lead: maxStars > 0 ? lead : null, seen: seenAny });
+        if (ev.spawn) toast('A police helicopter is coming. Get under cover!', '#ff6a6a');
+        if (ev.swat && lead) { const n = S.sim.dropSwat(lead.x, lead.z, HL.HELI.SWAT_N); if (n) toast('SWAT is rappelling in!', '#ff3a3a'); }
         for (const b of out.busts) { if (b.id === 'me') { bust(b); break; } else hostBust(b); }
         S.netT -= dt; if (S.netT <= 0 && N.NET.mode === 'host') { S.netT = 1 / GN.GN.HZ; broadcastState(players); }
     } else {
@@ -406,7 +417,7 @@ function netStep(dt, p, speed) {
 function broadcastState(players) {
     const heats = {}; for (const pl of players) heats[toNet(pl.id)] = [+S.sim.heatOf(pl.id).v.toFixed(1), S.sim.hiddenNow[pl.id] ? 1 : 0];
     const hp = {}; for (const pl of players) hp[toNet(pl.id)] = (S.gunS[pl.id] || (S.gunS[pl.id] = GU.newShooter())).hp;
-    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode });
+    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli) });
 }
 function hostBust(b) {
     const g = guestOf(b.id); if (!g || (S.bustUntil[b.id] || 0) > S.clock) return;
@@ -434,6 +445,7 @@ function onNet(msg, from) {
         S.snap = { cops };
         for (const e of bags) { const b = S.bags.find(q => q.id === e.id); if (!b) continue; const mine = e.holder === N.myId(); b.holder = e.holder ? (mine ? 'me' : e.holder) : null; b.got = !!e.holder; b.x = e.x; b.y = e.y; b.z = e.z; b.g.visible = !e.holder; b.g.position.set(e.x, e.y, e.z); }
         if (bags.length) { const was = S.got; S.got = S.bags.filter(q => q.holder === 'me').length; if (S.got > was) { const nb = S.bags.find(q => q.holder === 'me'); if (nb) bagToast(nb); } }
+        const hl = GN.cleanHeli(msg.hl); if (hl) { const h = S.heli; h.x = hl.x; h.y = hl.y; h.z = hl.z; h.yaw = hl.yaw; h.lx = hl.lx; h.lz = hl.lz; h.mode = hl.mode; } else if (msg.hl === null) S.heli.mode = 'away';
         const hpm = GU.cleanHp(msg.hp); if (Number.isFinite(hpm[N.myId()])) S.gunS.me.hp = hpm[N.myId()]; if (msg.m === 'coop' || msg.m === 'ffa') S.mode = msg.m;
         const mh = heats[N.myId()]; if (mh) { S.sim.heats.me = { v: mh.v, seenT: 0 }; S.sim.hiddenNow.me = mh.hidden; }
     } else if (msg.k === 'fx') {
@@ -453,6 +465,7 @@ export function debugHeat(v) { if (S) S.sim.addHeat('me', v); }
 export function debugBust() { if (S) bust({ id: 'me', reason: 'cop', x: 0, z: 0 }); }
 export const debugNet = (msg, from) => { if (S) onNet(msg, from); };   // test: wiadomość jakby przyszła od `from`
 export const debugOutbox = () => S ? S.sent : [];
+export const debugHeli = () => S ? { mode: S.heli.mode, y: +S.heli.y.toFixed(1), x: +S.heli.x.toFixed(1), z: +S.heli.z.toFixed(1), eye: S.eyeOnMe, vis: S.heliV.root.visible, lx: +S.heli.lx.toFixed(1), lz: +S.heli.lz.toFixed(1) } : null;
 export const debugGun = () => S ? { hp: S.gunS.me.hp, ammo: S.gunS.me.ammo, mode: S.mode, shooters: Object.keys(S.gunS), feed: S.feed.map(f => f.s), hurt: S.hurtT } : null;
 export const debugShoot = (id, o, d) => { if (S) hostShot(id, { o, d }, false); };   // test: strzał jakby oddał go gracz `id` (host sprawdza jak dla prawdziwego)
 export function debugRide(i) { if (S) S.forceRail = i; }
@@ -460,6 +473,7 @@ export function debugSpawnCop(x, z) { if (!S) return false; const c = S.sim.cops
 export function debugTakeBag(id) { const b = S && S.bags.find(q => q.id === id && !q.got); if (!b) return false; giveBag(b, 'me'); return true; }
 export function dispose() {
     N.onLevelMsg(null); L.onTrigger = null;
+    if (S && S.heliV) S.heliV.dispose();
     if (S && S.gunMesh) { S.gunMesh.g.removeFromParent(); for (const g of S.gunMesh.geos) g.dispose(); for (const m of S.gunMesh.mats) m.dispose(); }
     if (S) for (const f of S.fx) { f.l.geometry.dispose(); f.l.material.dispose(); }
     if (S) { S.sim.dispose(); S.scare.dispose(); S.hud.dispose(); for (const g of S.geos) g.dispose(); for (const m of S.mats) m.dispose(); for (const x of S.texs) x.dispose(); }

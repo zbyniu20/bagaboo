@@ -23,7 +23,7 @@
     "../core/bestiarylogic.js",
     "../core/chestlogic.js",
     "../core/secretlogic.js", "../core/egglogic.js", "../core/annexlayout.js", "../core/puzzlelogic.js", "../core/citylayout.js", "../core/wantedlogic.js", "../core/cityai.js",
-    "../core/gtanet.js", "../core/gunlogic.js", "../core/climblogic.js", "../core/ouijalogic.js", "../core/organlogic.js", "../core/ziplogic.js", "../core/slidelogic.js", "../core/statuelogic.js", "../core/gallerylogic.js",
+    "../core/gtanet.js", "../core/gunlogic.js", "../core/helilogic.js", "../core/climblogic.js", "../core/ouijalogic.js", "../core/organlogic.js", "../core/ziplogic.js", "../core/slidelogic.js", "../core/statuelogic.js", "../core/gallerylogic.js",
     "../core/gfxlogic.js",
     "../core/hauntlogic.js",
     "../core/musiclogic.js",
