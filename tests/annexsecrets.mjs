@@ -89,7 +89,7 @@ const room = await ev(async () => {
     await w(500); const opening = A.debugRoom();
     for (let i = 0; i < 80 && A.debugRoom().slide < 1; i++) await w(300);
     const open = A.debugRoom();
-    PL.setPlayerPosition(-10.9, 1.4, 52.5); for (let i = 0; i < 60 && !K.getDeep().found.includes('room'); i++) await w(250); const inside = PL.playerBody.position.z;
+    /* dłoń musi dotknąć czaszki: obracamy widok, bo poprzednie kroki zostawiły dowolny kierunek */ const D = await import('./core/desktop.js'); PL.setPlayerPosition(-10.9, 1.4, 52.5); for (let i = 0; i < 80 && !K.getDeep().found.includes('room'); i++) { D.setDesktopFacing([0, 1.57, 3.14, -1.57][i % 4]); await w(250); } const inside = PL.playerBody.position.z;
     const w0 = E.SAVE.wallet, code = A.debugVaultCode(), wrong = code === '1234' ? '4321' : '1234';
     const bad1 = A.debugVault(wrong), ok1 = A.debugVault(code), w1 = E.SAVE.wallet - w0, again = A.debugVault(code);
     return { closed, opening, open, inside, bad1, ok1, w1, again, w2: E.SAVE.wallet - w0, n: K.deepCountNow() - n0, saved: JSON.stringify(E.SAVE.deep) };
@@ -120,7 +120,7 @@ const you = await ev(async () => {
     PL.setPlayerPosition(-9.5, 1.3, 7.2); for (let i = 0; i < 40 && !K.getDeep().found.includes('you'); i++) await w(250);
     return { before, built, cases, found: K.getDeep().found.includes('you') };
 });
-ok('after meeting all 12 monsters the 13th case appears next to the row (the 12 stay 12) and standing in front of it awards the secret', you.before === null && you.built && you.cases === 12 && you.found === true, you);
+ok('after meeting all 13 monsters the YOU case appears next to the row (the 13 beast cases stay 13) and standing in front of it awards the secret', you.before === null && you.built && you.cases === 13 && you.found === true, you);
 await shot('you', -8, 1.6, 9.5, 0);
 const mouse = await ev(async () => {
     const G = await import('./core/eggs.js'), K = await import('./core/deep.js'), E = await import('./core/engine.js'), PL = await import('./core/player.js'), w = (ms) => new Promise(r => setTimeout(r, ms));

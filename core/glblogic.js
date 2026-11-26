@@ -8,7 +8,7 @@ export const MONSTERS = {
     mannequin: { file: 'mannequin.glb', height: 2.2, yaw: 0 }, gravedigger: { file: 'gravedigger.glb', height: 2.1, yaw: 0 }, warden: { file: 'warden.glb', height: 2.7, yaw: 0 },
     doll: { file: 'doll.glb', height: 1.05, yaw: 0 }, patient: { file: 'patient.glb', height: 1.9, yaw: 0 }, butler: { file: 'butler.glb', height: 2.4, yaw: 0 },
     blind: { file: 'blind.glb', height: 2.2, yaw: 0 }, threadman: { file: 'threadman.glb', height: 2.3, yaw: 0 }, furas: { file: 'furas.glb', height: 1.7, yaw: 0 },
-    ghost: { file: 'ghost.glb', height: 2.5, yaw: 0 }, lavabeast: { file: 'lavabeast.glb', height: 2.2, yaw: 0 }
+    ghost: { file: 'ghost.glb', height: 2.5, yaw: 0 }, lavabeast: { file: 'lavabeast.glb', height: 2.2, yaw: 0 }, officer: { file: 'officer.glb', height: 2.1, yaw: 0 }
 };
 // Potwory, spośród których losowany jest bot w Become the Monster
 export const BOT_KINDS = ['mannequin', 'blind', 'threadman', 'lavabeast', 'warden'];

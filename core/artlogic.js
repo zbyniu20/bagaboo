@@ -20,7 +20,7 @@ const FAMILY_OF = {
     cemetery: 'crypt', catacombs: 'crypt', well: 'crypt',
     laundry: 'industrial', maze: 'industrial', silence: 'industrial',
     hotel: 'hotel',
-    room000: 'dread', furas: 'dread', memory: 'dread', mine: 'industrial',
+    room000: 'dread', furas: 'dread', memory: 'dread', mine: 'industrial', scarygta: 'dread',
     games: 'arcade', lava: 'arcade', route: 'arcade', redlight: 'arcade', lasttile: 'arcade', range: 'arcade', monster: 'dread', hideseek: 'arcade', banana: 'arcade', dodgeball: 'arcade', custom: 'arcade', workshop: 'arcade'
 };
 export function familyName(levelId) {

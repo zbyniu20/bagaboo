@@ -53,7 +53,7 @@ export function buildBestiary(cx, cz) {
     const sil = new THREE.MeshBasicMaterial({ color: 0x040404 }); G.mats.push(sil);
     const plinthG = geo(new THREE.BoxGeometry(0.8, 0.9, 0.7)), trimG = geo(new THREE.BoxGeometry(0.84, 0.04, 0.74)), glassG = geo(new THREE.BoxGeometry(0.78, 1.15, 0.68)), plateG = geo(new THREE.PlaneGeometry(0.62, 0.155));
     B.BEASTS.forEach((b, i) => {
-        const row = i < 6 ? 0 : 1, k = i % 6, x = cx + (k - 2.5) * 1.0, z = cz + (row === 0 ? -1.9 : 1.9), known = B.isSeen(st, b.id);
+        const row = i < 6 || i >= 12 ? 0 : 1, k = i >= 12 ? 6 : i % 6, x = cx + (k - 2.5) * 1.0, z = cz + (row === 0 ? -1.9 : 1.9), known = B.isSeen(st, b.id);
         const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = row === 0 ? 0 : Math.PI; root.add(g);   // przód witryny zawsze do przejścia
         const plinth = new THREE.Mesh(plinthG, dark); plinth.position.y = 0.45; plinth.castShadow = plinth.receiveShadow = true; g.add(plinth);
         const trim = new THREE.Mesh(trimG, known ? gold : dark); trim.position.y = 0.92; g.add(trim);
@@ -96,7 +96,7 @@ function ensureYou() {
 function draw(t) {
     const st = getBestiary(), c = t.ctx; t.background();
     t.header('BESTIARY', B.seenCount(st) + ' / ' + B.BEASTS.length, B.isComplete(st) ? OK_COL : AMBER_DIM);
-    B.BEASTS.forEach((b, i) => { const known = B.isSeen(st, b.id); t.btn('b' + i, 24, 84 + i * 45, 330, 41, (i + 1 < 10 ? '0' : '') + (i + 1) + ' ' + (known ? b.name.replace('The ', '') : '???'), () => select(i), { active: G.sel === i, size: 22, tone: known ? undefined : 'bad' }); });
+    B.BEASTS.forEach((b, i) => { const known = B.isSeen(st, b.id); t.btn('b' + i, 24, 84 + i * 41, 330, 38, (i + 1 < 10 ? '0' : '') + (i + 1) + ' ' + (known ? b.name.replace('The ', '') : '???'), () => select(i), { active: G.sel === i, size: 22, tone: known ? undefined : 'bad' }); });
     const b = B.BEASTS[G.sel], known = B.isSeen(st, b.id), X = 390;
     c.fillStyle = '#1c1208'; c.fillRect(X - 14, 86, 624, 478);
     t.text(known ? b.name : '???', X, 126, 40, known ? GOLD : '#6a5a40', 'left', true);

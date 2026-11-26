@@ -300,7 +300,26 @@ def lavabeast():
     spine_spikes(m, length=0.12, mat='horn'); knobs(m, 0.12, 'horn'); hands(m, f, n=4, length=0.2, spread=0.09, mat='horn')
     finish(m, walk=0.4, run=0.75, arm_walk=0.25, arm_run=0.55, lean_run=0.3, idle_sway=0.05, twitch=0.25, head_roll=0.08); return m
 
-RECIPES = {n: g for n, g in globals().items() if n in ('mannequin', 'gravedigger', 'warden', 'doll', 'patient', 'butler', 'blind', 'threadman', 'furas', 'ghost', 'lavabeast')}
+def officer():
+    """Zombie-policjant ze Scary GTA: zgniłe ciało w granatowym mundurze, czapka z daszkiem, świecąca odznaka, czerwone światła na barkach, pazury i zęby."""
+    m = Monster('officer', 51); mats(m, (0.55, 0.62, 0.5, 1), 0.7, {'cloth': ((0.04, 0.06, 0.16, 1), 0.85), 'glow': dict(color=(0.1, 0.01, 0, 1), rough=0.5, emit=(1.0, 0.05, 0.02, 1), strength=4.0)}); m.dirt = 0.8; m.blood = 0.2; m.bruise = 0.18
+    f = humanoid(m, leg=1.08, torso=1.05, arm=1.05, thick=0.82, hunch=0.3, shoulder=0.25, neck=0.17, head=(0.12, 0.15)); m.skin()
+    k = f['k']; hy, hz = f['hy'], f['hz']
+    face(m, f, w=0.05, pupil=0.014, teeth=15, tlen=0.06, mouth_w=0.08, mouth_z=-0.085, jaw_drop=0.025, smile=0.008, socket=1.4)
+    ch = m.bones['chest']['tail'].z
+    m.add(ellipsoid((0, hy - 0.005, hz + 0.095 * k), (0.135 * k, 0.14 * k, 0.065 * k), 10, 6), 'head', 'cloth')          # denko czapki
+    m.add(ellipsoid((0, hy + 0.115 * k, hz + 0.05 * k), (0.1 * k, 0.085 * k, 0.012 * k), 10, 4), 'head', 'cloth')        # daszek
+    m.add(ellipsoid((0, hy + 0.132 * k, hz + 0.1 * k), (0.03 * k, 0.012, 0.025 * k), 6, 4), 'head', 'tooth')            # znaczek na czapce
+    m.add(ellipsoid((0.09, 0.12, ch - 0.12), (0.035, 0.012, 0.045), 7, 4), 'chest', 'tooth')                              # odznaka
+    m.add(ellipsoid((0.09, 0.128, ch - 0.12), (0.014, 0.006, 0.02), 5, 3), 'chest', 'glow')                               # żarząca się gwiazda odznaki
+    for s_, g_ in ((-1, 'glow'), (1, 'glow')): m.add(ellipsoid((s_ * 0.2, 0.02, ch + 0.03), (0.045, 0.045, 0.03), 7, 4), 'chest', g_)   # światła na barkach
+    m.add(cloth_cone((0, 0.0, 1.0), 0.5, 0.2, 0.3, 10, 0.12, m.rng), 'pelvis', 'cloth')                                   # poły munduru
+    for s_, n in ((1, 'L'), (-1, 'R')): m.add(cloth_cone((s_ * 0.33, 0.08, f['ch'] - 0.3), 0.26, 0.05, 0.09, 6, 0.06, m.rng), 'forearm' + n, 'cloth')   # strzępy rękawów
+    spine_spikes(m, n=5, length=0.05, mat='claw'); hands(m, f, n=4, length=0.1, spread=0.05, mat='claw')
+    m.wound('head', 0.45, (0.8, 0.25, 0.25), 0.03)
+    finish(m, walk=0.5, run=1.0, arm_walk=0.2, arm_run=0.5, lean_run=0.25, idle_sway=0.04, twitch=0.2); return m
+
+RECIPES = {n: g for n, g in globals().items() if n in ('mannequin', 'gravedigger', 'warden', 'doll', 'patient', 'butler', 'blind', 'threadman', 'furas', 'ghost', 'lavabeast', 'officer')}
 
 def run(names):
     os.makedirs(OUT, exist_ok=True)
