@@ -62,7 +62,7 @@ export function validTake(bag, head, held) {
 export function cleanRequest(m, bagIds) {
     if (!m || typeof m !== 'object') return null;
     if (m.k === 'take') return typeof m.b === 'string' && bagIds.includes(m.b) ? { k: 'take', b: m.b } : null;
-    if (m.k === 'ev') return ['shout', 'ride', 'spray', 'alarm', 'dis', 'power'].includes(m.kind) ? { k: 'ev', kind: m.kind } : null;
+    if (m.k === 'ev') return ['shout', 'ride', 'spray', 'alarm', 'dis', 'power', 'deliver'].includes(m.kind) ? { k: 'ev', kind: m.kind } : null;
     if (m.k === 'gbust') return { k: 'gbust' };
     return null;
 }

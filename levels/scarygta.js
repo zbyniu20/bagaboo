@@ -8,7 +8,8 @@ import { THREE, CANNON, L, scene, camera, addStaticBody } from '../core/engine.j
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { levelReward, diffOf, unlockAchievement, recordTime, addBones, dailyDate } from '../core/economy.js';
 import { getGta, setGta } from '../core/gtastore.js';
-import { toast } from '../core/terminal.js';
+import { toast, Terminal, terminals, AMBER, AMBER_DIM, GOLD, OK_COL, BAD_COL } from '../core/terminal.js';
+import * as GM from '../core/gtamodes.js';
 import * as SFX from '../core/audio.js';
 import { PACE } from '../core/config.js';
 import { ARRIVAL_FROM_SCARYGTA } from './levels.js';
@@ -127,6 +128,7 @@ export function build() {
     S.sim = createCitySim({ boxes: S.boxes, diff: df.id }); S.scare = createJumpscare({ seed: 4040, variant: 'warden' });
     S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
     // dodatki (core/gtaprops.js): kabiny, przebranie, wspinaczki, paczki, manekiny, sejf, prąd, dźwig, telefon; noc (blackout i horda)
+    S.gm = GM.newModeState(); S.gmPhase = 'idle'; buildModePanel();
     S.sim.hearMul = mutatorActive() ? mutFactor('hear') : 1; S.night = X.newNight(); S.nightPh = 'calm'; S.powerOn = false; S.sprayAt = {}; S.alarmAt = {}; S.disUntil = {}; S.powerLeft = 0; S.powerCd = 0; S.disSent = false; S.powerSent = false;
     S.gx = createGtaProps({ buildings: S.buildings, api: {
         stars: () => S.sim.starsOf('me'), seenT: () => S.sim.heatOf('me').seenT,
@@ -231,7 +233,9 @@ function finish() {
     if (S.leaving) return; S.leaving = true;
     // napad dnia: wyjście z torbą celu dnia (jedna z sześciu, z daty) daje 150 Bagabucksów raz na dobę i zapisuje najlepszy czas
     if (!mutatorActive()) { const hr = X.heistResult(getGta(), dailyDate(), S.bags.filter(b => b.holder === 'me').map(b => b.id), S.clock); if (hr.won) { setGta(hr.gta); if (hr.reward) addBones(hr.reward, 'Daily heist'); toast('Daily target secured' + (hr.underPar ? ' under par!' : '.') + (hr.record ? ' New best time.' : ''), '#ffd27a'); } }
-    const n = S.got; toast('Heist complete: ' + n + ' bag' + (n === 1 ? '' : 's') + '!', '#7fff90');
+    const n = S.got;
+    if (isAuth()) modeDeliver('me', n); else send({ k: 'ev', kind: 'deliver' });   // tryby: dostawa liczy się PO napadzie dnia (zabiera torby z gracza)
+    toast('Heist complete: ' + n + ' bag' + (n === 1 ? '' : 's') + '!', '#7fff90');
     levelReward('scarygta', 120 * n, 60 * n, 'a heist with ' + n + ' bags');
     if (n >= S.bags.length) { unlockAchievement('gta_heist'); recordTime('scarygta', S.clock); }   // komplet toreb: osiągnięcie i rekord czasu
     if (S.peakStars >= 5) unlockAchievement('gta_ghost');
@@ -259,7 +263,7 @@ function drawHud(p) {
     const gs = S.gunS.me, ready = gs.reloadAt < 0 || S.clock >= gs.reloadAt;
     x.font = 'bold 28px "Courier New", monospace'; x.fillStyle = gs.hp > 50 ? '#7fff90' : '#ff5a4a'; x.fillText('HP ' + Math.round(gs.hp), 30, 270);
     x.fillStyle = ready ? '#ffd27a' : '#ff9a3a'; x.fillText(ready ? 'AMMO ' + (gs.reloadAt >= 0 ? GU.GUN.MAG : gs.ammo) + '/' + GU.GUN.MAG : 'RELOADING', 190, 270);
-    x.fillStyle = S.mode === 'ffa' ? '#ff6a6a' : '#8ad0ff'; x.fillText(S.mode === 'ffa' ? 'PVP' : 'CO-OP', 430, 270);
+    x.fillStyle = S.mode === 'ffa' ? '#ff6a6a' : '#8ad0ff'; x.fillText(S.gm.phase === 'run' ? GM.MODE_NAMES[S.gm.mode].split(' ')[0] + ' ' + GM.timeText(S.gm.t) + (S.gm.mode === 'cops' ? ' [' + roleOf('me').toUpperCase() + ']' : ' ' + (S.gm.score.me || 0)) : (S.mode === 'ffa' ? 'PVP' : 'CO-OP'), 430, 270);
     x.font = '22px "Courier New", monospace'; x.fillStyle = '#ffb0a0'; S.feed.filter(f => S.clock - f.t < 8).forEach((f, k) => x.fillText(f.s, 560, 232 + k * 26));
     S.hud.update();
 }
@@ -280,7 +284,7 @@ export function update(dt, t, ctx) {
     for (const b of S.bags) {
         if (b.got) continue;
         b.g.rotation.y = t * 1.4; b.g.position.y = b.y + Math.sin(t * 2 + b.x) * 0.07;
-        if (Math.hypot(p.x - b.x, p.z - b.z) < 1.5 && Math.abs((p.y - 1.0) - b.y) < 2.4) { if (isAuth()) giveBag(b, 'me'); else requestTake(b); }
+        if (Math.hypot(p.x - b.x, p.z - b.z) < 1.5 && Math.abs((p.y - 1.0) - b.y) < 2.4) { if (roleOf('me') !== 'cop') { if (isAuth()) giveBag(b, 'me'); else requestTake(b); } }
     }
     updateRails(S.sim, dt, S.forceRail); S.forceRail = undefined;
     // hałas gracza: krzyk do mikrofonu (co najwyżej co 3 s), bieg przy policji
@@ -359,9 +363,10 @@ function hostShot(id, sh, checked) {
     if ((S.bustUntil[id] || 0) > S.clock || (id === 'me' && S.busted >= 0)) return;
     S.sim.addEvent('shot', head.x, head.z); S.sim.addHeat(id, WL.eventHeat('shot'));
     const targets = [];
-    if (GU.friendlyFire(S.mode)) {
-        const mine = { id: 'me', kind: 'player', head: headOf('me'), ignore: S.busted >= 0 || S.clock < S.gunS.me.protectUntil || S.clock < S.gunS.me.deadUntil }; targets.push(mine);
-        for (const g of remotes()) { const gs = S.gunS[g.id] || (S.gunS[g.id] = GU.newShooter()); targets.push({ id: g.id, kind: 'player', head: g.head, ignore: (S.bustUntil[g.id] || 0) > S.clock || S.clock < gs.protectUntil || S.clock < gs.deadUntil }); }
+    {
+        const fr = GU.friendlyFire(S.mode);
+        const mine = { id: 'me', kind: 'player', head: headOf('me'), ignore: S.busted >= 0 || S.clock < S.gunS.me.protectUntil || S.clock < S.gunS.me.deadUntil }; if (GM.canHurt(S.gm, id, 'me', fr)) targets.push(mine);
+        for (const g of remotes()) { const gs = S.gunS[g.id] || (S.gunS[g.id] = GU.newShooter()); if (GM.canHurt(S.gm, id, g.id, fr)) targets.push({ id: g.id, kind: 'player', head: g.head, ignore: (S.bustUntil[g.id] || 0) > S.clock || S.clock < gs.protectUntil || S.clock < gs.deadUntil }); }
     }
     S.sim.cops.forEach((c, k) => { if (c.active) targets.push({ id: 'c' + k, kind: 'cop', pos: { x: c.bot.x, z: c.bot.z } }); });
     const res = GU.resolveShot(sh.o, sh.d, targets, S.boxes, id);
@@ -428,6 +433,41 @@ function setNight(ph, announce) {
     applyLights();
     if (announce !== false) { if (ph === 'blackout') toast('BLACKOUT! The whole city went dark.', '#ffe040'); else if (ph === 'horde') { toast('Midnight: the dead cops are coming!', '#ff3a3a'); SFX.roar && SFX.roar(0.5); } else toast('The night calms down.', '#9ad0ff'); }
 }
+// ----- tryby gry (core/gtamodes.js): host liczy role, punkty i zwycięzcę; panel przy spawnie wybiera tryb (tylko host albo solo) -----
+const roleOf = (id) => S && S.gm && S.gm.phase === 'run' && S.gm.mode === 'cops' ? (S.gm.roles[id] || 'robber') : 'robber';
+function modeIds() { return ['me'].concat(remotes().map(r => r.id)); }
+function modeDeliver(id, n) { if (n > 0) S.gm = GM.modeEvent(S.gm, { type: 'deliver', id: id, n: n }); for (const b of S.bags) if (b.holder === id) { b.holder = null; b.got = false; b.g.visible = true; b.x = b.ox; b.y = b.oy; b.z = b.oz; b.g.position.set(b.x, b.y, b.z); } S.got = S.bags.filter(q => q.holder === 'me').length; }
+function modeSnapNet() { const sn = GM.modeSnap(S.gm), map = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [toNet(k), v])); return Object.assign(sn, { r: map(sn.r), s: map(sn.s), w: sn.w === 'me' ? N.myId() : sn.w }); }
+const winnerText = (w) => w === 'cops' ? 'THE COPS WIN' : w === 'robbers' ? 'THE ROBBERS WIN' : w === 'team' ? 'THE TEAM PULLED IT OFF' : w === 'lost' ? 'THE HEIST FAILED' : (w ? nameOf(w) + ' WINS' : 'NO WINNER');
+function modePhaseToast() {
+    if (S.gm.phase === S.gmPhase) return;
+    const prev = S.gmPhase; S.gmPhase = S.gm.phase;
+    if (S.gm.phase === 'run') toast(GM.MODE_NAMES[S.gm.mode] + ' starts!' + (S.gm.mode === 'cops' ? (roleOf('me') === 'cop' ? ' You are a COP: catch the robbers.' : ' You are a ROBBER: steal and escape.') : ''), '#ffd27a');
+    else if (S.gm.phase === 'over' && prev === 'run') toast(winnerText(S.gm.winner), '#7fff90');
+    if (S.mterm) S.mterm.dirty = true;
+}
+function setMode(m) { if (N.NET.mode === 'guest' || S.gm.phase === 'run') return; S.gm = Object.assign(GM.stopRound(S.gm), { mode: GM.cleanModeId(m) }); if (S.mterm) S.mterm.dirty = true; }
+function toggleRound() {
+    if (N.NET.mode === 'guest') return;
+    if (S.gm.phase === 'run') S.gm = Object.assign(GM.stopRound(S.gm), { mode: S.gm.mode });
+    else { const n = modeIds().length; if (!GM.canStart(S.gm.mode, n)) { toast(S.gm.mode === 'free' ? 'Pick a mode first.' : 'Needs ' + GM.RULES[S.gm.mode].min + '+ players.', '#ff9a6a'); return; } S.gm = GM.startRound(S.gm, S.gm.mode, modeIds()); }
+    modePhaseToast(); if (S.mterm) S.mterm.dirty = true;
+}
+function buildModePanel() {
+    S.mterm = new Terminal((t) => {
+        const host = N.NET.mode !== 'guest', run = S.gm.phase === 'run';
+        t.background(); t.header('GAME MODE', run ? GM.timeText(S.gm.t) : (S.gm.phase === 'over' ? 'ROUND OVER' : ''), run ? OK_COL : AMBER_DIM);
+        GM.MODES.forEach((m, i) => t.btn('m' + m, 24, 80 + i * 56, 300, 50, GM.MODE_NAMES[m], () => setMode(m), { active: S.gm.mode === m, size: 24 }));
+        t.btn('go', 24, 80 + 4 * 56, 300, 56, run ? 'STOP ROUND' : 'START ROUND', () => toggleRound(), { size: 26, tone: run ? 'bad' : 'ok' });
+        t.text(host ? 'Pick a mode, then start.' : 'The host picks the mode.', 24, 372, 20, AMBER_DIM, 'left');
+        const X0 = 350; t.text(S.gm.phase === 'over' ? winnerText(S.gm.winner) : GM.MODE_NAMES[S.gm.mode], X0, 112, 26, S.gm.phase === 'over' ? OK_COL : GOLD, 'left', true);
+        const R = { free: 'Roam, steal, shoot. No rules.', cops: 'Cops catch robbers (touch or shoot). Robbers deliver bags.', race: 'First to leave with 3 bags wins.', coop: 'Deliver 6 bags together. Heat is shared.' }[S.gm.mode];
+        R.match(/.{1,34}(\s|$)/g).forEach((ln, i) => t.text(ln.trim(), X0, 150 + i * 28, 20, AMBER, 'left'));
+        let y = 250; for (const id of Object.keys(S.gm.score)) { t.text((id === 'me' ? 'You' : nameOf(id)) + (S.gm.roles[id] ? ' (' + S.gm.roles[id] + ')' : '') + ': ' + S.gm.score[id], X0, y, 22, '#ffd27a', 'left'); y += 28; if (y > 380) break; }
+        t.scanlines();
+    }, 640, 420);
+    const scr = S.mterm.createMesh(1.7, 1.115); scr.position.set(3.4, 1.55, 53.2); L.root.add(scr); S.mterm.dirty = true;
+}
 function bagToast(b) { toast('Bag ' + S.got + '/' + S.bags.length + ': ' + b.id + (S.got === 1 ? '. You are slower while carrying loot. Head for the pier!' : ''), '#ffd27a'); SFX.bell && SFX.bell(); }
 // ---------- SIEĆ (etap 3a): host liczy policję, ciepło i torby dla wszystkich; goście dostają migawki (8 Hz) i odtwarzają je bez własnej AI ----------
 const BAG_IDS = () => S.bags.map(q => q.id);
@@ -450,12 +490,12 @@ function netStep(dt, p, speed) {
     const auth = isAuth(), guests = auth ? remotes() : [];
     S.sim.puppet = !auth;
     if (auth) {
-        const players = [{ id: 'me', x: p.x, y: p.y, z: p.z, speed: speed, busted: S.busted >= 0, carrying: S.got }];
+        const players = [{ id: 'me', x: p.x, y: p.y, z: p.z, speed: speed, busted: S.busted >= 0 || roleOf('me') === 'cop', carrying: S.got }];
         const ids = new Set(['me']);
         for (const g of guests) {
             S.sim.sightMul[g.id] = (S.disUntil[g.id] || 0) > S.clock ? X.DISGUISE.SIGHT : 1;
             ids.add(g.id); const tr = S.track[g.id] || (S.track[g.id] = GN.newTrack()), sp = GN.trackStep(tr, g.head.x, g.head.z, S.clock);
-            players.push({ id: g.id, x: g.head.x, y: GN.bodyY(g.head.y), z: g.head.z, speed: (S.rideUntil[g.id] || 0) > S.clock ? 0 : sp, busted: (S.bustUntil[g.id] || 0) > S.clock, carrying: S.bags.filter(q => q.holder === g.id).length });
+            players.push({ id: g.id, x: g.head.x, y: GN.bodyY(g.head.y), z: g.head.z, speed: (S.rideUntil[g.id] || 0) > S.clock ? 0 : sp, busted: (S.bustUntil[g.id] || 0) > S.clock || roleOf(g.id) === 'cop', carrying: S.bags.filter(q => q.holder === g.id).length });
         }
         for (const id of Object.keys(S.track)) if (!ids.has(id)) delete S.track[id];
         for (const id of Object.keys(S.gunS)) { if (id !== 'me' && !ids.has(id)) { delete S.gunS[id]; continue; } const st = S.gunS[id]; if (id !== 'me' && st.deadUntil > 0 && S.clock >= st.deadUntil) GU.revive(st, S.clock); }
@@ -466,6 +506,16 @@ function netStep(dt, p, speed) {
         let seenAny = false, lead = null, maxStars = 0;
         for (const pl of players) { if (pl.busted) continue; const hid = !!S.sim.hiddenNow[pl.id], blocked = AI2.lineBlocked([S.heli.x, S.heli.y, S.heli.z], [pl.x, pl.y + 0.5, pl.z], S.boxes); if (HL.heliSees(S.heli, pl, { hidden: hid, blocked })) { S.sim.extSeen[pl.id] = true; S.sim.addHeat(pl.id, WL.eventHeat('heli', dt)); seenAny = true; } }
         const out = S.sim.update(dt, players);
+        // tryby: czas rundy, łapanie złodziei przez policjantów-graczy, wspólne ciepło w co-opie
+        if (S.gm.phase === 'run') {
+            S.gm = GM.modeStep(S.gm, dt);
+            if (S.gm.mode === 'cops') {
+                for (const cp of players.filter(q => roleOf(q.id) === 'cop')) for (const rb of players.filter(q => roleOf(q.id) === 'robber' && !q.busted)) {
+                    if (AI2.caughtBy({ x: cp.x, z: cp.z, y: cp.y }, { x: rb.x, y: rb.y, z: rb.z })) { S.gm = GM.modeEvent(S.gm, { type: 'bust', by: cp.id, id: rb.id }); if (rb.id === 'me') bust({ reason: 'cop', x: rb.x, z: rb.z }); else hostBust({ id: rb.id, reason: 'cop', x: rb.x, z: rb.z }); break; }
+                }
+            } else if (S.gm.mode === 'coop') { const mx = Math.max(...players.map(q => S.sim.heatOf(q.id).v)); for (const q of players) S.sim.heats[q.id] = { v: mx, seenT: S.sim.heatOf(q.id).seenT }; }
+        }
+        modePhaseToast();
         for (const pl of players) { if (pl.busted) continue; const st = S.sim.starsOf(pl.id); if (st > maxStars || (st === maxStars && !lead)) { maxStars = st; lead = { x: pl.x, z: pl.z }; } }
         const ev = HL.heliStep(S.heli, dt, { stars: maxStars, lead: maxStars > 0 ? lead : null, seen: seenAny });
         if (ev.spawn) toast('A police helicopter is coming. Get under cover!', '#ff6a6a');
@@ -485,7 +535,7 @@ function netStep(dt, p, speed) {
 function broadcastState(players) {
     const heats = {}; for (const pl of players) heats[toNet(pl.id)] = [+S.sim.heatOf(pl.id).v.toFixed(1), S.sim.hiddenNow[pl.id] ? 1 : 0];
     const hp = {}; for (const pl of players) hp[toNet(pl.id)] = (S.gunS[pl.id] || (S.gunS[pl.id] = GU.newShooter())).hp;
-    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli), nt: S.nightPh, pw: S.powerLeft > 0 ? 1 : 0 });
+    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli), nt: S.nightPh, pw: S.powerLeft > 0 ? 1 : 0, gm: modeSnapNet() });
 }
 function hostBust(b) {
     const g = guestOf(b.id); if (!g || (S.bustUntil[b.id] || 0) > S.clock) return;
@@ -500,7 +550,7 @@ function onNet(msg, from) {
     if (N.NET.mode === 'host') {
         const g = guestOf(from); if (g && msg.k === 'shot') { const sh = GU.cleanShot(msg); if (sh) hostShot(g.id, sh, false); return; }
         const rq = GN.cleanRequest(msg, BAG_IDS()); if (!g || !rq) return;
-        if (rq.k === 'take') { const b = S.bags.find(q => q.id === rq.b); if (b && !b.got && (S.bustUntil[g.id] || 0) <= S.clock && GN.validTake(b, g.head, b.holder)) { giveBag(b, g.id); send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(q => [q.id, q.x, q.y, q.z, q.holder ? toNet(q.holder) : null]), heats: {} }); } }
+        if (rq.k === 'take') { const b = S.bags.find(q => q.id === rq.b); if (b && !b.got && roleOf(g.id) !== 'cop' && (S.bustUntil[g.id] || 0) <= S.clock && GN.validTake(b, g.head, b.holder)) { giveBag(b, g.id); send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(q => [q.id, q.x, q.y, q.z, q.holder ? toNet(q.holder) : null]), heats: {} }); } }
         else if (rq.k === 'ev' && rq.kind === 'shout') { if ((S.shoutAt[g.id] || 0) <= S.clock) { S.shoutAt[g.id] = S.clock + GN.GN.SHOUT_GAP; S.sim.addEvent('shout', g.head.x, g.head.z); S.sim.addHeat(g.id, WL.eventHeat('shout')); } }
         else if (rq.k === 'ev' && rq.kind === 'ride') S.rideUntil[g.id] = S.clock + 1;
         else if (rq.k === 'ev') hostExtra(g, rq.kind);
@@ -515,6 +565,7 @@ function onNet(msg, from) {
         for (const e of bags) { const b = S.bags.find(q => q.id === e.id); if (!b) continue; const mine = e.holder === N.myId(); b.holder = e.holder ? (mine ? 'me' : e.holder) : null; b.got = !!e.holder; b.x = e.x; b.y = e.y; b.z = e.z; b.g.visible = !e.holder; b.g.position.set(e.x, e.y, e.z); }
         if (bags.length) { const was = S.got; S.got = S.bags.filter(q => q.holder === 'me').length; if (S.got > was) { const nb = S.bags.find(q => q.holder === 'me'); if (nb) bagToast(nb); } }
         const hl = GN.cleanHeli(msg.hl); if (hl) { const h = S.heli; h.x = hl.x; h.y = hl.y; h.z = hl.z; h.yaw = hl.yaw; h.lx = hl.lx; h.lz = hl.lz; h.mode = hl.mode; } else if (msg.hl === null) S.heli.mode = 'away';
+        { const ms = GM.cleanModeSnap(msg.gm), map = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [fromNet(k), v])); S.gm = Object.assign(ms, { roles: map(ms.roles), score: map(ms.score), winner: ms.winner === N.myId() ? 'me' : ms.winner }); modePhaseToast(); }
         setNight(msg.nt); if (msg.pw === 1 || msg.pw === 0) { const on = msg.pw === 1; if (on !== S.powerOn && !S.gx.debug().power) { S.powerOn = on; applyLights(); } }
         const hpm = GU.cleanHp(msg.hp); if (Number.isFinite(hpm[N.myId()])) S.gunS.me.hp = hpm[N.myId()]; if (msg.m === 'coop' || msg.m === 'ffa') S.mode = msg.m;
         const mh = heats[N.myId()]; if (mh) { S.sim.heats.me = { v: mh.v, seenT: 0 }; S.sim.hiddenNow.me = mh.hidden; }
@@ -539,15 +590,18 @@ export const debugOutbox = () => S ? S.sent : [];
 export const debugWeather = () => S ? { state: S.wx.state, rain: +S.wx.rain.toFixed(2), fog: +S.wx.fog.toFixed(2), bolts: S.weather.bolts, thunders: S.weather.thunders, mesh: S.weather.mesh.visible, n: S.weather.n, radio: S.radioText ? S.radioText.t : null } : null;
 export const debugWx = (state, flash) => { if (!S) return; if (state) { S.wx.state = state; S.wx.hold = 1e6; } if (flash) { S.wx.flash = WX.WX.FLASH; S.weather.pending.push(0.1); S.weather.bolts++; } };
 function hostExtra(g, kind) {
+    if (kind === 'deliver') { modeDeliver(g.id, S.bags.filter(b => b.holder === g.id).length); return; }
     const near = (pts, r) => pts.some(q => Math.hypot(g.head.x - q.x, g.head.z - q.z) < r), id = g.id, bank = S.buildings.find(b => b.name === 'bank'), ps = X.powerSpot();
     if (kind === 'spray' && near(X.SPRAY.SPOTS, X.SPRAY.R + 3) && (S.sprayAt[id] || 0) <= S.clock) { S.sprayAt[id] = S.clock + 60; S.sim.heats[id] = { v: 0, seenT: 99 }; }
     else if (kind === 'alarm' && bank && near([{ x: (bank.x0 + bank.x1) / 2, z: (bank.z0 + bank.z1) / 2 }], 20) && (S.alarmAt[id] || 0) <= S.clock) { S.alarmAt[id] = S.clock + 5; S.sim.addHeat(id, X.GVAULT.HEAT); }
     else if (kind === 'dis' && near(C.SAFEHOUSES, X.DISGUISE.R + 3)) { S.disUntil[id] = S.clock + X.DISGUISE.FOR; }
     else if (kind === 'power' && near([ps], 4) && S.powerLeft <= 0 && S.powerCd <= S.clock) { S.powerCd = S.clock + X.POWER.COOLDOWN + X.POWER.DARK_FOR; powerZone(X.POWER.DARK_FOR); S.powerOn = true; applyLights(); }
 }
+export const debugMode = () => S ? { gm: S.gm, ids: modeIds(), myRole: roleOf('me') } : null;
+export const debugModeSet = (m, start) => { if (!S) return; setMode(m); if (start) toggleRound(); };
 export const debugGta = () => S ? Object.assign(S.gx.debug(), { night: S.nightPh, powerLeft: S.powerLeft, sight: S.sim.sightMul, extra: S.sim.extraCops, lamps: S.lampMesh ? S.lampMesh.visible : null, neonOn: S.neonMeshes.filter(n => n.m.visible).length, neonAll: S.neonMeshes.length, lightI: S.nlights.map(n => +n.l.intensity.toFixed(1)), dark: S.sim.darkZones.length, hear: S.sim.hearMul }) : null;
 export const debugGtaTouch = (fn) => import('../core/gtaprops.js').then(m => m.debugTouchProbe(fn));
-export const debugGtaNight = (ph) => { if (S) { S.night = { ph: ph, left: 99 }; setNight(ph, false); } };
+export const debugGtaNight = (ph, left) => { if (S) { S.night = { ph: ph, left: left || 99 }; setNight(ph, false); } };   // left: czas fazy (testy dają 1e9, żeby noc nie wchodziła w drogę)
 export const debugGtaKey = (k) => { if (S && S.gx && S.gx.press) S.gx.press(k); };
 export const debugHeli = () => S ? { mode: S.heli.mode, y: +S.heli.y.toFixed(1), x: +S.heli.x.toFixed(1), z: +S.heli.z.toFixed(1), eye: S.eyeOnMe, vis: S.heliV.root.visible, lx: +S.heli.lx.toFixed(1), lz: +S.heli.lz.toFixed(1) } : null;
 export const debugGun = () => S ? { hp: S.gunS.me.hp, ammo: S.gunS.me.ammo, mode: S.mode, shooters: Object.keys(S.gunS), feed: S.feed.map(f => f.s), hurt: S.hurtT } : null;
@@ -560,6 +614,7 @@ export function dispose() {
     if (S && S.heliV) S.heliV.dispose();
     if (S && S.weather) S.weather.dispose();
     if (S && S.gx) S.gx.dispose();
+    if (S && S.mterm) { const i = terminals.indexOf(S.mterm); if (i >= 0) terminals.splice(i, 1); S.mterm.tex.dispose(); }
     if (S && S.gunMesh) { S.gunMesh.g.removeFromParent(); for (const g of S.gunMesh.geos) g.dispose(); for (const m of S.gunMesh.mats) m.dispose(); }
     if (S) for (const f of S.fx) { f.l.geometry.dispose(); f.l.material.dispose(); }
     if (S) { S.sim.dispose(); S.scare.dispose(); S.hud.dispose(); for (const g of S.geos) g.dispose(); for (const m of S.mats) m.dispose(); for (const x of S.texs) x.dispose(); }
