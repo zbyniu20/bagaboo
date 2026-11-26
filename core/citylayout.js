@@ -26,6 +26,18 @@ export const SPECIAL = {
     '3,0,3': { name: 'radio', h: 42, scaffold: { face: 'W' }, bag: 'radio', roofBag: true, tower: true }
 };
 function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// Wnętrza (core/interiorlogic.js): tabela po ID ISTNIEJĄCYCH budynków, stosowana PO buildCity (buildCity(1337) zostaje bez zmian bajt w bajt: losuje r1-r3 i odcień dla każdej działki,
+// więc nowe wpisy w SPECIAL przesunęłyby wysokości i odcienie wszystkich kolejnych budynków). Drzwi zawsze od strony ulicy (działka k: a = k % 2, c = floor(k / 2); zewnętrzne ściany
+// k=0 to N i W, k=1 N i E, k=2 S i W, k=3 S i E; ściany od zaułków nie mogą mieć drzwi).
+export const INTERIORS = {
+    '3,0,0': { kind: 'casino', door: 'W', baseH: 5 }, '2,1,0': { kind: 'motel', door: 'N', baseH: 3.2 },
+    '1,1,1': { kind: 'shop', door: 'N', baseH: 4.5 }, '3,2,0': { kind: 'warehouse', door: 'W', baseH: 6 }
+};
+export function cityWithInteriors(seed) {
+    const B = buildCity(seed);
+    for (const bb of B) { const b = /** @type {any} */ (bb), it = INTERIORS[b.id]; if (it && !b.hollow && !b.name) { b.hollow = { door: it.door, baseH: it.baseH }; b.interior = it.kind; } }
+    return B;
+}
 // Lista budynków miasta. Każdy: { id, i, j, k, role, x0, x1, z0, z1, h, hollow, scaffold, bag, roofBag, name, tint }
 export function buildCity(seed) {
     const R = rng(seed || 1337), out = [];

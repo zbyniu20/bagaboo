@@ -34,6 +34,7 @@ import { createCitySim, updateRails, ridingAny, cancelRails } from '../core/city
 import * as WL from '../core/wantedlogic.js';
 import * as AI2 from '../core/cityai.js';
 import * as C from '../core/citylayout.js';
+import * as IL from '../core/interiorlogic.js';
 import * as N from '../core/network.js';
 import * as GN from '../core/gtanet.js';
 
@@ -46,6 +47,12 @@ const _p = new THREE.Vector3(), _d = new THREE.Vector3();
 function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function paint(g, r, gr, b) { const n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = r; a[i * 3 + 1] = gr; a[i * 3 + 2] = b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; }
 // Prostopadłościan z UV w metrach (okna kafelkują się co TILE m), dachy i spody na jednolitym polu tekstury (róg 0,01 / 0,99)
+// Mebel wnętrza: wszystkie ściany na jednolitym rogu tekstury (bez okien), kolor z wierzchołków; trafia do scalonej siatki kwartału (bez dodatkowych wywołań rysowania)
+function solidGeo(q, c) {
+    const g = new THREE.BoxGeometry(q.x1 - q.x0, q.y1 - q.y0, q.z1 - q.z0); g.translate((q.x0 + q.x1) / 2, (q.y0 + q.y1) / 2, (q.z0 + q.z1) / 2);
+    const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, 0.01, 0.99);
+    return paint(g, c[0] * 1.8, c[1] * 1.8, c[2] * 1.8);
+}
 function boxGeo(b, col) {
     const w = b.x1 - b.x0, h = b.y1 - b.y0, d = b.z1 - b.z0, g = new THREE.BoxGeometry(w, h, d);
     g.translate((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, (b.z0 + b.z1) / 2);
@@ -83,7 +90,7 @@ export function build() {
     L.bounds = { minX: CI.X0 + 0.6, maxX: CI.X1 - 0.6, minZ: CI.Z0 + 0.6, maxZ: CI.Z1 - 0.6, maxY: CI.MAX_H + 6 };
     L.ballBounds = { minX: CI.X0 + 0.3, maxX: CI.X1 - 0.3, minZ: CI.Z0 + 0.3, maxZ: CI.Z1 - 0.3, maxY: CI.MAX_H + 6 };   // piłki i torby nie są teleportowane do pokoju 30 x 30 (core/engine.js: containBall)
     scene.fog.density = 0.024;
-    S = { neonMeshes: [], nlights: [], lampMesh: null, geos: [], mats: [], texs: [], chunks: [], bags: [], got: 0, clock: 0, visT: 0, hudT: 0, leaving: false, buildings: C.buildCity(1337) };
+    S = { neonMeshes: [], nlights: [], lampMesh: null, geos: [], mats: [], texs: [], chunks: [], bags: [], got: 0, clock: 0, visT: 0, hudT: 0, leaving: false, buildings: C.cityWithInteriors(1337) };
     const geo = (g) => { S.geos.push(g); return g; }, mat = (m) => { S.mats.push(m); return m; };
     const [wt, et] = windowTextures(); S.texs.push(wt, et);
     const facade = mat(new THREE.MeshStandardMaterial({ map: wt, emissiveMap: et, emissive: 0xffffff, emissiveIntensity: 1.1, vertexColors: true, roughness: 0.78, metalness: 0.08 }));
@@ -110,7 +117,8 @@ export function build() {
                 L.obstacles[L.obstacles.length - 1].grip = CI.GRIP;   // ściany budynków są śliskie: na dach wchodzi się rusztowaniem
             }
             if (b.scaffold) { const s = C.scaffoldBox(b); add(geos, boxGeo(s, [0.28, 0.3, 0.34])); addStaticBody((s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2, (s.z0 + s.z1) / 2, new CANNON.Box(new CANNON.Vec3((s.x1 - s.x0) / 2, (s.y1 - s.y0) / 2, (s.z1 - s.z0) / 2)), ground, false); }
-            if (b.hollow) { const l = new THREE.PointLight(0xffc880, 11, 16, 2); l.position.set((b.x0 + b.x1) / 2, Math.min(b.hollow.baseH, 6) - 1.4, (b.z0 + b.z1) / 2); L.root.add(l); }
+            if (b.interior) for (const m of IL.furniture(b)) { add(geos, solidGeo(m, m.c)); if (m.solid) addStaticBody((m.x0 + m.x1) / 2, (m.y0 + m.y1) / 2, (m.z0 + m.z1) / 2, new CANNON.Box(new CANNON.Vec3((m.x1 - m.x0) / 2, (m.y1 - m.y0) / 2, (m.z1 - m.z0) / 2)), ground, false); }   // meble wnętrza: w siatce kwartału, duże z kolizją
+            if (b.hollow) { const lc = b.interior ? IL.LIGHT[b.interior] : null, l = new THREE.PointLight(lc ? lc[0] : 0xffc880, lc ? lc[1] : 11, lc ? lc[2] : 16, 2); l.position.set((b.x0 + b.x1) / 2, Math.min(b.hollow.baseH, 6) - 1.4, (b.z0 + b.z1) / 2); L.root.add(l); }
             // neon na ścianie od strony ulicy (południe albo północ), 5 m nad chodnikiem
             if (b.h >= 8 && !b.tower) { const nc = NEON[(R() * NEON.length) | 0], sz = R() < 0.5, zc = sz ? b.z1 + 0.12 : b.z0 - 0.12, sw = 3 + R() * 3, xc = (b.x0 + b.x1) / 2 + (R() - 0.5) * 2; add(neon, paint(new THREE.BoxGeometry(sw, 0.9, 0.2).translate(xc, 4.6 + R() * 2, zc), ((nc >> 16) & 255) / 255 * 1.6, ((nc >> 8) & 255) / 255 * 1.6, (nc & 255) / 255 * 1.6)); }
         }
@@ -124,7 +132,8 @@ export function build() {
     buildProps(geo, mat, R);
     buildBags(geo, mat);
     const df = diffOf('scarygta');
-    S.boxes = S.buildings.map(b => ({ x0: b.x0, x1: b.x1, y0: 0, y1: b.h, z0: b.z0, z1: b.z1 }));
+    // bryły zasłaniające (strzały, wzrok policji i helikoptera): puste budynki to ich prawdziwe ściany z otworem drzwi, nie pełne pudło (inaczej nic nie przeleci przez drzwi ani z wnętrza)
+    S.boxes = S.buildings.flatMap(b => b.hollow ? C.hollowBoxes(b) : [{ x0: b.x0, x1: b.x1, y0: 0, y1: b.h, z0: b.z0, z1: b.z1 }]);
     S.sim = createCitySim({ boxes: S.boxes, diff: df.id }); S.scare = createJumpscare({ seed: 4040, variant: 'warden' });
     S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
     // dodatki (core/gtaprops.js): kabiny, przebranie, wspinaczki, paczki, manekiny, sejf, prąd, dźwig, telefon; noc (blackout i horda)
@@ -599,6 +608,8 @@ function hostExtra(g, kind) {
 }
 export const debugMode = () => S ? { gm: S.gm, ids: modeIds(), myRole: roleOf('me') } : null;
 export const debugModeSet = (m, start) => { if (!S) return; setMode(m); if (start) toggleRound(); };
+export const debugBoxes = () => S ? S.boxes.length : 0;
+export const debugBuildings = () => S ? S.buildings.map(b => ({ id: b.id, interior: b.interior || '', hollow: !!b.hollow, x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, door: b.hollow ? b.hollow.door : '' })) : [];
 export const debugGta = () => S ? Object.assign(S.gx.debug(), { night: S.nightPh, powerLeft: S.powerLeft, sight: S.sim.sightMul, extra: S.sim.extraCops, lamps: S.lampMesh ? S.lampMesh.visible : null, neonOn: S.neonMeshes.filter(n => n.m.visible).length, neonAll: S.neonMeshes.length, lightI: S.nlights.map(n => +n.l.intensity.toFixed(1)), dark: S.sim.darkZones.length, hear: S.sim.hearMul }) : null;
 export const debugGtaTouch = (fn) => import('../core/gtaprops.js').then(m => m.debugTouchProbe(fn));
 export const debugGtaNight = (ph, left) => { if (S) { S.night = { ph: ph, left: left || 99 }; setNight(ph, false); } };   // left: czas fazy (testy dają 1e9, żeby noc nie wchodziła w drogę)

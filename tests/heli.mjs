@@ -35,6 +35,7 @@ const info = () => ev(async () => { const G = await import('./levels/scarygta.js
 
 
 const heli = () => ev(async () => (await import('./levels/scarygta.js')).debugHeli());
+await ev(async () => { (await import('./levels/scarygta.js')).debugGtaNight('calm', 1e9); });   // noc (blackout i horda) nie wchodzi w drogę testowi helikoptera
 const a0 = await heli();
 ok('there is no helicopter at 0 stars', a0 && a0.mode === 'away' && a0.vis === false, a0);
 await ev(async () => { const G = await import('./levels/scarygta.js'), P = await import('./core/player.js'); P.setPlayerPosition(-38, 1.2, 0); G.debugHeat(60); });
