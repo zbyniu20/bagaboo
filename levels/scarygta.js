@@ -48,6 +48,7 @@ import * as N from '../core/network.js';
 import * as GN from '../core/gtanet.js';
 import * as BL from '../core/gtaroadblock.js';
 import { createGtaRoadblocks } from '../core/gtaroadblockfx.js';
+import { createGtaCopMarks } from '../core/gtacopmarkfx.js';
 
 export const info = { id: 'scarygta', name: 'Scary GTA', spawn: [0, 1, 56] };   // = CITY.SPAWN (test w tests/logic.mjs pilnuje zgodności)
 const TILE = 8, CARRY_SLOW = 0.92, NEON = [0xff2a9a, 0x20e0ff, 0xff8a20, 0xa050ff, 0x40ff80, 0xff3050];
@@ -163,7 +164,7 @@ export function build() {
     S.eggs = createGtaEggs({ buildings: S.buildings, api: { stars: () => S.sim.starsOf('me'), night: () => S.nightPh, ride: eggRide } });
     const secApi = { night: () => S.nightPh, storm: () => !!S.wx && S.wx.state === 'storm' };
     S.stunts = createGtaStunts({ buildings: S.buildings }); S.mystery = createGtaMystery({ buildings: S.buildings, api: secApi }); S.enc = createGtaEncounters({ api: secApi });
-    S.life = createGtaLife({ api: { night: () => S.nightPh, obstacles: lifeObstacles } }); S.dj = DJM.newDj(); S.esc = 1; S.blocks = BL.newBlocks(); S.rbfx = createGtaRoadblocks();
+    S.life = createGtaLife({ api: { night: () => S.nightPh, obstacles: lifeObstacles } }); S.dj = DJM.newDj(); S.esc = 1; S.blocks = BL.newBlocks(); S.rbfx = createGtaRoadblocks(); S.cmark = createGtaCopMarks({ api: { gm: () => S.gm } });
     S.bb = createGtaBillboards({ buildings: S.buildings, api: { night: () => S.nightPh } });
     S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
@@ -325,7 +326,7 @@ export function update(dt, t, ctx) {
     S.micCd -= dt; const ml = SFX.micLevel ? SFX.micLevel() : 0;
     if (ml > 0.25 && S.micCd <= 0 && !S.hidden) { S.micCd = 3; if (isAuth()) { S.sim.addEvent('shout', p.x, p.z); S.sim.addHeat('me', WL.eventHeat('shout')); } else send({ k: 'ev', kind: 'shout' }); }
     netStep(dt, p, speed);
-    S.vehs.update(dt, S.fleet); S.rbfx.sync(S.blocks.nodes);
+    S.vehs.update(dt, S.fleet); S.rbfx.sync(S.blocks.nodes); S.cmark.update();
     S.heliV.update(S.heli, dt);
     S.eyeOnMe = HL.heliSees(S.heli, { x: p.x, y: p.y, z: p.z }, { hidden: !!S.sim.hiddenNow.me, blocked: AI2.lineBlocked([S.heli.x, S.heli.y, S.heli.z], [p.x, p.y + 0.5, p.z], S.boxes) });
     // syreny: gdy policjant ściga gracza z bliska, naprzemienne tony (cichy sygnał ostrzegawczy; nie w trybie spokojnym gier, tu go nie ma)
@@ -671,6 +672,7 @@ export const debugMode = () => S ? { gm: S.gm, ids: modeIds(), myRole: roleOf('m
 export const debugModeSet = (m, start) => { if (!S) return; setMode(m); if (start) toggleRound(); };
 export const debugDismount = () => { if (S) dismountMe(); };
 export const debugVeh = () => S ? { fleet: S.fleet, v: S.vehs.debug(), carCount: S.carCount } : null;
+export const debugCopMarks = () => S ? S.cmark.debug() : null;
 export const debugBlocks = (nodes) => { if (!S) return null; if (Array.isArray(nodes)) S.blocks = { nodes: BL.cleanBlocks(nodes), quiet: 0 }; return { nodes: S.blocks.nodes, quiet: S.blocks.quiet, fx: S.rbfx.debug() }; };
 export const debugDriveAs = (who, car, route, head) => { if (S) hostDrive(who, car, route, head); };
 export const debugBoxes = () => S ? S.boxes.length : 0;
@@ -712,6 +714,7 @@ export function dispose() {
     if (S && S.bb) S.bb.dispose();
     if (S && S.life) S.life.dispose();
     if (S && S.rbfx) S.rbfx.dispose();
+    if (S && S.cmark) S.cmark.dispose();
     if (S && S.stunts) S.stunts.dispose();
     if (S && S.mystery) S.mystery.dispose();
     if (S && S.enc) S.enc.dispose();

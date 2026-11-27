@@ -97,5 +97,23 @@ const guest = await ev(async () => {
     N.NET.mode = 'solo'; return { role: a.myRole, mode: a.gm.mode, score: a.gm.score.me, after: b.gm.phase };
 });
 ok('a guest follows the host snapshot (role cop, score 2, cops mode); garbage resets to idle free roam', guest.role === 'cop' && guest.mode === 'cops' && guest.score === 2 && guest.after === 'idle', guest);
+// ----- znacznik policjanta-gracza: czapka z kogutem nad renderowaną głową zdalnego policjanta, tylko w fazie run trybu cops -----
+const mark = await ev(async () => {
+    const N = await import('./core/network.js'), G = await import('./levels/scarygta.js'), A = await import('./core/avatar.js'), E = await import('./core/engine.js'), w = (ms) => new Promise(r => setTimeout(r, ms));
+    const S = G.testState(), made = [];
+    for (const id of ['g1', 'g2']) { const av = A.createAvatar({}); E.scene.add(av.group); av.head.position.set(id === 'g1' ? 5 : -5, 1.7, 3); N.remoteAvatars[id] = av; made.push([id, av]); }
+    const set = (o) => { S.gm = Object.assign({ mode: 'cops', phase: 'run', t: 200, roles: { me: 'robber', g1: 'cop', g2: 'robber' }, score: {}, delivered: 0, winner: '' }, o); };
+    set({}); await w(400); const run = G.debugCopMarks();
+    const hw = new E.THREE.Vector3(); made[0][1].head.getWorldPosition(hw);
+    set({ phase: 'lobby' }); await w(300); const lobby = G.debugCopMarks();
+    set({ mode: 'race' }); await w(300); const race = G.debugCopMarks();
+    set({}); made[0][1].group.visible = false; await w(300); const hidden = G.debugCopMarks(); made[0][1].group.visible = true;
+    set({ roles: { me: 'cop', g1: 'robber', g2: 'robber' } }); await w(300); const robbers = G.debugCopMarks();
+    set({}); await w(300); const back = G.debugCopMarks();
+    for (const [id, av] of made) { av.group.removeFromParent(); delete N.remoteAvatars[id]; }
+    await w(300); const gone = G.debugCopMarks();
+    return { run, lobby, race, hidden, robbers, back, gone };
+});
+ok('a remote cop gets the cap marker only in the run phase of the cops mode (not in the lobby phase or another mode), hidden players are skipped, robbers and my own role give none, and it disappears with the avatar', mark.run.count === 1 && mark.run.visible && mark.run.ids[0] === 'g1' && mark.lobby.count === 0 && mark.race.count === 0 && mark.hidden.count === 0 && mark.robbers.count === 0 && mark.back.count === 1 && mark.gone.count === 0, mark);
 ok('no page errors', errors.length === 0, errors);
 console.log(fails ? 'FAILED: ' + fails : 'gtamodes: all checks passed'); await browser.close(); server.close(); process.exit(fails ? 1 : 0);

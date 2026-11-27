@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795759470.383126,
-    "seen": 1795759541.9435754,
-    "ast_hash": "182c9e23f08aeaf6a7fab6d6d9741f21",
+    "mtime": 1795759956.931155,
+    "seen": 1795760010.6076849,
+    "ast_hash": "9a4a54e30ed3f238fdd2b23faf93aa50",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795759286.755012,
-    "seen": 1795759541.9435816,
-    "ast_hash": "74df017bbba719f0d7145fd078f862fb",
+    "mtime": 1795759837.8042881,
+    "seen": 1795760010.60769,
+    "ast_hash": "2f34e724bcc2cc9b51d8ae2e8bc67bdb",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795759275.2870772,
-    "seen": 1795759541.943324,
-    "ast_hash": "a70a39f83ac373118dd459823cbc6382",
+    "mtime": 1795759846.3897753,
+    "seen": 1795760010.6074708,
+    "ast_hash": "b52269103bce61b173d122bf12e4c03d",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795759286.757949,
-    "seen": 1795759541.9433923,
-    "ast_hash": "f29625a8d3409783576cc29a01218264",
+    "mtime": 1795759837.806786,
+    "seen": 1795760010.6075084,
+    "ast_hash": "d74bdea2ffb9fdcba8f43621073069c9",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795759232.1239507,
-    "seen": 1795759541.9432607,
-    "ast_hash": "5a475ff7fbbbc55d9e971ab05709917a",
+    "mtime": 1795759837.800292,
+    "seen": 1795760010.607408,
+    "ast_hash": "ba0eba1a5339d99f35d6b81afc9ff0c0",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -10902,8 +10902,8 @@
     "semantic_hash": ""
   },
   "core/radiologic.js": {
-    "mtime": 1795759227.5526445,
-    "seen": 1795759541.943174,
+    "mtime": 1795759771.0197926,
+    "seen": 1795760010.6072974,
     "ast_hash": "02b90ef76b950ac0848ac4267d6353ec",
     "semantic_hash": ""
   },
@@ -10950,9 +10950,9 @@
     "semantic_hash": ""
   },
   "tests/gtamodes.mjs": {
-    "mtime": 1795709680.4913619,
-    "seen": 1795711443.5583248,
-    "ast_hash": "544d99f4a14a6f262e8466c0e4e76462",
+    "mtime": 1795759857.5710967,
+    "seen": 1795760010.6074536,
+    "ast_hash": "0f72b1b4a25f0d51b4522284562b7c39",
     "semantic_hash": ""
   },
   "core/annexgate.js": {
@@ -10986,21 +10986,21 @@
     "semantic_hash": ""
   },
   "core/vehiclelogic.js": {
-    "mtime": 1795759165.3004599,
-    "seen": 1795759541.943211,
+    "mtime": 1795759771.0197926,
+    "seen": 1795760010.6073596,
     "ast_hash": "2643f54840dd6ef600aa9a7fe67ac048",
     "semantic_hash": ""
   },
   "core/vehicles.js": {
-    "mtime": 1795759210.5521197,
-    "seen": 1795759541.9432127,
+    "mtime": 1795759771.0197926,
+    "seen": 1795760010.607361,
     "ast_hash": "8d7df6b300b88a02957dba810ac9eff4",
     "semantic_hash": ""
   },
   "tests/vehicles.mjs": {
-    "mtime": 1795715811.0399768,
-    "seen": 1795720665.6926987,
-    "ast_hash": "94e792269bee52007fb75b94b46469fe",
+    "mtime": 1795759943.4168591,
+    "seen": 1795760010.6075122,
+    "ast_hash": "033f2ebdde1344d7ebd438cd3e56fa97",
     "semantic_hash": ""
   },
   "core/gtaeggfx.js": {
@@ -11121,6 +11121,18 @@
     "mtime": 1795759322.4699492,
     "seen": 1795759541.943351,
     "ast_hash": "197658959a781f291fd02e7a60864e45",
+    "semantic_hash": ""
+  },
+  "core/gtacopmark.js": {
+    "mtime": 1795759837.784602,
+    "seen": 1795760010.6071825,
+    "ast_hash": "ed82d98e540de17f4a71567120e96aa7",
+    "semantic_hash": ""
+  },
+  "core/gtacopmarkfx.js": {
+    "mtime": 1795759837.786083,
+    "seen": 1795760010.6071844,
+    "ast_hash": "1ff9d1e3d0b2c31dc1d3f085a8b46c1c",
     "semantic_hash": ""
   },
   "package-lock.json": {
