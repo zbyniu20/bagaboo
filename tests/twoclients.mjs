@@ -16,7 +16,7 @@ const server = http.createServer((req, res) => {
 const port = server.address().port;
 const sigPort = 19000 + Math.floor(Math.random() * 900), sig = PeerServer({ port: sigPort, path: '/', host: '127.0.0.1', allow_discovery: false });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-features=WebRtcHideLocalIpsWithMdns', '--allow-loopback-in-peer-connection', '--no-sandbox'] });
-const SHIM = `;(function(){var P=window.Peer;function W(id,o){return new P(id,Object.assign({host:'127.0.0.1',port:${sigPort},path:'/',secure:false,key:'peerjs',config:{iceServers:[]}},o||{}));}W.prototype=P.prototype;Object.keys(P).forEach(function(k){W[k]=P[k];});window.Peer=W;})();`;
+const SHIM = `;(function(){var P=window.Peer;function W(id,o){if(!id)id='guest'+Math.random().toString(36).slice(2,10);return new P(id,Object.assign({host:'127.0.0.1',port:${sigPort},path:'/',secure:false,key:'peerjs',config:{iceServers:[]}},o||{}));}W.prototype=P.prototype;Object.keys(P).forEach(function(k){W[k]=P[k];});window.Peer=W;})();`;
 const errors = { host: [], guest: [] };
 async function client(name) {
     const ctx = await browser.newContext({ viewport: { width: 800, height: 520 } });
