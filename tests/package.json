@@ -9,13 +9,15 @@
     "levelpack": "node levelpack.mjs",
     "logic": "node logic.mjs",
     "changed": "node changed.mjs",
-    "check": "npm run fast && node changed.mjs", "types": "tsc -p tsconfig.json",
+    "check": "npm run fast && node changed.mjs",
+    "types": "tsc -p tsconfig.json",
     "smoke": "node smoke.mjs",
     "test": "npm run fast && node smoke.mjs",
     "rounds": "node rounds.mjs"
   },
   "devDependencies": {
     "cannon-es": "0.20.0",
+    "peer": "^1.0.2",
     "peerjs": "1.5.2",
     "playwright": "^1.45.0",
     "three": "0.187.0",

@@ -673,6 +673,7 @@ export const debugModeSet = (m, start) => { if (!S) return; setMode(m); if (star
 export const debugDismount = () => { if (S) dismountMe(); };
 export const debugVeh = () => S ? { fleet: S.fleet, v: S.vehs.debug(), carCount: S.carCount } : null;
 export const debugCopMarks = () => S ? S.cmark.debug() : null;
+export const debugRequestDrive = (car, idx) => { if (S) requestDrive(car, idx); };
 export const debugBlocks = (nodes) => { if (!S) return null; if (Array.isArray(nodes)) S.blocks = { nodes: BL.cleanBlocks(nodes), quiet: 0 }; return { nodes: S.blocks.nodes, quiet: S.blocks.quiet, fx: S.rbfx.debug() }; };
 export const debugDriveAs = (who, car, route, head) => { if (S) hostDrive(who, car, route, head); };
 export const debugBoxes = () => S ? S.boxes.length : 0;
