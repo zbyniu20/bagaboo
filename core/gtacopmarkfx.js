@@ -17,15 +17,27 @@ export function createGtaCopMarks(o) {
     const mat = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }), mesh = new THREE.InstancedMesh(geo, mat, CM.MARK.MAX);
     mesh.frustumCulled = false; mesh.count = 0; mesh.visible = false; L.root.add(mesh);
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3(), hw = new THREE.Vector3(); let shown = [];
-    function update() {
+    let update = function () {
         const vis = Object.keys(remoteAvatars).filter(id => { const a = remoteAvatars[id]; return a && a.group.visible && a.head.visible; });
         shown = CM.markedIds(api.gm(), vis); let c = 0;
         for (const id of shown) { const a = remoteAvatars[id], k = Math.max(0.25, a.head.scale.x || 1); a.head.getWorldPosition(hw); a.head.getWorldQuaternion(q); p.set(hw.x, hw.y + CM.MARK.LIFT * k, hw.z); s.setScalar(k); mesh.setMatrixAt(c++, m4.compose(p, q, s)); }
         mesh.count = c; mesh.visible = c > 0; mesh.instanceMatrix.needsUpdate = true;
+    };
+    // ----- latarka: stożek z prawej dłoni zdalnego policjanta (oś -Z dłoni), jedna siatka addytywna -----
+    const bg = new THREE.ConeGeometry(CM.BEAM.R, CM.BEAM.LEN, 20, 1, true); bg.translate(0, -CM.BEAM.LEN / 2, 0); bg.rotateX(Math.PI / 2);   // czubek w początku, otwarcie ku -Z
+    { const pos = bg.attributes.position, col = new Float32Array(pos.count * 3); for (let i = 0; i < pos.count; i++) { const t = Math.min(1, Math.max(0, -pos.getZ(i) / CM.BEAM.LEN)), v = CM.BEAM.ALPHA * (1 - 0.85 * t); col[i * 3] = v; col[i * 3 + 1] = v * 0.95; col[i * 3 + 2] = v * 0.7; } bg.setAttribute('color', new THREE.BufferAttribute(col, 3)); }
+    const bm = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false, fog: false }), beam = new THREE.InstancedMesh(bg, bm, CM.MARK.MAX);
+    beam.frustumCulled = false; beam.count = 0; beam.visible = false; L.root.add(beam);
+    const off = new THREE.Vector3(CM.BEAM.OFFSET[0], CM.BEAM.OFFSET[1], CM.BEAM.OFFSET[2]), bq = new THREE.Quaternion(), bp = new THREE.Vector3(), bo = new THREE.Vector3();
+    function updateBeams() {
+        let c = 0;
+        for (const id of shown) { const a = remoteAvatars[id]; if (!a || !a.handR) continue; const k = Math.max(0.25, a.head.scale.x || 1); a.handR.getWorldQuaternion(bq); a.handR.getWorldPosition(bp); bo.copy(off).multiplyScalar(k).applyQuaternion(bq).add(bp); s.setScalar(k); beam.setMatrixAt(c++, m4.compose(bo, bq, s)); }
+        beam.count = c; beam.visible = c > 0; beam.instanceMatrix.needsUpdate = true;
     }
+    const baseUpdate = update; update = function () { baseUpdate(); updateBeams(); };
     return {
-        update,
-        debug: () => ({ count: mesh.count, visible: mesh.visible, ids: shown.slice(), parent: mesh.parent === L.root }),
-        dispose() { mesh.removeFromParent(); mesh.dispose(); geo.dispose(); mat.dispose(); }
+        update: () => update(),
+        debug: () => ({ count: mesh.count, visible: mesh.visible, ids: shown.slice(), parent: mesh.parent === L.root, beams: beam.count, beamVisible: beam.visible }),
+        dispose() { mesh.removeFromParent(); mesh.dispose(); geo.dispose(); mat.dispose(); beam.removeFromParent(); beam.dispose(); bg.dispose(); bm.dispose(); }
     };
 }
