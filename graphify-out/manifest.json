@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795742650.820788,
-    "seen": 1795745229.349751,
-    "ast_hash": "b90b34ebbe8edc9d3075b17b86f9f4be",
+    "mtime": 1795759470.383126,
+    "seen": 1795759541.9435754,
+    "ast_hash": "182c9e23f08aeaf6a7fab6d6d9741f21",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795741839.1116827,
-    "seen": 1795745229.3497584,
-    "ast_hash": "38a98775c7038c23e408265308bc24f7",
+    "mtime": 1795759286.755012,
+    "seen": 1795759541.9435816,
+    "ast_hash": "74df017bbba719f0d7145fd078f862fb",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795741839.1127396,
-    "seen": 1795745229.3494549,
-    "ast_hash": "ac3d18d3db8864421b3df2d3abc0bdc2",
+    "mtime": 1795759275.2870772,
+    "seen": 1795759541.943324,
+    "ast_hash": "a70a39f83ac373118dd459823cbc6382",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795741839.1120732,
-    "seen": 1795745229.3495023,
-    "ast_hash": "545284bf5ee6a273ac632b25b1cdc01a",
+    "mtime": 1795759286.757949,
+    "seen": 1795759541.9433923,
+    "ast_hash": "f29625a8d3409783576cc29a01218264",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795741839.1110091,
-    "seen": 1795745229.3493767,
-    "ast_hash": "3dc2ba598a9110241a1a0beeea3ea0db",
+    "mtime": 1795759232.1239507,
+    "seen": 1795759541.9432607,
+    "ast_hash": "5a475ff7fbbbc55d9e971ab05709917a",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -10902,9 +10902,9 @@
     "semantic_hash": ""
   },
   "core/radiologic.js": {
-    "mtime": 1795720717.1405134,
-    "seen": 1795721695.554641,
-    "ast_hash": "ce41aeefb729387b0429f03bd7ced7ea",
+    "mtime": 1795759227.5526445,
+    "seen": 1795759541.943174,
+    "ast_hash": "02b90ef76b950ac0848ac4267d6353ec",
     "semantic_hash": ""
   },
   "core/weather.js": {
@@ -10986,15 +10986,15 @@
     "semantic_hash": ""
   },
   "core/vehiclelogic.js": {
-    "mtime": 1795715659.1462834,
-    "seen": 1795720665.6924686,
-    "ast_hash": "a426f12203377d509716755a19a47c9a",
+    "mtime": 1795759165.3004599,
+    "seen": 1795759541.943211,
+    "ast_hash": "2643f54840dd6ef600aa9a7fe67ac048",
     "semantic_hash": ""
   },
   "core/vehicles.js": {
-    "mtime": 1795715731.364843,
-    "seen": 1795720665.6924703,
-    "ast_hash": "4673cdadb160a2d135922a9ceaf87896",
+    "mtime": 1795759210.5521197,
+    "seen": 1795759541.9432127,
+    "ast_hash": "8d7df6b300b88a02957dba810ac9eff4",
     "semantic_hash": ""
   },
   "tests/vehicles.mjs": {
@@ -11103,6 +11103,24 @@
     "mtime": 1795745008.5553982,
     "seen": 1795745229.3494308,
     "ast_hash": "cb914f671af27c71cb317c1f1de14858",
+    "semantic_hash": ""
+  },
+  "core/gtaroadblock.js": {
+    "mtime": 1795759189.0431092,
+    "seen": 1795759541.9430687,
+    "ast_hash": "4a86f8e76820ca66deb8f1ead5e9741f",
+    "semantic_hash": ""
+  },
+  "core/gtaroadblockfx.js": {
+    "mtime": 1795759210.551768,
+    "seen": 1795759541.9430716,
+    "ast_hash": "692e4b8e934ae00a8b3823bd8d649678",
+    "semantic_hash": ""
+  },
+  "tests/roadblock.mjs": {
+    "mtime": 1795759322.4699492,
+    "seen": 1795759541.943351,
+    "ast_hash": "197658959a781f291fd02e7a60864e45",
     "semantic_hash": ""
   },
   "package-lock.json": {

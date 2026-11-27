@@ -33,7 +33,7 @@ export function createVehicles(api) {
     G.update = (dt, fleet) => {
         const now = api.clock(); let mine = null;
         for (const car of G.cars) {
-            const f = fleet.find(q => q.id === car.id), ride = f && f.occ ? VL.buildRide(car.id, f.route) : null;
+            const f = fleet.find(q => q.id === car.id), ride = f && f.occ ? VL.rideFor(f) : null;
             if (ride) {
                 const p = VL.posAt(ride, now - f.t0); car.m.position.set(p.x, 0, p.z);
                 let da = p.yaw - car.yaw; da = Math.atan2(Math.sin(da), Math.cos(da)); car.yaw += da * Math.min(1, dt * 6); car.m.rotation.y = car.yaw;
