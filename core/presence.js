@@ -14,6 +14,7 @@ let onChange = () => {};
 
 export function startPresence(infoFn, changed) {
     getInfo = infoFn; if (changed) onChange = changed;
+    if (/[?&]presence=0\b/.test(location.search)) return;   // `?presence=0` w adresie wyłącza centralę obecności (test dwóch klientów: jej peery zaśmiecały połączenie z pokojem)
     tryHub();
     setInterval(tick, 8000);
 }
