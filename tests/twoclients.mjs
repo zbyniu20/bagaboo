@@ -14,9 +14,9 @@ const server = http.createServer((req, res) => {
     if (f.startsWith(ROOT) && fs.existsSync(f) && fs.statSync(f).isFile()) { res.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(res); } else { res.writeHead(404); res.end(); }
 }).listen(0);
 const port = server.address().port;
-const sigPort = 19000 + Math.floor(Math.random() * 900), sig = PeerServer({ port: sigPort, path: '/', allow_discovery: false });
+const sigPort = 19000 + Math.floor(Math.random() * 900), sig = PeerServer({ port: sigPort, path: '/', host: '127.0.0.1', allow_discovery: false });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-features=WebRtcHideLocalIpsWithMdns', '--allow-loopback-in-peer-connection', '--no-sandbox'] });
-const SHIM = `;(function(){var P=window.Peer;function W(id,o){return new P(id,Object.assign({host:'localhost',port:${sigPort},path:'/',secure:false,key:'peerjs',config:{iceServers:[]}},o||{}));}W.prototype=P.prototype;Object.keys(P).forEach(function(k){W[k]=P[k];});window.Peer=W;})();`;
+const SHIM = `;(function(){var P=window.Peer;function W(id,o){return new P(id,Object.assign({host:'127.0.0.1',port:${sigPort},path:'/',secure:false,key:'peerjs',config:{iceServers:[]}},o||{}));}W.prototype=P.prototype;Object.keys(P).forEach(function(k){W[k]=P[k];});window.Peer=W;})();`;
 const errors = { host: [], guest: [] };
 async function client(name) {
     const ctx = await browser.newContext({ viewport: { width: 800, height: 520 } });
@@ -44,7 +44,7 @@ const CODE = 'ZZTEST' + Math.floor(Math.random() * 90 + 10);
 const hostUp = await H.ev(async (code) => { const N = await import('./core/network.js'); return await new Promise((res) => { N.startHost(code, { ok: () => res(true), fail: () => res(false) }); setTimeout(() => res(false), 15000); }); }, CODE);
 if (!hostUp) { console.log('SKIP: no signalling connection (host could not open a room on the local peer server)'); await finish(0); }
 const guestUp = await G.ev(async (code) => { const N = await import('./core/network.js'); return await new Promise((res) => { N.startJoin(code, { ok: () => res(true), fail: () => res(false) }); setTimeout(() => res(false), 20000); }); }, CODE);
-if (!guestUp) { console.log('SKIP: no ICE connection (the guest could not reach the host over WebRTC in this container); nothing below was checked'); await finish(0); }
+if (!guestUp) { console.log('diag guest status:', await G.page.evaluate(() => document.getElementById('status').innerText), '| host status:', await H.page.evaluate(() => document.getElementById('status').innerText), '| errors', JSON.stringify(errors)); console.log('SKIP: no ICE connection (the guest could not reach the host over WebRTC in this container); nothing below was checked'); await finish(0); }
 ok('host opened the room and the guest joined through startJoin (real WebRTC data channel)', hostUp && guestUp);
 // ----- oba klienty wchodzą do Scary GTA -----
 await Promise.all([H, G].map((c) => c.ev(async () => { const M = await import('./main.js'); await M.loadLevel('scarygta'); })));
