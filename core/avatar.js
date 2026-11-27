@@ -172,7 +172,7 @@ export function createRealHand(isLeft, look) {
     const add = (geo, mat, parent) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
     // Statyczne części skóry dłoni (dłoń, kłąb kciuka, kłąb małego palca, nadgarstek i kostki palców) to JEDNA scalona siatka: stały układ względem `model`, więc 8 siatek mniej na rękę (czyli i na każdego zdalnego gracza)
     const statics = [], _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
-    const place = (geo, px, py, pz, sx, sy, sz, rx) => { _q.setFromEuler(_e.set(rx || 0, 0, 0)); geo.applyMatrix4(_m.compose(new THREE.Vector3(px, py, pz), _q, new THREE.Vector3(sx, sy, sz))); statics.push(geo); };
+    const place = (geo, px, py, pz, sx, sy, sz, rx) => { _q.setFromEuler(_e.set(rx || 0, 0, 0)); geo.applyMatrix4(_m.compose(new THREE.Vector3(px, py, pz), _q, new THREE.Vector3(sx, sy, sz))); if (geo.index) { const ni = geo.toNonIndexed(); geo.dispose(); geo = ni; } statics.push(geo); };   // mergeGeometries wymaga wszystkich albo żadnej indeksowanej
     place(new RoundedBoxGeometry(0.074, 0.028, 0.094, 3, 0.012), 0, 0, 0, 1, 1, 1);
     place(new THREE.SphereGeometry(1, 14, 10), -0.027 * side, -0.007, 0.014, 0.022, 0.014, 0.032);   // kłąb kciuka
     place(new THREE.SphereGeometry(1, 14, 10), 0.028 * side, -0.006, 0.018, 0.016, 0.012, 0.03);   // kłąb małego palca
