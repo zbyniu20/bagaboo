@@ -10,6 +10,7 @@ import { levelReward, recordScore, SAVE } from '../core/economy.js';
 import { toast, Terminal } from '../core/terminal.js';
 import { hands } from '../core/player.js';
 import * as N from '../core/network.js';
+import { LOBBY_MOVE_SCALE } from '../core/config.js';
 import * as SFX from '../core/audio.js';
 import { buzz } from '../core/haptics.js';
 import { buildDoor, cameraPanel, panelBg, drawInstructions , introSeen } from '../core/levelkit.js';
@@ -37,7 +38,7 @@ export function build() {
     let bi = 0; if (N.NET.mode !== 'solo') { const id = N.myId() || ''; for (let i = 0; i < id.length; i++) bi = (bi * 31 + id.charCodeAt(i)) % BOOTHS.length; }
     L.spawn = [BOOTHS[bi], 1.0, 1.15];
     L.bounds = { minX: -7.6, maxX: 7.6, minZ: 0.75, maxZ: 7.6, maxY: 5 };
-    L.moveScale = 0; L.maxUp = 0.5;
+    L.moveScale = LOBBY_MOVE_SCALE; L.maxUp = 0.5;   // ruch dłońmi jak w lobby (wcześniej 0, które gra traktowała jak 1); skakanie zostaje zablokowane (stanowisko strzeleckie)
     S = { clock: 0, phase: 'wait', t: WAIT, kills: 0, scores: {}, targets: [], spawnT: 1, lastHostMsg: -10, netT: 0, sendT: 0, introT: 10, hudT: 0, boardT: 0, rewarded: false, fx: [] };
     buildRoom();
     buildGun();

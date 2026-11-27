@@ -420,9 +420,9 @@
     "semantic_hash": ""
   },
   "levels/range.js": {
-    "mtime": 1795016110.9195015,
-    "seen": 1795275190.7333703,
-    "ast_hash": "b07d8a73d7390441c95502387d743851",
+    "mtime": 1795814632.403513,
+    "seen": 1795814677.7993183,
+    "ast_hash": "8974b80ac91378b9204017488aea9a44",
     "semantic_hash": ""
   },
   "levels/redlight.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795812378.1266856,
-    "seen": 1795812404.40908,
-    "ast_hash": "6573c03f3a0771b16bcd82e648c62dc0",
+    "mtime": 1795814632.4046555,
+    "seen": 1795814677.7996352,
+    "ast_hash": "6349e6b5b50f964e9b1d6fc0e38ba998",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795812378.125399,
-    "seen": 1795812404.4088485,
-    "ast_hash": "2f6a2a58fd9f8dd138cf790632ae1aa7",
+    "mtime": 1795814648.2288213,
+    "seen": 1795814677.7994184,
+    "ast_hash": "23048493d096670f53ac0573d741159e",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10806,9 +10806,9 @@
     "semantic_hash": ""
   },
   "tests/pace.mjs": {
-    "mtime": 1795655261.686912,
-    "seen": 1795656261.3699276,
-    "ast_hash": "97a22c72310bf603481dbc8b0348d7f1",
+    "mtime": 1795814632.404926,
+    "seen": 1795814677.7994337,
+    "ast_hash": "f84289fa4bf13a8adefa35a3a06aeb7f",
     "semantic_hash": ""
   },
   "core/citylayout.js": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795812383.9929862,
-    "seen": 1795812404.4087956,
-    "ast_hash": "c24d7c712099090f41733d48eee5c3a2",
+    "mtime": 1795814621.9922872,
+    "seen": 1795814677.7993226,
+    "ast_hash": "7d738729cdb17082474cf829f6752192",
     "semantic_hash": ""
   },
   "tests/city.mjs": {

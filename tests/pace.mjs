@@ -27,7 +27,7 @@ await page.click('#btnSolo', { timeout: 90000 });
 await page.waitForTimeout(1500);
 let fails = 0; const ok = (name, cond, extra) => { if (cond) console.log('ok  ', name); else { fails++; console.log('FAIL', name, extra === undefined ? '' : JSON.stringify(extra)); } };
 const ev = (fn, arg) => page.evaluate(fn, arg);
-const ids = (process.env.LEVELS || 'lobby,hospital,laundry,room000,mine,lava,memory,well,games,hideseek,monster,lobby').split(',');
+const ids = (process.env.LEVELS || 'lobby,hospital,laundry,room000,mine,lava,memory,well,games,hideseek,monster,range,scarygta,lobby').split(',');
 const out = [];
 for (const id of ids) {
     await ev(async (id) => { const M = await import('./main.js'); await M.loadLevel(id); }, id);
@@ -35,6 +35,8 @@ for (const id of ids) {
     out.push(await ev(async (id) => { const E = await import('./core/engine.js'); return { id, ms: +(+E.L.moveScale).toFixed(3), up: E.L.maxUp || 0, sp: E.L.maxSpeedXZ || 0 }; }, id));
 }
 ok('every level starts with the lobby movement scale (1.15)', out.every(o => o.ms === 1.15), out);
+const gtaBag = await ev(async () => { const M = await import('./main.js'); await M.loadLevel('scarygta'); await new Promise(r => setTimeout(r, 2500)); const G = await import('./levels/scarygta.js'), E = await import('./core/engine.js'); const before = +E.L.moveScale; G.debugTakeBag('bank'); await new Promise(r => setTimeout(r, 600)); return { before, after: +E.L.moveScale, got: G.debugCity().got }; });
+ok('Scary GTA keeps the lobby movement (1.15) also while carrying a bag (no loot-weight slowdown)', gtaBag.before === 1.15 && gtaBag.after === 1.15 && gtaBag.got >= 1, gtaBag);
 ok('the capped levels keep their absolute caps (lava and memory: speed and climb limits)', out.filter(o => o.id === 'lava').every(o => o.sp === 3.8 && o.up === 4.2) && out.filter(o => o.id === 'memory').every(o => o.sp === 4 && o.up === 4) && out.filter(o => o.id === 'hospital').every(o => o.sp === 0), out);
 ok('the lobby again at the end is back to 1.15 and has no caps (identical to the first visit)', out[out.length - 1].id === 'lobby' && out[out.length - 1].ms === 1.15 && out[out.length - 1].sp === 0 && out[0].ms === out[out.length - 1].ms, [out[0], out[out.length - 1]]);
 ok('no page errors', errors.length === 0, errors);
