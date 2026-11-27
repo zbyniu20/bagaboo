@@ -81,7 +81,7 @@ const guest = await ev(async () => {
     st({ rb: [node], veh: [['motel', 'north', 3, me, stop]] }); for (let i = 0; i < 30 && !G.debugVeh().v.riding; i++) await w(100);
     const ent = S.fleet.find(c => c.id === 'motel'), on = G.debugVeh().v.riding, R = VL.rideFor(ent);
     st({ rb: [node], veh: [['motel', 'north', 3, me, 'junk']] }); await w(300); const R2 = VL.rideFor(S.fleet.find(c => c.id === 'motel'));
-    const node2 = RB.candidates().find(i => i !== node); st({ rb: [node, node2], veh: [] }); let said = ''; for (let i = 0; i < 40 && !/Roadblock/i.test(said); i++) { await w(100); said = (S.radioText && S.radioText.t) || ''; }
+    const node2 = RB.candidates().find(i => i !== node); S.sim.heats.me = { v: 0, seenT: -99 }; S.radio.queue.length = 0; S.radio.cd = 0; S.radio.last = {}; S.radio.prevStars = 0; S.flags.swat = S.flags.shot = S.flags.busted = false; await w(300); st({ rb: [node, node2], veh: [] }); let said = ''; for (let i = 0; i < 40 && !/Roadblock/i.test(said); i++) { await w(100); said = (S.radioText && S.radioText.t) || ''; }
     st({ rb: 'zzz', veh: [] }); await w(400); const cleared = G.debugBlocks(null).nodes.length;
     N.NET.mode = 'solo'; return { said, nodes: fx.nodes, fxCount: fx.fx.count, on, stopped: ent.stop === stop && R.stop === stop, R2stop: R2.stop, plain: VL.buildRide('motel', 'north').len, len: R.len, cleared };
 });
