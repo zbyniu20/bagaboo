@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "core/avatar.js": {
-    "mtime": 1795770462.756123,
-    "seen": 1795770957.2853246,
-    "ast_hash": "83d9f9740ae870851576382e8c826f62",
+    "mtime": 1795771092.4814427,
+    "seen": 1795771110.1741302,
+    "ast_hash": "56ceb176a6e03824eb332e34e1eaa5cf",
     "semantic_hash": ""
   },
   "core/botkit.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795770898.336149,
-    "seen": 1795770957.2860084,
-    "ast_hash": "ffc809380d1dfaaf1a34b7c76fc5ebbf",
+    "mtime": 1795771092.4777207,
+    "seen": 1795771110.1746254,
+    "ast_hash": "a438ffeb03b01d9a501ea77f051d0fc5",
     "semantic_hash": ""
   },
   "README.md": {
