@@ -49,6 +49,7 @@ import * as GN from '../core/gtanet.js';
 import * as BL from '../core/gtaroadblock.js';
 import { createGtaRoadblocks } from '../core/gtaroadblockfx.js';
 import { createGtaCopMarks } from '../core/gtacopmarkfx.js';
+import * as CTm from '../core/gtacontracts.js';
 
 export const info = { id: 'scarygta', name: 'Scary GTA', spawn: [0, 1, 56] };   // = CITY.SPAWN (test w tests/logic.mjs pilnuje zgodności)
 const TILE = 8, CARRY_SLOW = 0.92, NEON = [0xff2a9a, 0x20e0ff, 0xff8a20, 0xa050ff, 0x40ff80, 0xff3050];
@@ -150,7 +151,7 @@ export function build() {
     S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
     // dodatki (core/gtaprops.js): kabiny, przebranie, wspinaczki, paczki, manekiny, sejf, prąd, dźwig, telefon; noc (blackout i horda)
     S.gm = GM.newModeState(); S.gmPhase = 'idle'; buildModePanel();
-    S.fleet = VL.newFleet(); S.vehs = createVehicles({ clock: () => S.clock, myKey: 'me', requestStart: requestDrive, onBoard: (car, route) => toast(VL.routeOf(car, route).name + '. Stand still and hold on (both grips to jump off).', '#7ad0ff'), onArrive: () => toast('You arrived.', '#7ad0ff'), dismount: dismountMe });
+    S.fleet = VL.newFleet(); S.vehs = createVehicles({ clock: () => S.clock, myKey: 'me', requestStart: requestDrive, onBoard: (car, route) => toast(VL.routeOf(car, route).name + '. Stand still and hold on (both grips to jump off).', '#7ad0ff'), onArrive: () => { toast('You arrived.', '#7ad0ff'); if (S.ctr) S.ctr.arrived = true; }, dismount: dismountMe });
     S.sim.hearMul = mutatorActive() ? mutFactor('hear') : 1; S.night = X.newNight(); S.nightPh = 'calm'; S.powerOn = false; S.sprayAt = {}; S.alarmAt = {}; S.disUntil = {}; S.powerLeft = 0; S.powerCd = 0; S.disSent = false; S.powerSent = false;
     S.gx = createGtaProps({ buildings: S.buildings, api: {
         stars: () => S.sim.starsOf('me'), seenT: () => S.sim.heatOf('me').seenT,
@@ -164,7 +165,7 @@ export function build() {
     S.eggs = createGtaEggs({ buildings: S.buildings, api: { stars: () => S.sim.starsOf('me'), night: () => S.nightPh, ride: eggRide } });
     const secApi = { night: () => S.nightPh, storm: () => !!S.wx && S.wx.state === 'storm' };
     S.stunts = createGtaStunts({ buildings: S.buildings }); S.mystery = createGtaMystery({ buildings: S.buildings, api: secApi }); S.enc = createGtaEncounters({ api: secApi });
-    S.life = createGtaLife({ api: { night: () => S.nightPh, obstacles: lifeObstacles } }); S.dj = DJM.newDj(); S.esc = 1; S.blocks = BL.newBlocks(); S.rbfx = createGtaRoadblocks(); S.cmark = createGtaCopMarks({ api: { gm: () => S.gm } });
+    S.life = createGtaLife({ api: { night: () => S.nightPh, obstacles: lifeObstacles } }); S.dj = DJM.newDj(); S.esc = 1; S.blocks = BL.newBlocks(); S.rbfx = createGtaRoadblocks(); S.ctr = { run: CTm.newRun(), spr: getGta().sprayed, arrived: false, seen: false }; S.cmark = createGtaCopMarks({ api: { gm: () => S.gm } });
     S.bb = createGtaBillboards({ buildings: S.buildings, api: { night: () => S.nightPh } });
     S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
@@ -309,7 +310,7 @@ export function update(dt, t, ctx) {
     S.mystery.update(dt, { x: ctx.body.position.x, y: ctx.body.position.y, z: ctx.body.position.z, dx: _d.x, dz: _d.z });
     S.enc.update(dt, { x: ctx.body.position.x, y: ctx.body.position.y, z: ctx.body.position.z, dx: _d.x, dy: _d.y, dz: _d.z });
     nightTick(dt);
-    radioTick(dt);
+    radioTick(dt); contractTick(dt, ctx.body.position.y);
     for (const f of S.fx) if (f.l.visible) { f.t -= dt; if (f.t <= 0) f.l.visible = false; }
     S.hurtT = Math.max(0, S.hurtT - dt);
     if (S.busted >= 0) { S.busted += dt; netStep(dt, p, 0); S.heliV.update(S.heli, dt); if (S.busted > 4.5) respawn(); S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.3; drawHud(p); } return; }
@@ -513,10 +514,25 @@ function buildModePanel() {
 // ----- pojazdy ucieczki (core/vehicles.js, core/vehiclelogic.js): host trzyma flotę, goście proszą o start i odtwarzają migawkę -----
 const riderOf = (id) => !!S.fleet && S.fleet.some(c => c.occ === id);
 // Telefon: jedna linia ze wszystkimi licznikami sekretów i podpowiedź (notatka sprawy, gdy trwa; inaczej podpowiedź do następnego jajka)
+// Dzienne kontrakty: detektory z lokalnych danych (u gościa działają bez sieci); nagrody tylko poza mutatorem i poza rundą trybu
+function contractTick(dt, y, evIn) {
+    if (!S.ctr) return;
+    const g = getGta(), night = S.nightPh, ev = evIn || { stars: S.sim.starsOf('me'), sprayed: g.sprayed > S.ctr.spr, y: y, arrived: S.ctr.arrived, night: night, busted: S.busted >= 0, got: S.got, heli: S.heli.mode !== 'away' && S.heli.mode !== 'leave' };
+    if (!S.ctr.seen) { S.ctr.run.prevNight = night === 'blackout' || night === 'horde' ? night : 'calm'; S.ctr.run.prevGot = S.got; S.ctr.seen = true; }   // wejście w trakcie blackoutu ani z torbą nic nie zalicza
+    S.ctr.spr = g.sprayed; S.ctr.arrived = false;
+    const r = CTm.contractStep(S.ctr.run, ev); S.ctr.run = r.run;
+    if (mutatorActive() || (S.gm && S.gm.phase === 'run')) return;
+    for (const id of r.hits) {
+        const res = CTm.completeContract(getGta(), dailyDate(), id); if (!res.reward) continue;
+        setGta(res.gta); addBones(res.reward + res.bonus, 'GTA contract');
+        toast('Contract done: ' + CTm.textOf(id) + '. +' + res.reward + (res.all ? ' and +' + res.bonus + ' for all three!' : ''), '#ffd27a');
+    }
+}
 function secretsInfo() {
     if (!S || !S.eggs) return null;
     const e = S.eggs.info(), st = S.stunts.info(), m = S.mystery.info(), en = S.enc.info();
-    return { line: 'EGGS ' + e.n + '/' + e.total + ' JUMPS ' + st.n + '/' + st.total + ' CASE ' + m.n + '/' + m.total + ' SEEN ' + en.n + '/' + en.total, hint: m.note || e.hint || st.hint || '' };
+    const ci = CTm.contractInfo(getGta(), dailyDate());
+    return { line: 'EGGS ' + e.n + '/' + e.total + ' JUMPS ' + st.n + '/' + st.total + ' CASE ' + m.n + '/' + m.total + ' SEEN ' + en.n + '/' + en.total + ' DEALS ' + ci.n + '/' + ci.total, hint: m.note || e.hint || st.hint || (ci.next ? 'DEAL: ' + ci.next : '') };
 }
 // Przeszkody dla ruchu ulicznego (tylko wizualnego): pickupy i policjanci; gracz jest dodawany w module
 function lifeObstacles() { return (S.vehs ? S.vehs.cars.map(c => ({ x: c.m.position.x, z: c.m.position.z })) : []).concat(S.sim.activeCops().map(c => ({ x: c.bot.x, z: c.bot.z })), S.blocks ? S.blocks.nodes.map(i => BL.nodePos(i)).filter(Boolean) : []); }
@@ -673,6 +689,7 @@ export const debugModeSet = (m, start) => { if (!S) return; setMode(m); if (star
 export const debugDismount = () => { if (S) dismountMe(); };
 export const debugVeh = () => S ? { fleet: S.fleet, v: S.vehs.debug(), carCount: S.carCount } : null;
 export const debugCopMarks = () => S ? S.cmark.debug() : null;
+export const debugContract = (ev) => { if (!S) return null; contractTick(0.1, 0, ev || undefined); const g = getGta(); return { picks: CTm.todayContracts(dailyDate()), done: g.contracts.done.slice(), date: g.contracts.date, run: S.ctr.run, info: CTm.contractInfo(g, dailyDate()) }; };
 export const debugRequestDrive = (car, idx) => { if (S) requestDrive(car, idx); };
 export const debugBlocks = (nodes) => { if (!S) return null; if (Array.isArray(nodes)) S.blocks = { nodes: BL.cleanBlocks(nodes), quiet: 0 }; return { nodes: S.blocks.nodes, quiet: S.blocks.quiet, fx: S.rbfx.debug() }; };
 export const debugDriveAs = (who, car, route, head) => { if (S) hostDrive(who, car, route, head); };

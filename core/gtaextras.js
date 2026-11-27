@@ -12,6 +12,7 @@ import { normalizeGtaEggs } from './gtaeggs.js';
 import { normalizeStunts } from './gtastunts.js';
 import { normalizeMystery } from './gtamystery.js';
 import { normalizeEnc } from './gtaencounters.js';
+import { normalizeContracts, newContracts } from './gtacontracts.js';
 export { newLock, lockStep };
 const fin = (n) => typeof n === 'number' && Number.isFinite(n);
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
@@ -78,7 +79,7 @@ export const TAG = { REWARD: 25, TOUCH: 0.45, MILESTONES: { 6: 100, 13: 300 } };
 // ----- zapis -----
 export const TAG_IDS = (() => { const ids = []; for (let j = 0; j < CITY.ROWS; j++) for (let i = 0; i < CITY.COLS; i++) { const r = ROLES[j][i]; if (r !== 'plaza' && r !== 'marina') ids.push('t' + i + j); } return ids.concat(['scasino', 'sradio', 'tcrane']); })();
 export function normalizeGta(raw) {
-    const out = { found: [], climbBest: {}, vault: '', daily: { date: '', best: 0 }, sprayed: 0, gate: newGate(), eggs: normalizeGtaEggs(null), stunts: normalizeStunts(null), mystery: normalizeMystery(null), encounters: normalizeEnc(null) };
+    const out = { contracts: newContracts(), found: [], climbBest: {}, vault: '', daily: { date: '', best: 0 }, sprayed: 0, gate: newGate(), eggs: normalizeGtaEggs(null), stunts: normalizeStunts(null), mystery: normalizeMystery(null), encounters: normalizeEnc(null) };
     if (!raw || typeof raw !== 'object') return out;
     if (Array.isArray(raw.found)) for (const id of raw.found) if (typeof id === 'string' && TAG_IDS.includes(id) && !out.found.includes(id)) out.found.push(id);
     if (raw.climbBest && typeof raw.climbBest === 'object') for (const k of ['casino', 'radio']) { const v = raw.climbBest[k]; if (fin(v) && v >= 0.5 && v <= 5999) out.climbBest[k] = Math.round(v * 100) / 100; }
@@ -86,7 +87,7 @@ export function normalizeGta(raw) {
     if (raw.daily && typeof raw.daily === 'object' && typeof raw.daily.date === 'string' && DATE.test(raw.daily.date)) out.daily = { date: raw.daily.date, best: fin(raw.daily.best) && raw.daily.best >= 1 && raw.daily.best <= 5999 ? Math.round(raw.daily.best * 10) / 10 : 0 };
     out.gate = normalizeGate(raw.gate);
     out.eggs = normalizeGtaEggs(raw.eggs);
-    out.stunts = normalizeStunts(raw.stunts); out.mystery = normalizeMystery(raw.mystery); out.encounters = normalizeEnc(raw.encounters);
+    out.stunts = normalizeStunts(raw.stunts); out.mystery = normalizeMystery(raw.mystery); out.encounters = normalizeEnc(raw.encounters); out.contracts = normalizeContracts(raw.contracts);
     if (fin(raw.sprayed) && raw.sprayed >= 0) out.sprayed = Math.min(9999, Math.floor(raw.sprayed));
     return out;
 }
