@@ -49,6 +49,9 @@ import * as GN from '../core/gtanet.js';
 import * as BL from '../core/gtaroadblock.js';
 import { createGtaRoadblocks } from '../core/gtaroadblockfx.js';
 import { createGtaCopMarks } from '../core/gtacopmarkfx.js';
+import { createGtaCorpses } from '../core/gtacorpsefx.js';
+import { SETTINGS } from '../core/settings.js';
+import * as DL from '../core/damagelogic.js';
 import * as CTm from '../core/gtacontracts.js';
 
 export const info = { id: 'scarygta', name: 'Scary GTA', spawn: [0, 1, 56] };   // = CITY.SPAWN (test w tests/logic.mjs pilnuje zgodności)
@@ -165,7 +168,7 @@ export function build() {
     S.eggs = createGtaEggs({ buildings: S.buildings, api: { stars: () => S.sim.starsOf('me'), night: () => S.nightPh, ride: eggRide } });
     const secApi = { night: () => S.nightPh, storm: () => !!S.wx && S.wx.state === 'storm' };
     S.stunts = createGtaStunts({ buildings: S.buildings }); S.mystery = createGtaMystery({ buildings: S.buildings, api: secApi }); S.enc = createGtaEncounters({ api: secApi });
-    S.life = createGtaLife({ api: { night: () => S.nightPh, obstacles: lifeObstacles } }); S.dj = DJM.newDj(); S.esc = 1; S.blocks = BL.newBlocks(); S.rbfx = createGtaRoadblocks(); S.ctr = { run: CTm.newRun(), spr: getGta().sprayed, arrived: false, seen: false }; S.cmark = createGtaCopMarks({ api: { gm: () => S.gm } });
+    S.life = createGtaLife({ api: { night: () => S.nightPh, obstacles: lifeObstacles } }); S.dj = DJM.newDj(); S.esc = 1; S.blocks = BL.newBlocks(); S.rbfx = createGtaRoadblocks(); S.ctr = { run: CTm.newRun(), spr: getGta().sprayed, arrived: false, seen: false }; S.cmark = createGtaCopMarks({ api: { gm: () => S.gm } }); S.corp = createGtaCorpses({ api: { gore: () => SETTINGS.gore !== false, dead: N.setAvatarDead } }); S.hitMark = { t: 0, text: '' };
     S.bb = createGtaBillboards({ buildings: S.buildings, api: { night: () => S.nightPh } });
     S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
@@ -290,8 +293,9 @@ function drawHud(p) {
     x.fillText(S.busted >= 0 ? 'BUSTED... back at a safe house soon' : (S.eyeOnMe ? 'THE EYE SEES YOU! Get under a roof or hide!' : S.hidden ? 'HIDDEN: stay still, they cannot see you' : (chasing ? 'THEY SEE YOU! Run, climb or hide!' : (near.length ? 'Cops nearby (' + near.length + '). Stay out of the light.' : 'Quiet. Keep it that way.'))), 30, 196);
     x.font = '22px "Courier New", monospace'; x.fillStyle = '#8a7a9a'; if (S.radioText && S.clock < S.radioText.until) { x.fillStyle = '#9ad0ff'; x.fillText('RADIO: ' + S.radioText.t, 30, 232); } else x.fillText('Hide next to dumpsters. Cops cannot climb: use roofs and the cable rides.', 30, 232);
     const gs = S.gunS.me, ready = gs.reloadAt < 0 || S.clock >= gs.reloadAt;
-    x.font = 'bold 28px "Courier New", monospace'; x.fillStyle = gs.hp > 50 ? '#7fff90' : '#ff5a4a'; x.fillText('HP ' + Math.round(gs.hp), 30, 270);
-    x.fillStyle = ready ? '#ffd27a' : '#ff9a3a'; x.fillText(ready ? 'AMMO ' + (gs.reloadAt >= 0 ? GU.GUN.MAG : gs.ammo) + '/' + GU.GUN.MAG : 'RELOADING', 190, 270);
+    x.font = 'bold 28px "Courier New", monospace'; const dmgP = DL.damagePct(gs.hp); x.fillStyle = DL.damageColor(dmgP); x.fillText('DAMAGE ' + dmgP + '%' + (dmgP >= 100 ? ' DEAD' : ''), 30, 270);
+    x.fillStyle = ready ? '#ffd27a' : '#ff9a3a'; x.fillText(ready ? 'AMMO ' + (gs.reloadAt >= 0 ? GU.GUN.MAG : gs.ammo) + '/' + GU.GUN.MAG : 'RELOADING', 330, 270);
+    if (S.hitMark.t > 0) { x.font = 'bold 30px "Courier New", monospace'; x.fillStyle = S.hitMark.text === 'KILL' ? '#ff3a3a' : '#ffe040'; x.fillText(S.hitMark.text, 560, 190); }
     x.fillStyle = S.mode === 'ffa' ? '#ff6a6a' : '#8ad0ff'; x.fillText(S.gm.phase === 'run' ? GM.MODE_NAMES[S.gm.mode].split(' ')[0] + ' ' + GM.timeText(S.gm.t) + (S.gm.mode === 'cops' ? ' [' + roleOf('me').toUpperCase() + ']' : ' ' + (S.gm.score.me || 0)) : (S.mode === 'ffa' ? 'PVP' : 'CO-OP'), 430, 270);
     x.font = '22px "Courier New", monospace'; x.fillStyle = '#ffb0a0'; S.feed.filter(f => S.clock - f.t < 8).forEach((f, k) => x.fillText(f.s, 560, 232 + k * 26));
     S.hud.update();
@@ -312,7 +316,7 @@ export function update(dt, t, ctx) {
     nightTick(dt);
     radioTick(dt); contractTick(dt, ctx.body.position.y);
     for (const f of S.fx) if (f.l.visible) { f.t -= dt; if (f.t <= 0) f.l.visible = false; }
-    S.hurtT = Math.max(0, S.hurtT - dt);
+    S.hurtT = Math.max(0, S.hurtT - dt); S.hitMark.t = Math.max(0, S.hitMark.t - dt); S.corp.update(dt);
     if (S.busted >= 0) { S.busted += dt; netStep(dt, p, 0); S.heliV.update(S.heli, dt); if (S.busted > 4.5) respawn(); S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.3; drawHud(p); } return; }
     L.moveScale = PACE;   // ruch jak w lobby także z torbą (wcześniej ciężar łupu zabierał 8%)
     S.visT -= dt;
@@ -344,6 +348,7 @@ function bust(b, remote) {
     const lost = S.got;
     if (!remote) { dropBags('me', b.x, b.y || 0, b.z); if (b.reason !== 'shot') S.sim.heats.me = WL.afterBust(S.sim.heatOf('me')); }
     S.gunS.me.deadUntil = S.clock + GU.GUN.RESPAWN;   // gość: torby i ciepło po stronie hosta (migawka)
+    if (b.reason === 'shot') S.corp.spawn('me', b.x, b.z, { kind: 'player', yaw: b.yaw !== undefined ? b.yaw : DL.fallYaw(b.x, b.z, b.from || S.killer) });   // padasz i leżysz w kałuży krwi
     S.got = remote ? 0 : S.got;
     toast(b.reason === 'gator' ? 'A gator got you!' : (b.reason === 'shot' ? 'You were SHOT! Respawning...' : 'BUSTED!') + (lost ? ' You dropped ' + lost + ' bag' + (lost === 1 ? '' : 's') + ' here.' : ''), '#ff3a3a');
 }
@@ -408,23 +413,26 @@ function hostShot(id, sh, checked) {
     S.sim.cops.forEach((c, k) => { if (c.active) targets.push({ id: 'c' + k, kind: 'cop', pos: { x: c.bot.x, z: c.bot.z } }); });
     const res = GU.resolveShot(sh.o, sh.d, targets, S.boxes, id);
     const end = res ? res.e : [sh.o[0] + sh.d[0] * 40, sh.o[1] + sh.d[1] * 40, sh.o[2] + sh.d[2] * 40];
-    let kill = false;
+    let kill = false, body = null, landed = false;
+    const yawShot = Math.atan2(sh.d[0], sh.d[2]);   // ciało pada w kierunku strzału (od strzelca)
     if (res && res.kind === 'cop') {
-        const c = S.sim.cops[+res.id.slice(1)]; c.hp = (c.hp === undefined ? GU.GUN.COP_HP : c.hp) - GU.damageOf(res.zone);
-        if (c.hp <= 0) { kill = true; S.sim.despawn(c); S.sim.addHeat(id, WL.eventHeat('kill')); }
+        const c = S.sim.cops[+res.id.slice(1)]; c.hp = (c.hp === undefined ? GU.GUN.COP_HP : c.hp) - GU.damageOf(res.zone); landed = true;
+        if (c.hp <= 0) { kill = true; body = [+c.bot.x.toFixed(2), +c.bot.z.toFixed(2), +yawShot.toFixed(2)]; S.corp.spawn(res.id, c.bot.x, c.bot.z, { kind: 'cop', yaw: yawShot }); S.sim.despawn(c); S.sim.addHeat(id, WL.eventHeat('kill')); }
     } else if (res) {
         const vs = S.gunS[res.id] || (S.gunS[res.id] = GU.newShooter()), r = GU.hurt(vs, GU.damageOf(res.zone), S.clock);
         if (!r.ignored) {
+            landed = true;
             if (res.id === 'me') { S.hurtT = 0.45; buzz('both', 0.7, 120); S.killer = { x: head.x, z: head.z }; }
             if (r.dead) {
                 kill = true; S.sim.addHeat(id, WL.eventHeat('kill'));
                 const line = GU.feedLine(nameOf(id), nameOf(res.id), res.zone === 'head'); pushFeed(line); send({ k: 'feed', t: line });
                 const hv = headOf(res.id), px = hv ? hv.x : 0, pz = hv ? hv.z : 0, py = hv ? GN.bodyY(hv.y) : 0;
-                if (res.id === 'me') bust({ reason: 'shot', x: px, z: pz, y: py }); else hostBust({ id: res.id, reason: 'shot', x: px, z: pz });
+                if (res.id === 'me') bust({ reason: 'shot', x: px, z: pz, y: py, yaw: yawShot }); else hostBust({ id: res.id, reason: 'shot', x: px, z: pz, yaw: yawShot });
             }
         }
     }
-    send({ k: 'fx', s: toNet(id), o: sh.o.map(v => +v.toFixed(2)), e: end.map(v => +v.toFixed(2)), h: res && res.kind === 'player' ? toNet(res.id) : null, z: res && res.zone === 'head' ? 'h' : 'b', kill });
+    if (id === 'me' && landed) S.hitMark = { t: DL.DMG.HIT_SHOW, text: DL.hitText(res.zone, GU.damageOf(res.zone), kill) };   // znacznik trafienia u strzelca: HIT 25% / HEADSHOT 50% / KILL
+    send({ k: 'fx', s: toNet(id), o: sh.o.map(v => +v.toFixed(2)), e: end.map(v => +v.toFixed(2)), h: res && res.kind === 'player' ? toNet(res.id) : null, z: res && res.zone === 'head' ? 'h' : 'b', kill, c: res && res.kind === 'cop' ? 1 : 0, cb: body });
     if (id !== 'me') { drawTracer(sh.o, end); camera.getWorldPosition(_p); if (Math.hypot(_p.x - sh.o[0], _p.z - sh.o[2]) < 45) SFX.shot(); }
 }
 function pushFeed(line) { S.feed.push({ t: S.clock, s: String(line).replace(/[^\w \-!]/g, '').slice(0, 40) }); if (S.feed.length > 3) S.feed.shift(); }
@@ -625,7 +633,9 @@ function hostBust(b) {
     const g = guestOf(b.id); if (!g || (S.bustUntil[b.id] || 0) > S.clock) return;
     S.fleet = VL.endDriveBy(S.fleet, b.id); S.bustUntil[b.id] = S.clock + GN.GN.BUST_PROTECT; dropBags(b.id, b.x, bodyYOf(g), b.z);
     (S.gunS[b.id] || (S.gunS[b.id] = GU.newShooter())).deadUntil = S.clock + GU.GUN.RESPAWN;
-    if (b.reason !== 'shot') S.sim.heats[b.id] = WL.afterBust(S.sim.heatOf(b.id)); send({ k: 'bust', id: b.id, r: b.reason === 'gator' || b.reason === 'shot' ? b.reason : 'cop', x: +b.x.toFixed(2), z: +b.z.toFixed(2) });
+    const yaw = b.reason === 'shot' ? (b.yaw !== undefined ? b.yaw : DL.fallYaw(b.x, b.z, null)) : undefined;
+    if (yaw !== undefined) S.corp.spawn(b.id, b.x, b.z, { kind: 'player', yaw: yaw });   // gość zabity: ciało w miejscu śmierci także u hosta
+    if (b.reason !== 'shot') S.sim.heats[b.id] = WL.afterBust(S.sim.heatOf(b.id)); { const bm = { k: 'bust', id: b.id, r: b.reason === 'gator' || b.reason === 'shot' ? b.reason : 'cop', x: +b.x.toFixed(2), z: +b.z.toFixed(2) }; if (yaw !== undefined) bm.a = +yaw.toFixed(2); send(bm); }
 }
 const bodyYOf = (g) => GN.bodyY(g.head.y);
 // Wiadomości: host przyjmuje żądania gości (z weryfikacją przez własny widok gracza), gość przyjmuje migawki hosta
@@ -658,10 +668,13 @@ function onNet(msg, from) {
         const fx = GU.cleanFx(msg); if (!fx) return;
         if (fromNet(fx.s) !== 'me') { drawTracer(fx.o, fx.e); camera.getWorldPosition(_p); if (Math.hypot(_p.x - fx.o[0], _p.z - fx.o[2]) < 45) SFX.shot(); }
         if (fx.hit === N.myId()) { S.hurtT = 0.45; buzz('both', 0.7, 120); }
+        if (fromNet(fx.s) === 'me' && (fx.hit || fx.cop || fx.kill)) S.hitMark = { t: DL.DMG.HIT_SHOW, text: DL.hitText(fx.zone, GU.damageOf(fx.zone), fx.kill) };
+        if (fx.body) S.corp.spawn('c' + fx.body[0].toFixed(1) + ',' + fx.body[1].toFixed(1), fx.body[0], fx.body[1], { kind: 'cop', yaw: fx.body[2] });
     } else if (msg.k === 'feed') {
         if (typeof msg.t === 'string') pushFeed(msg.t);
     } else if (msg.k === 'bust') {
-        const bu = GN.cleanBust(msg); if (bu && bu.id === N.myId()) bust({ reason: bu.reason, x: bu.x, z: bu.z }, true);
+        const bu = GN.cleanBust(msg); if (bu && bu.id === N.myId()) bust({ reason: bu.reason, x: bu.x, z: bu.z, yaw: bu.yaw }, true);
+        else if (bu && bu.reason === 'shot') S.corp.spawn(bu.id, bu.x, bu.z, { kind: 'player', yaw: bu.yaw !== undefined ? bu.yaw : DL.fallYaw(bu.x, bu.z, null) });   // cudza śmierć: ciało leży w kałuży krwi
     }
 }
 export const debugFinish = (stars) => { if (!S) return false; if (stars !== undefined) S.peakStars = stars; finish(); return true; };
@@ -689,6 +702,8 @@ export const debugModeSet = (m, start) => { if (!S) return; setMode(m); if (star
 export const debugDismount = () => { if (S) dismountMe(); };
 export const debugVeh = () => S ? { fleet: S.fleet, v: S.vehs.debug(), carCount: S.carCount } : null;
 export const debugCopMarks = () => S ? S.cmark.debug() : null;
+export const debugCorpses = () => S ? Object.assign(S.corp.debug(), { hit: S.hitMark.text, hitT: S.hitMark.t }) : null;   // dla testów
+export const debugCorpseAt = (id, x, z, kind, yaw) => { if (S) S.corp.spawn(id, x, z, { kind: kind || 'player', yaw: yaw || 0 }); };
 export const debugContract = (ev) => { if (!S) return null; contractTick(0.1, 0, ev || undefined); const g = getGta(); return { picks: CTm.todayContracts(dailyDate()), done: g.contracts.done.slice(), date: g.contracts.date, run: S.ctr.run, info: CTm.contractInfo(g, dailyDate()) }; };
 export const debugRequestDrive = (car, idx) => { if (S) requestDrive(car, idx); };
 export const debugBlocks = (nodes) => { if (!S) return null; if (Array.isArray(nodes)) S.blocks = { nodes: BL.cleanBlocks(nodes), quiet: 0 }; return { nodes: S.blocks.nodes, quiet: S.blocks.quiet, fx: S.rbfx.debug() }; };
@@ -733,6 +748,8 @@ export function dispose() {
     if (S && S.life) S.life.dispose();
     if (S && S.rbfx) S.rbfx.dispose();
     if (S && S.cmark) S.cmark.dispose();
+    if (S && S.corp) S.corp.dispose();
+    N.clearDeadAvatars();
     if (S && S.stunts) S.stunts.dispose();
     if (S && S.mystery) S.mystery.dispose();
     if (S && S.enc) S.enc.dispose();
@@ -745,3 +762,4 @@ export function dispose() {
     if (S) { S.sim.dispose(); S.scare.dispose(); S.hud.dispose(); for (const g of S.geos) g.dispose(); for (const m of S.mats) m.dispose(); for (const x of S.texs) x.dispose(); }
     S = null;
 }
+export const debugCorpseStep = (dt, n) => { if (S) for (let i = 0; i < (n || 1); i++) S.corp.update(dt); };

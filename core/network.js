@@ -376,7 +376,7 @@ function updateRemote(id, st) {
         p.torso.rotation.set(-lean, e.y, 0);
     } else { p.torso.position.copy(p.head.position).add(new THREE.Vector3(0, -drop, 0)); p.torso.rotation.set(0, e.y, 0); }
     if (p.head.userData.tags) for (const tg of p.head.userData.tags) tg.visible = !TAGS.hidden && !GAMES_CALM.on;   // Hide and Seek i cały BagaBoo Games: bez nazw nad głowami
-    p.group.visible = (st.lvl || 'lobby') === L.levelId && !st.sp && !(NET.mode === 'host' && isHiddenFrom(id, st, myPeerId));   // widać tylko graczy na tym samym poziomie, bez niewidzialnych adminów (goście dostają stan już przefiltrowany przez hosta)
+    p.group.visible = (st.lvl || 'lobby') === L.levelId && !st.sp && !deadAvatars.has(id) && !(NET.mode === 'host' && isHiddenFrom(id, st, myPeerId));   // widać tylko graczy na tym samym poziomie, bez niewidzialnych adminów (goście dostają stan już przefiltrowany przez hosta)
 }
 // --- Become the Monster: urwane ręce i głowa (kod z core/dismemberlogic.js; wołane tylko, gdy gracz włączył opcję Gore) ---
 const dismembered = Object.create(null), debris = [], blood = [];
@@ -453,6 +453,10 @@ export function tickDismember(dt) {
 function removeRemote(id) { if (remoteAvatars[id]) { scene.remove(remoteAvatars[id].group); delete remoteAvatars[id]; } }
 // Tryb Become the Monster: chowa awatar gracza, który wygląda jak wybrany potwór
 export function setAvatarHidden(id, hidden) { const a = remoteAvatars[id]; if (a) a.group.visible = !hidden; }
+// Zabity gracz (Scary GTA, core/gtacorpsefx.js): awatar zostaje ukryty u nas także po kolejnych stanach z sieci, aż go odznaczymy (ciało leży w miejscu śmierci)
+const deadAvatars = new Set();
+export function setAvatarDead(id, dead) { if (dead) deadAvatars.add(id); else deadAvatars.delete(id); const a = remoteAvatars[id]; if (a && dead) a.group.visible = false; }
+export function clearDeadAvatars() { deadAvatars.clear(); }
 export function poseRemoteHands(dt) { for (const id in remoteAvatars) { poseHand(remoteAvatars[id].handL.userData.rig, dt); poseHand(remoteAvatars[id].handR.userData.rig, dt); } }
 
 function syncObject(id, data) {
