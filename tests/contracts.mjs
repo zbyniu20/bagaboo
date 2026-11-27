@@ -40,14 +40,14 @@ const r1 = await ev(async () => {
     const day = E.dailyDate(), d0 = G.debugContract({ stars: 0, got: 0, night: 'calm', y: 0 });
     const ids = d0.picks, ev = { stars: 0, got: 0, night: 'calm', heli: false, y: 0 };
     const stepFor = { twin: { got: 2 }, climb: { y: 40 }, ride: { arrived: true }, air: { got: 1, heli: true }, cool: null, dark: null };
-    const before = E.SAVE.bones, done = [];
+    const before = E.SAVE.wallet, done = [];
     for (const id of ids) {
         if (id === 'cool') { G.debugContract({ stars: 3, got: 0, night: 'calm', y: 0 }); G.debugContract({ stars: 0, got: 0, night: 'calm', y: 0 }); }
         else if (id === 'dark') { G.debugContract({ stars: 0, got: 0, night: 'calm', y: 0 }); G.debugContract({ stars: 0, got: 0, night: 'blackout', y: 0 }); G.debugContract({ stars: 0, got: 0, night: 'calm', y: 0 }); }
         else { G.debugContract({ stars: 0, got: 0, night: 'calm', y: 0 }); G.debugContract(Object.assign({}, ev, stepFor[id])); G.debugContract(ev); }
         done.push(G.debugContract(ev).done.length);
     }
-    const afterAll = E.SAVE.bones, again = G.debugContract(Object.assign({}, ev, { got: 2, y: 40, arrived: true })), afterAgain = E.SAVE.bones;
+    const afterAll = E.SAVE.wallet, again = G.debugContract(Object.assign({}, ev, { got: 2, y: 40, arrived: true })), afterAgain = E.SAVE.wallet;
     return { ids, done, gain: afterAll - before, againGain: afterAgain - afterAll, info: again.info, date: again.date === day };
 });
 ok('three contracts from the date are completed by their detectors, each pays once (60 each plus 100 for all three) and a repeat pays nothing', r1.ids.length === 3 && r1.done.join() === '1,2,3' && r1.gain === 3 * 60 + 100 && r1.againGain === 0 && r1.info.n === 3 && r1.date, r1);
@@ -60,9 +60,9 @@ const r2 = await ev(async () => {
     const twinToday = base.picks.includes('twin'), climbToday = base.picks.includes('climb'), ride = base.picks.includes('ride'), air = base.picks.includes('air');
     const id = ['twin', 'climb', 'ride', 'air'].find(x => base.picks.includes(x)); const evOf = { twin: { got: 2 }, climb: { y: 40 }, ride: { arrived: true }, air: { got: 3, heli: true } }[id];
     const mk = () => Object.assign({ stars: 0, got: 0, night: 'calm', y: 0, heli: false }, {});
-    const b0 = E.SAVE.bones; S.gm = Object.assign({}, S.gm, { phase: 'run', mode: 'coop' }); G.debugContract(Object.assign(mk(), evOf)); const inRound = E.SAVE.bones - b0;
-    S.gm = Object.assign({}, S.gm, { phase: 'idle' }); const b1 = E.SAVE.bones; M.setMutatorChoice('dark'); M.beginRun('hospital', false); const mutOn = M.mutatorActive(); G.debugContract(Object.assign(mk(), evOf)); const inMut = E.SAVE.bones - b1; M.setMutatorChoice(''); M.beginRun('scarygta', false);
-    const b2 = E.SAVE.bones; G.debugContract(mk()); G.debugContract(Object.assign(mk(), evOf)); const normal = E.SAVE.bones - b2;
+    const b0 = E.SAVE.wallet; S.gm = Object.assign({}, S.gm, { phase: 'run', mode: 'coop' }); G.debugContract(Object.assign(mk(), evOf)); const inRound = E.SAVE.wallet - b0;
+    S.gm = Object.assign({}, S.gm, { phase: 'idle' }); const b1 = E.SAVE.wallet; M.setMutatorChoice('scarygta', 'dark'); M.beginRun('scarygta', false); const mutOn = M.mutatorActive(); G.debugContract(Object.assign(mk(), evOf)); const inMut = E.SAVE.wallet - b1; M.setMutatorChoice('scarygta', 'off'); M.beginRun('scarygta', false);
+    const b2 = E.SAVE.wallet; G.debugContract(mk()); G.debugContract(Object.assign(mk(), evOf)); const normal = E.SAVE.wallet - b2;
     return { id, inRound, mutOn, inMut, normal };
 });
 ok('no payout during a mode round or under a mutator, and the same contract pays normally afterwards', r2.id && r2.inRound === 0 && r2.inMut === 0 && r2.normal >= 60, r2);
