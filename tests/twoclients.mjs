@@ -32,6 +32,7 @@ async function client(name) {
     page.on('console', (m) => { if (m.type() === 'error' && !/favicon|Failed to load resource|bagaboo-api|net::ERR/i.test(m.text())) errors[name].push('CONSOLE ' + m.text().slice(0, 300)); });
     await page.goto(`http://localhost:${port}/?three=${V}&presence=0`);
     await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
+    const st0 = await page.evaluate(() => document.getElementById('status').innerText); if (/Could not/.test(st0)) { console.log('FAIL: the page did not start (' + name + '): ' + st0 + ' | errors ' + JSON.stringify(errors[name].slice(0, 3))); await finish(1); }
     await page.click('#btnSolo', { timeout: 90000 });
     await page.waitForTimeout(1200);
     return { ctx, page, ev: (fn, arg) => page.evaluate(fn, arg) };
