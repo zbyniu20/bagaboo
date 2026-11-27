@@ -13,8 +13,8 @@ export const CT = { PICK: 3, REWARD: 60, ALL_BONUS: 100, STARS: 3, CLIMB_Y: 30, 
 export const CONTRACTS = [
     { id: 'cool', text: 'Lose a three-star wanted level without a Pay n Spray booth' },
     { id: 'climb', text: 'Climb thirty metres above the street' },
-    { id: 'ride', text: 'Ride a getaway pickup all the way to its destination' },
-    { id: 'dark', text: 'Stay on the street, uncaught, through a whole blackout' },
+    { id: 'ride', text: 'Ride a getaway pickup to its destination' },
+    { id: 'dark', text: 'Get through a whole blackout without being caught' },
     { id: 'twin', text: 'Carry two bags at the same time' },
     { id: 'air', text: 'Grab a bag while the police helicopter is up' }
 ];
@@ -59,12 +59,13 @@ export const newRun = () => ({ hot: false, sprayedSince: false, dark: 'none', pr
 export function contractStep(run, ev) {
     const r = Object.assign({}, run), hits = [], e = ev || {}, stars = fin(e.stars) ? e.stars : 0, got = fin(e.got) ? e.got : 0, night = e.night === 'blackout' || e.night === 'horde' ? e.night : 'calm';
     // cool: wejście na 3+ gwiazdki, zejście do zera bez kabiny Pay n Spray
-    if (stars >= CT.STARS) { r.hot = true; if (!run.hot) r.sprayedSince = false; }
+    if (e.busted) { r.hot = false; r.sprayedSince = false; }   // złapanie (BUSTED) zbija ciepło o gwiazdkę, a kilka złapań z rzędu zeszłoby do zera: to nie jest "zgubienie" poziomu
+    if (stars >= CT.STARS && !e.busted) { r.hot = true; if (!run.hot) r.sprayedSince = false; }
     if (e.sprayed) r.sprayedSince = true;
-    if (r.hot && stars === 0) { if (!r.sprayedSince) hits.push('cool'); r.hot = false; r.sprayedSince = false; }
+    if (r.hot && stars === 0 && !e.busted) { if (!r.sprayedSince) hits.push('cool'); r.hot = false; r.sprayedSince = false; }
     // climb: ciało wysoko nad ulicą
     if (fin(e.y) && e.y >= CT.CLIMB_Y) hits.push('climb');
-    // ride: dojazd pickupem do celu (zdarzenie z pojazdów)
+    // ride: dojazd pickupem do celu (zdarzenie z pojazdów; poziom nie zgłasza go, gdy jazdę obcięto barykadą)
     if (e.arrived) hits.push('ride');
     // dark: cały blackout od początku do końca, bez złapania (wejście w trakcie blackoutu się nie liczy)
     if (night === 'blackout') { if (run.prevNight !== 'blackout') r.dark = 'in'; if (e.busted) r.dark = 'fail'; }

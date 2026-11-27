@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795811790.55861,
-    "seen": 1795811846.5182168,
-    "ast_hash": "280c26fc1dd71083aaccb34625fe6780",
+    "mtime": 1795812378.1266856,
+    "seen": 1795812404.40908,
+    "ast_hash": "6573c03f3a0771b16bcd82e648c62dc0",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795811580.0857947,
-    "seen": 1795811846.5179644,
-    "ast_hash": "b4a0482bbabafe89604db77304faa53b",
+    "mtime": 1795812378.125399,
+    "seen": 1795812404.4088485,
+    "ast_hash": "2f6a2a58fd9f8dd138cf790632ae1aa7",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795811548.9739158,
-    "seen": 1795811846.5178962,
-    "ast_hash": "de206d4fabe81c1745c23e00223b13f0",
+    "mtime": 1795812383.9929862,
+    "seen": 1795812404.4087956,
+    "ast_hash": "c24d7c712099090f41733d48eee5c3a2",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -11142,9 +11142,9 @@
     "semantic_hash": ""
   },
   "core/gtacontracts.js": {
-    "mtime": 1795811531.414388,
-    "seen": 1795811846.5176606,
-    "ast_hash": "79d3aa60354a52eaffcc621df9c93719",
+    "mtime": 1795812378.1206486,
+    "seen": 1795812404.4086442,
+    "ast_hash": "b19218d53db38faeb22ad6e6b8ab8108",
     "semantic_hash": ""
   },
   "tests/contracts.mjs": {
