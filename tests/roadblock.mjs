@@ -65,10 +65,10 @@ const stars = await ev(async () => {
     const G = await import('./levels/scarygta.js'), P = await import('./core/player.js'), w = (ms) => new Promise(r => setTimeout(r, ms));
     const S = G.testState(); G.debugBlocks([]); S.sim.reset(); P.setPlayerPosition(0, 1.2, -20); await w(400); S.sim.heats.me = { v: 99, seenT: 0 };
     let n = 0; for (let i = 0; i < 40 && n < 1; i++) { await w(150); S.sim.heats.me = { v: 99, seenT: 0 }; n = G.debugBlocks(null).nodes.length; }
-    const placed = G.debugBlocks(null).nodes.length, flag = S.flags.block === true || true; const toastOk = true;
+    const placed = G.debugBlocks(null).nodes.length;
     S.sim.heats.me = { v: 0, seenT: -99 }; S.blocks.quiet = 19.8; S.sim.heats.me = { v: 0, seenT: -99 };
     for (let i = 0; i < 30 && G.debugBlocks(null).nodes.length; i++) await w(150);
-    return { placed, after: G.debugBlocks(null).nodes.length, flag, toastOk };
+    return { placed, after: G.debugBlocks(null).nodes.length };
 });
 ok('at 3+ stars the host puts a barricade on the street, and without stars it is removed after the quiet time', stars.placed >= 1 && stars.after === 0, stars);
 // ----- gość: migawka z barykadą i stopem; śmieci są ignorowane -----
