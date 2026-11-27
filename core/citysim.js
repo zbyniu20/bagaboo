@@ -8,6 +8,7 @@ import { THREE, CANNON, L, camera, addStaticBody } from './engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { buildMannequin, addMonsterFace } from './mannequin.js';
 import { swapModel } from './glbmonster.js';
+import * as CL from './coplod.js';
 import { createBot, stepBot } from './botkit.js';
 import { hands, playerBody } from './player.js';
 import { PACE } from './config.js';
@@ -21,7 +22,7 @@ const _w = new THREE.Vector3(), POOL = 10, RUN_SPEED = 4.3, HIDE_R = 1.7, WATER 
 const paint = (g, r, gr, b) => { const n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = r; a[i * 3 + 1] = gr; a[i * 3 + 2] = b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
 const DIFF_COPS = { easy: 0.6, normal: 1, nightmare: 1.3 };
 
-const COP_VIS = 55;   // policjanci dalej od kamery nie są rysowane (mgła i tak ich zakrywa; oszczędza wywołania rysowania: każdy model to kilka siatek)
+// Poziomy szczegółowości policji (core/coplod.js): pełny model GLB tylko dla CL.LOD.K najbliższych, reszta to sylwetki w jednej siatce instancjonowanej (do CL.LOD.VIS m)
 export function createCitySim(o) {
     const G = { geos: [], mats: [], cops: [], gators: [], rails: [], heats: {}, events: [], clock: 0, evT: 0, radioT: 0, boxes: o.boxes, graph: AI.streetGraph(), hides: C.hideSpots(), diff: o.diff || 'normal', busts: 0, extSeen: {}, sightMul: {}, darkZones: [], globalSight: 1, hearMul: 1, extraCops: 0, lastBust: null, seenBy: {}, hiddenNow: {}, stat: { spawned: 0, caught: 0 } };
     const geo = (g) => { G.geos.push(g); return g; }, mat = (m) => { G.mats.push(m); return m; };
@@ -30,6 +31,12 @@ export function createCitySim(o) {
     const coneM = mat(new THREE.MeshBasicMaterial({ color: 0xfff0b0, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
     // stożki latarek wszystkich policjantów to JEDNA siatka instancjonowana (jedno wywołanie rysowania zamiast jednego na policjanta); jasność stożka niesie kolor instancji
     G.cones = new THREE.InstancedMesh(coneG, coneM, POOL); G.cones.frustumCulled = false; G.cones.count = POOL; G.cones.setColorAt(0, new THREE.Color(1, 1, 1)); L.root.add(G.cones);
+    // sylwetki dalekich policjantów: JEDNA siatka instancjonowana (granatowy mundur, blada głowa, czapka, czerwone światła na barkach; wysokość ok. 1,85 m, przód +Z jak model GLB)
+    const silG = geo(mergeGeometries([paint(new THREE.BoxGeometry(0.2, 0.85, 0.22).translate(-0.12, 0.43, 0), 0.05, 0.06, 0.14), paint(new THREE.BoxGeometry(0.2, 0.85, 0.22).translate(0.12, 0.43, 0), 0.05, 0.06, 0.14), paint(new THREE.BoxGeometry(0.5, 0.65, 0.26).translate(0, 1.17, 0), 0.06, 0.09, 0.22),
+        paint(new THREE.BoxGeometry(0.12, 0.6, 0.14).translate(-0.33, 1.15, 0), 0.06, 0.09, 0.22), paint(new THREE.BoxGeometry(0.12, 0.6, 0.14).translate(0.33, 1.15, 0), 0.06, 0.09, 0.22), paint(new THREE.SphereGeometry(0.13, 8, 6).translate(0, 1.62, 0), 0.42, 0.48, 0.42),
+        paint(new THREE.BoxGeometry(0.3, 0.08, 0.3).translate(0, 1.76, 0), 0.04, 0.05, 0.12), paint(new THREE.BoxGeometry(0.3, 0.02, 0.14).translate(0, 1.72, 0.18), 0.04, 0.05, 0.12),
+        paint(new THREE.BoxGeometry(0.1, 0.06, 0.08).translate(-0.27, 1.5, 0), 2.2, 0.15, 0.15), paint(new THREE.BoxGeometry(0.1, 0.06, 0.08).translate(0.27, 1.5, 0), 2.2, 0.15, 0.15), paint(new THREE.BoxGeometry(0.07, 0.07, 0.03).translate(0.12, 1.3, 0.14), 1.2, 1.2, 1.3)]));
+    G.lod = new THREE.InstancedMesh(silG, mat(new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })), POOL); G.lod.frustumCulled = false; G.lod.count = POOL; G.lod.visible = false; L.root.add(G.lod); G.lodPrev = new Set(); G.lodLast = null;
     for (let i = 0; i < POOL; i++) {
         const m = buildMannequin(Math.random); m.group.visible = false; L.root.add(m.group);
         addMonsterFace(m.head, { width: 0.05, open: 0.03, toothColor: 0xb8b090, long: 1.1, tears: 0x300808 }); swapModel(m, 'officer');
@@ -81,9 +88,20 @@ export function createCitySim(o) {
     };
     G.despawn = (c) => { c.active = false; c.m.group.visible = false; c.cone.visible = false; };
     const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s1 = new THREE.Vector3(1, 1, 1), _s0 = new THREE.Vector3(0, 0, 0), _c = new THREE.Color();
+    // wybiera dla każdego policjanta pełny model, sylwetkę albo nic (core/coplod.js) i ustawia siatkę sylwetek; wołane tuż przed syncCones, także u gościa (puppet)
+    G.syncLod = () => {
+        const list = G.cops.map((c, i) => ({ i: i, d: c.active ? Math.hypot(c.bot.x - camera.position.x, c.bot.z - camera.position.z) : 1e9, active: c.active })), r = CL.pickLod(list, G.lodPrev);
+        G.lodPrev = r.full; G.lodLast = r;
+        G.cops.forEach((c, i) => {
+            const full = r.full.has(i), far = r.far.has(i), b = c.bot; c.show = full ? 'full' : (far ? 'far' : 'off'); c.m.group.visible = c.active && full;
+            _e.set(0, b.dir, 0); _q.setFromEuler(_e); _p.set(b.x, b.y + Math.max(0, c.drop || 0) * 14, b.z); _m.compose(_p, _q, far ? _s1 : _s0); G.lod.setMatrixAt(i, _m);
+        });
+        G.lod.visible = r.far.size > 0; G.lod.instanceMatrix.needsUpdate = true;
+    };
+    G.lodInfo = () => { const r = G.lodLast || { full: new Set(), far: new Set(), off: new Set() }; return { full: r.full.size, far: r.far.size, off: r.off.size, calls: CL.copCalls(r), max: CL.maxCopCalls() }; };
     G.syncCones = () => {
         G.cops.forEach((c, i) => {
-            const on = c.active && c.m.group.visible && c.cone.visible, b = c.bot;
+            const on = c.active && c.show !== 'off' && c.cone.visible, b = c.bot;
             _e.set(0, b.dir, 0); _q.setFromEuler(_e); _p.set(b.x, b.y + 1.5 + Math.max(0, c.drop || 0) * 14, b.z); _m.compose(_p, _q, on ? _s1 : _s0);
             G.cones.setMatrixAt(i, _m); const k = Math.min(1.5, c.cone.material.opacity / 0.16); _c.setRGB(k, k, k); G.cones.setColorAt(i, _c);
         });
@@ -101,12 +119,12 @@ export function createCitySim(o) {
             if (!c.active) { G.spawnCop(c, 0); b.x = e.x; b.z = e.z; b.dir = e.dir; }
             const d = Math.hypot(e.x - b.x, e.z - b.z), k = d > 8 ? 1 : Math.min(1, dt * 10);
             b.x += (e.x - b.x) * k; b.z += (e.z - b.z) * k; let da = e.dir - b.dir; da = Math.atan2(Math.sin(da), Math.cos(da)); b.dir += da * Math.min(1, dt * 12);
-            c.st.mode = e.mode; c.m.group.position.set(b.x, b.y, b.z); c.m.group.rotation.y = b.dir; c.m.group.visible = Math.hypot(b.x - camera.position.x, b.z - camera.position.z) < COP_VIS; c.cone.material.opacity = e.mode === 'chase' ? 0.16 : 0.1;
+            c.st.mode = e.mode; c.m.group.position.set(b.x, b.y, b.z); c.m.group.rotation.y = b.dir; c.cone.material.opacity = e.mode === 'chase' ? 0.16 : 0.1;
         });
-        G.syncCones();
+        G.syncLod(); G.syncCones();
     };
-    G.update = (dt, players, rand) => { const out = update(G, dt, players, rand || Math.random); G.syncCones(); return out; };
-    G.dispose = () => { G.cones.dispose(); for (const g of G.geos) g.dispose(); for (const m of G.mats) m.dispose(); };
+    G.update = (dt, players, rand) => { const out = update(G, dt, players, rand || Math.random); G.syncLod(); G.syncCones(); return out; };
+    G.dispose = () => { G.cones.dispose(); G.lod.dispose(); for (const g of G.geos) g.dispose(); for (const m of G.mats) m.dispose(); };
     return G;
 }
 
@@ -145,7 +163,7 @@ function update(G, dt, players, rand) {
         else { const pt = AI.patrolTarget(G.graph, c.st, rand); if (pt) { tx = pt.x; tz = pt.z; if (Math.hypot(tx - b.x, tz - b.z) < 1.6) AI.patrolArrived(G.graph, c.st); } else { tx = b.x; tz = b.z; speed = 0; } }
         stepBot(b, dt, tx, tz, 0, speed, dcs.mode === 'chase');
         if (c.drop > 0) c.drop -= dt;   // SWAT zjeżdża z helikoptera: model opada z wysokości, a w tym czasie nie łapie
-        c.m.group.position.set(b.x, b.y + Math.max(0, c.drop || 0) * 14, b.z); c.m.group.rotation.y = b.dir; c.m.group.visible = Math.hypot(b.x - camera.position.x, b.z - camera.position.z) < COP_VIS; c.cone.visible = true; c.cone.material.opacity = dcs.mode === 'chase' ? 0.16 : 0.1;
+        c.m.group.position.set(b.x, b.y + Math.max(0, c.drop || 0) * 14, b.z); c.m.group.rotation.y = b.dir; c.cone.visible = true; c.cone.material.opacity = dcs.mode === 'chase' ? 0.16 : 0.1;
         if (b.y < -3 || Math.abs(b.x) > 90 || b.z > 80) G.despawn(c);
         if (!(c.drop > 0.3)) for (const p of live) if (!p.riding && AI.caughtBy({ x: b.x, z: b.z, y: b.y }, p)) { out.busts.push({ id: p.id, reason: 'cop', x: p.x, z: p.z }); G.stat.caught++; G.resetCopsNear(p.x, p.z, 30); break; }
     }

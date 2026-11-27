@@ -45,6 +45,31 @@ for (const v of views) {
     }, v.slice(1));
     out.push(Object.assign({ view: v[0] }, r)); console.log('     ', v[0], JSON.stringify(r));
 }
+// ----- widok "stres": najgorszy przypadek zbudowany celowo (cała pula policji blisko kamery, 5 gwiazdek, helikopter, burza, noc z hordą, wnętrze kasyna przodem do drzwi) -----
+const STRESS = +(process.env.STRESS || 210);
+const measure = (breakdown) => ev(async (bd) => {
+    const E = await import('./core/engine.js'), R = E.renderer, I = R.info, sm = R.shadowMap.enabled; R.shadowMap.enabled = false;
+    const calls = () => { I.reset(); R.render(E.scene, E.camera); return I.render.calls; };
+    const base = calls(), tri = I.render.triangles; let rows = null;
+    if (bd) {
+        rows = []; const tops = [].concat(E.scene.children.filter(o => o !== E.L.root), E.L.root.children).filter(o => o.visible);
+        for (const o of tops) { o.visible = false; const c = calls(); o.visible = true; const d = base - c; if (d > 0) rows.push({ d: d, type: o.type, name: o.name || '', geo: o.isInstancedMesh ? 'inst' + o.count : (o.geometry && o.geometry.attributes ? o.geometry.attributes.position.count + 'v' : ''), kids: o.children.length }); }
+        rows.sort((a, b) => b.d - a.d); rows = rows.slice(0, 14);
+    }
+    R.shadowMap.enabled = sm; return { calls: base, tris: tri, rows: rows };
+}, !!breakdown);
+const stress = await ev(async () => {
+    const PL = await import('./core/player.js'), D = await import('./core/desktop.js'), G = await import('./levels/scarygta.js');
+    G.debugGtaNight('horde', 1e9); G.debugWx('storm'); G.debugHeat(100);
+    PL.setPlayerPosition(53, 1.2, -65); D.setDesktopFacing(1.57);
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; G.debugSpawnCop(53 + Math.cos(a) * (6 + (i % 3) * 7), -65 + Math.sin(a) * (6 + (i % 3) * 7)); }
+    await new Promise(r => setTimeout(r, 3000)); return G.debugCops();
+});
+const st = await measure(!!process.env.BREAKDOWN); st.cops = stress;
+console.log('      STRESS casino interior, all cops, storm, horde', JSON.stringify({ calls: st.calls, tris: st.tris, cops: st.cops }));
+if (st.rows) for (const r of st.rows) console.log('        ', JSON.stringify(r));
+ok('the stress view (all ' + 10 + ' cops, 5 stars, heli, storm, horde, casino interior) stays within ' + STRESS + ' draw calls', st.calls <= STRESS, st);
+ok('in the stress view at most ' + 3 + ' cops have a full model and the cop calls stay within their bound', st.cops && st.cops.full <= 3 && st.cops.calls <= st.cops.max, st.cops);
 const worst = Math.max(...out.map(o => o.calls));
 ok('the worst view stays within the main-pass budget of ' + BUDGET + ' draw calls (' + Q + ')', worst <= BUDGET, out);
 console.log('worst: ' + worst + ' draw calls, ' + Math.max(...out.map(o => o.tris)) + ' triangles');

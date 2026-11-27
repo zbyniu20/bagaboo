@@ -16,7 +16,7 @@ import * as SFX from '../core/audio.js';
 import { PACE } from '../core/config.js';
 import { ARRIVAL_FROM_SCARYGTA } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, createJumpscare } from '../core/levelkit.js';
-import { setDread } from '../core/ambience.js';
+import { setDread, DREAD } from '../core/ambience.js';
 import { setPlayerPosition, releaseAll, hands, gripDown } from '../core/player.js';
 import { buzz } from '../core/haptics.js';
 import { MOD, PERSONAL } from '../core/modstate.js';
@@ -31,6 +31,9 @@ import { createGtaEggs } from '../core/gtaeggfx.js';
 import { createGtaStunts } from '../core/gtastuntfx.js';
 import { createGtaMystery } from '../core/gtamysteryfx.js';
 import { createGtaEncounters } from '../core/gtaencountersfx.js';
+import { createGtaLife } from '../core/gtacrowdfx.js';
+import * as DJM from '../core/gtadj.js';
+import { createGtaBillboards } from '../core/gtabillboardfx.js';
 import * as X from '../core/gtaextras.js';
 import { mutatorActive, mutFactor } from '../core/mutators.js';
 import * as WX from '../core/cityweatherlogic.js';
@@ -158,6 +161,8 @@ export function build() {
     S.eggs = createGtaEggs({ buildings: S.buildings, api: { stars: () => S.sim.starsOf('me'), night: () => S.nightPh, ride: eggRide } });
     const secApi = { night: () => S.nightPh, storm: () => !!S.wx && S.wx.state === 'storm' };
     S.stunts = createGtaStunts({ buildings: S.buildings }); S.mystery = createGtaMystery({ buildings: S.buildings, api: secApi }); S.enc = createGtaEncounters({ api: secApi });
+    S.life = createGtaLife({ api: { night: () => S.nightPh, obstacles: lifeObstacles } }); S.dj = DJM.newDj(); S.esc = 1;
+    S.bb = createGtaBillboards({ buildings: S.buildings, api: { night: () => S.nightPh } });
     S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
     S.wx = WX.newWeather(Math.random, Math.random() < 0.5 ? 'clear' : 'drizzle'); S.weather = createWeather();   // pogoda lokalna: każdy klient ma własną
@@ -294,6 +299,9 @@ export function update(dt, t, ctx) {
     S.weather.update(S.wx, WX.weatherStep(S.wx, dt), dt);
     camera.getWorldDirection(_d); S.gx.update(dt, { x: ctx.body.position.x, y: ctx.body.position.y, z: ctx.body.position.z, speed: Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), yaw: Math.atan2(_d.x, _d.z), pitchDown: Math.asin(Math.max(-1, Math.min(1, -_d.y))) });
     S.eggs.update(dt, { x: ctx.body.position.x, y: ctx.body.position.y, z: ctx.body.position.z, speed: Math.hypot(ctx.body.velocity.x, ctx.body.velocity.z), dx: _d.x, dy: _d.y, dz: _d.z, mic: SFX.voiceSpeaking && SFX.voiceSpeaking() ? 0 : (SFX.micLevel ? SFX.micLevel() : 0) });
+    S.bb.update(dt);
+    S.life.update(dt, { x: ctx.body.position.x, y: ctx.body.position.y, z: ctx.body.position.z, dx: _d.x, dz: _d.z });
+    S.esc = DJM.escalationStep(S.esc, DJM.escalationTarget(S.sim.starsOf('me'), S.nightPh), dt); DREAD.fogMul *= S.esc;   // eskalacja mgły przy 4-5 gwiazdkach składa się z pogodą przez mnożenie (pogoda ustawia DREAD.fogMul tuż wyżej)
     S.stunts.update(dt, { x: ctx.body.position.x, y: ctx.body.position.y, z: ctx.body.position.z });
     S.mystery.update(dt, { x: ctx.body.position.x, y: ctx.body.position.y, z: ctx.body.position.z, dx: _d.x, dz: _d.z });
     S.enc.update(dt, { x: ctx.body.position.x, y: ctx.body.position.y, z: ctx.body.position.z, dx: _d.x, dy: _d.y, dz: _d.z });
@@ -423,13 +431,19 @@ function giveBag(b, who) {
     if (who === 'me') bagToast(b);
 }
 // Radio policyjne: komunikaty z radiologic.js jako napis w HUD i głos z formantów (ten sam syntezator co potwory), z trzaskiem na początku i końcu
-const RADIO_VOICE = { f0: 150, formant: 1.0, rate: 9, breath: 0.45 };
+const RADIO_VOICE = { f0: 150, formant: 1.0, rate: 9, breath: 0.45 }, DJ_VOICE = { f0: 105, formant: 0.82, rate: 6, breath: 0.6 };   // DJ: niższy, wolniejszy, bardziej szeptany
 function radioTick(dt) {
     const c = { stars: S.sim.starsOf('me'), heli: S.heli.mode !== 'away' && S.heli.mode !== 'leave', swat: S.flags.swat, shot: S.flags.shot, busted: S.flags.busted };
     S.flags.swat = S.flags.shot = S.flags.busted = false;
     if (S.radioEnd > 0 && S.clock >= S.radioEnd) { S.radioEnd = 0; SFX.beep(1300, 0.04, 0.05); }
     const line = RD.radioStep(S.radio, dt, c);
-    if (!line) return;
+    if (!line) {   // radio miejskie: DJ Hollow mówi tylko wtedy, gdy policja milczy i nic nie jest na ekranie (niższy priorytet)
+        const busy = S.radioEnd > 0 || (S.radioText && S.clock < S.radioText.until) || S.radio.queue.length > 0, m = S.mystery ? S.mystery.info() : { n: 0, total: 6 };
+        const dj = DJM.djStep(S.dj, dt, { night: S.nightPh, storm: !!S.wx && S.wx.state === 'storm', stars: c.stars, caseOn: m.n > 0 && m.n < m.total, busy: busy, nick: sanitizeName(SAVE.profile.name || '') || 'friend' });
+        S.dj = dj.st;
+        if (dj.line) { S.radioText = { t: dj.line, until: S.clock + DJM.DJ.SHOW }; SFX.beep(900, 0.04, 0.05); const dur = SFX.speak(textToEvents(dj.line, DJ_VOICE), DJ_VOICE, undefined, 0.4); S.radioEnd = S.clock + (dur || 2) + 0.1; }
+        return;
+    }
     const nm = sanitizeName(SAVE.profile.name || ''), text = line.text.replace('{name}', nm || 'you'); S.radioText = { t: text, until: S.clock + RD.RADIO.SHOW }; SFX.beep(1700, 0.05, 0.06);
     const dur = SFX.speak(textToEvents(text, RADIO_VOICE), RADIO_VOICE, undefined, 0.45); S.radioEnd = S.clock + (dur || 1.5) + 0.1;
 }
@@ -501,6 +515,8 @@ function secretsInfo() {
     const e = S.eggs.info(), st = S.stunts.info(), m = S.mystery.info(), en = S.enc.info();
     return { line: 'EGGS ' + e.n + '/' + e.total + ' JUMPS ' + st.n + '/' + st.total + ' CASE ' + m.n + '/' + m.total + ' SEEN ' + en.n + '/' + en.total, hint: m.note || e.hint || st.hint || '' };
 }
+// Przeszkody dla ruchu ulicznego (tylko wizualnego): pickupy i policjanci; gracz jest dodawany w module
+function lifeObstacles() { return (S.vehs ? S.vehs.cars.map(c => ({ x: c.m.position.x, z: c.m.position.z })) : []).concat(S.sim.activeCops().map(c => ({ x: c.bot.x, z: c.bot.z }))); }
 function eggRide() { const f = S.fleet && S.fleet.find(q => q.occ === 'me'); if (!f || !S.vehs) return null; const c = S.vehs.cars.find(q => q.id === f.id); return c ? { x: c.m.position.x, z: c.m.position.z, yaw: c.m.rotation.y } : null; }
 function dismountMe() { S.fleet = VL.endDriveBy(S.fleet, 'me'); if (!isAuth()) send({ k: 'ev', kind: 'dismount' }); }
 function requestDrive(carId, idx) {
@@ -656,6 +672,12 @@ export const debugBuildings = () => S ? S.buildings.map(b => ({ id: b.id, interi
 export const debugGta = () => S ? Object.assign(S.gx.debug(), { night: S.nightPh, powerLeft: S.powerLeft, sight: S.sim.sightMul, extra: S.sim.extraCops, lamps: S.lampMesh ? S.lampMesh.visible : null, neonOn: S.neonMeshes.filter(n => n.m.visible).length, neonAll: S.neonMeshes.length, lightI: S.nlights.map(n => +n.l.intensity.toFixed(1)), dark: S.sim.darkZones.length, hear: S.sim.hearMul }) : null;
 export const debugGtaTouch = (fn) => import('../core/gtaprops.js').then(m => m.debugTouchProbe(fn));
 export const debugGtaNight = (ph, left) => { if (S) { S.night = { ph: ph, left: left || 99 }; setNight(ph, false); } };   // left: czas fazy (testy dają 1e9, żeby noc nie wchodziła w drogę)
+export const debugBillboards = () => S && S.bb ? S.bb.debug() : null;
+export const debugLife = () => S && S.life ? Object.assign(S.life.debug(), { esc: +S.esc.toFixed(3), fog: +DREAD.fogMul.toFixed(3), dj: S.dj ? S.dj.t : null }) : null;
+export const debugLifeStep = (n, dt, c) => { if (!S || !S.life) return null; for (let i = 0; i < n; i++) S.life.update(dt, c); return S.life.debug(); };   // test: krokuje żywe miasto z podanym wejściem (x, y, z, dx, dz)
+export const debugLifeSeed = (n) => { if (S && S.life) S.life.seed(n); };
+export const debugDj = (night, stars, busy) => { if (!S) return null; const r = DJM.djStep(Object.assign({}, S.dj, { t: 0 }), 0.1, { night: night || 'calm', storm: false, stars: stars || 0, caseOn: false, busy: !!busy, nick: 'test' }); return r.line; };
+export const debugCops = () => S && S.sim ? Object.assign(S.sim.lodInfo(), { active: S.sim.activeCops().length, modes: S.sim.cops.map(c => c.show) }) : null;   // test i diagnostyka: ilu policjantów ma pełny model, sylwetkę i ile wywołań rysowania to kosztuje
 export const debugStunts = () => S && S.stunts ? S.stunts.debug() : null;
 export const debugStuntSpots = () => S && S.stunts ? S.stunts.spots : null;
 export const debugStuntStep = (n, dt, c) => { if (!S || !S.stunts) return null; for (let i = 0; i < n; i++) S.stunts.update(dt, c); return S.stunts.debug(); };   // test: krokuje detektor lotu z podanym wejściem (x, y, z, grounded)
@@ -681,6 +703,8 @@ export function dispose() {
     N.onLevelMsg(null); L.onTrigger = null;
     if (S && S.heliV) S.heliV.dispose();
     if (S && S.weather) S.weather.dispose();
+    if (S && S.bb) S.bb.dispose();
+    if (S && S.life) S.life.dispose();
     if (S && S.stunts) S.stunts.dispose();
     if (S && S.mystery) S.mystery.dispose();
     if (S && S.enc) S.enc.dispose();

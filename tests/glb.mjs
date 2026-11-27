@@ -76,7 +76,8 @@ console.log('generated glb bytes', glb.length);
 // 4) uszkodzony plik
 { const r = await run('bad', Buffer.from('this is not a glb file at all')); ok('a broken file is ignored and the mannequin stays', r.info && r.info.loaded === false, r.info); ok('broken: no page errors', r.errs.length === 0, r.errs); await r.page.close(); }
 // 5) prawdziwe pliki z assets/monsters w poziomach z manekinami
-for (const [lvl, min] of [['cemetery', 1], ['nursery', 1], ['hospital', 2], ['laundry', 1], ['furas', 1], ['room000', 1], ['silence', 1]]) {
+const ONLY = process.env.LEVELS ? process.env.LEVELS.split(',') : null;   // np. LEVELS=hospital,laundry: tylko te prawdziwe poziomy (każdy trwa kilka minut w renderowaniu programowym)
+for (const [lvl, min] of [['cemetery', 1], ['nursery', 1], ['hospital', 2], ['laundry', 1], ['furas', 1], ['room000', 1], ['silence', 1]].filter(([l]) => !ONLY || ONLY.includes(l))) {
     const r = await run('real', null); await r.page.evaluate(async () => { const M = await import('./main.js'); await M.loadLevel('lobby'); }); await r.page.waitForTimeout(6000);
     const base = await r.page.evaluate(async () => (await import('./core/glbmonster.js')).glbMonstersLive());   // lobby trzyma figurki bestiariusza (modele GLB): to baza, nie wyciek
     await r.page.evaluate(async (l) => { const M = await import('./main.js'); await M.loadLevel(l); }, lvl); await r.page.waitForTimeout(4000);
