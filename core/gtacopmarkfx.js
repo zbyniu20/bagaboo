@@ -34,10 +34,23 @@ export function createGtaCopMarks(o) {
         for (const id of shown) { const a = remoteAvatars[id]; if (!a || !a.handR) continue; const k = Math.max(0.25, a.head.scale.x || 1); a.handR.getWorldQuaternion(bq); a.handR.getWorldPosition(bp); bo.copy(off).multiplyScalar(k).applyQuaternion(bq).add(bp); s.setScalar(k); beam.setMatrixAt(c++, m4.compose(bo, bq, s)); }
         beam.count = c; beam.visible = c > 0; beam.instanceMatrix.needsUpdate = true;
     }
-    const baseUpdate = update; update = function () { baseUpdate(); updateBeams(); };
+    // ----- mundur: kamizelka na tułowiu (macierz świata tułowia, więc pochylenie i skala idą razem z awatarem) -----
+    const V = CM.VEST, vparts = [];
+    { const sp = new THREE.SphereGeometry(1, 18, 12); sp.scale(V.R[0], V.R[1], V.R[2]); sp.translate(V.CENTER[0], V.CENTER[1], V.CENTER[2]); vparts.push(paint(sp, 0.06, 0.09, 0.2)); }
+    vparts.push(box(0.05, 0.06, 0.02, V.BADGE[0], V.BADGE[1], V.BADGE[2], [1.8, 1.4, 0.3]));   // złota odznaka z przodu (-Z)
+    for (const sx of [-1, 1]) vparts.push(box(0.08, 0.02, 0.11, sx * V.EPAULET_X, 0.2, 0, [0.9, 0.9, 0.95]));   // naramienniki
+    const vg = mergeGeometries(vparts); for (const g of vparts) g.dispose();
+    const vm = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }), vest = new THREE.InstancedMesh(vg, vm, CM.MARK.MAX);
+    vest.frustumCulled = false; vest.count = 0; vest.visible = false; L.root.add(vest);
+    function updateVests() {
+        let c = 0;
+        for (const id of shown) { const a = remoteAvatars[id]; if (!a || !a.torso) continue; a.torso.updateWorldMatrix(true, false); vest.setMatrixAt(c++, a.torso.matrixWorld); }
+        vest.count = c; vest.visible = c > 0; vest.instanceMatrix.needsUpdate = true;
+    }
+    const baseUpdate = update; update = function () { baseUpdate(); updateBeams(); updateVests(); };
     return {
         update: () => update(),
-        debug: () => ({ count: mesh.count, visible: mesh.visible, ids: shown.slice(), parent: mesh.parent === L.root, beams: beam.count, beamVisible: beam.visible }),
-        dispose() { mesh.removeFromParent(); mesh.dispose(); geo.dispose(); mat.dispose(); beam.removeFromParent(); beam.dispose(); bg.dispose(); bm.dispose(); }
+        debug: () => ({ count: mesh.count, visible: mesh.visible, ids: shown.slice(), parent: mesh.parent === L.root, beams: beam.count, beamVisible: beam.visible, vests: vest.count, vestVisible: vest.visible }),
+        dispose() { mesh.removeFromParent(); mesh.dispose(); geo.dispose(); mat.dispose(); beam.removeFromParent(); beam.dispose(); bg.dispose(); bm.dispose(); vest.removeFromParent(); vest.dispose(); vg.dispose(); vm.dispose(); }
     };
 }
