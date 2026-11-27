@@ -38,7 +38,7 @@ async function client(name) {
 }
 let fails = 0; const ok = (name, cond, extra) => { if (cond) console.log('ok  ', name); else { fails++; console.log('FAIL', name, extra === undefined ? '' : JSON.stringify(extra).slice(0, 700)); } };
 const finish = async (code) => { try { await browser.close(); } catch (e) {} server.close(); try { sig.close && sig.close(); } catch (e) {} process.exit(code); };
-const [H, G] = await Promise.all([client('host'), client('guest')]);
+const H = await client('host'), G = await client('guest');   // po kolei: dwa równoległe starty w renderowaniu programowym przekraczały limity czasu
 const CODE = 'ZZTEST' + Math.floor(Math.random() * 90 + 10);
 // ----- połączenie: host zakłada pokój, gość dołącza tą samą ścieżką co gracz (startJoin) -----
 const hostUp = await H.ev(async (code) => { const N = await import('./core/network.js'); return await new Promise((res) => { N.startHost(code, { ok: () => res(true), fail: () => res(false) }); setTimeout(() => res(false), 15000); }); }, CODE);
