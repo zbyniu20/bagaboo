@@ -75,7 +75,7 @@ ok('on arrival the ride ends within a few metres of the destination, the body st
 // zejście w trakcie jazdy
 const jump = await ev(async () => {
     const G = await import('./levels/scarygta.js'), P = await import('./core/player.js'), VL = await import('./core/vehiclelogic.js'), w = (ms) => new Promise(r => setTimeout(r, ms));
-    const S = G.testState(), sp = VL.startPoint('motel'); for (let i = 0; i < 600 && S.busted >= 0; i++) await w(100); S.sim.reset(); G.debugBlocks([]); P.setPlayerPosition(sp.x + 2, 1.2, sp.z + 1); await w(300);   // 5 gwiazdek z poprzedniego kroku stawia barykady (jedna blokuje start motelu): czyścimy je G.debugDriveAs('me', 'motel', 'warehouse', { x: sp.x + 2, z: sp.z + 1 });
+    const S = G.testState(), sp = VL.startPoint('motel'); for (let i = 0; i < 600 && S.busted >= 0; i++) await w(100); S.sim.reset(); S.sim.heats.me = { v: 0, seenT: -99 }; G.debugBlocks([]); P.setPlayerPosition(sp.x + 2, 1.2, sp.z + 1);   // 5 gwiazdek z poprzedniego kroku stawia barykady (jedna blokuje start motelu): czyścimy je G.debugDriveAs('me', 'motel', 'warehouse', { x: sp.x + 2, z: sp.z + 1 });
     for (let i = 0; i < 40 && !G.debugVeh().v.riding; i++) await w(100); const on = G.debugVeh().v.riding; G.debugDismount(); await w(600);
     return { on, off: !G.debugVeh().v.riding, free: !S.fleet.find(c => c.id === 'motel').occ, diag: { busted: S.busted, blocks: G.debugBlocks(null).nodes, stars: S.sim.starsOf('me'), occ: S.fleet.map(c => [c.id, c.occ, c.stop]), bustUntil: S.bustUntil.me || 0, pos: [P.playerBody.position.x, P.playerBody.position.z], sp: [sp.x, sp.z] } };
 });
