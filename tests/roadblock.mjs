@@ -81,9 +81,11 @@ const guest = await ev(async () => {
     st({ rb: [node], veh: [['motel', 'north', 3, me, stop]] }); for (let i = 0; i < 30 && !G.debugVeh().v.riding; i++) await w(100);
     const ent = S.fleet.find(c => c.id === 'motel'), on = G.debugVeh().v.riding, R = VL.rideFor(ent);
     st({ rb: [node], veh: [['motel', 'north', 3, me, 'junk']] }); await w(300); const R2 = VL.rideFor(S.fleet.find(c => c.id === 'motel'));
+    const node2 = RB.candidates().find(i => i !== node); st({ rb: [node, node2], veh: [] }); let said = ''; for (let i = 0; i < 40 && !/Roadblock/i.test(said); i++) { await w(100); said = (S.radioText && S.radioText.t) || ''; }
     st({ rb: 'zzz', veh: [] }); await w(400); const cleared = G.debugBlocks(null).nodes.length;
-    N.NET.mode = 'solo'; return { nodes: fx.nodes, fxCount: fx.fx.count, on, stopped: ent.stop === stop && R.stop === stop, R2stop: R2.stop, plain: VL.buildRide('motel', 'north').len, len: R.len, cleared };
+    N.NET.mode = 'solo'; return { said, nodes: fx.nodes, fxCount: fx.fx.count, on, stopped: ent.stop === stop && R.stop === stop, R2stop: R2.stop, plain: VL.buildRide('motel', 'north').len, len: R.len, cleared };
 });
 ok('guest: the host snapshot brings the barricade (garbage and duplicates dropped) and a ride with the stop, a forged stop gives the ordinary ride, and a bad list removes the barricades', guest.nodes.length === 1 && guest.fxCount === 1 && guest.on && guest.stopped && guest.R2stop === 0 && guest.len < guest.plain && guest.cleared === 0, guest);
+ok('guest: a NEW node in the snapshot makes the dispatcher say the roadblock line at the guest', /Roadblock/i.test(guest.said), guest.said);
 ok('no page errors', errors.length === 0, errors);
 console.log(fails ? 'FAILED: ' + fails : 'roadblock: all checks passed'); await browser.close(); server.close(); process.exit(fails ? 1 : 0);

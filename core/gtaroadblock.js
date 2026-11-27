@@ -61,6 +61,8 @@ export function rideBlock(carId, routeId, nodes) {
     return ok ? { kind: 'stop', stop: ok } : { kind: 'blocked', stop: 0 };
 }
 export const newBlocks = () => ({ nodes: [], quiet: 0 });
+// Węzły, których nie było w poprzedniej liście (porównanie ZBIORÓW, bo migawki przychodzą 8 razy na sekundę, a lista bywa przetasowana); pierwsza migawka po dołączeniu (prev === null) niczego nie zgłasza
+export const newNodes = (prev, next) => !Array.isArray(prev) || !Array.isArray(next) ? [] : next.filter(n => !prev.includes(n));
 // Krok hosta: lead = { x, z } gracza z najwyższym poziomem; zwraca { st, placed (nowe węzły), cleared }
 export function blockStep(st, dt, o, R) {
     const rnd = R || Math.random, s = { nodes: st.nodes.slice(), quiet: st.quiet }, d = Math.min(Math.max(+dt || 0, 0), 0.5), want = countFor(o.stars), g = graph(), placed = [];
