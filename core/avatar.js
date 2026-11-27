@@ -170,15 +170,18 @@ export function createRealHand(isLeft, look) {
     model.position.set(0, -0.015, 0.075); model.rotation.set(-0.3, 0, -0.9 * side); outer.add(model);
     const skin = skinMaterial(look), nailMat = nailMaterial(look);
     const add = (geo, mat, parent) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
-    add(new RoundedBoxGeometry(0.074, 0.028, 0.094, 3, 0.012), skin, model);
-    const thenar = add(new THREE.SphereGeometry(1, 14, 10), skin, model); thenar.scale.set(0.022, 0.014, 0.032); thenar.position.set(-0.027 * side, -0.007, 0.014);
-    const hypo = add(new THREE.SphereGeometry(1, 14, 10), skin, model); hypo.scale.set(0.016, 0.012, 0.03); hypo.position.set(0.028 * side, -0.006, 0.018);
-    const wrist = add(new THREE.CylinderGeometry(0.026, 0.024, 0.05, 16), skin, model); wrist.rotation.x = Math.PI / 2; wrist.position.set(0, 0, 0.068); wrist.scale.set(1.2, 1, 0.75);
+    // Statyczne części skóry dłoni (dłoń, kłąb kciuka, kłąb małego palca, nadgarstek i kostki palców) to JEDNA scalona siatka: stały układ względem `model`, więc 5 siatek (wywołań rysowania) mniej na rękę (czyli i na każdego zdalnego gracza)
+    const statics = [], _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
+    const place = (geo, px, py, pz, sx, sy, sz, rx) => { _q.setFromEuler(_e.set(rx || 0, 0, 0)); geo.applyMatrix4(_m.compose(new THREE.Vector3(px, py, pz), _q, new THREE.Vector3(sx, sy, sz))); if (geo.index) { const ni = geo.toNonIndexed(); geo.dispose(); geo = ni; } statics.push(geo); };   // mergeGeometries wymaga wszystkich albo żadnej indeksowanej
+    place(new RoundedBoxGeometry(0.074, 0.028, 0.094, 3, 0.012), 0, 0, 0, 1, 1, 1);
+    place(new THREE.SphereGeometry(1, 14, 10), -0.027 * side, -0.007, 0.014, 0.022, 0.014, 0.032);   // kłąb kciuka
+    place(new THREE.SphereGeometry(1, 14, 10), 0.028 * side, -0.006, 0.018, 0.016, 0.012, 0.03);   // kłąb małego palca
+    place(new THREE.CylinderGeometry(0.026, 0.024, 0.05, 16), 0, 0, 0.068, 1.2, 1, 0.75, Math.PI / 2);   // nadgarstek
     const cuff = add(new THREE.CylinderGeometry(0.036, 0.04, 0.05, 20, 1, true), sleeveMaterial(look), model);
     cuff.rotation.x = Math.PI / 2; cuff.position.set(0, 0, 0.11); cuff.scale.set(1.15, 1, 0.85);
     const fingers = [];
     for (const f of FINGER_DEFS) {
-        add(new THREE.SphereGeometry(f.r * 1.15, 10, 8), skin, model).position.set(f.x * side, 0.006, -0.044);
+        place(new THREE.SphereGeometry(f.r * 1.15, 10, 8), f.x * side, 0.006, -0.044, 1, 1, 1);   // kostka palca (statyczna)
         const base = new THREE.Group(); base.rotation.order = 'YXZ'; base.position.set(f.x * side, 0.003, -0.046); base.rotation.y = f.splay * side; model.add(base);
         const joints = [base]; let parent = base, r = f.r;
         for (let k = 0; k < 3; k++) {
@@ -191,6 +194,7 @@ export function createRealHand(isLeft, look) {
         }
         fingers.push(joints);
     }
+    { const sg = mergeGeometries(statics); for (const g of statics) g.dispose(); add(sg, skin, model); }
     const tb = new THREE.Group(); tb.rotation.order = 'YXZ'; tb.position.set(-0.033 * side, -0.008, 0.008); tb.rotation.set(-0.35, 0.85 * side, 0); model.add(tb);
     const thumb = [tb], tl = [0.04, 0.032, 0.027]; let tp = tb, tr = 0.0138;
     for (let k = 0; k < 3; k++) {

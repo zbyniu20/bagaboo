@@ -634,7 +634,7 @@ function onNet(msg, from) {
         if (bags.length) { const was = S.got; S.got = S.bags.filter(q => q.holder === 'me').length; if (S.got > was) { const nb = S.bags.find(q => q.holder === 'me'); if (nb) bagToast(nb); } }
         const hl = GN.cleanHeli(msg.hl); if (hl) { const h = S.heli; h.x = hl.x; h.y = hl.y; h.z = hl.z; h.yaw = hl.yaw; h.lx = hl.lx; h.lz = hl.lz; h.mode = hl.mode; } else if (msg.hl === null) S.heli.mode = 'away';
         { const ms = GM.cleanModeSnap(msg.gm), map = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [fromNet(k), v])); S.gm = Object.assign(ms, { roles: map(ms.roles), score: map(ms.score), winner: ms.winner === N.myId() ? 'me' : ms.winner }); modePhaseToast(); }
-        { const veh = VL.cleanVehicles(msg.veh); S.fleet = VL.newFleet().map(c => { const e = veh.find(q => q.car === c.id); return e ? { id: c.id, occ: fromNet(e.occ), route: e.route, t0: S.clock - e.age, stop: e.stop } : c; }); S.blocks = { nodes: BL.cleanBlocks(msg.rb), quiet: 0 }; }
+        { const veh = VL.cleanVehicles(msg.veh); S.fleet = VL.newFleet().map(c => { const e = veh.find(q => q.car === c.id); return e ? { id: c.id, occ: fromNet(e.occ), route: e.route, t0: S.clock - e.age, stop: e.stop } : c; }); { const nb = BL.cleanBlocks(msg.rb); if (BL.newNodes(S.rbSeen ? S.blocks.nodes : null, nb).length) S.flags.block = true; S.rbSeen = true; S.blocks = { nodes: nb, quiet: 0 }; } }
         setNight(msg.nt); if (msg.pw === 1 || msg.pw === 0) { const on = msg.pw === 1; if (on !== S.powerOn && !S.gx.debug().power) { S.powerOn = on; applyLights(); } }
         const hpm = GU.cleanHp(msg.hp); if (Number.isFinite(hpm[N.myId()])) S.gunS.me.hp = hpm[N.myId()]; if (msg.m === 'coop' || msg.m === 'ffa') S.mode = msg.m;
         const mh = heats[N.myId()]; if (mh) { S.sim.heats.me = { v: mh.v, seenT: 0 }; S.sim.hiddenNow.me = mh.hidden; }
@@ -673,6 +673,7 @@ export const debugModeSet = (m, start) => { if (!S) return; setMode(m); if (star
 export const debugDismount = () => { if (S) dismountMe(); };
 export const debugVeh = () => S ? { fleet: S.fleet, v: S.vehs.debug(), carCount: S.carCount } : null;
 export const debugCopMarks = () => S ? S.cmark.debug() : null;
+export const debugRequestDrive = (car, idx) => { if (S) requestDrive(car, idx); };
 export const debugBlocks = (nodes) => { if (!S) return null; if (Array.isArray(nodes)) S.blocks = { nodes: BL.cleanBlocks(nodes), quiet: 0 }; return { nodes: S.blocks.nodes, quiet: S.blocks.quiet, fx: S.rbfx.debug() }; };
 export const debugDriveAs = (who, car, route, head) => { if (S) hostDrive(who, car, route, head); };
 export const debugBoxes = () => S ? S.boxes.length : 0;

@@ -53,7 +53,8 @@ const measure = (breakdown) => ev(async (bd) => {
     const base = calls(), tri = I.render.triangles; let rows = null;
     if (bd) {
         rows = []; const tops = [].concat(E.scene.children.filter(o => o !== E.L.root), E.L.root.children).filter(o => o.visible);
-        for (const o of tops) { o.visible = false; const c = calls(); o.visible = true; const d = base - c; if (d > 0) rows.push({ d: d, type: o.type, name: o.name || '', geo: o.isInstancedMesh ? 'inst' + o.count : (o.geometry && o.geometry.attributes ? o.geometry.attributes.position.count + 'v' : ''), kids: o.children.length }); }
+        const describe = (o) => { let meshes = 0, skinned = 0, inst = 0, tr = 0; const mats = new Set(), names = [], geoms = []; o.traverse((q) => { if (q.isMesh || q.isPoints || q.isLine) { meshes++; if (geoms.length < 5) geoms.push((q.geometry ? q.geometry.type : '?') + ':' + (q.geometry && q.geometry.attributes && q.geometry.attributes.position ? q.geometry.attributes.position.count : 0)); if (q.isSkinnedMesh) skinned++; if (q.isInstancedMesh) inst++; if (q.transparent) tr++; const ms = [].concat(q.material || []); ms.forEach(m => { mats.add(m.uuid); if (names.length < 4 && m.name) names.push(m.name); }); } }); return { meshes, skinned, inst, mats: mats.size, names: names.join('/'), kids: o.children.length, geoms: geoms.join(','), pos: [Math.round(o.position.x), Math.round(o.position.y), Math.round(o.position.z)] }; };
+        for (const o of tops) { o.visible = false; const c = calls(); o.visible = true; const d = base - c; if (d > 0) rows.push({ d: d, type: o.type, name: o.name || '', desc: describe(o), geo: o.isInstancedMesh ? 'inst' + o.count : (o.geometry && o.geometry.attributes ? o.geometry.attributes.position.count + 'v' : '') }); }
         rows.sort((a, b) => b.d - a.d); rows = rows.slice(0, 14);
     }
     R.shadowMap.enabled = sm; return { calls: base, tris: tri, rows: rows };
