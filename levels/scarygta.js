@@ -46,6 +46,9 @@ import * as C from '../core/citylayout.js';
 import * as IL from '../core/interiorlogic.js';
 import * as N from '../core/network.js';
 import * as GN from '../core/gtanet.js';
+import * as BL from '../core/gtaroadblock.js';
+import { createGtaRoadblocks } from '../core/gtaroadblockfx.js';
+import { createGtaCopMarks } from '../core/gtacopmarkfx.js';
 
 export const info = { id: 'scarygta', name: 'Scary GTA', spawn: [0, 1, 56] };   // = CITY.SPAWN (test w tests/logic.mjs pilnuje zgodności)
 const TILE = 8, CARRY_SLOW = 0.92, NEON = [0xff2a9a, 0x20e0ff, 0xff8a20, 0xa050ff, 0x40ff80, 0xff3050];
@@ -161,12 +164,12 @@ export function build() {
     S.eggs = createGtaEggs({ buildings: S.buildings, api: { stars: () => S.sim.starsOf('me'), night: () => S.nightPh, ride: eggRide } });
     const secApi = { night: () => S.nightPh, storm: () => !!S.wx && S.wx.state === 'storm' };
     S.stunts = createGtaStunts({ buildings: S.buildings }); S.mystery = createGtaMystery({ buildings: S.buildings, api: secApi }); S.enc = createGtaEncounters({ api: secApi });
-    S.life = createGtaLife({ api: { night: () => S.nightPh, obstacles: lifeObstacles } }); S.dj = DJM.newDj(); S.esc = 1;
+    S.life = createGtaLife({ api: { night: () => S.nightPh, obstacles: lifeObstacles } }); S.dj = DJM.newDj(); S.esc = 1; S.blocks = BL.newBlocks(); S.rbfx = createGtaRoadblocks(); S.cmark = createGtaCopMarks({ api: { gm: () => S.gm } });
     S.bb = createGtaBillboards({ buildings: S.buildings, api: { night: () => S.nightPh } });
     S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
     S.wx = WX.newWeather(Math.random, Math.random() < 0.5 ? 'clear' : 'drizzle'); S.weather = createWeather();   // pogoda lokalna: każdy klient ma własną
-    S.radio = RD.newRadio(); S.radioText = null; S.radioEnd = 0; S.flags = { swat: false, shot: false, busted: false };
+    S.radio = RD.newRadio(); S.radioText = null; S.radioEnd = 0; S.flags = { swat: false, shot: false, busted: false, block: false };
     S.heli = HL.newHeli(); S.heliV = createHeli(); S.eyeOnMe = false;
     S.gunS = { me: GU.newShooter() }; S.mode = GU.modeFor(df.id); S.fx = []; S.feed = []; S.hurtT = 0; S.killer = null; S.gunMesh = null;
     buildFx(); L.onTrigger = (i) => fire(i);
@@ -323,7 +326,7 @@ export function update(dt, t, ctx) {
     S.micCd -= dt; const ml = SFX.micLevel ? SFX.micLevel() : 0;
     if (ml > 0.25 && S.micCd <= 0 && !S.hidden) { S.micCd = 3; if (isAuth()) { S.sim.addEvent('shout', p.x, p.z); S.sim.addHeat('me', WL.eventHeat('shout')); } else send({ k: 'ev', kind: 'shout' }); }
     netStep(dt, p, speed);
-    S.vehs.update(dt, S.fleet);
+    S.vehs.update(dt, S.fleet); S.rbfx.sync(S.blocks.nodes); S.cmark.update();
     S.heliV.update(S.heli, dt);
     S.eyeOnMe = HL.heliSees(S.heli, { x: p.x, y: p.y, z: p.z }, { hidden: !!S.sim.hiddenNow.me, blocked: AI2.lineBlocked([S.heli.x, S.heli.y, S.heli.z], [p.x, p.y + 0.5, p.z], S.boxes) });
     // syreny: gdy policjant ściga gracza z bliska, naprzemienne tony (cichy sygnał ostrzegawczy; nie w trybie spokojnym gier, tu go nie ma)
@@ -433,8 +436,8 @@ function giveBag(b, who) {
 // Radio policyjne: komunikaty z radiologic.js jako napis w HUD i głos z formantów (ten sam syntezator co potwory), z trzaskiem na początku i końcu
 const RADIO_VOICE = { f0: 150, formant: 1.0, rate: 9, breath: 0.45 }, DJ_VOICE = { f0: 105, formant: 0.82, rate: 6, breath: 0.6 };   // DJ: niższy, wolniejszy, bardziej szeptany
 function radioTick(dt) {
-    const c = { stars: S.sim.starsOf('me'), heli: S.heli.mode !== 'away' && S.heli.mode !== 'leave', swat: S.flags.swat, shot: S.flags.shot, busted: S.flags.busted };
-    S.flags.swat = S.flags.shot = S.flags.busted = false;
+    const c = { stars: S.sim.starsOf('me'), heli: S.heli.mode !== 'away' && S.heli.mode !== 'leave', swat: S.flags.swat, shot: S.flags.shot, busted: S.flags.busted, block: S.flags.block };
+    S.flags.swat = S.flags.shot = S.flags.busted = S.flags.block = false;
     if (S.radioEnd > 0 && S.clock >= S.radioEnd) { S.radioEnd = 0; SFX.beep(1300, 0.04, 0.05); }
     const line = RD.radioStep(S.radio, dt, c);
     if (!line) {   // radio miejskie: DJ Hollow mówi tylko wtedy, gdy policja milczy i nic nie jest na ekranie (niższy priorytet)
@@ -516,17 +519,19 @@ function secretsInfo() {
     return { line: 'EGGS ' + e.n + '/' + e.total + ' JUMPS ' + st.n + '/' + st.total + ' CASE ' + m.n + '/' + m.total + ' SEEN ' + en.n + '/' + en.total, hint: m.note || e.hint || st.hint || '' };
 }
 // Przeszkody dla ruchu ulicznego (tylko wizualnego): pickupy i policjanci; gracz jest dodawany w module
-function lifeObstacles() { return (S.vehs ? S.vehs.cars.map(c => ({ x: c.m.position.x, z: c.m.position.z })) : []).concat(S.sim.activeCops().map(c => ({ x: c.bot.x, z: c.bot.z }))); }
+function lifeObstacles() { return (S.vehs ? S.vehs.cars.map(c => ({ x: c.m.position.x, z: c.m.position.z })) : []).concat(S.sim.activeCops().map(c => ({ x: c.bot.x, z: c.bot.z })), S.blocks ? S.blocks.nodes.map(i => BL.nodePos(i)).filter(Boolean) : []); }
 function eggRide() { const f = S.fleet && S.fleet.find(q => q.occ === 'me'); if (!f || !S.vehs) return null; const c = S.vehs.cars.find(q => q.id === f.id); return c ? { x: c.m.position.x, z: c.m.position.z, yaw: c.m.rotation.y } : null; }
 function dismountMe() { S.fleet = VL.endDriveBy(S.fleet, 'me'); if (!isAuth()) send({ k: 'ev', kind: 'dismount' }); }
 function requestDrive(carId, idx) {
     const v = VL.VEHICLES.find(q => q.id === carId), route = v && v.routes[idx]; if (!route || S.busted >= 0) return;
+    if (BL.rideBlock(carId, route.id, S.blocks.nodes).kind === 'blocked') { if (S.clock - (S.rbToast || -9) > 2) { S.rbToast = S.clock; toast('Road blocked. Take the other route or run.', '#ff6a6a'); } return; }
     if (isAuth()) { camera.getWorldPosition(_p); hostDrive('me', carId, route.id, { x: _p.x, z: _p.z }); } else send({ k: 'ev', kind: 'drive', car: carId, route: route.id });
 }
 function hostDrive(who, carId, routeId, head) {
     const sp = VL.startPoint(carId); if (!sp || !head) return;
     if (who !== 'me' && (S.bustUntil[who] || 0) > S.clock) return;
-    const r = VL.startDrive(S.fleet, carId, routeId, who, S.clock, Math.hypot(head.x - sp.x, head.z - sp.z)); if (!r.ok) return;
+    const rb = BL.rideBlock(carId, routeId, S.blocks.nodes); if (rb.kind === 'blocked') return;   // barykada tuż przy starcie: auto nie rusza (gość dostaje napis od siebie)
+    const r = VL.startDrive(S.fleet, carId, routeId, who, S.clock, Math.hypot(head.x - sp.x, head.z - sp.z), rb.stop); if (!r.ok) return;
     S.fleet = r.fleet; S.sim.addHeat(who, WL.eventHeat('alarm')); S.sim.addEvent('alarm', sp.x, sp.z);   // kradzież auta to alarm; jazda nic nie płaci
 }
 function bagToast(b) { toast('Bag ' + S.got + '/' + S.bags.length + ': ' + b.id + (S.got === 1 ? '. You are slower while carrying loot. Head for the pier!' : ''), '#ffd27a'); SFX.bell && SFX.bell(); }
@@ -579,6 +584,7 @@ function netStep(dt, p, speed) {
         }
         modePhaseToast();
         for (const pl of players) { if (pl.busted) continue; const st = S.sim.starsOf(pl.id); if (st > maxStars || (st === maxStars && !lead)) { maxStars = st; lead = { x: pl.x, z: pl.z }; } }
+        { const br = BL.blockStep(S.blocks, dt, { stars: maxStars, lead: lead }); S.blocks = br.st; if (br.placed.length) { S.flags.block = true; } }
         const ev = HL.heliStep(S.heli, dt, { stars: maxStars, lead: maxStars > 0 ? lead : null, seen: seenAny });
         if (ev.spawn) toast('A police helicopter is coming. Get under cover!', '#ff6a6a');
         if (ev.swat) S.flags.swat = true;
@@ -597,7 +603,7 @@ function netStep(dt, p, speed) {
 function broadcastState(players) {
     const heats = {}; for (const pl of players) heats[toNet(pl.id)] = [+S.sim.heatOf(pl.id).v.toFixed(1), S.sim.hiddenNow[pl.id] ? 1 : 0];
     const hp = {}; for (const pl of players) hp[toNet(pl.id)] = (S.gunS[pl.id] || (S.gunS[pl.id] = GU.newShooter())).hp;
-    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli), nt: S.nightPh, pw: S.powerLeft > 0 ? 1 : 0, gm: modeSnapNet(), veh: VL.fleetSnap(S.fleet.map(c => c.occ ? Object.assign({}, c, { occ: toNet(c.occ) }) : c), S.clock) });
+    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli), nt: S.nightPh, rb: S.blocks.nodes, pw: S.powerLeft > 0 ? 1 : 0, gm: modeSnapNet(), veh: VL.fleetSnap(S.fleet.map(c => c.occ ? Object.assign({}, c, { occ: toNet(c.occ) }) : c), S.clock) });
 }
 function hostBust(b) {
     const g = guestOf(b.id); if (!g || (S.bustUntil[b.id] || 0) > S.clock) return;
@@ -628,7 +634,7 @@ function onNet(msg, from) {
         if (bags.length) { const was = S.got; S.got = S.bags.filter(q => q.holder === 'me').length; if (S.got > was) { const nb = S.bags.find(q => q.holder === 'me'); if (nb) bagToast(nb); } }
         const hl = GN.cleanHeli(msg.hl); if (hl) { const h = S.heli; h.x = hl.x; h.y = hl.y; h.z = hl.z; h.yaw = hl.yaw; h.lx = hl.lx; h.lz = hl.lz; h.mode = hl.mode; } else if (msg.hl === null) S.heli.mode = 'away';
         { const ms = GM.cleanModeSnap(msg.gm), map = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [fromNet(k), v])); S.gm = Object.assign(ms, { roles: map(ms.roles), score: map(ms.score), winner: ms.winner === N.myId() ? 'me' : ms.winner }); modePhaseToast(); }
-        { const veh = VL.cleanVehicles(msg.veh); S.fleet = VL.newFleet().map(c => { const e = veh.find(q => q.car === c.id); return e ? { id: c.id, occ: fromNet(e.occ), route: e.route, t0: S.clock - e.age } : c; }); }
+        { const veh = VL.cleanVehicles(msg.veh); S.fleet = VL.newFleet().map(c => { const e = veh.find(q => q.car === c.id); return e ? { id: c.id, occ: fromNet(e.occ), route: e.route, t0: S.clock - e.age, stop: e.stop } : c; }); S.blocks = { nodes: BL.cleanBlocks(msg.rb), quiet: 0 }; }
         setNight(msg.nt); if (msg.pw === 1 || msg.pw === 0) { const on = msg.pw === 1; if (on !== S.powerOn && !S.gx.debug().power) { S.powerOn = on; applyLights(); } }
         const hpm = GU.cleanHp(msg.hp); if (Number.isFinite(hpm[N.myId()])) S.gunS.me.hp = hpm[N.myId()]; if (msg.m === 'coop' || msg.m === 'ffa') S.mode = msg.m;
         const mh = heats[N.myId()]; if (mh) { S.sim.heats.me = { v: mh.v, seenT: 0 }; S.sim.hiddenNow.me = mh.hidden; }
@@ -666,6 +672,8 @@ export const debugMode = () => S ? { gm: S.gm, ids: modeIds(), myRole: roleOf('m
 export const debugModeSet = (m, start) => { if (!S) return; setMode(m); if (start) toggleRound(); };
 export const debugDismount = () => { if (S) dismountMe(); };
 export const debugVeh = () => S ? { fleet: S.fleet, v: S.vehs.debug(), carCount: S.carCount } : null;
+export const debugCopMarks = () => S ? S.cmark.debug() : null;
+export const debugBlocks = (nodes) => { if (!S) return null; if (Array.isArray(nodes)) S.blocks = { nodes: BL.cleanBlocks(nodes), quiet: 0 }; return { nodes: S.blocks.nodes, quiet: S.blocks.quiet, fx: S.rbfx.debug() }; };
 export const debugDriveAs = (who, car, route, head) => { if (S) hostDrive(who, car, route, head); };
 export const debugBoxes = () => S ? S.boxes.length : 0;
 export const debugBuildings = () => S ? S.buildings.map(b => ({ id: b.id, interior: b.interior || '', hollow: !!b.hollow, x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, door: b.hollow ? b.hollow.door : '' })) : [];
@@ -705,6 +713,8 @@ export function dispose() {
     if (S && S.weather) S.weather.dispose();
     if (S && S.bb) S.bb.dispose();
     if (S && S.life) S.life.dispose();
+    if (S && S.rbfx) S.rbfx.dispose();
+    if (S && S.cmark) S.cmark.dispose();
     if (S && S.stunts) S.stunts.dispose();
     if (S && S.mystery) S.mystery.dispose();
     if (S && S.enc) S.enc.dispose();

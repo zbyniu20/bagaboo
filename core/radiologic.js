@@ -10,6 +10,7 @@ export const LINES = {
     up4: { pri: 3, text: 'Eye One has visual. Keep him in the light.' },
     up5: { pri: 4, text: 'All units. Lethal force authorized. SWAT inbound.' },
     swat: { pri: 4, text: 'SWAT is on the ropes. Move in.' },
+    block: { pri: 3, text: 'Roadblock in place. Nothing with wheels gets through.' },
     shots: { pri: 3, text: 'Shots fired. Shots fired.' },
     busted: { pri: 5, text: 'Suspect in custody. Stand down.' },
     lost: { pri: 1, text: 'We lost him. Sweep the last known position.' },
@@ -27,7 +28,7 @@ export function radioStep(st, dt, c, rnd) {
     if (c.stars > st.prevStars) { if (st.prevStars === 0) q('first'); if (c.stars >= 5 && st.prevStars < 5) q('up5'); else if (c.stars === 4) q('up4'); }
     if (c.stars < st.prevStars) q(c.stars === 0 ? 'clear' : 'lost');
     if (c.heli && !st.heli && c.stars >= 3) q('up3'); st.heli = !!c.heli;
-    if (c.swat) q('swat'); if (c.shot) q('shots'); if (c.busted) q('busted');
+    if (c.block) q('block'); if (c.swat) q('swat'); if (c.shot) q('shots'); if (c.busted) q('busted');
     st.prevStars = c.stars;
     if (c.stars > 0 && st.queue.length === 0) { st.idleT -= d; if (st.idleT <= 0) { st.idleT = RADIO.IDLE[0] + R() * (RADIO.IDLE[1] - RADIO.IDLE[0]); q('idle' + (1 + Math.floor(R() * 4))); } }
     if (st.cd > 0 || !st.queue.length) return null;

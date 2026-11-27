@@ -6,7 +6,7 @@
 // Testy: tests/logic.mjs (blok "pojazdy"), w przeglądarce tests/vehicles.mjs.
 // ==========================================
 import { streetGraph, nearestNode, findPath } from './cityai.js';
-export const RIDE = { VMAX: 7, ACC: 2, ALAT: 2, R: 6, DS: 0.5, BED_BACK: 1.1, BED_Y: 0.8, START_R: 3.4, HANDLE_R: 0.6, FREE_AFTER: 1.5, MAX_AGE: 120, DISMOUNT_HOLD: 0.5 };
+export const RIDE = { VMAX: 7, ACC: 2, ALAT: 2, R: 6, DS: 0.5, BED_BACK: 1.1, BED_Y: 0.8, START_R: 3.4, HANDLE_R: 0.6, FREE_AFTER: 1.5, MAX_AGE: 120, DISMOUNT_HOLD: 0.5, MIN_STOP: 12, STOP_END: 4, MAX_STOPS: 32 };
 // at: gdzie stoi (przyciągane do najbliższego węzła ulicy), routes: cele (przyciągane do węzłów), nazwy po angielsku (pokazuje je napis)
 export const VEHICLES = [
     { id: 'bank', name: 'Bank runner', at: [-38, -62], routes: [{ id: 'pier', name: 'To the pier', to: [0, 40] }, { id: 'marina', name: 'To the marina', to: [-38, 40] }] },
@@ -34,26 +34,51 @@ export function roundCorners(pts, r) {
     out.push(pts[pts.length - 1]);
     return out;
 }
-// Jazda: próbki co RIDE.DS metrów z prędkością (limit krzywizny, potem przyspieszenia w przód i w tył) i czasem dojazdu; null, gdy trasy nie ma
-export function buildRide(carId, routeId) {
-    const key = carId + ':' + routeId; if (cache[key] !== undefined) return cache[key];
-    const rt = routeOf(carId, routeId); if (!rt) return (cache[key] = null);
+// Wielokąt trasy (zaokrąglony) ze skumulowaną długością i ścieżką węzłów grafu; null, gdy trasy nie ma
+const polyCache = {};
+function polyOf(carId, routeId) {
+    const key = carId + ':' + routeId; if (polyCache[key] !== undefined) return polyCache[key];
+    const rt = routeOf(carId, routeId); if (!rt) return (polyCache[key] = null);
     const g = graph(), a = startNode(carId), b = nearestNode(g, rt.to[0], rt.to[1]), path = findPath(g, a, b);
-    if (!path || path.length < 2) return (cache[key] = null);
+    if (!path || path.length < 2) return (polyCache[key] = null);
     const poly = roundCorners(path.map(i => ({ x: g.nodes[i].x, z: g.nodes[i].z })), RIDE.R), cum = [0];
     for (let i = 1; i < poly.length; i++) cum.push(cum[i - 1] + Math.hypot(poly[i].x - poly[i - 1].x, poly[i].z - poly[i - 1].z));
-    const len = cum[cum.length - 1], n = Math.max(2, Math.ceil(len / RIDE.DS)), ds = len / n, pts = []; let j = 0;
+    return (polyCache[key] = { path: path, poly: poly, cum: cum, name: rt.name });
+}
+// Odległość wzdłuż jazdy (m od startu) do węzła ulicy leżącego na trasie (najbliższy punkt zaokrąglonego wielokąta); -1, gdy węzeł nie leży na trasie
+export function nodeDistance(carId, routeId, node) {
+    const P = polyOf(carId, routeId); if (!P || !P.path.includes(node)) return -1;
+    const nd = graph().nodes[node]; let bi = 0, bd = 1e9; P.poly.forEach((q, i) => { const d = Math.hypot(q.x - nd.x, q.z - nd.z); if (d < bd) { bd = d; bi = i; } });
+    return P.cum[bi];
+}
+// Stop jazdy (barykada): liczba całkowita metrów od startu albo 0 (brak); poza [MIN_STOP, długość - STOP_END] też 0
+export function cleanStop(carId, routeId, v) {
+    const P = polyOf(carId, routeId); if (!P || typeof v !== 'number' || !Number.isFinite(v)) return 0;
+    const r = Math.round(v); return r >= RIDE.MIN_STOP && r <= P.cum[P.cum.length - 1] - RIDE.STOP_END ? r : 0;
+}
+// Jazda: próbki co RIDE.DS metrów z prędkością (limit krzywizny, potem przyspieszenia w przód i w tył) i czasem dojazdu; null, gdy trasy nie ma.
+// stop > 0: jazda urywa się po `stop` metrach (przed barykadą) i tam hamuje do 0,4 m/s najwyżej z przyspieszeniem RIDE.ACC (klucz pamięci podręcznej ma stop zaokrąglony do 1 m)
+const stopKeys = [];
+export function buildRide(carId, routeId, stop) {
+    const st = stop ? cleanStop(carId, routeId, stop) : 0, key = carId + ':' + routeId + (st ? ':' + st : ''); if (cache[key] !== undefined) return cache[key];
+    const P = polyOf(carId, routeId); if (!P) return (cache[key] = null);
+    const poly = P.poly, cum = P.cum, len0 = cum[cum.length - 1], n0 = Math.max(2, Math.ceil(len0 / RIDE.DS)), ds = len0 / n0, pts = []; let j = 0;
+    const n = st ? Math.max(2, Math.min(n0, Math.round(st / ds))) : n0;
     for (let k = 0; k <= n; k++) { const s = k * ds; while (j < poly.length - 2 && cum[j + 1] < s) j++; const seg = cum[j + 1] - cum[j], f = seg > 1e-9 ? (s - cum[j]) / seg : 0; pts.push({ x: poly[j].x + (poly[j + 1].x - poly[j].x) * f, z: poly[j].z + (poly[j + 1].z - poly[j].z) * f }); }
+    const len = n * ds;
     const vmax = pts.map((p, i) => {
-        const P = pts[Math.max(0, i - 1)], Q = pts[Math.min(n, i + 1)], ab = Math.hypot(p.x - P.x, p.z - P.z), bc = Math.hypot(Q.x - p.x, Q.z - p.z), ca = Math.hypot(Q.x - P.x, Q.z - P.z), cr = Math.abs((p.x - P.x) * (Q.z - P.z) - (p.z - P.z) * (Q.x - P.x));
+        const Pp = pts[Math.max(0, i - 1)], Q = pts[Math.min(n, i + 1)], ab = Math.hypot(p.x - Pp.x, p.z - Pp.z), bc = Math.hypot(Q.x - p.x, Q.z - p.z), ca = Math.hypot(Q.x - Pp.x, Q.z - Pp.z), cr = Math.abs((p.x - Pp.x) * (Q.z - Pp.z) - (p.z - Pp.z) * (Q.x - Pp.x));
         const R = cr < 1e-6 ? 1e9 : ab * bc * ca / (2 * cr); return Math.min(RIDE.VMAX, Math.sqrt(RIDE.ALAT * Math.max(R, 0.1)));
     });
     const v = vmax.slice(); v[0] = 0.4; v[n] = 0.4;
     for (let i = 1; i <= n; i++) v[i] = Math.min(v[i], Math.sqrt(v[i - 1] * v[i - 1] + 2 * RIDE.ACC * ds));
     for (let i = n - 1; i >= 0; i--) v[i] = Math.min(v[i], Math.sqrt(v[i + 1] * v[i + 1] + 2 * RIDE.ACC * ds));
     const t = [0]; for (let i = 1; i <= n; i++) t.push(t[i - 1] + ds / ((v[i - 1] + v[i]) / 2));
-    return (cache[key] = { car: carId, route: routeId, pts: pts, v: v, t: t, len: len, T: t[n], ds: ds, name: rt.name });
+    if (st) { stopKeys.push(key); while (stopKeys.length > RIDE.MAX_STOPS) delete cache[stopKeys.shift()]; }
+    return (cache[key] = { car: carId, route: routeId, pts: pts, v: v, t: t, len: len, T: t[n], ds: ds, name: P.name, stop: st });
 }
+// Jazda wpisu floty: JEDYNE miejsce, które zna stop z floty (host, goście i rysowanie liczą pozycję tym samym wywołaniem)
+export const rideFor = (e) => e ? buildRide(e.id, e.route, e.stop || 0) : null;
 // Pozycja i kierunek jazdy w chwili `age` (s od startu): { x, z, yaw, speed, done }
 export function posAt(ride, age) {
     const n = ride.pts.length - 1, a = Math.max(0, Math.min(ride.T, Number.isFinite(age) ? age : 0));
@@ -77,22 +102,23 @@ export function handlePoints(carId) {
     return [{ route: 0, x: pp.x - sx * 1.1, y: 1.0, z: pp.z - sz * 1.1 }, { route: 1, x: pp.x + sx * 1.1, y: 1.0, z: pp.z + sz * 1.1 }];
 }
 // ----- flota (host trzyma stan, goście odtwarzają migawkę) -----
-export const newFleet = () => VEHICLES.map(v => ({ id: v.id, occ: null, route: '', t0: 0 }));
+export const newFleet = () => VEHICLES.map(v => ({ id: v.id, occ: null, route: '', t0: 0, stop: 0 }));
+const freeCar = (c) => ({ id: c.id, occ: null, route: '', t0: 0, stop: 0 });
 // Start jazdy: auto istnieje i jest wolne, trasa istnieje, pasażer nie jedzie już innym, głowa gracza blisko auta (dist w m)
-export function startDrive(fleet, carId, routeId, who, now, dist) {
+export function startDrive(fleet, carId, routeId, who, now, dist, stop) {
     const car = fleet.find(c => c.id === carId);
     if (!car || !buildRide(carId, routeId)) return { fleet: fleet, ok: false, reason: 'unknown' };
     if (car.occ) return { fleet: fleet, ok: false, reason: 'taken' };
     if (fleet.some(c => c.occ === who)) return { fleet: fleet, ok: false, reason: 'busy' };
     if (!Number.isFinite(dist) || dist > RIDE.START_R) return { fleet: fleet, ok: false, reason: 'far' };
-    return { fleet: fleet.map(c => c === car ? { id: c.id, occ: who, route: routeId, t0: now } : c), ok: true, reason: '' };
+    return { fleet: fleet.map(c => c === car ? { id: c.id, occ: who, route: routeId, t0: now, stop: cleanStop(carId, routeId, stop) } : c), ok: true, reason: '' };
 }
-export const endDriveBy = (fleet, who) => fleet.map(c => c.occ === who ? { id: c.id, occ: null, route: '', t0: 0 } : c);
+export const endDriveBy = (fleet, who) => fleet.map(c => c.occ === who ? freeCar(c) : c);
 // Krok: wolnimy auta po dojeździe (z zapasem) i gdy pasażera nie ma (wyszedł z poziomu, rozłączył się); present: zbiór identyfikatorów
 export function fleetStep(fleet, now, present) {
-    return fleet.map(c => { if (!c.occ) return c; const r = buildRide(c.id, c.route); return (!r || now - c.t0 > r.T + RIDE.FREE_AFTER || !present.has(c.occ)) ? { id: c.id, occ: null, route: '', t0: 0 } : c; });
+    return fleet.map(c => { if (!c.occ) return c; const r = rideFor(c); return (!r || now - c.t0 > r.T + RIDE.FREE_AFTER || !present.has(c.occ)) ? freeCar(c) : c; });
 }
-export const fleetSnap = (fleet, now) => fleet.filter(c => c.occ).map(c => [c.id, c.route, +(now - c.t0).toFixed(2), c.occ]);
+export const fleetSnap = (fleet, now) => fleet.filter(c => c.occ).map(c => [c.id, c.route, +(now - c.t0).toFixed(2), c.occ, c.stop || 0]);
 const tidy = (id) => { const s = typeof id === 'string' ? id.replace(/[^\w:.-]/g, '').slice(0, 48) : ''; return s || null; };
 // Migawka z sieci: tylko znane auta i trasy, wiek 0..MAX_AGE, najwyżej jeden wpis na auto
 export function cleanVehicles(a) {
@@ -101,7 +127,7 @@ export function cleanVehicles(a) {
     for (const e of a.slice(0, VEHICLES.length)) {
         if (!Array.isArray(e) || typeof e[0] !== 'string' || typeof e[1] !== 'string' || seen.has(e[0]) || !routeOf(e[0], e[1]) || typeof e[2] !== 'number' || !Number.isFinite(e[2])) continue;
         const occ = tidy(e[3]); if (!occ) continue; seen.add(e[0]);
-        out.push({ car: e[0], route: e[1], age: Math.max(0, Math.min(RIDE.MAX_AGE, e[2])), occ: occ });
+        out.push({ car: e[0], route: e[1], age: Math.max(0, Math.min(RIDE.MAX_AGE, e[2])), occ: occ, stop: cleanStop(e[0], e[1], e[4]) });
     }
     return out;
 }

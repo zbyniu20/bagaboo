@@ -75,7 +75,10 @@ ok('on arrival the ride ends within a few metres of the destination, the body st
 // zejście w trakcie jazdy
 const jump = await ev(async () => {
     const G = await import('./levels/scarygta.js'), P = await import('./core/player.js'), VL = await import('./core/vehiclelogic.js'), w = (ms) => new Promise(r => setTimeout(r, ms));
-    const S = G.testState(), sp = VL.startPoint('motel'); P.setPlayerPosition(sp.x + 2, 1.2, sp.z + 1); await w(300); G.debugDriveAs('me', 'motel', 'warehouse', { x: sp.x + 2, z: sp.z + 1 });
+    const S = G.testState(), sp = VL.startPoint('motel');
+    // po kroku z policjantem gracz ma 5 gwiazdek, więc host stawia barykady (jedna blokuje start motelu): czekamy na odrodzenie, zerujemy ciepło i barykady i od razu startujemy jazdę
+    for (let i = 0; i < 600 && S.busted >= 0; i++) await w(100);
+    S.sim.reset(); S.sim.heats.me = { v: 0, seenT: -99 }; G.debugBlocks([]); P.setPlayerPosition(sp.x + 2, 1.2, sp.z + 1); G.debugDriveAs('me', 'motel', 'warehouse', { x: sp.x + 2, z: sp.z + 1 });
     for (let i = 0; i < 40 && !G.debugVeh().v.riding; i++) await w(100); const on = G.debugVeh().v.riding; G.debugDismount(); await w(600);
     return { on, off: !G.debugVeh().v.riding, free: !S.fleet.find(c => c.id === 'motel').occ };
 });
