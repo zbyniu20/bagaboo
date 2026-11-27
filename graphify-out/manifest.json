@@ -216,9 +216,9 @@
     "semantic_hash": ""
   },
   "core/player.js": {
-    "mtime": 1795467759.6906207,
-    "seen": 1795471245.234663,
-    "ast_hash": "847256e3dc92c92f77e5a7ec2887f28b",
+    "mtime": 1795819396.7314548,
+    "seen": 1795819476.1641243,
+    "ast_hash": "2025e33b6b5186b7535163bcee4a1518",
     "semantic_hash": ""
   },
   "core/presence.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795819290.987832,
-    "seen": 1795819341.5510838,
-    "ast_hash": "535ac6505b5cecbb0347a95261057030",
+    "mtime": 1795819427.017598,
+    "seen": 1795819476.1645732,
+    "ast_hash": "d7269a4298ede8a24b679c65382ffe47",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795818700.4722831,
-    "seen": 1795819341.55109,
-    "ast_hash": "f6559a84ba5ffec8fe174912ec412430",
+    "mtime": 1795819411.7067304,
+    "seen": 1795819476.1645799,
+    "ast_hash": "168bb9b2028c69679d18f7659d19f76a",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795819195.1567128,
-    "seen": 1795819341.550797,
-    "ast_hash": "09b85c32138b5ba226b28020cd21d712",
+    "mtime": 1795819411.7059987,
+    "seen": 1795819476.1643362,
+    "ast_hash": "9e05e2cff6135a88b24b15ff367f625e",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795818697.0324783,
-    "seen": 1795819341.550836,
-    "ast_hash": "07871867a03c8e125ce2cbfdd62bf34e",
+    "mtime": 1795819411.7064228,
+    "seen": 1795819476.1643794,
+    "ast_hash": "59dcd99c70de06316351cab36c31c582",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -11169,6 +11169,12 @@
     "mtime": 1795819195.1539404,
     "seen": 1795819341.5507896,
     "ast_hash": "7dc472933f958e31c360ec1ce8b1191a",
+    "semantic_hash": ""
+  },
+  "core/divelogic.js": {
+    "mtime": 1795819388.5969882,
+    "seen": 1795819476.1638393,
+    "ast_hash": "af605566d25e6d351b39483c9ccd77cb",
     "semantic_hash": ""
   },
   "package-lock.json": {

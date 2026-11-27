@@ -1247,5 +1247,24 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
         const h = mj.slice(mj.indexOf('NETM.onFollow('), mj.indexOf('NETM.onFollow(') + 400), off = mj.slice(mj.indexOf('function offerInvite'), mj.indexOf('function offerInvite') + 900);
         return /cleanInvite\(level, data, LEVEL_BY_ID\)/.test(h) && !/goToLevel/.test(h) && /showInvite\(/.test(off) && /shouldJoin\(inv\)/.test(off) && /goToLevel\(c\.level/.test(off) && /offerInvite\(f\)/.test(mj) && !/goToLevel\(f\.level/.test(mj) && /updateInvite\(dt\)/.test(mj) && /panel\.persistent = true/.test(iv) && /t\.btn\('yes'/.test(iv) && /t\.btn\('no'/.test(iv) && /'y' \|\| e\.key === 'Y'/.test(iv) && /createMesh/.test(iv);
     })());
+    // --- rzut na brzuch (core/divelogic.js, core/player.js) ---
+    const DVt = await import(url('core/divelogic.js'));
+    check('dive: running, jumping with the head low and landing starts a slide FORWARD along the flight direction, faster than the flight but never above the cap', (() => {
+        let st = DVt.newDive(), out = null; const g = (grounded, low, vx, vz) => { const r = DVt.diveStep(st, { grounded, low, vx, vz, dt: 1 / 90 }); st = r.st; return r; };
+        for (let i = 0; i < 5; i++) g(true, false, 3, 0);
+        for (let i = 0; i < 20; i++) g(false, i > 5, 3, 0.5);   // lot ok. 0,22 s, głowa nisko od połowy
+        out = g(true, true, 3, 0.5); const sp = Math.hypot(out.vx, out.vz), fly = Math.hypot(3, 0.5);
+        const fast = DVt.diveStep(Object.assign(DVt.newDive(), { was: false, air: 0.5, lowMem: 0.2, vx: 20, vz: 0 }), { grounded: true, low: true, vx: 20, vz: 0, dt: 1 / 90 });
+        return out.start && sp > fly && sp <= DVt.DIVE.CAP && Math.abs(out.vx / sp - 3 / fly) < 1e-6 && Math.abs(out.vz / sp - 0.5 / fly) < 1e-6 && fast.start && Math.abs(Math.hypot(fast.vx, fast.vz) - DVt.DIVE.CAP) < 1e-9;
+    })());
+    check('dive: no slide for a normal landing (head high), a hop shorter than 0.12 s, a slow landing, walking on the ground or ground flicker; low only just before the ground still counts for 0.3 s', (() => {
+        const run = (frames) => { let st = DVt.newDive(), start = false; for (const f of frames) { const r = DVt.diveStep(st, { grounded: f[0], low: f[1], vx: f[2], vz: f[3] || 0, dt: 1 / 90 }); st = r.st; if (r.start) start = true; } return start; };
+        const air = (n, low, v) => Array.from({ length: n }, () => [false, low, v]), gr = (n, low, v) => Array.from({ length: n }, () => [true, low, v]);
+        const normal = run([...gr(3, false, 4), ...air(30, false, 4), ...gr(5, false, 4)]), hop = run([...gr(3, true, 4), ...air(5, true, 4), ...gr(5, true, 4)]), slow = run([...gr(3, true, 1), ...air(30, true, 1), ...gr(5, true, 1)]);
+        const walk = run(gr(60, true, 4)), recent = run([...gr(3, false, 4), ...air(20, false, 4), ...air(10, true, 4), ...air(5, false, 4), ...gr(3, false, 4)]), old = run([...gr(3, false, 4), ...air(20, true, 4), ...air(40, false, 4), ...gr(3, false, 4)]);
+        return !normal && !hop && !slow && !walk && recent && !old;
+    })());
+    check('dive: garbage input (NaN, strings, negative or huge time) changes nothing and never throws; the state is not mutated', (() => { const st = DVt.newDive(), copy = JSON.stringify(st); const r = DVt.diveStep(st, { grounded: false, low: true, vx: NaN, vz: 'x', dt: 1e9 }); return JSON.stringify(st) === copy && !r.start && r.st.air <= DVt.DIVE.MAX_DT + 1e-9 && !DVt.diveStep(st, {}).start; })());
+    check('dive: wired into the slide (diveStep every sub-step before the old start rule, start sets the horizontal velocity, reset when the slide is not allowed) and the old slide rule stays', (() => { const pj = fs.readFileSync(path.join(ROOT, 'core/player.js'), 'utf8').replace(/\/\/.*$/gm, ''); return /import \{ newDive, diveStep \} from '\.\/divelogic\.js'/.test(pj) && /diveStep\(dive, \{ grounded: grounded, low: low, vx: v\.x, vz: v\.z, dt: 1 \/ 90 \}\)/.test(pj) && /if \(dv\.start\)/.test(pj) && /v\.x = dv\.vx; v\.z = dv\.vz/.test(pj) && /dive = newDive\(\); return;/.test(pj) && /grounded && low && sp > SLIDE_MIN_SPEED/.test(pj); })());
 }
 done('logic');

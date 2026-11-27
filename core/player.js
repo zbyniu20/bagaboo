@@ -11,6 +11,7 @@ import { buzz } from './haptics.js';
 import { MOD, BOOST_MULT, FLY_SPEED, PERSONAL, capMul } from './modstate.js';   // BagaBooModMenu: boost, fly, noclip i size (domyślnie wyłączone)
 import { SPEC } from './spectatelogic.js';
 import { TUT } from './tutoriallogic.js';
+import { newDive, diveStep } from './divelogic.js';
 
 const radius = 0.35, gorillaStanceOffset = 0.35;   // widok wyżej, bo długie ręce goryla i tak sięgają podłogi
 const POWER = 1.0;            // siła trampolin i limit prędkości (1.0 = normalnie)
@@ -62,18 +63,22 @@ export function setPlayerPosition(x, y, z) {
 
 const anchorVel = [null, null], anchorWall = [false, false], velHist = [];   // prędkości od "przyklejonych" dłoni i historia do wyrzutu
 let wasAnchored = false, lastDt = 1 / 72;
-let sliding = false, slideAir = 0, slideBuzz = 0, standRef = 0;
+let sliding = false, slideAir = 0, slideBuzz = 0, standRef = 0, dive = newDive();   // dive: rzut na brzuch w locie (core/divelogic.js)
 export function isSliding() { return sliding; }
 // Ślizg: start, gdy gracz jest na podłodze, szybki i nisko przykucnięty; koniec, gdy wstanie, zwolni albo spadnie
 function updateSlide(p, v) {
-    if (!renderer.xr.isPresenting || ropeConstraint || MOD.fly || L.noSlide) { sliding = false; playerRig.userData.sliding = false; return; }   // brak ślizgu: podczas FLY (hamowałby lot) i na poziomach z L.noSlide (Hotel)
+    if (!renderer.xr.isPresenting || ropeConstraint || MOD.fly || L.noSlide) { sliding = false; playerRig.userData.sliding = false; dive = newDive(); return; }   // brak ślizgu: podczas FLY (hamowałby lot) i na poziomach z L.noSlide (Hotel)
     // Zwykła wysokość głowy gracza (najwyższa ostatnio, powoli maleje, więc dopasowuje się też do gry na siedząco)
     const head = camera.position.y;
     standRef = Math.max(standRef - 0.03 / 90, head);
     const low = head < standRef - SLIDE_CROUCH;
     const sp = Math.hypot(v.x, v.z);
+    const dv = diveStep(dive, { grounded: grounded, low: low, vx: v.x, vz: v.z, dt: 1 / 90 }); dive = dv.st;   // lot z głową nisko i lądowanie na brzuchu
     if (!sliding) {
-        if (grounded && low && sp > SLIDE_MIN_SPEED) {
+        if (dv.start) {   // rzut na brzuch: ślizg do przodu z prędkością sprzed lądowania (limit komfortu w divelogic.js)
+            sliding = true; slideAir = 0; v.x = dv.vx; v.z = dv.vz;
+            buzz('both', 0.6, 160);
+        } else if (grounded && low && sp > SLIDE_MIN_SPEED) {
             sliding = true; slideAir = 0;
             const k = Math.min(SLIDE_BOOST, (MAX_JUMP_SPEED * 1.1) / sp); v.x *= k; v.z *= k;
             buzz('both', 0.5, 120);
