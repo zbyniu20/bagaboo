@@ -456,9 +456,9 @@
     "semantic_hash": ""
   },
   "main.js": {
-    "mtime": 1795711654.071782,
-    "seen": 1795713411.9911358,
-    "ast_hash": "a2123faf2ce7d04f3dd62339c06cb3ec",
+    "mtime": 1795818682.0168583,
+    "seen": 1795819341.5507398,
+    "ast_hash": "b64b2d9cecc409354bb29079dcd0aced",
     "semantic_hash": ""
   },
   "tests/package.json": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795814632.4046555,
-    "seen": 1795814677.7996352,
-    "ast_hash": "6349e6b5b50f964e9b1d6fc0e38ba998",
+    "mtime": 1795819290.987832,
+    "seen": 1795819341.5510838,
+    "ast_hash": "535ac6505b5cecbb0347a95261057030",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795811548.9713316,
-    "seen": 1795811846.5182228,
-    "ast_hash": "daa28b15a2b0f8735b0e3bf301b31072",
+    "mtime": 1795818700.4722831,
+    "seen": 1795819341.55109,
+    "ast_hash": "f6559a84ba5ffec8fe174912ec412430",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795814648.2288213,
-    "seen": 1795814677.7994184,
-    "ast_hash": "23048493d096670f53ac0573d741159e",
+    "mtime": 1795819195.1567128,
+    "seen": 1795819341.550797,
+    "ast_hash": "09b85c32138b5ba226b28020cd21d712",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -618,9 +618,9 @@
     "semantic_hash": ""
   },
   "tests/modes/workshop.mjs": {
-    "mtime": 1795016110.9240873,
-    "seen": 1795275190.733389,
-    "ast_hash": "94acae7a0009f8a13b6b8236cf39401d",
+    "mtime": 1795818708.7291677,
+    "seen": 1795819341.5508072,
+    "ast_hash": "e7b78e7311aaab5d73b58b7c74110cc0",
     "semantic_hash": ""
   },
   "core/homelogic.js": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795811548.9729977,
-    "seen": 1795811846.518025,
-    "ast_hash": "5fd8806c1ef6da753780225211797308",
+    "mtime": 1795818697.0324783,
+    "seen": 1795819341.550836,
+    "ast_hash": "07871867a03c8e125ce2cbfdd62bf34e",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -11151,6 +11151,24 @@
     "mtime": 1795811697.192801,
     "seen": 1795811846.517924,
     "ast_hash": "78425629af9ea56bd7777251740515b6",
+    "semantic_hash": ""
+  },
+  "core/invite.js": {
+    "mtime": 1795819136.8959627,
+    "seen": 1795819341.5505843,
+    "ast_hash": "d87249f6c4d04d38b159bfdcaf71b723",
+    "semantic_hash": ""
+  },
+  "core/invitelogic.js": {
+    "mtime": 1795818657.224962,
+    "seen": 1795819341.5505865,
+    "ast_hash": "bafe942493a6f09535abd3e525d21ad5",
+    "semantic_hash": ""
+  },
+  "tests/invite.mjs": {
+    "mtime": 1795819195.1539404,
+    "seen": 1795819341.5507896,
+    "ast_hash": "7dc472933f958e31c360ec1ce8b1191a",
     "semantic_hash": ""
   },
   "package-lock.json": {
