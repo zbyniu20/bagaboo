@@ -33,6 +33,7 @@ async function client(name) {
     await page.goto(`http://localhost:${port}/?three=${V}&presence=0`);
     await page.waitForFunction(() => /Ready|Could not/.test(document.getElementById('status').innerText), null, { timeout: 120000 });
     const st0 = await page.evaluate(() => document.getElementById('status').innerText); if (/Could not/.test(st0)) { console.log('FAIL: the page did not start (' + name + '): ' + st0 + ' | errors ' + JSON.stringify(errors[name].slice(0, 3))); await finish(1); }
+    try { await page.waitForFunction(() => !document.getElementById('btnSolo').disabled, null, { timeout: 120000 }); } catch (e) { console.log('FAIL: Play solo never became enabled (' + name + '): status = ' + (await page.evaluate(() => document.getElementById('status').innerText)) + ' | errors ' + JSON.stringify(errors[name].slice(0, 4))); await finish(1); }
     await page.click('#btnSolo', { timeout: 90000 });
     await page.waitForTimeout(1200);
     return { ctx, page, ev: (fn, arg) => page.evaluate(fn, arg) };
