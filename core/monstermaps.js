@@ -2,12 +2,13 @@
 // MAPY DLA "BECOME THE MONSTER": czysty generator (bez THREE, DOM i sieci), testowany w Node (tests/modes/monster.mjs).
 // Jedna mapa = jedna wartość MAPS (nazwa, opis, rozmiar). generateMap(id, seed) zwraca deterministyczny układ z listy prostopadłościanów
 // (środek x, y, z oraz wymiary w, h, d, kolor c i rodzaj powierzchni k), światła, miejsce wejścia, start potwora i starty uciekających.
-// Rysuje je levels/monster.js (addCrispBlock). Ta sama para (mapa, ziarno) daje u hosta i u gościa dokładnie ten sam układ,
-// więc przez sieć idzie tylko numer mapy i ziarno (cleanMapPick). Stacja kolejowa jest ręcznie zbudowana w monster.js (tu tylko dane).
+// Rysuje je levels/monster.js (addCrispBlock; lista `inst`, jeśli mapa ją ma, idzie jako instancje: jedna siatka na rodzaj powierzchni). Ta sama para (mapa, ziarno) daje u hosta i u gościa dokładnie ten sam układ,
+// więc przez sieć idzie tylko numer mapy i ziarno (cleanMapPick). Stacja kolejowa (80 x 80 m) ma własny generator w core/stationmap.js.
 // Układ wejścia: drzwi GAMES i start graczy są przy południowej ścianie (z = +A), potwór zaczyna daleko na północy.
 // ==========================================
+import { stationLayout } from './stationmap.js';
 export const MAPS = [
-    { id: 'station', name: 'Train Station', blurb: 'Two platforms, a train, a footbridge and vents to crawl through.', A: 30, H: 12, fixed: true },
+    { id: 'station', name: 'Train Station', blurb: 'Five platforms, three trains, a footbridge, vents and hidden tunnels.', A: 40, H: 12 },
     { id: 'hedge', name: 'Hedge Maze', blurb: 'A new maze every round. Tall hedges, loops to run in circles, no climbing.', A: 18.9, H: 6 },
     { id: 'yard', name: 'Container Yard', blurb: 'Stacks of shipping containers with steps up to the roofs and planks between them.', A: 28, H: 14 },
     { id: 'aisles', name: 'Night Supermarket', blurb: 'Long shelf aisles, checkout counters and shelves you can jump over.', A: 24, H: 7 },
@@ -252,11 +253,10 @@ function carnival(seed) {
     const st = starts(boxes, A, R, 1.0), lights = [[0, 6, 0], [-17, 9, -12], [17, 9, -12], [-14, 5, 14], [14, 5, 14], [0, 5, -20]];
     return { boxes, lights, entry: [0, 1.0, A - 2], monster: st.monster, survivors: st.survivors, botJump: 4.2, floor: 0x3a3430, wall: 0x2a2026, ceil: 0x0c0a10 };
 }
-const GEN = { hedge, yard, aisles, rooftops, temple, carnival };
-// Układ mapy dla (id, ziarno). Stacja jest zbudowana w monster.js, więc dostaje tylko dane startowe.
+const GEN = { station: (seed) => stationLayout(rng(seed)), hedge, yard, aisles, rooftops, temple, carnival };
+// Układ mapy dla (id, ziarno)
 export function generateMap(id, seed) {
     const def = MAPS.find(m => m.id === id); if (!def) return null;
     const base = { id: id, name: def.name, A: def.A, H: def.H };
-    if (def.fixed) return Object.assign(base, { fixed: true, boxes: [], lights: [], entry: [0, 1.0, 27.5], monster: [0, 1.0, -26], survivors: [[-18, 2.2, 26], [18, 2.2, 26], [-12, 2.2, 24], [12, 2.2, 24], [-22, 2.2, 22], [22, 2.2, 22]], botJump: 4.2 });
     return Object.assign(base, GEN[id](seed));
 }

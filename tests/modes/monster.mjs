@@ -10,22 +10,37 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const M = await import(pathToFileURL(path.join(ROOT, 'core/monstermaps.js')).href);
 const T = (s) => 'monster: ' + s;
 const rng2 = (seed) => M.rng(seed);
-const GEN = M.MAPS.filter(m => !m.fixed);
+const GEN = M.MAPS.filter(m => !m.fixed);   // wszystkie mapy są generowane (stacja też, od mapy 80 x 80)
+const layout = (g) => g.boxes.concat(g.inst || []);   // siatki + instancje
 const SEEDS = Array.from({ length: 40 }, (_, i) => i * 24593 + 7);
 const inside = (b, x, z, m) => Math.abs(x - b.x) < b.w / 2 + m && Math.abs(z - b.z) < b.d / 2 + m;
 
-check(T('there are at least 5 maps with unique ids, the station first, and generated ones are the rest'), M.MAPS.length >= 5 && new Set(M.MAP_IDS).size === M.MAPS.length && M.MAPS[0].id === 'station' && GEN.length === M.MAPS.length - 1);
+check(T('there are at least 5 maps with unique ids, the station first, and generated ones are the rest'), M.MAPS.length >= 5 && new Set(M.MAP_IDS).size === M.MAPS.length && M.MAPS[0].id === 'station' && GEN.length === M.MAPS.length);
 check(T('every map has a name, a short description and a sane size'), M.MAPS.every(m => m.name.length > 3 && m.blurb.length > 10 && m.blurb.length < 100 && m.A >= 15 && m.A <= 40 && m.H >= 5 && m.H <= 30));
 check(T('an unknown map id gives nothing'), M.generateMap('nope', 1) === null);
-const st = M.generateMap('station', 1);
-check(T('the station keeps its fixed spawns (6 survivors, monster far to the north)'), st.fixed === true && st.survivors.length === 6 && st.monster[2] < -20 && st.entry[2] > 20);
+const ST = await import(pathToFileURL(path.join(ROOT, 'core/stationmap.js')).href);
+{
+    const st = M.generateMap('station', 1), sd = M.MAPS[0];
+    check(T('the station is 80 x 80 m (A = 40), 12 m high, starts survivors in the ticket hall by the GAMES door and the monster in the far north yard'), sd.A === 40 && sd.H === 12 && st.A === 40 && st.survivors.length === 6 && st.monster[2] < -33 && st.entry[2] > 37 && st.survivors.every(p => p[2] > 30) && Math.abs(st.entry[0]) < 1e-9);
+    check(T('the station layout is cheap to draw: only 5 platform meshes, everything else is instanced (one mesh per surface kind), and it has 16 lights at most'), st.boxes.length === 5 && st.inst.length > 300 && st.inst.length <= 760 && new Set(st.inst.map(b => b.k)).size <= 5 && st.lights.length <= 16);
+    check(T('the station has five platforms, four tracks and three trains of 3 to 5 cars each, on three different tracks'), ST.PLAT.length === 5 && ST.ST.TX.length === 4 && SEEDS.every(sd2 => { const g = M.generateMap('station', sd2); return g.trains.length === 3 && new Set(g.trains.map(t => t.track)).size === 3 && g.trains.every(t => t.cars >= 3 && t.cars <= 5); }));
+    check(T('station: every kind of hiding place exists (train cars, waiting rooms, kiosks, vents, hidden tunnels with at least 6 hatches), the footbridge is 6 m up and there are vents and tunnels'), SEEDS.every(sd2 => { const g = M.generateMap('station', sd2), k = (n) => g.hides.filter(h => h[3] === n).length; return k('car') >= 3 && k('room') === 3 && k('kiosk') === 3 && k('duct') === 2 && k('tunnel') === 7 && g.inst.some(b => Math.abs(b.y + b.h / 2 - 6) < 1e-9 && b.w > 60); }));
+    check(T('station: everything can be reached on foot from the entrance (survivor starts, monster start, all 5 platforms through steps, car interiors, rooms, kiosks, vents and the hidden tunnels) for several seeds'), [1, 7, 24600, 99999, 333333, 654321].every(sd2 => { const pr = ST.stationProblems(M.generateMap('station', sd2)); if (pr.length) console.log(sd2, pr.slice(0, 4)); return pr.length === 0; }));
+    check(T('station: the reachability check really notices a sealed hiding place (a wall over a tunnel hatch, a wall over the door of a kiosk and no steps to the platforms)'), (() => {
+        const g = M.generateMap('station', 7), h = g.hides.find(q => q[3] === 'tunnel'), k = g.hides.find(q => q[3] === 'kiosk');
+        const sealed = Object.assign({}, g, { inst: g.inst.concat([{ x: 0, y: 1.3, z: h[2] + 1.0, w: 78, h: 2.6, d: 0.6, c: 0, k: 'wall' }]) });   // zamurowany cały front tunelu (jedna luka nie izoluje tunelu, bo ma ich kilka)
+        const noSteps = Object.assign({}, g, { inst: g.inst.filter(b => !(b.k === 'step' && b.h <= 0.8 && b.w >= 10 && (Math.abs(b.z - 27.45) < 0.1 || Math.abs(b.z - 28.35) < 0.1))) });
+        return ST.stationProblems(g).length === 0 && ST.stationProblems(sealed).some(m => /tunnel/.test(m)) && ST.stationProblems(noSteps).some(m => /monster|platform/.test(m)) && !!k;
+    })());
+    check(T('station: it is the same for the same seed and differs between seeds (trains, rooms, props, hatches)'), JSON.stringify(layout(M.generateMap('station', 5))) === JSON.stringify(layout(M.generateMap('station', 5))) && new Set(SEEDS.map(sd2 => JSON.stringify(layout(M.generateMap('station', sd2))))).size > 30);
+}
 
 for (const m of GEN) {
     const maps = SEEDS.map(s => M.generateMap(m.id, s));
-    check(T(m.id + ': the same seed gives exactly the same layout, other seeds differ'), JSON.stringify(M.generateMap(m.id, 5).boxes) === JSON.stringify(M.generateMap(m.id, 5).boxes) && new Set(maps.map(g => JSON.stringify(g.boxes))).size > 20);
-    check(T(m.id + ': boxes are finite, have volume, stay inside the walls and the count is bounded'), maps.every(g => g.boxes.length > 8 && g.boxes.length < 260 && g.boxes.every(b => [b.x, b.y, b.z, b.w, b.h, b.d].every(Number.isFinite) && b.w > 0 && b.h > 0 && b.d > 0 && Math.abs(b.x) + b.w / 2 <= m.A + 0.01 && Math.abs(b.z) + b.d / 2 <= m.A + 0.01 && b.y - b.h / 2 >= -0.01 && b.y + b.h / 2 <= m.H)));
+    check(T(m.id + ': the same seed gives exactly the same layout, other seeds differ'), JSON.stringify(layout(M.generateMap(m.id, 5))) === JSON.stringify(layout(M.generateMap(m.id, 5))) && new Set(maps.map(g => JSON.stringify(layout(g)))).size > 20);
+    check(T(m.id + ': boxes are finite, have volume, stay inside the walls and the count is bounded'), maps.every(g => layout(g).length > 8 && g.boxes.length < 260 && (g.inst || []).length < 760 && layout(g).every(b => [b.x, b.y, b.z, b.w, b.h, b.d].every(Number.isFinite) && b.w > 0 && b.h > 0 && b.d > 0 && Math.abs(b.x) + b.w / 2 <= m.A + 0.01 && Math.abs(b.z) + b.d / 2 <= m.A + 0.01 && b.y - b.h / 2 >= -0.01 && b.y + b.h / 2 <= m.H)));
     check(T(m.id + ': 6 survivors, a monster far away, entry on the south side, all inside the walls'), maps.every(g => g.survivors.length === 6 && Math.hypot(g.monster[0] - g.entry[0], g.monster[2] - g.entry[2]) > 14 && g.entry[2] > m.A - 3 && [g.monster, g.entry, ...g.survivors].every(p => p.every(Number.isFinite) && Math.abs(p[0]) < m.A && Math.abs(p[2]) < m.A)));
-    check(T(m.id + ': nobody starts inside an obstacle'), maps.every(g => [g.monster, g.entry, ...g.survivors].every(p => !g.boxes.some(b => b.h > 0.4 && b.y - b.h / 2 < 1.6 && inside(b, p[0], p[2], 0.3)))));
+    check(T(m.id + ': nobody starts inside an obstacle'), maps.every(g => [g.monster, g.entry, ...g.survivors].every(p => !layout(g).some(b => b.h > 0.4 && b.y - b.h / 2 < 1.6 && inside(b, p[0], p[2], 0.3)))));
     check(T(m.id + ': it has lights and a bot jump height'), maps.every(g => g.lights.length >= 4 && g.lights.length <= 16 && g.botJump >= 4 && g.botJump <= 9));
 }
 

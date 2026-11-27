@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "levels/monster.js": {
-    "mtime": 1795655219.93748,
-    "seen": 1795656261.3698473,
-    "ast_hash": "efb6fad7a421d10976409fc1ec44d580",
+    "mtime": 1795821648.8431923,
+    "seen": 1795822073.5166717,
+    "ast_hash": "61c5ecd776427bfd156d7a94e77f65a2",
     "semantic_hash": ""
   },
   "levels/nursery.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795820632.4490328,
-    "seen": 1795820683.9651022,
-    "ast_hash": "207eb9cf2d41c9578094edfb7a0c3ac4",
+    "mtime": 1795821846.5740337,
+    "seen": 1795822073.5169516,
+    "ast_hash": "fc98581b3ab4a7383e140364291d35fb",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795819673.1297536,
-    "seen": 1795820683.9651136,
-    "ast_hash": "86a517ce66011a8ffdcebc40581b2f03",
+    "mtime": 1795821153.0210278,
+    "seen": 1795822073.5169575,
+    "ast_hash": "5abdcc05c1d8fb86580781c919487902",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -9984,9 +9984,9 @@
     "semantic_hash": ""
   },
   "core/monstermaps.js": {
-    "mtime": 1795476268.716477,
-    "seen": 1795476779.0944195,
-    "ast_hash": "0b5c8be6cf9b842daad849733d16d6f9",
+    "mtime": 1795821149.189193,
+    "seen": 1795822073.5165539,
+    "ast_hash": "946396c35dbfcb3bc28619faca3e8fd3",
     "semantic_hash": ""
   },
   "tests/modes/generatorlogic.mjs": {
@@ -9996,9 +9996,9 @@
     "semantic_hash": ""
   },
   "tests/modes/monster.mjs": {
-    "mtime": 1795626629.9038875,
-    "seen": 1795628189.7195032,
-    "ast_hash": "f718a0b6d7613ae3ea037d72b2d5b089",
+    "mtime": 1795821185.2754827,
+    "seen": 1795822073.516751,
+    "ast_hash": "a8de53ceedda98e1a6178c7a12feb43b",
     "semantic_hash": ""
   },
   "core/room000map.js": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795819673.132657,
-    "seen": 1795820683.9647088,
-    "ast_hash": "92c2229bdb992a3d8ceac1206218f453",
+    "mtime": 1795821153.0210514,
+    "seen": 1795822073.5167801,
+    "ast_hash": "bd504435ea275b5a6f7b7a7397c2286c",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -11193,6 +11193,18 @@
     "mtime": 1795820195.0086904,
     "seen": 1795820683.964608,
     "ast_hash": "ad6a5f1c3b34102c7e046f7807c35209",
+    "semantic_hash": ""
+  },
+  "core/stationmap.js": {
+    "mtime": 1795821648.8437204,
+    "seen": 1795822073.5166187,
+    "ast_hash": "c6e326cabf0e3e56ad3869d8099e26fd",
+    "semantic_hash": ""
+  },
+  "tests/station.mjs": {
+    "mtime": 1795821648.8440619,
+    "seen": 1795822073.5167775,
+    "ast_hash": "9cfaaf87fbddfcd815a820e308d73408",
     "semantic_hash": ""
   },
   "package-lock.json": {
