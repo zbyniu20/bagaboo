@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795730543.9199567,
-    "seen": 1795730600.694701,
-    "ast_hash": "03039401e7c086be7141f45183533034",
+    "mtime": 1795742650.820788,
+    "seen": 1795745229.349751,
+    "ast_hash": "b90b34ebbe8edc9d3075b17b86f9f4be",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795728583.491318,
-    "seen": 1795730600.6947076,
-    "ast_hash": "ae7e9a42fbd9d0507d1f57e2110764e2",
+    "mtime": 1795741839.1116827,
+    "seen": 1795745229.3497584,
+    "ast_hash": "38a98775c7038c23e408265308bc24f7",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795728696.7793589,
-    "seen": 1795730600.6944823,
-    "ast_hash": "604817bbd07dd4ae744f3ad56e7ccb34",
+    "mtime": 1795741839.1127396,
+    "seen": 1795745229.3494549,
+    "ast_hash": "ac3d18d3db8864421b3df2d3abc0bdc2",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795728583.4919071,
-    "seen": 1795730600.6945183,
-    "ast_hash": "6c51756f86f8395b6ff16d561fe9bdd0",
+    "mtime": 1795741839.1120732,
+    "seen": 1795745229.3495023,
+    "ast_hash": "545284bf5ee6a273ac632b25b1cdc01a",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10296,9 +10296,9 @@
     "semantic_hash": ""
   },
   "tests/glb.mjs": {
-    "mtime": 1795720024.9578824,
-    "seen": 1795720665.6925714,
-    "ast_hash": "31e44e35b73771f45829d9bdbffe7040",
+    "mtime": 1795741774.9653015,
+    "seen": 1795745229.3494172,
+    "ast_hash": "105ee6921f677f4b47e5e0195817741e",
     "semantic_hash": ""
   },
   "assets/monsters/README.md": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795728583.4904609,
-    "seen": 1795730600.6943905,
-    "ast_hash": "6545786b6e748ac22b208f4c8125b5f1",
+    "mtime": 1795741839.1110091,
+    "seen": 1795745229.3493767,
+    "ast_hash": "3dc2ba598a9110241a1a0beeea3ea0db",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -10830,9 +10830,9 @@
     "semantic_hash": ""
   },
   "tests/citybudget.mjs": {
-    "mtime": 1795720717.1525133,
-    "seen": 1795721695.5547912,
-    "ast_hash": "e84ac5e4b1ee23f6b6c83c5b937a7112",
+    "mtime": 1795741454.9980104,
+    "seen": 1795745229.3494067,
+    "ast_hash": "0d53c2183386d3ae37b1d2efd56b73f4",
     "semantic_hash": ""
   },
   "core/cityai.js": {
@@ -10842,9 +10842,9 @@
     "semantic_hash": ""
   },
   "core/citysim.js": {
-    "mtime": 1795720717.1405134,
-    "seen": 1795721695.5544279,
-    "ast_hash": "8dd65dfd00d37c75f3c6628f082735ab",
+    "mtime": 1795741414.9832819,
+    "seen": 1795745229.3489664,
+    "ast_hash": "642c23c454df19fd351930342379c6f5",
     "semantic_hash": ""
   },
   "core/wantedlogic.js": {
@@ -11061,6 +11061,48 @@
     "mtime": 1795729600.0853841,
     "seen": 1795730600.6944635,
     "ast_hash": "e25429edf0b741d4a858689880f22dd7",
+    "semantic_hash": ""
+  },
+  "core/coplod.js": {
+    "mtime": 1795741409.2266414,
+    "seen": 1795745229.3489773,
+    "ast_hash": "96b5d7ebcf52af7ffb9465efd874aff0",
+    "semantic_hash": ""
+  },
+  "core/gtabillboardfx.js": {
+    "mtime": 1795741829.648739,
+    "seen": 1795745229.3490374,
+    "ast_hash": "ff41e301a7049c03faf1533425d401d3",
+    "semantic_hash": ""
+  },
+  "core/gtabillboards.js": {
+    "mtime": 1795741844.7684307,
+    "seen": 1795745229.3490388,
+    "ast_hash": "94dbaeccece5c76420d591e7a634f440",
+    "semantic_hash": ""
+  },
+  "core/gtacrowd.js": {
+    "mtime": 1795741759.2919984,
+    "seen": 1795745229.34904,
+    "ast_hash": "e67af7c5cadd2bc90201b57300bf39d5",
+    "semantic_hash": ""
+  },
+  "core/gtacrowdfx.js": {
+    "mtime": 1795742619.4244022,
+    "seen": 1795745229.3491035,
+    "ast_hash": "9e0df088a3de5aa1914fcc5fb8b64279",
+    "semantic_hash": ""
+  },
+  "core/gtadj.js": {
+    "mtime": 1795741759.291511,
+    "seen": 1795745229.3491051,
+    "ast_hash": "720b571b43217cb02cc05922b82143a7",
+    "semantic_hash": ""
+  },
+  "tests/gtalife.mjs": {
+    "mtime": 1795745008.5553982,
+    "seen": 1795745229.3494308,
+    "ast_hash": "cb914f671af27c71cb317c1f1de14858",
     "semantic_hash": ""
   },
   "package-lock.json": {
