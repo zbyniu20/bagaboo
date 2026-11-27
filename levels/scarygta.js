@@ -2,7 +2,7 @@
 // POZIOM: SCARY GTA (nocne, neonowe miasto w stylu Florydy, 160 x 150 m, ok. 24 000 m^2 = 2x Maze). Układ w czystym core/citylayout.js (testy: tests/logic.mjs, tests/city.mjs).
 // Etap 1: miasto z chunków (kwartał = jedna scalona siatka, wyłączana poza CITY.VIS_R), neony, latarnie, samochody i palmy (instancje), marina z jachtem, plaża z pirsem,
 // sześć toreb łupu (jubiler, bank, kasyno na dachu, stacja benzynowa, wieża radiowa na szczycie, jacht) i wyjście łodzią z pirsu (drzwi EXIT, wymaga co najmniej jednej torby).
-// Ciężar łupu: z torbą ruch jest wolniejszy o 8% (L.moveScale). Kolejne etapy: policja i gwiazdki, online i strzelanie graczy, helikopter, nowy potwór.
+// Ruch jak w lobby (L.moveScale = PACE), także z torbą. Kolejne etapy: policja i gwiazdki, online i strzelanie graczy, helikopter, nowy potwór.
 // ==========================================
 import { THREE, CANNON, L, scene, camera, addStaticBody } from '../core/engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -52,7 +52,7 @@ import { createGtaCopMarks } from '../core/gtacopmarkfx.js';
 import * as CTm from '../core/gtacontracts.js';
 
 export const info = { id: 'scarygta', name: 'Scary GTA', spawn: [0, 1, 56] };   // = CITY.SPAWN (test w tests/logic.mjs pilnuje zgodności)
-const TILE = 8, CARRY_SLOW = 0.92, NEON = [0xff2a9a, 0x20e0ff, 0xff8a20, 0xa050ff, 0x40ff80, 0xff3050];
+const TILE = 8, NEON = [0xff2a9a, 0x20e0ff, 0xff8a20, 0xa050ff, 0x40ff80, 0xff3050];
 const ROLE_TINT = { downtown: [0.5, 0.58, 0.72], casino: [0.62, 0.42, 0.74], old: [0.74, 0.58, 0.46], motel: [0.78, 0.5, 0.56], industrial: [0.5, 0.52, 0.5], warehouse: [0.46, 0.5, 0.56], plaza: [0.6, 0.6, 0.55], marina: [0.5, 0.45, 0.38] };
 let S = null;
 const _p = new THREE.Vector3(), _d = new THREE.Vector3();
@@ -314,7 +314,7 @@ export function update(dt, t, ctx) {
     for (const f of S.fx) if (f.l.visible) { f.t -= dt; if (f.t <= 0) f.l.visible = false; }
     S.hurtT = Math.max(0, S.hurtT - dt);
     if (S.busted >= 0) { S.busted += dt; netStep(dt, p, 0); S.heliV.update(S.heli, dt); if (S.busted > 4.5) respawn(); S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.3; drawHud(p); } return; }
-    L.moveScale = PACE * (S.got > 0 ? CARRY_SLOW : 1);   // ciężar łupu: -8% ruchu z torbą
+    L.moveScale = PACE;   // ruch jak w lobby także z torbą (wcześniej ciężar łupu zabierał 8%)
     S.visT -= dt;
     if (S.visT <= 0) { S.visT = 0.3; camera.getWorldPosition(_p); for (const c of S.chunks) c.g.visible = Math.hypot(_p.x - c.c[0], _p.z - c.c[1]) < C.CITY.VIS_R + 20; }   // chunki poza zasięgiem znikają z renderu
     for (const b of S.bags) {
