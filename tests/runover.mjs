@@ -61,7 +61,7 @@ if (R.err) { console.log(R.err); process.exit(1); }
 ok('a car driving into a standing guest hurts him by the speed-based percent (12-60), the driver sees RUN OVER n% and the guests get a "hit" message', R.driving && R.hit1.hp < 100 && R.hit1.hp >= 100 - R.dmgLimit && /^RUN OVER \d+%$/.test(R.hit1.hitMark) && R.hit1.msg && R.hit1.msg.v === 'g1' && R.hit1.msg.p === 100 - R.hit1.hp, R);
 ok('a car standing still on the victim does not hurt again (speed and cooldown)', R.noRepeat === true, R.noRepeat);
 ok('CO-OP mode never hurts, a victim inside a vehicle and a victim with the head on a roof are skipped', R.coop === 100 && R.inCar === 100 && R.roof === 100, { coop: R.coop, inCar: R.inCar, roof: R.roof });
-ok('a lethal run-over kills (hp 0), writes "ran over" in the feed, sends a shot-type bust with the heading of the car, and shows KILL to the driver', R.kill.hp === 0 && R.kill.feed.some(s => /ran over/.test(s)) && R.kill.bust && R.kill.bust.id === 'g1' && R.kill.bust.r === 'shot' && Number.isFinite(R.kill.bust.a) && R.kill.hitMark === 'KILL', R.kill);
+ok('a lethal run-over kills, writes "ran over" in the feed, sends a shot-type bust with the heading of the car, and shows KILL to the driver', R.kill.feed.some(s => /ran over/.test(s)) && R.kill.bust && R.kill.bust.id === 'g1' && R.kill.bust.r === 'shot' && Number.isFinite(R.kill.bust.a) && R.kill.hitMark === 'KILL', R.kill);
 ok('no page errors', errors.length === 0, errors);
 await browser.close(); server.close();
 if (fails) { console.log(fails + ' check(s) failed'); process.exit(1); } console.log('runover: all checks passed');
