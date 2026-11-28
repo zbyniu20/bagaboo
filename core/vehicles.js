@@ -25,7 +25,7 @@ function carGeometry(col) {
     return mergeGeometries(parts);
 }
 // api: { clock() -> s, myKey: 'me', requestStart(carId, routeIndex), onBoard(carId, routeId), onArrive(), dismount(), drive: { requestFree(carId), world() -> { boxes, bounds, blockers }, input() -> { gas, brake, steer },
-//   onStart(carId), onStop(carId), onBump(impact), onRunOver(listaPrzechodniów), onPose(poza) } }
+//   onStart(carId), onStop(carId), onBump(impact), onRunOver(listaPrzechodniów), onPose(poza), auth() -> bool (host albo solo: tylko on cofa porzucone auta na parking) } }
 export function createVehicles(api) {
     const G = { geos: [], mats: [], cars: [], ride: null, drv: null, lastReq: -9, hold: 0, arrived: false, boards: 0, dismounts: 0, bumps: 0, ranOver: 0, lastPose: 0 };
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, metalness: 0.5 }); G.mats.push(mat);
@@ -46,7 +46,7 @@ export function createVehicles(api) {
             } else if (car.free) {   // auto wzięte do swobodnej jazdy (moje albo cudze) albo porzucone w miejscu, gdzie je zostawiono
                 const fr = car.free; if (fr.remote && fr.target) fr.pose = DL.blendPose(fr.pose, fr.target, dt);
                 car.m.position.set(fr.pose.x, 0, fr.pose.z); car.yaw = fr.pose.yaw; car.m.rotation.y = fr.pose.yaw;
-                if (!fr.driver) { const r = DL.returnStep(fr.idle, dt, false, G.playerDist ? G.playerDist(fr.pose.x, fr.pose.z) : 0); fr.idle = r.idle; if (r.back) car.free = null; }
+                if (!fr.driver && (!fr.remote || (api.drive.auth && api.drive.auth()))) { const r = DL.returnStep(fr.idle, dt, false, G.playerDist ? G.playerDist(fr.pose.x, fr.pose.z) : 0); fr.idle = r.idle; if (r.back) car.free = null; }
             } else { const pp = VL.parkedPose(car.id); car.m.position.set(pp.x, 0, pp.z); car.yaw = pp.yaw; car.m.rotation.y = pp.yaw; }
             // start jazdy po szynach: dotknięcie klamki wolnego auta stojącego na miejscu parkowania (rzadkie żądania); drzwi kierowcy: swobodna jazda
             if (!mine && !G.ride && !G.drv && (!f || !f.occ) && now - G.lastReq > 1) {
@@ -82,7 +82,7 @@ export function createVehicles(api) {
     // ----- swobodna jazda lokalnego gracza -----
     G.beginFree = (carId) => {   // wołane po zatwierdzeniu startu (solo i host od razu, gość po odpowiedzi hosta)
         const car = G.cars.find(c => c.id === carId); if (!car || G.drv || G.ride) return false;
-        const pose = car.free ? car.free.pose : VL.parkedPose(carId), st = DL.newCar(pose.x, pose.z, pose.yaw), b = DL.bodyPos(st);
+        const pose = car.free ? (car.free.target || car.free.pose) : VL.parkedPose(carId), st = DL.newCar(pose.x, pose.z, pose.yaw), b = DL.bodyPos(st);
         releaseAll(); car.free = { pose: { x: st.x, z: st.z, yaw: st.yaw, v: 0 }, driver: api.myKey, idle: 0, remote: false };
         G.drv = { car: carId, st: st, shown: { x: b.x, z: b.z }, vx: 0, vz: 0, hold: 0, impactT: 0 }; if (api.drive.onStart) api.drive.onStart(carId); return true;
     };
@@ -104,10 +104,15 @@ export function createVehicles(api) {
         if (!car.free) car.free = { pose: pose ? { x: pose.x, z: pose.z, yaw: pose.yaw, v: pose.v || 0 } : VL.parkedPose(carId), driver: driver, idle: 0, remote: true, target: null };
         car.free.remote = true; car.free.driver = driver; car.free.idle = 0; if (pose) car.free.target = { x: pose.x, z: pose.z, yaw: pose.yaw, v: pose.v || 0 };
     };
-    G.freePoses = () => G.cars.filter(c => c.free && !c.free.remote).map(c => ({ car: c.id, x: +c.free.pose.x.toFixed(2), z: +c.free.pose.z.toFixed(2), yaw: +c.free.pose.yaw.toFixed(3), v: +(c.free.pose.v || 0).toFixed(2), driver: c.free.driver }));
+    // wszystkie swobodne auta (moje, cudze i porzucone) z ostatnią znaną pozą i kierowcą (host wysyła to w migawce)
+    G.freePoses = () => G.cars.filter(c => c.free).map(c => { const q = c.free.target || c.free.pose; return { car: c.id, x: +q.x.toFixed(2), z: +q.z.toFixed(2), yaw: +q.yaw.toFixed(3), v: +(q.v || 0).toFixed(2), driver: c.free.driver }; });
+    G.freeCarOf = (who) => { const c = G.cars.find(q => q.free && q.free.driver === who); return c ? c.id : null; };
+    G.freeSpeedOf = (who) => { const c = G.cars.find(q => q.free && q.free.driver === who); return c ? Math.abs((c.free.target || c.free.pose).v || 0) : 0; };
+    G.releaseDriver = (who) => { for (const c of G.cars) if (c.free && c.free.driver === who) { c.free.driver = null; c.free.idle = 0; if (c.free.target) { c.free.pose = Object.assign({}, c.free.target); c.free.target = null; } c.free.pose.v = 0; } };
+    G.clearRemoteExcept = (ids) => { for (const c of G.cars) if (c.free && c.free.remote && !ids.has(c.id)) c.free = null; };
     G.playerDist = (x, z) => Math.hypot(playerBody.position.x - x, playerBody.position.z - z);   // odległość gracza od punktu (porzucone auto wraca, gdy gracz jest daleko)
     G.riding = () => !!G.ride;
-    G.debug = () => ({ driving: !!G.drv, drive: G.drv ? { car: G.drv.car, x: +G.drv.st.x.toFixed(2), z: +G.drv.st.z.toFixed(2), yaw: +G.drv.st.yaw.toFixed(3), v: +G.drv.st.v.toFixed(2), steer: +G.drv.st.steer.toFixed(3) } : null, bumps: G.bumps, ranOver: G.ranOver, free: G.cars.filter(c => c.free).map(c => [c.id, +c.free.pose.x.toFixed(1), +c.free.pose.z.toFixed(1), c.free.driver, c.free.remote]), riding: !!G.ride, boards: G.boards, dismounts: G.dismounts, cars: G.cars.map(c => [c.id, +c.m.position.x.toFixed(1), +c.m.position.z.toFixed(1)]), speed: G.ride ? +G.ride.pose.speed.toFixed(2) : 0 });
+    G.debug = () => ({ driving: !!G.drv, drive: G.drv ? { car: G.drv.car, x: +G.drv.st.x.toFixed(2), z: +G.drv.st.z.toFixed(2), yaw: +G.drv.st.yaw.toFixed(3), v: +G.drv.st.v.toFixed(2), steer: +G.drv.st.steer.toFixed(3) } : null, bumps: G.bumps, ranOver: G.ranOver, free: G.cars.filter(c => c.free).map(c => [c.id, +c.free.pose.x.toFixed(1), +c.free.pose.z.toFixed(1), c.free.driver, c.free.remote, +(c.free.target || c.free.pose).x.toFixed(2), +(c.free.target || c.free.pose).z.toFixed(2)]), riding: !!G.ride, boards: G.boards, dismounts: G.dismounts, cars: G.cars.map(c => [c.id, +c.m.position.x.toFixed(1), +c.m.position.z.toFixed(1)]), speed: G.ride ? +G.ride.pose.speed.toFixed(2) : 0 });
     G.dispose = () => { for (const c of G.cars) c.m.removeFromParent(); for (const g of G.geos) g.dispose(); for (const m of G.mats) m.dispose(); };
     return G;
 }

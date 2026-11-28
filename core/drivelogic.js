@@ -121,3 +121,15 @@ export function blendPose(cur, target, dt) {
     const k = 1 - Math.exp(-DRIVE.POSE_RATE * clamp(dt, 0, 0.2)); let dy = target.yaw - cur.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
     return { x: cur.x + (target.x - cur.x) * k, z: cur.z + (target.z - cur.z) * k, yaw: cur.yaw + dy * k, v: cur.v + (target.v - cur.v) * k };
 }
+// Migawka swobodnych aut od hosta: [[auto, kierowca albo null, x, z, yaw, v], ...] -> [{ car, driver, pose }]; tylko znane auta (known: funkcja, zbiór albo tablica), jedna pozycja na auto, poza przez cleanPose, najwyżej 8 wpisów
+export function cleanFree(a, known) {
+    if (!Array.isArray(a)) return [];
+    const has = typeof known === 'function' ? known : (known instanceof Set ? (id) => known.has(id) : (id) => Array.isArray(known) && known.includes(id)), out = [], seen = new Set();
+    for (const e of a.slice(0, 8)) {
+        if (!Array.isArray(e) || typeof e[0] !== 'string' || !has(e[0]) || seen.has(e[0])) continue;
+        const p = cleanPose({ car: e[0], x: e[2], z: e[3], yaw: e[4], v: e[5] }); if (!p) continue;
+        const drv = typeof e[1] === 'string' ? e[1].replace(/[^\w:.-]/g, '').slice(0, 48) : '';
+        seen.add(e[0]); out.push({ car: p.car, driver: drv || null, pose: { x: p.x, z: p.z, yaw: p.yaw, v: p.v } });
+    }
+    return out;
+}

@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795853091.9424326,
-    "seen": 1795853163.0078976,
-    "ast_hash": "d96d1e9aefcc5455ee66f3f9361353d2",
+    "mtime": 1795854961.956947,
+    "seen": 1795855438.8731785,
+    "ast_hash": "c6fa6406d6808f0eef3ddbd15b2af853",
     "semantic_hash": ""
   },
   "README.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795852654.6588721,
-    "seen": 1795853163.0075324,
-    "ast_hash": "fe4a8d88d635bdf87c0d0f90c5d58d30",
+    "mtime": 1795854935.7616954,
+    "seen": 1795855438.8728259,
+    "ast_hash": "4f3b84f9dcb2721e013b067308643ba5",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795851475.0156581,
-    "seen": 1795853163.0074286,
-    "ast_hash": "d8ebdc0bd986382610aac7296c027b7d",
+    "mtime": 1795853276.8714836,
+    "seen": 1795855438.8727453,
+    "ast_hash": "99443c12278492102f32173daeaafece",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -10986,15 +10986,15 @@
     "semantic_hash": ""
   },
   "core/vehiclelogic.js": {
-    "mtime": 1795759771.0197926,
-    "seen": 1795760010.6073596,
-    "ast_hash": "2643f54840dd6ef600aa9a7fe67ac048",
+    "mtime": 1795853258.86306,
+    "seen": 1795855438.8726604,
+    "ast_hash": "0bf77c0ed4d5d9144e686dc8e1ca3d34",
     "semantic_hash": ""
   },
   "core/vehicles.js": {
-    "mtime": 1795851260.9582078,
-    "seen": 1795853163.0073493,
-    "ast_hash": "722812d3e14994b8fa0ed6db7b3ba8d7",
+    "mtime": 1795853712.650284,
+    "seen": 1795855438.8726618,
+    "ast_hash": "b7e192d18cae249944da453f4e9bdc95",
     "semantic_hash": ""
   },
   "tests/vehicles.mjs": {
@@ -11208,15 +11208,15 @@
     "semantic_hash": ""
   },
   "core/drivelogic.js": {
-    "mtime": 1795852585.6587706,
-    "seen": 1795853163.007036,
-    "ast_hash": "ff2c8bbb671f28a87f1ea30d94562cbb",
+    "mtime": 1795853258.8640919,
+    "seen": 1795855438.872435,
+    "ast_hash": "f54e39c8e40f5f938eb5bf1266be1f58",
     "semantic_hash": ""
   },
   "tests/drive.mjs": {
-    "mtime": 1795852226.448576,
-    "seen": 1795853163.007487,
-    "ast_hash": "65de8bcc1e6e14c7a1c0e6d81dddfa37",
+    "mtime": 1795854288.1960285,
+    "seen": 1795855438.8727844,
+    "ast_hash": "59fe33620d55c750c373a11cebbcfaa1",
     "semantic_hash": ""
   },
   "package-lock.json": {

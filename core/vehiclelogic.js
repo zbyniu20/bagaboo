@@ -132,7 +132,7 @@ export function cleanVehicles(a) {
     return out;
 }
 // Żądanie gościa: { car, route } tylko ze znanych identyfikatorów
-export function cleanDrive(m) { if (!m || typeof m !== 'object' || !routeOf(m.car, m.route)) return null; return { car: m.car, route: m.route }; }
+export function cleanDrive(m) { if (!m || typeof m !== 'object') return null; if (m.route === 'drive' && typeof m.car === 'string' && vById(m.car)) return { car: m.car, route: 'drive' }; if (!routeOf(m.car, m.route)) return null; return { car: m.car, route: m.route }; }   // route 'drive' = swobodna jazda (kradzież auta, core/drivelogic.js)
 // Poprawność tras (do testów): węzły startu i celów istnieją, trasy mają długość, nigdy nie wchodzą w budynki (z marginesem), prędkości w granicach
 export function vehicleProblems(buildings) {
     const bad = [], ids = new Set();
