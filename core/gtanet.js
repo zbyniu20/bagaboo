@@ -4,7 +4,7 @@
 // Testy: tests/logic.mjs (blok "Scary GTA, etap 3a").
 // ==========================================
 import { CITY } from './citylayout.js';
-import { cleanDrive } from './vehiclelogic.js';
+import { cleanDrive, isCar } from './vehiclelogic.js';
 export const GN = { HZ: 8, MAX_COPS: 10, MAX_BAGS: 6, MAX_PLAYERS: 10, HEAD_TO_BODY: 0.6, SPEED_TAU: 0.3, TAKE_R: 3.6, TAKE_DY: 2.8, BUST_PROTECT: 5, SHOUT_GAP: 3, HOST_LOST: 1.5, MODES: ['patrol', 'investigate', 'chase', 'search'] };
 const fin = (n) => typeof n === 'number' && Number.isFinite(n);
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
@@ -63,6 +63,7 @@ export function validTake(bag, head, held) {
 export function cleanRequest(m, bagIds) {
     if (!m || typeof m !== 'object') return null;
     if (m.k === 'take') return typeof m.b === 'string' && bagIds.includes(m.b) ? { k: 'take', b: m.b } : null;
+    if (m.k === 'ev' && m.kind === 'board') return typeof m.car === 'string' && isCar(m.car) ? { k: 'ev', kind: 'board', car: m.car } : null;
     if (m.k === 'ev' && m.kind === 'drive') { const d = cleanDrive(m); return d ? { k: 'ev', kind: 'drive', car: d.car, route: d.route } : null; }
     if (m.k === 'ev') return ['shout', 'ride', 'spray', 'alarm', 'dis', 'power', 'deliver', 'dismount'].includes(m.kind) ? { k: 'ev', kind: m.kind } : null;
     if (m.k === 'gbust') return { k: 'gbust' };

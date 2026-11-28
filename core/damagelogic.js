@@ -14,7 +14,7 @@ export const damagePct = (hp, max) => { const m = fin(max) && max > 0 ? max : DM
 export const hitPct = (dmg, max) => { const m = fin(max) && max > 0 ? max : DMG.MAX_HP; return fin(dmg) ? Math.round(clamp(dmg / m * 100, 0, 100)) : 0; };
 export const damageColor = (pct) => pct >= 75 ? '#ff4a3a' : pct >= 40 ? '#ffb030' : '#7fff90';
 // Napis przy trafieniu strzelca: KILL / HEADSHOT 50% / HIT 25%
-export const hitText = (zone, pct, kill) => kill ? 'KILL' : (zone === 'head' ? 'HEADSHOT ' : 'HIT ') + hitPct(pct) + '%';
+export const hitText = (zone, pct, kill) => kill ? 'KILL' : (zone === 'head' ? 'HEADSHOT ' : zone === 'run' ? 'RUN OVER ' : 'HIT ') + hitPct(pct) + '%';
 // Kierunek upadku (rad., kąt wokół osi Y; przód ciała = +Z): od strzelca w stronę ofiary; bez strzelca stabilnie z miejsca (bez losowania, więc każdy klient ma to samo)
 export function fallYaw(vx, vz, from) {
     if (from && fin(from.x) && fin(from.z) && fin(vx) && fin(vz) && Math.hypot(vx - from.x, vz - from.z) > 0.3) return Math.atan2(vx - from.x, vz - from.z);

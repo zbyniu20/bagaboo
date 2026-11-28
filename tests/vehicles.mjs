@@ -39,8 +39,8 @@ const info = () => ev(async () => { const G = await import('./levels/scarygta.js
 
 const w = (ms) => page.waitForTimeout(ms);
 await ev(async () => { (await import('./levels/scarygta.js')).debugGtaNight('calm', 1e9); });
-const v0 = await ev(async () => { const G = await import('./levels/scarygta.js'), E = await import('./core/engine.js'), VL = await import('./core/vehiclelogic.js'); const d = G.debugVeh(); const near = VL.VEHICLES.map(v => { const s = VL.startPoint(v.id); return E.L.obstacles.filter(o => o.box3 && o.box3.max.y < 1.6 && o.box3.max.y > 0.5 && Math.hypot((o.box3.min.x + o.box3.max.x) / 2 - s.x, (o.box3.min.z + o.box3.max.z) / 2 - s.z) < 5.5).length; }); return { cars: d.v.cars.length, free: d.fleet.every(c => !c.occ), near }; });
-ok('three getaway cars stand parked and free, and no parked traffic car stands within 5.5 m of them', v0.cars === 3 && v0.free && v0.near.every(n => n === 0), v0);
+const v0 = await ev(async () => { const G = await import('./levels/scarygta.js'), E = await import('./core/engine.js'), VL = await import('./core/vehiclelogic.js'); const d = G.debugVeh(); const near = VL.VEHICLES.map(v => VL.startPoint(v.id)).concat(VL.FREE_CARS.map(v => v.park)).map(s => { return E.L.obstacles.filter(o => o.box3 && o.box3.max.y < 1.6 && o.box3.max.y > 0.5 && Math.hypot((o.box3.min.x + o.box3.max.x) / 2 - s.x, (o.box3.min.z + o.box3.max.z) / 2 - s.z) < 5.5).length; }); return { cars: d.v.cars.length, expect: VL.VEHICLES.length + VL.FREE_CARS.length, free: d.fleet.every(c => !c.occ), near }; });
+ok('three getaway cars and the free-only cars stand parked and free, and no parked traffic car stands within 5.5 m of them', v0.cars === v0.expect && v0.expect === 7 && v0.free && v0.near.every(n => n === 0), v0);
 // ----- jazda solo: klamka -> jazda -> dojazd -----
 const ride = await ev(async () => {
     const G = await import('./levels/scarygta.js'), P = await import('./core/player.js'), E = await import('./core/engine.js'), VL = await import('./core/vehiclelogic.js'), w = (ms) => new Promise(r => setTimeout(r, ms));

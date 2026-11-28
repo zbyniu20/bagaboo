@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795856770.080032,
-    "seen": 1795856781.022709,
-    "ast_hash": "37a199a66982218cfc2c1ddab57beb34",
+    "mtime": 1795860109.8489532,
+    "seen": 1795860253.5619442,
+    "ast_hash": "c55e367d9061028dd3aea935c5b7daca",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795851235.2104425,
-    "seen": 1795853163.007907,
-    "ast_hash": "26dcf03eb70519e0ba09a50a6b0948b3",
+    "mtime": 1795859782.0698586,
+    "seen": 1795860253.561953,
+    "ast_hash": "be627ba5c14c1781c591ef815c35c81a",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795854935.7616954,
-    "seen": 1795855438.8728259,
-    "ast_hash": "4f3b84f9dcb2721e013b067308643ba5",
+    "mtime": 1795860121.197737,
+    "seen": 1795860253.561569,
+    "ast_hash": "939ec93d065b278be36706ff885405e6",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795851235.213014,
-    "seen": 1795853163.0075924,
-    "ast_hash": "e0bbfaa1d68b703b65fbc3fe72b50857",
+    "mtime": 1795859782.0706437,
+    "seen": 1795860253.5616293,
+    "ast_hash": "2786684ddfead49405a6d46f4ff72dff",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795855563.690327,
-    "seen": 1795856781.021979,
-    "ast_hash": "7b7ee0c9132e69980074c3b6f0c2677a",
+    "mtime": 1795860132.3785892,
+    "seen": 1795860253.5614748,
+    "ast_hash": "ff10d5715501dfa2a94d7486f5a1bfc7",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -10842,9 +10842,9 @@
     "semantic_hash": ""
   },
   "core/citysim.js": {
-    "mtime": 1795741414.9832819,
-    "seen": 1795745229.3489664,
-    "ast_hash": "642c23c454df19fd351930342379c6f5",
+    "mtime": 1795859825.6686916,
+    "seen": 1795860253.5610864,
+    "ast_hash": "3a3fedd76df57d906d1bee9b5189cbb8",
     "semantic_hash": ""
   },
   "core/wantedlogic.js": {
@@ -10860,9 +10860,9 @@
     "semantic_hash": ""
   },
   "core/gtanet.js": {
-    "mtime": 1795819640.8324459,
-    "seen": 1795820683.964263,
-    "ast_hash": "ccc56151fd18048264835cf65a651e65",
+    "mtime": 1795859948.9230392,
+    "seen": 1795860253.5612173,
+    "ast_hash": "4b3a771b6dc8740c3ffd88ee5b6d09c5",
     "semantic_hash": ""
   },
   "tests/gtanet.mjs": {
@@ -10872,9 +10872,9 @@
     "semantic_hash": ""
   },
   "core/gunlogic.js": {
-    "mtime": 1795819640.832141,
-    "seen": 1795820683.9642806,
-    "ast_hash": "57ba9801129857c3f5ff10ba927361a0",
+    "mtime": 1795859154.8586583,
+    "seen": 1795859768.1898534,
+    "ast_hash": "c382e0f2b8db702db4ae41da6a243788",
     "semantic_hash": ""
   },
   "core/heli.js": {
@@ -10986,21 +10986,21 @@
     "semantic_hash": ""
   },
   "core/vehiclelogic.js": {
-    "mtime": 1795853258.86306,
-    "seen": 1795855438.8726604,
-    "ast_hash": "0bf77c0ed4d5d9144e686dc8e1ca3d34",
+    "mtime": 1795859945.81572,
+    "seen": 1795860253.5614052,
+    "ast_hash": "3d2050edfa4496fb0e8e2325a7bc2d57",
     "semantic_hash": ""
   },
   "core/vehicles.js": {
-    "mtime": 1795855563.6889803,
-    "seen": 1795856781.0218627,
-    "ast_hash": "b56b2ff69215015d894a73bad560585e",
+    "mtime": 1795859921.2278645,
+    "seen": 1795860253.561407,
+    "ast_hash": "80e48df6cc9c76cb4d298b4fc028044a",
     "semantic_hash": ""
   },
   "tests/vehicles.mjs": {
-    "mtime": 1795761331.2422898,
-    "seen": 1795770957.2857728,
-    "ast_hash": "6fdfbe8e9f3f3a6dd85ee401e3f87d07",
+    "mtime": 1795859339.013901,
+    "seen": 1795859768.1904778,
+    "ast_hash": "c3f71f3c2431d66359d82860157e9cc3",
     "semantic_hash": ""
   },
   "core/gtaeggfx.js": {
@@ -11106,9 +11106,9 @@
     "semantic_hash": ""
   },
   "core/gtaroadblock.js": {
-    "mtime": 1795769098.5953164,
-    "seen": 1795770957.2854445,
-    "ast_hash": "85388ec706ff16c0d86f1d3007d4595a",
+    "mtime": 1795858730.665272,
+    "seen": 1795859768.189837,
+    "ast_hash": "5e6bae930fdf0b9d8738a43351fcde42",
     "semantic_hash": ""
   },
   "core/gtaroadblockfx.js": {
@@ -11178,9 +11178,9 @@
     "semantic_hash": ""
   },
   "core/damagelogic.js": {
-    "mtime": 1795850327.2400832,
-    "seen": 1795850848.464245,
-    "ast_hash": "1738bb0276eedd24b657b0372f9b0328",
+    "mtime": 1795859126.316357,
+    "seen": 1795859768.189623,
+    "ast_hash": "267c3ebc2f3d6977e821f69cdb1a2b38",
     "semantic_hash": ""
   },
   "core/gtacorpsefx.js": {
@@ -11208,15 +11208,57 @@
     "semantic_hash": ""
   },
   "core/drivelogic.js": {
-    "mtime": 1795853258.8640919,
-    "seen": 1795855438.872435,
-    "ast_hash": "f54e39c8e40f5f938eb5bf1266be1f58",
+    "mtime": 1795859883.76793,
+    "seen": 1795860253.5611322,
+    "ast_hash": "c2979e8180d1e4d19f4d49b43fd4b070",
     "semantic_hash": ""
   },
   "tests/drive.mjs": {
     "mtime": 1795856159.2873714,
     "seen": 1795856781.0220456,
     "ast_hash": "8bf0642f6535cc1bcf1d49815d79e32b",
+    "semantic_hash": ""
+  },
+  "core/copcarlogic.js": {
+    "mtime": 1795859548.0546815,
+    "seen": 1795859768.1896105,
+    "ast_hash": "f9042768885b644d46a8d73217003c60",
+    "semantic_hash": ""
+  },
+  "core/gtacopcarfx.js": {
+    "mtime": 1795859470.150677,
+    "seen": 1795859768.1897464,
+    "ast_hash": "a4baa1491b2e4b533b7eb78c51909147",
+    "semantic_hash": ""
+  },
+  "core/runoverlogic.js": {
+    "mtime": 1795859119.5266562,
+    "seen": 1795859768.1900318,
+    "ast_hash": "4b2050fd842a8ad61d96697adfce803b",
+    "semantic_hash": ""
+  },
+  "tests/copcars.mjs": {
+    "mtime": 1795859606.2760184,
+    "seen": 1795859768.1902893,
+    "ast_hash": "366ee17b63c36d2a5575361da6fcef50",
+    "semantic_hash": ""
+  },
+  "tests/freecars.mjs": {
+    "mtime": 1795859870.8230836,
+    "seen": 1795860253.5615227,
+    "ast_hash": "e4b4a0fe98d4873c23149b95b2ad3f2b",
+    "semantic_hash": ""
+  },
+  "tests/runover.mjs": {
+    "mtime": 1795859870.8224487,
+    "seen": 1795860253.5616095,
+    "ast_hash": "e2c67c672f7545002ee9e0888c8e29fb",
+    "semantic_hash": ""
+  },
+  "tests/passenger.mjs": {
+    "mtime": 1795860071.101532,
+    "seen": 1795860253.5615928,
+    "ast_hash": "0a43c738679b5e6c5905dc258484084e",
     "semantic_hash": ""
   },
   "package-lock.json": {

@@ -8,7 +8,7 @@
 // 3D: core/gtaroadblockfx.js. Testy: tests/logic.mjs (blok "barykady"), w przeglądarce tests/roadblock.mjs.
 // ==========================================
 import { streetGraph } from './cityai.js';
-import { VEHICLES, RIDE, startPoint, nodeDistance, buildRide, cleanStop, posAt, rideStats, routeOf } from './vehiclelogic.js';
+import { VEHICLES, FREE_CARS, RIDE, startPoint, nodeDistance, buildRide, cleanStop, posAt, rideStats, routeOf } from './vehiclelogic.js';
 import { SAFEHOUSES, hideSpots, CITY } from './citylayout.js';
 import { SPRAY } from './gtaextras.js';
 import { mysterySpots } from './gtamystery.js';
@@ -24,6 +24,7 @@ export function streetAlongX(i) { const g = graph(), n = g.nodes[i]; if (!n || !
 function keepOut(B) {
     const out = [], ms = mysterySpots(B);
     for (const v of VEHICLES) { const p = startPoint(v.id); if (p) out.push({ x: p.x, z: p.z, r: RB.FROM_CAR }); }
+    for (const v of FREE_CARS) out.push({ x: v.park.x, z: v.park.z, r: RB.FROM_CAR });
     for (const s of SAFEHOUSES.concat(hideSpots(), SPRAY.SPOTS)) out.push({ x: s.x, z: s.z, r: RB.FROM_SPOT });
     out.push({ x: ms.boothA.x, z: ms.boothA.z, r: RB.FROM_SPOT }, { x: ms.boothB.x, z: ms.boothB.z, r: RB.FROM_SPOT });
     return out;

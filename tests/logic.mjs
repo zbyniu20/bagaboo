@@ -1362,8 +1362,8 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     })());
     check('drive: wired (the driver door and the car on the free spot go through the free-driving API only, the gun is put away while driving, the rail ride refuses a displaced car, a caught player gets out, cops cannot touch-catch a fast driver, the phone map follows the moving mesh, no new meshes)', (() => {
         const vj = fs.readFileSync(path.join(ROOT, 'core/vehicles.js'), 'utf8').replace(/\/\/.*$/gm, ''), g = fs.readFileSync(path.join(ROOT, 'levels/scarygta.js'), 'utf8').replace(/\/\/.*$/gm, '');
-        return /DL\.doorPoint\(car\.free \? car\.free\.pose : VL\.parkedPose\(car\.id\)\)/.test(vj) && /if \(!car\.free\) for \(const h of car\.handles\)/.test(vj) && /api\.drive\.requestFree\(car\.id\)/.test(vj) && /DL\.driveStep\(d\.st, api\.drive\.input\(\), step \/ n, api\.drive\.world\(\)\)/.test(vj) && /new THREE\.Mesh\(g, mat\)/.test(vj) && (vj.match(/new THREE\.Mesh\(/g) || []).length === 1
-            && /gripDown\(1\) \|\| \(S\.vehs && S\.vehs\.driving\(\)\)\) return/.test(g) && /S\.vehs\.isFree\(carId\)\) return/.test(g) && /S\.vehs\.endFree\(\); S\.scare\.trigger\(\)/.test(g) && /Math\.abs\(S\.vehs\.driveCar\(\)\.v\) > 2/.test(g) && /c\.m\.position\.x/.test(g) && /requestFree: requestFree, world: driveWorld, input: driveInput/.test(g) && /const fresh = !car\.free \|\| car\.free\.remote/.test(g) && /k\.exit|driveKeys\(\)\.exit/.test(g) && /stickX\('left'\)/.test(g);
+        return /DL\.doorPoint\(car\.free \? car\.free\.pose : VL\.parkedPose\(car\.id\), car\.spec\)/.test(vj) && /if \(!car\.free\) for \(const h of car\.handles\)/.test(vj) && /api\.drive\.requestFree\(car\.id\)/.test(vj) && /DL\.driveStep\(d\.st, api\.drive\.input\(\), step \/ n, api\.drive\.world\(\), d\.spec\)/.test(vj) && /new THREE\.Mesh\(g, mat\)/.test(vj) && (vj.match(/new THREE\.Mesh\(/g) || []).length === 2
+            && /gripDown\(1\) \|\| \(S\.vehs && S\.vehs\.driving\(\)\)\) return/.test(g) && /S\.vehs\.isFree\(carId\)\) return/.test(g) && /S\.vehs\.endFree\(\); S\.vehs\.removePass\('me'\); S\.vehs\.endPass\(false\); S\.scare\.trigger\(\)/.test(g) && /Math\.abs\(S\.vehs\.driveCar\(\)\.v\) > 2/.test(g) && /c\.m\.position\.x/.test(g) && /requestFree: requestFree, world: \(\) => driveWorld\(true\), input: driveInput/.test(g) && /const fresh = !car\.free \|\| car\.free\.remote/.test(g) && /k\.exit|driveKeys\(\)\.exit/.test(g) && /stickX\('left'\)/.test(g);
     })());
     check('drive network: the guest request accepts the route "drive" only for a known car (and the old rail routes still work), a free-car snapshot keeps one clean entry per known car with a sanitized driver id, drops NaN, unknown cars, duplicates and junk, and is limited to 8 entries', (() => {
         const known = ['bank', 'casino', 'motel'], c = DRt.cleanFree([['bank', 'g1', 1, 2, 7, 3], ['casino', null, 5, 6, 0.5, 0], ['bank', 'dup', 1, 1, 0, 0], ['evil', 'x', 0, 0, 0, 0], ['motel', 'a<b>c', NaN, 0, 0, 0], ['motel', 'ok', 1, 1, 'a', 0], 'junk', ['motel', 'x'.repeat(80), 3, 4, 0, 99]], known);   // 8 wpisów: tyle przyjmuje cleanFree
@@ -1373,8 +1373,170 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
     })());
     check('drive network: wired (the host takes poses only through cleanPose, poseOk with the real world, the head distance and a bad-pose counter; a guest request goes through hostFree with the host-known head; leaving, disconnecting, being busted and getting out release the driver; the snapshot carries fd; the guest goes through cleanFree, starts only when named the driver, gets out when dropped, and ignores stale snapshots after getting out)', (() => {
         const g = fs.readFileSync(path.join(ROOT, 'levels/scarygta.js'), 'utf8').replace(/\/\/.*$/gm, ''), hp = g.slice(g.indexOf('function hostPose'), g.indexOf('function dismountMe'));
-        return /DRV\.cleanPose\(msg\)/.test(hp) && /car\.free\.driver !== g\.id/.test(hp) && /DRV\.poseOk\(last\.pose, p, S\.clock - last\.t, driveWorld\(\)\)/.test(hp) && /Math\.hypot\(g\.head\.x - b\.x, g\.head\.z - b\.z\) > 6/.test(hp) && /S\.fdBad\[g\.id\]/.test(hp) && /g && msg\.k === 'drv'/.test(g) && /if \(rq\.route === 'drive'\) hostFree\(g\.id, rq\.car, rq\.route|hostFree\(g\.id, rq\.car, g\.head\)/.test(g)
+        return /DRV\.cleanPose\(msg, car0\.spec\)/.test(hp) && /car\.free\.driver !== g\.id/.test(hp) && /DRV\.poseOk\(last\.pose, p, S\.clock - last\.t, driveWorld\(\), car\.spec\)/.test(hp) && /Math\.hypot\(g\.head\.x - b\.x, g\.head\.z - b\.z\) > 6/.test(hp) && /S\.fdBad\[g\.id\]/.test(hp) && /g && msg\.k === 'drv'/.test(g) && /if \(rq\.route === 'drive'\) hostFree\(g\.id, rq\.car, rq\.route|hostFree\(g\.id, rq\.car, g\.head\)/.test(g)
             && /S\.vehs\.releaseDriver\(g\.id\)/.test(g) && /S\.vehs\.releaseDriver\(b\.id\)/.test(g) && /S\.vehs\.releaseDriver\(c\.free\.driver\)/.test(g) && /fd: S\.vehs\.freePoses\(\)/.test(g) && /DRV\.cleanFree\(msg\.fd/.test(g) && /S\.clock >= S\.fdIgnoreUntil && S\.vehs\.beginFree\(e\.car\)/.test(g) && /S\.clock - S\.fdSeen > 1\.2\) S\.vehs\.endFree\(\)/.test(g) && /S\.fdIgnoreUntil = S\.clock \+ 1\.5/.test(g) && /S\.vehs\.clearRemoteExcept\(seen\)/.test(g) && /auth: \(\) => isAuth\(\)/.test(g);
+    })());
+    // --- więcej aut do kradzieży (FREE_CARS, SPECS) ---
+    const GT = await import(url('core/gtastunts.js')), EGx = await import(url('core/gtaeggs.js')), MYx = await import(url('core/gtamystery.js')), ENx = await import(url('core/gtaencounters.js')), GXx = await import(url('core/gtaextras.js'));
+    check('free cars: every car kind has a spec that is never faster or sharper than the VR comfort limit of the rail rides (speed, acceleration, lateral acceleration, reverse), has a sensible deck and seat count, and the default spec is exactly today\'s DRIVE', Object.keys(DRt.SPECS).length >= 4 && Object.keys(DRt.SPECS).every(k => { const q = DRt.SPECS[k]; return q.VMAX <= VLd.RIDE.VMAX && q.ACC <= VLd.RIDE.ACC && q.ALAT <= VLd.RIDE.ALAT && q.REV_MAX <= DRt.DRIVE.REV_MAX && q.BRAKE <= 3 + 1e-9 && q.DECK >= 0.3 && q.DECK <= 1.1 && Number.isInteger(q.SEATS) && q.SEATS >= 0 && q.SEATS <= 2 && q.CIRCLES.length >= 2 && q.R > 0.4; }) && DRt.specOf('pickup').VMAX === DRt.DRIVE.VMAX && DRt.specOf('nope') === DRt.SPECS.pickup && DRt.SPECS.pickup.DECK === VLd.RIDE.BED_Y);
+    check('free cars: driveStep with the pickup spec is exactly the same as without a spec (the refactor changed nothing for the old cars), and every kind stays inside the comfort limits on random input over the real city without ever putting a circle in a building', (() => {
+        let seed = 4242; const R = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296; let same = true;
+        { let a = DRt.newCar(0, 0, 0.3), b = a; for (let i = 0; i < 400; i++) { const inp = { gas: R() < 0.7 ? 1 : 0, brake: 0, steer: R() * 2 - 1 }; a = DRt.driveStep(a, inp, 1 / 60, { boxes: cityBoxes }).car; b = DRt.driveStep(b, inp, 1 / 60, { boxes: cityBoxes }, DRt.specOf('pickup')).car; if (JSON.stringify(a) !== JSON.stringify(b)) same = false; } }
+        let bad = 0, moved = 0;
+        for (const fc of VLd.FREE_CARS) {
+            const q = DRt.specOf(fc.kind); let car = DRt.newCar(fc.park.x, fc.park.z, fc.park.yaw), inp = { gas: 0, brake: 0, steer: 0 }, hold = 0;
+            for (let i = 0; i < 2400; i++) {
+                if (--hold <= 0) { hold = 20 + Math.floor(R() * 90); inp = { gas: R() < 0.7 ? 1 : 0, brake: R() < 0.2 ? 1 : 0, steer: R() < 0.3 ? 0 : (R() * 2 - 1) }; }
+                const r = DRt.driveStep(car, inp, 1 / 60, { boxes: cityBoxes, bounds: cityBounds }, q); moved += Math.hypot(r.car.x - car.x, r.car.z - car.z); car = r.car;
+                if (car.v > q.VMAX + 1e-6 || -car.v > q.REV_MAX + 1e-6 || r.lat > q.ALAT * 1.15 || r.impact > 4 || (!r.impact && Math.abs(r.a) > 3.3)) bad++;
+                for (const c of DRt.circles(car, q)) for (const b of cityBoxes) { const dx = c.x - Math.min(b.x1, Math.max(b.x0, c.x)), dz = c.z - Math.min(b.z1, Math.max(b.z0, c.z)); if (Math.hypot(dx, dz) < c.r - 0.03) bad++; }
+            }
+        }
+        return same && bad === 0 && moved > 60;
+    })());
+    check('free cars: four stealable cars with their own ids and kinds, parked on streets clear of every building, bag, hideout, safehouse, kiosk, booth, egg, stunt, hitchhiker spot and the pier door, away from the rail cars, and a barricade is kept away from them (the car spec decides the door and body spots)', (() => {
+        const ids = new Set(VLd.allCarIds()); if (VLd.FREE_CARS.length < 4 || ids.size !== VLd.VEHICLES.length + VLd.FREE_CARS.length) return false;
+        const pts = []; const walk = (o, d) => { if (!o || typeof o !== 'object' || d > 4) return; if (Number.isFinite(o.x) && Number.isFinite(o.z)) pts.push(o); for (const k of Object.keys(o)) if (typeof o[k] === 'object') walk(o[k], d + 1); };
+        const B = CYt.cityWithInteriors(1337); for (const o of [CYt.bagSpots(B), CYt.SAFEHOUSES, CYt.hideSpots(), GXx.SPRAY.SPOTS, EGx.eggSpots(), MYx.mysterySpots(B), GT.stuntSpots(B), ENx.hitchSpots()]) walk(o, 0);
+        for (const v of VLd.VEHICLES) pts.push(VLd.startPoint(v.id)); pts.push({ x: CYt.CITY.EXIT[0], z: CYt.CITY.EXIT[2] }, { x: CYt.CITY.SPAWN[0], z: CYt.CITY.SPAWN[2] });
+        return VLd.FREE_CARS.every(fc => {
+            const q = DRt.specOf(fc.kind), car = { x: fc.park.x, z: fc.park.z, yaw: fc.park.yaw }, d = DRt.doorPoint(car, q), b = DRt.bodyPos(car, q);
+            const inside = DRt.circles(car, q).some(c => cityBoxes.some(bx => Math.hypot(c.x - Math.min(bx.x1, Math.max(bx.x0, c.x)), c.z - Math.min(bx.z1, Math.max(bx.z0, c.z))) < c.r + 0.3));
+            const near = pts.filter(p => Math.hypot(p.x - fc.park.x, p.z - fc.park.z) < 5.5).length;
+            const other = VLd.FREE_CARS.filter(o => o !== fc && Math.hypot(o.park.x - fc.park.x, o.park.z - fc.park.z) < 12).length;
+            const inB = fc.park.x > cityBounds.x0 + 3 && fc.park.x < cityBounds.x1 - 3 && fc.park.z > cityBounds.z0 + 3 && fc.park.z < cityBounds.z1 - 3;
+            const doorFree = !cityBoxes.some(bx => d.x > bx.x0 - 0.6 && d.x < bx.x1 + 0.6 && d.z > bx.z0 - 0.6 && d.z < bx.z1 + 0.6) && !cityBoxes.some(bx => b.x > bx.x0 - 0.3 && b.x < bx.x1 + 0.3 && b.z > bx.z0 - 0.3 && b.z < bx.z1 + 0.3);
+            return !inside && near === 0 && other === 0 && inB && doorFree && DRt.SPECS[fc.kind] && VLd.kindOf(fc.id) === fc.kind && VLd.parkedPose(fc.id).x === fc.park.x;
+        });
+    })());
+    check('free cars: the network accepts a free car only through the known ids (isCar), the guest request for the route "drive" works for every car and the snapshot cap is big enough for all of them; a pose is clamped to THAT car\'s speed (a slow hauler cannot claim 7 m/s) and poseOk uses its spec', (() => {
+        const all = VLd.allCarIds(), ok = all.every(id => VLd.cleanDrive({ car: id, route: 'drive' }) && VLd.isCar(id)) && !VLd.isCar('evil') && !VLd.cleanDrive({ car: 'moto', route: 'pier' });
+        const snap = DRt.cleanFree(all.map((id, k) => [id, null, k * 3, 1, 0, 0]), VLd.isCar), cap = snap.length === all.length;
+        const slow = DRt.cleanPose({ car: 'hauler', x: 0, z: 0, yaw: 0, v: 7 }), hq = DRt.specOf('hauler');
+        const jump = DRt.poseOk({ x: 0, z: 0, yaw: 0, v: 0 }, { x: 0, z: 5, yaw: 0, v: 0 }, 0.125, {}, hq), jumpOld = DRt.poseOk({ x: 0, z: 0, yaw: 0, v: 0 }, { x: 0, z: 5, yaw: 0, v: 0 }, 0.125, {});
+        return ok && cap && slow.v === hq.VMAX && jump === false && jumpOld === false && DRt.poseOk({ x: 0, z: 0, yaw: 0, v: 0 }, { x: 0, z: 0.5, yaw: 0, v: 0 }, 0.125, {}, hq);
+    })());
+    check('free cars: wired (the 3D module builds a mesh and a spec for every free car and uses the car spec for the door, the body and the step; the host takes a pose with the car spec; the parked traffic keeps away from the new spots with the same three random draws)', (() => {
+        const v = fs.readFileSync(path.join(ROOT, 'core/vehicles.js'), 'utf8').replace(/\/\/.*$/gm, ''), g = fs.readFileSync(path.join(ROOT, 'levels/scarygta.js'), 'utf8').replace(/\/\/.*$/gm, '');
+        return /for \(const v of VL\.FREE_CARS\)/.test(v) && /DL\.doorPoint\(.*car\.spec\)/.test(v) && /DL\.driveStep\(d\.st, api\.drive\.input\(\), step \/ n, api\.drive\.world\(\), d\.spec\)/.test(v) && /d\.spec\.DECK \+ 1\.0/.test(v) && /VL\.FREE_CARS\.map\(v => v\.park\)/.test(g) && /DRV\.cleanFree\(msg\.fd, VL\.isCar\)/.test(g) && /DRV\.poseOk\(last\.pose, p, S\.clock - last\.t, driveWorld\(\), car\.spec\)/.test(g) && /R\(\); R\(\); R\(\); return;/.test(g);
+    })());
+    // --- potrącanie graczy (core/runoverlogic.js) ---
+    const ROt = await import(url('core/runoverlogic.js')), GUh = await import(url('core/gunlogic.js')), DMh = await import(url('core/damagelogic.js'));
+    const pk = DRt.specOf('pickup'), mv = (x, z, yaw, v) => ({ x, z, yaw, v }), allow = () => true;
+    const one = (car, vic, o) => ROt.runOverStep(o && o.cool || {}, Object.assign({ now: 10, cars: [car], victims: [vic], canHurt: allow }, o || {}));
+    check('run over: the damage grows with the speed from 12% (just over the 2.2 m/s threshold) to 60% at the 7 m/s limit, nothing below the threshold, and garbage gives nothing', ROt.runDamage(2.2) === 12 && ROt.runDamage(7) === 60 && ROt.runDamage(9) === 60 && ROt.runDamage(4.6) > ROt.runDamage(3) && ROt.runDamage(2.1) === 0 && ROt.runDamage(-5) === 0 && ROt.runDamage(NaN) === 0 && ROt.runDamage('x') === 0 && 2 * ROt.runDamage(7) >= 100);
+    check('run over: a car driving into a standing player hits once (the spot is 1.9 m in front), a player behind, beside or further than the spot is safe, and the hit carries the car heading as the fall direction', (() => {
+        const car = { id: 'bank', driver: 'a', prev: mv(0, 0, 0, 6), cur: mv(0, 0.1, 0, 6), spec: pk };
+        const hit = one(car, { id: 'b', kind: 'player', x: 0, z: 2.2, y: 1.7 }), behind = one(car, { id: 'b', kind: 'player', x: 0, z: -3, y: 1.7 }), side = one(car, { id: 'b', kind: 'player', x: 4, z: 2, y: 1.7 }), far = one(car, { id: 'b', kind: 'player', x: 0, z: 6, y: 1.7 });
+        return hit.length === 1 && hit[0].by === 'a' && hit[0].victim === 'b' && hit[0].dmg === ROt.runDamage(6) && hit[0].yaw === 0 && hit[0].kind === 'player' && behind.length === 0 && side.length === 0 && far.length === 0;
+    })());
+    check('run over: the swept path catches a player the car jumped over in one slow frame (a 3 m step at 6 m/s), but a car that only drives a short way past does not', (() => {
+        const car = { id: 'bank', driver: 'a', prev: mv(0, -3, 0, 6), cur: mv(0, 0, 0, 6), spec: pk }, victim = { id: 'b', kind: 'player', x: 0, z: -0.2, y: 1.7 };
+        const wide = ROt.sweepPoses(mv(0, 0, 0, 5), mv(0, 4, 0, 5));
+        return one(car, victim).length === 1 && one({ id: 'bank', driver: 'a', prev: mv(0, 0, 0, 6), cur: mv(0, 0, 0, 6), spec: pk }, { id: 'b', kind: 'player', x: 0, z: -2, y: 1.7 }).length === 0 && wide.length >= 9 && wide[0].z === 0 && wide[wide.length - 1].z === 4 && ROt.sweepPoses(mv(0, 0, 0, 5), mv(100, 100, 3, 5)).length <= 41;
+    })());
+    check('run over: no damage below the speed threshold or while reversing, no damage to the driver, to somebody in a vehicle, on a roof (head above 2.4 m), dead or protected (ignore), and the mode rule decides (CO-OP never, teams only between teams)', (() => {
+        const car = { id: 'bank', driver: 'a', prev: mv(0, 0, 0, 6), cur: mv(0, 0.5, 0, 6), spec: pk }, v = { id: 'b', kind: 'player', x: 0, z: 2.3, y: 1.7 };
+        const slow = one(Object.assign({}, car, { cur: mv(0, 0.5, 0, 1.5) }), v), rev = one(Object.assign({}, car, { cur: mv(0, 0.5, 0, -4) }), v), self = one(car, Object.assign({}, v, { id: 'a' }));
+        const veh = one(car, Object.assign({}, v, { busy: true })), roof = one(car, Object.assign({}, v, { y: 4.1 })), dead = one(car, Object.assign({}, v, { ignore: true }));
+        const coop = one(car, v, { canHurt: () => false }), team = one(car, v, { canHurt: (a, b) => a !== b && b === 'b' }), nodrv = one({ id: 'bank', driver: null, prev: car.prev, cur: car.cur, spec: pk }, v);
+        return !slow.length && !rev.length && !self.length && !veh.length && !roof.length && !dead.length && !coop.length && team.length === 1 && !nodrv.length;
+    })());
+    check('run over: a slow roll does not hit every frame (cooldown 1.5 s per driver and victim pair, a second victim is hit at once, the cooldown ends and old entries are cleaned), and a cop is hit without asking the mode rule', (() => {
+        const cool = {}, car = { id: 'bank', driver: 'a', prev: mv(0, 0, 0, 3), cur: mv(0, 0.1, 0, 3), spec: pk }, v1 = { id: 'b', kind: 'player', x: 0, z: 2.1, y: 1.7 }, v2 = { id: 'c', kind: 'player', x: 0.3, z: 2.0, y: 1.7 };
+        const t0 = ROt.runOverStep(cool, { now: 1, cars: [car], victims: [v1], canHurt: allow }), t1 = ROt.runOverStep(cool, { now: 1.1, cars: [car], victims: [v1, v2], canHurt: allow }), t2 = ROt.runOverStep(cool, { now: 1 + ROt.RUN.COOLDOWN + 0.1, cars: [car], victims: [v1], canHurt: allow });
+        ROt.runOverStep(cool, { now: 1000, cars: [], victims: [], canHurt: allow });
+        const cop = ROt.runOverStep({}, { now: 5, cars: [car], victims: [{ id: 'c3', kind: 'cop', x: 0, z: 2.1, y: 1.7 }], canHurt: () => false });
+        return t0.length === 1 && t1.length === 1 && t1[0].victim === 'c' && t2.length === 1 && Object.keys(cool).length === 0 && cop.length === 1 && cop[0].kind === 'cop' && cop[0].victim === 'c3';
+    })());
+    check('run over: every car type has its own front spot (a motorcycle hits closer, a hauler further), a garbage car or victim never throws, and the input is not mutated', (() => {
+        const moto = DRt.specOf('moto'), hauler = DRt.specOf('hauler'); const spot = (q) => DRt.runOverSpot(mv(0, 0, 0, 6), q);
+        const copy = JSON.stringify({ pk }); const out = ROt.runOverStep({}, { now: NaN, cars: [null, { id: 'x' }, { id: 'x', driver: 'a', prev: null, cur: mv(0, 0, 0, 6) }, { id: 'x', driver: 'a', prev: mv(NaN, 0, 0, 6), cur: mv(0, 0, 0, 6), spec: pk }], victims: [null, { id: 'b', kind: 'player', x: NaN, z: 1, y: 1 }, { id: 'c', kind: 'player', x: 0, z: 2, y: NaN }], canHurt: allow });
+        return spot(moto).z < spot(pk).z && spot(moto).r < spot(pk).r && spot(hauler).r >= spot(moto).r && out.length === 0 && JSON.stringify({ pk }) === copy;
+    })());
+    check('run over: the network message "hit" keeps only short ids, a percent 0-100 and a sane cop body, accepts a cop victim as null, and rejects garbage; the feed line and hit marker say "ran over" and "RUN OVER"', (() => {
+        const a = GUh.cleanHit({ v: 'p<1>', by: 'q', p: 36.4, kill: 1 }), c = GUh.cleanHit({ v: null, by: 'q', p: 12, cb: [1, 2, 3] }), bad = [GUh.cleanHit(null), GUh.cleanHit({ v: 'x', by: '', p: 5 }), GUh.cleanHit({ v: 'x', by: 'y', p: NaN }), GUh.cleanHit({ v: {}, by: 'y', p: 5 }), GUh.cleanHit('x')], big = GUh.cleanHit({ v: 'x', by: 'y', p: 900, cb: [1e9, 2, 3] });
+        return a.victim === 'p1' && a.pct === 36 && a.kill === true && a.body === null && c.victim === null && c.body.length === 3 && bad.every(q => q === null) && big.pct === 100 && big.body === null
+            && GUh.feedLine('Ann', 'Bob', false, 'run') === 'Ann ran over Bob' && GUh.feedLine('Ann', 'Bob', true) === 'Ann HEADSHOT Bob' && GUh.feedLine('Ann', 'Bob', false) === 'Ann shot Bob' && DMh.hitText('run', 36, false) === 'RUN OVER 36%' && DMh.hitText('run', 36, true) === 'KILL';
+    })());
+    check('run over: wired (only the host or solo decides, from the car poses and own heads, before the police update; the mode rule goes through GM.canHurt with the friendly-fire flag; a victim in any vehicle is skipped; death uses the same bust path with the car heading; a guest only receives "hit")', (() => {
+        const g = fs.readFileSync(path.join(ROOT, 'levels/scarygta.js'), 'utf8').replace(/\/\/.*$/gm, ''), t = g.slice(g.indexOf('function runOverTick'), g.indexOf('function pedShot')), n = g.slice(g.indexOf("msg.k === 'hit'"), g.indexOf("msg.k === 'feed'"));
+        return /RO\.runOverStep\(cool/.test(t) && /GM\.canHurt\(S\.gm, a, b, fr\)/.test(t) && /busy: inCarNow\(pl\.id\)/.test(t) && /bust\(\{ reason: 'shot'.*yaw: h\.yaw/.test(t) && /hostBust\(\{ id: h\.victim, reason: 'shot'.*yaw: h\.yaw/.test(t) && g.indexOf('runOverTick(players);') < g.indexOf('const out = S.sim.update(dt, players);') && /GU\.cleanHit\(msg\)/.test(n) && !/GU\.hurt|hostBust|runOverStep/.test(n) && /feedLine\(nameOf\(h\.by\), nameOf\(h\.victim\), false, 'run'\)/.test(t) && /GU\.hurt\(vs, h\.dmg, S\.clock\)/.test(t);
+    })());
+    // --- radiowozy od 4 gwiazdek (core/copcarlogic.js) ---
+    const CCt = await import(url('core/copcarlogic.js')), AIc = await import(url('core/cityai.js'));
+    const simCars = (stars, secs, o) => {
+        const F = CCt.newFleet(); let seed = 11; const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296; const lead = (o && o.lead) || { x: 30, z: -70, v: 0, car: true }, st = { vmax: 0, a: 0, lat: 0, spawned: 0, unloads: [], min: 1e9, minCars: 1e9, F };
+        for (let i = 0; i < secs * 60; i++) {
+            const r = CCt.fleetStep(F, 1 / 60, { stars, lead: o && o.noLead ? null : lead, players: [{ x: lead.x, z: lead.z }], rand, clear: () => true, obstaclesFor: (c) => F.cars.filter(q => q !== c).map(q => ({ x: q.x, z: q.z, r: 1.2 })).concat(o && o.noObstacle ? [] : [{ x: lead.x, z: lead.z, r: 1.2 }]) });
+            st.spawned += r.spawned; st.unloads.push(...r.unloads);
+            for (const c of F.cars) { st.vmax = Math.max(st.vmax, c.v); if (c._pv !== undefined) { st.a = Math.max(st.a, Math.abs(c.v - c._pv) * 60); const dy = Math.atan2(Math.sin(c.yaw - c._py), Math.cos(c.yaw - c._py)); st.lat = Math.max(st.lat, c.v * Math.abs(dy) * 60); } c._pv = c.v; c._py = c.yaw; st.min = Math.min(st.min, Math.hypot(c.x - lead.x, c.z - lead.z)); }
+            for (const a of F.cars) for (const b of F.cars) if (a !== b) st.minCars = Math.min(st.minCars, Math.hypot(a.x - b.x, a.z - b.z));
+        }
+        return st;
+    };
+    check('cruisers: the number follows the stars (none below 4, one at 4, two at 5, never above the cap), the constants are slower and gentler than the stolen car and the city is big enough for the spawn ring', CCt.wantCars(0) === 0 && CCt.wantCars(3) === 0 && CCt.wantCars(4) === 1 && CCt.wantCars(5) === 2 && CCt.CC.MAX >= 2 && CCt.CC.V < DRt.DRIVE.VMAX && CCt.CC.ACC <= 3 && CCt.CC.BRAKE <= 4.1 && CCt.CC.ALAT <= 3.5 && CCt.copCarProblems().length === 0);
+    check('cruisers: at 5 stars two cruisers appear out of sight (70-135 m from the lead and every player), drive to the target along the streets, never exceed 6 m/s, accelerate and turn gently, never overlap each other or the target car (they stop short of it) and the second waits behind the first', (() => {
+        const st = simCars(5, 120), F = st.F; const g = AIc.streetGraph(), onStreet = F.cars.every(c => g.nodes.some(n => Math.hypot(n.x - c.x, n.z - c.z) < 150));
+        return st.spawned === 2 && F.cars.length === 2 && st.vmax <= CCt.CC.V + 1e-6 && st.a <= CCt.CC.BRAKE + 0.3 && st.lat <= CCt.CC.ALAT + 0.3 && st.min >= 3.5 && st.min < 8 && st.minCars >= 4 && onStreet && F.cars.every(c => c.v < 0.1);
+    })());
+    check('cruisers: a spawn happens only far from every player, a cruiser never spawns without a target, and they leave when the stars drop under 3 for 14 s and drive away until they are far from everybody (and vanish)', (() => {
+        const F = CCt.newFleet(), pl = [{ x: 30, z: -70 }, { x: -50, z: 40 }]; let seed = 5; const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296; let near = 1e9;
+        for (let i = 0; i < 600; i++) { const r = CCt.fleetStep(F, 1 / 60, { stars: 4, lead: { x: 30, z: -70, v: 0, car: true }, players: pl, rand, clear: () => true }); if (r.spawned) for (const c of F.cars) near = Math.min(near, ...pl.map(p => Math.hypot(c.x - p.x, c.z - p.z))); }
+        const none = CCt.newFleet(); for (let i = 0; i < 300; i++) CCt.fleetStep(none, 1 / 60, { stars: 5, lead: null, players: pl, rand });
+        const had = F.cars.length; let left = 0; for (let i = 0; i < 60 * 150; i++) { CCt.fleetStep(F, 1 / 60, { stars: 1, lead: { x: 30, z: -70, v: 0, car: true }, players: pl, rand, clear: () => true }); if (!F.cars.length && !left) left = i / 60; }
+        return had === 1 && near >= CCt.CC.SPAWN_MIN && none.cars.length === 0 && F.cars.length === 0 && left > CCt.CC.LEAVE_T;
+    })());
+    check('cruisers: a target on foot makes a cruiser stop within 9 m and unload two cops (again only after the cooldown), a target in a car never gets cops unloaded, and a cruiser stops in front of an obstacle on the road', (() => {
+        const foot = simCars(4, 90, { lead: { x: 30, z: -70, v: 0, car: false } }), car = simCars(4, 90, { lead: { x: 30, z: -70, v: 0, car: true } });
+        const blocked = (() => { const F = CCt.newFleet(); F.cars.push(CCt.newCar(1, 5, { x: 100, z: -73 })); const c = F.cars[0], tg = { x: 75, z: -73, v: 0, car: true }; for (let i = 0; i < 150; i++) CCt.carStep(c, 1 / 60, { target: tg, obstacles: [] }); const ox = { x: c.x + Math.sin(c.yaw) * 14, z: c.z + Math.cos(c.yaw) * 14, r: 1.2 }; for (let i = 0; i < 900; i++) CCt.carStep(c, 1 / 60, { target: tg, obstacles: [ox] }); const f = (ox.x - c.x) * Math.sin(c.yaw) + (ox.z - c.z) * Math.cos(c.yaw); return { d: Math.hypot(c.x - ox.x, c.z - ox.z), f, v: c.v }; })();
+        return foot.unloads.length >= 1 && foot.unloads.length <= 4 && foot.unloads[0].n === 2 && foot.unloads.every(u => Math.hypot(u.x - u.tx, u.z - u.tz) < 14) && car.unloads.length === 0 && blocked.d >= CCt.CC.STOP_GAP && blocked.f > 0 && blocked.v < 0.1 && blocked.d < 12;
+    })());
+    check('cruisers: a car that stands (under 1.2 m/s) within 5.6 m of a cruiser for 2 s is busted once, a moving car or one far away is not, the timer fades when it drives off, and a player on foot is never "pinned"', (() => {
+        const pins = {}, cars = [{ x: 0, z: 0, yaw: 0, v: 0 }], P = (o) => [Object.assign({ id: 'a', x: 3, z: 0, inCar: true, speed: 0 }, o)];
+        let busts = []; for (let i = 0; i < 100; i++) busts = busts.concat(CCt.pinStep(pins, 0.02, cars, P())); const first = busts.length;
+        const p2 = {}; let m = []; for (let i = 0; i < 400; i++) m = m.concat(CCt.pinStep(p2, 0.02, cars, P({ speed: 3 }))); const f2 = {}; let fr = []; for (let i = 0; i < 400; i++) fr = fr.concat(CCt.pinStep(f2, 0.02, cars, P({ x: 40 }))); const p3 = {}; let fo = []; for (let i = 0; i < 400; i++) fo = fo.concat(CCt.pinStep(p3, 0.02, cars, P({ inCar: false })));
+        const p4 = {}; for (let i = 0; i < 50; i++) CCt.pinStep(p4, 0.02, cars, P()); const mid = p4.a; for (let i = 0; i < 100; i++) CCt.pinStep(p4, 0.02, cars, P({ speed: 5 }));
+        return first === 1 && !m.length && !fr.length && !fo.length && mid > 0.9 && (p4.a || 0) === 0 && Object.keys(pins).length <= 1;
+    })());
+    check('cruisers: the blockers for the player car are two circles per cruiser at the front and the back, the snapshot is four numbers each, and the cleaning keeps at most four finite entries inside the map', (() => {
+        const cars = [{ x: 10, z: 20, yaw: 0, v: 3 }, { x: -5, z: 8, yaw: Math.PI / 2, v: 0 }], b = CCt.blockersOf(cars), F = { cars: cars }, sn = CCt.snap(F);
+        const c = CCt.cleanCruisers([[1, 2, 3, 4], [5, 6, 7, 99], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4], [1, 2, 3, 4]]), junk = CCt.cleanCruisers([[1, 2, 3], ['x', 2, 3, 4], [1e9, 2, 3, 4], [1, 2, 99, 4], [NaN, 2, 3, 4]]);
+        return b.length === 4 && Math.abs(b[0].z - (20 + CCt.CC.HALF)) < 1e-9 && Math.abs(b[1].z - (20 - CCt.CC.HALF)) < 1e-9 && b.every(q => q.r === CCt.CC.R) && sn.length === 2 && sn[0].length === 4 && c.length === 4 && c[1].v === CCt.CC.V && junk.length === 0 && CCt.cleanCruisers('x').length === 0 && CCt.cleanCruisers(null).length === 0;
+    })());
+    // --- pasażer w aucie (SPEC.SEAT, boardCheck) ---
+    check('passenger: every car kind has its own seats behind the driver (pickup 1, hauler 2, buggy 1, motorcycle none), each seat is on the deck (inside the car circles) and at least 0.6 m from the driver body and from the other seats', Object.keys(DRt.SPECS).every(k => {
+        const q = DRt.SPECS[k], car = { x: 0, z: 0, yaw: 0.7 }, drv = DRt.bodyPos(car, q), seats = q.SEAT.map((_, i) => DRt.seatPos(car, q, i)); const half = Math.max(...q.CIRCLES.map(Math.abs)) + q.R;
+        return q.SEATS === q.SEAT.length && seats.every((p, i) => Math.hypot(p.x - drv.x, p.z - drv.z) >= 0.6 && Math.hypot(p.x, p.z) <= half && seats.every((o, j) => i === j || Math.hypot(p.x - o.x, p.z - o.z) >= 0.6));
+    }) && DRt.SPECS.pickup.SEATS === 1 && DRt.SPECS.hauler.SEATS === 2 && DRt.SPECS.buggy.SEATS === 1 && DRt.SPECS.moto.SEATS === 0 && DRt.seatPos({ x: 0, z: 0, yaw: 0 }, DRt.SPECS.moto, 0) === null && DRt.seatPos({ x: 0, z: 0, yaw: 0 }, DRt.SPECS.pickup, 3) === null);
+    check('passenger: a seat lies behind the driver and on the RIGHT hand side (a negative side value) for a car heading north, and turns with the car', (() => {
+        const q = DRt.SPECS.pickup, a = DRt.seatPos({ x: 10, z: 10, yaw: 0 }, q, 0), b = DRt.seatPos({ x: 10, z: 10, yaw: Math.PI / 2 }, q, 0);
+        return a.z < 10 - 1.5 && a.x < 10 - 0.2 && Math.abs(a.x - 10) < 0.5 && b.x < 10 - 1.5 && Math.abs(b.z - 10) < 0.5;
+    })());
+    check('passenger: boardCheck takes the first free seat when the head is close, and refuses an unknown car, no driver, the driver himself, somebody busy, a car with no seats, a fast car (over 2 m/s), a full car, a head too far and garbage', (() => {
+        const q = DRt.SPECS.hauler, pose = { x: 0, z: 0, yaw: 0, v: 0.5 }, at = (k) => DRt.seatPos(pose, q, k), car = (o) => Object.assign({ pose, driver: 'a', pass: [null, null], spec: q }, o || {}), hd = (p) => ({ x: p.x + 0.5, z: p.z });
+        const ok = DRt.boardCheck({ car: car(), who: 'b', head: hd(at(0)) }), second = DRt.boardCheck({ car: car({ pass: ['x', null] }), who: 'b', head: hd(at(1)) });
+        const why = (o) => DRt.boardCheck(Object.assign({ car: car(), who: 'b', head: hd(at(0)) }, o)).reason;
+        return ok.ok && ok.seat === 0 && second.ok && second.seat === 1 && why({ car: null }) === 'unknown' && why({ car: car({ driver: null }) }) === 'nodriver' && why({ who: 'a' }) === 'self' && why({ busy: true }) === 'busy' && why({ car: car({ spec: DRt.SPECS.moto }) }) === 'noseat'
+            && why({ car: car({ pose: Object.assign({}, pose, { v: 3 }) }) }) === 'fast' && why({ car: car({ pass: ['x', 'y'] }) }) === 'full' && why({ head: { x: 40, z: 40 } }) === 'far' && why({ head: null }) === 'nohead' && why({ head: { x: NaN, z: 0 } }) === 'nohead' && DRt.boardCheck(null).reason === 'unknown';
+    })());
+    check('passenger: extrapolate moves the pose forward by v * age (at most 0.35 s), keeps the heading and survives garbage; the snapshot parser keeps a pass list of at most two short ids or nulls and drops garbage', (() => {
+        const e = DRt.extrapolate({ x: 1, z: 2, yaw: 0, v: 5 }, 0.2), big = DRt.extrapolate({ x: 1, z: 2, yaw: 0, v: 5 }, 9), none = DRt.extrapolate({ x: 1, z: 2, yaw: 0, v: NaN }, NaN), neg = DRt.extrapolate({ x: 0, z: 0, yaw: Math.PI / 2, v: 4 }, -3);
+        const cf = DRt.cleanFree([['hauler', 'd', 0, 0, 0, 1, ['p<1>', null, 'extra']], ['buggy', null, 0, 0, 0, 0, 'junk'], ['moto', null, 0, 0, 0, 0, [5, {}]], ['pickup', null, 0, 0, 0, 0]], VLd.isCar).filter(x => true);
+        return Math.abs(e.z - 3) < 1e-9 && Math.abs(big.z - (2 + 5 * 0.35)) < 1e-9 && none.z === 2 && neg.x === 0 && cf.length === 3 && cf[0].pass.length === 2 && cf[0].pass[0] === 'p1' && cf[0].pass[1] === null && Array.isArray(cf[1].pass) && cf[1].pass.length === 0 && cf[2].pass.length === 2 && cf[2].pass.every(q => q === null);
+    })());
+    check('passenger: wired (touch on a seat asks the host, the host checks boardCheck with its own view of the head and refuses a busy or caught player, a guest asks with the "board" event only for a known car, the passenger is removed on dismount, bust, driver exit and disconnect, counts as riding for the cops, is skipped by run-over, the snapshot carries the pass list, and the body follows the extrapolated pose with the 0.18 s smoothing)', (() => {
+        const v = fs.readFileSync(path.join(ROOT, 'core/vehicles.js'), 'utf8').replace(/\/\/.*$/gm, ''), g = fs.readFileSync(path.join(ROOT, 'levels/scarygta.js'), 'utf8').replace(/\/\/.*$/gm, ''), n = fs.readFileSync(path.join(ROOT, 'core/gtanet.js'), 'utf8').replace(/\/\/.*$/gm, '');
+        const hb = g.slice(g.indexOf('function hostBoard'), g.indexOf('function dismountMe'));
+        return /DL\.boardCheck|DRV\.boardCheck/.test(hb) && /S\.bustUntil\[who\]/.test(hb) && /S\.vehs\.addPass\(carId, who, r\.seat\)/.test(hb) && /busy = inCarNow\(who\)/.test(hb) && /m\.kind === 'board'\) return typeof m\.car === 'string' && isCar\(m\.car\)/.test(n)
+            && /S\.vehs\.removePass\(g\.id\)/.test(g) && /S\.vehs\.removePass\(b\.id\)/.test(g) && /S\.vehs\.removePass\('me'\)/.test(g) && /passCarOf\(id\)/.test(g) && /f\.pass\.map\(q => q \? toNet\(q\) : null\)/.test(g) && /S\.vehs\.beginPass\(e\.car\)/.test(g)
+            && /DL\.extrapolate\(fr\.target/.test(v) && /1 - Math\.exp\(-step \/ 0\.18\)/.test(v) && /c\.free\.pass\.fill\(null\)/.test(v) && /car\.free\.pass\.fill\(null\)/.test(v) && /fr\.pass\[d\.k\] !== api\.myKey/.test(v);
+    })());
+    check('cruisers: wired (only the host or solo runs cruiserTick, after the roadblocks in netStep; the pin goes through bust or hostBust with the reason "cop"; the cops come out through unloadCops; the local drive gets the cruiser blockers but the host pose check does not; the guest takes pc only through cleanCruisers; the snapshot carries pc; the mesh is disposed)', (() => {
+        const g = fs.readFileSync(path.join(ROOT, 'levels/scarygta.js'), 'utf8').replace(/\/\/.*$/gm, ''), ct = g.slice(g.indexOf('function cruiserTick'), g.indexOf('function applyRunHit')), hp = g.slice(g.indexOf('function hostPose'), g.indexOf('function dismountMe'));
+        const cs = fs.readFileSync(path.join(ROOT, 'core/citysim.js'), 'utf8');
+        return g.indexOf('cruiserTick(dt, players, maxStars);') > g.indexOf('BL.blockStep(S.blocks') && g.indexOf('cruiserTick(dt, players, maxStars);') < g.indexOf('for (const b of out.busts)') && /CCl\.fleetStep\(S\.ccF/.test(ct) && /CCl\.pinStep\(S\.ccPins/.test(ct) && /bust\(\{ reason: 'cop'/.test(ct) && /hostBust\(\{ id: id, reason: 'cop'/.test(ct) && /S\.sim\.unloadCops\(/.test(ct)
+            && /world: \(\) => driveWorld\(true\)/.test(g) && /blockers: dyn \? CCl\.blockersOf\(cruisers\(\)\)/.test(g) && !/driveWorld\(true\)/.test(hp) && /S\.ccSnap = CCl\.cleanCruisers\(msg\.pc\)/.test(g) && /pc: CCl\.snap\(S\.ccF\)/.test(g) && /S\.ccfx\.dispose\(\)/.test(g) && /G\.unloadCops = /.test(cs) && /S\.ccfx\.update\(au \? S\.ccF\.cars : S\.ccSnap, dt, !au\)/.test(g);
     })());
 }
 done('logic');

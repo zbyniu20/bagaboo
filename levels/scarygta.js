@@ -25,6 +25,9 @@ import { MOD, PERSONAL } from '../core/modstate.js';
 import { SAVE } from '../core/economy.js';
 import { safeName } from '../core/netguard.js';
 import * as GU from '../core/gunlogic.js';
+import * as RO from '../core/runoverlogic.js';
+import * as CCl from '../core/copcarlogic.js';
+import { createCopCars } from '../core/gtacopcarfx.js';
 import * as HL from '../core/helilogic.js';
 import { createHeli } from '../core/heli.js';
 import { createWeather } from '../core/weather.js';
@@ -156,7 +159,7 @@ export function build() {
     S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
     // dodatki (core/gtaprops.js): kabiny, przebranie, wspinaczki, paczki, manekiny, sejf, prąd, dźwig, telefon; noc (blackout i horda)
     S.gm = GM.newModeState(); S.gmPhase = 'idle'; buildModePanel();
-    S.fleet = VL.newFleet(); S.vehs = createVehicles({ clock: () => S.clock, myKey: 'me', requestStart: requestDrive, onBoard: (car, route) => toast(VL.routeOf(car, route).name + '. Stand still and hold on (both grips to jump off).', '#7ad0ff'), onArrive: () => { toast('You arrived.', '#7ad0ff'); const f = S.fleet && S.fleet.find(q => q.occ === 'me'); if (S.ctr && !(f && f.stop)) S.ctr.arrived = true; }, dismount: dismountMe, drive: { requestFree: requestFree, world: driveWorld, input: driveInput, wantExit: () => !!S.dbgExit || (!renderer.xr.isPresenting && driveKeys().exit), onStart: (car) => toast('Driving the ' + VL.VEHICLES.find(v => v.id === car).name + '. Right trigger gas, left trigger brake and reverse, left stick steer, both grips get out.', '#7ad0ff'), auth: () => isAuth(), onPose: sendPose, onStop: () => { toast('You got out.', '#7ad0ff'); if (!isAuth()) { S.fdIgnoreUntil = S.clock + 1.5; send({ k: 'ev', kind: 'dismount' }); } }, onBump: (imp) => buzz('both', Math.min(0.8, 0.25 + imp * 0.12), 120), onRunOver: runOverPeds } });
+    S.fleet = VL.newFleet(); S.vehs = createVehicles({ clock: () => S.clock, myKey: 'me', requestStart: requestDrive, onBoard: (car, route) => toast(VL.routeOf(car, route).name + '. Stand still and hold on (both grips to jump off).', '#7ad0ff'), onArrive: () => { toast('You arrived.', '#7ad0ff'); const f = S.fleet && S.fleet.find(q => q.occ === 'me'); if (S.ctr && !(f && f.stop)) S.ctr.arrived = true; }, dismount: dismountMe, drive: { requestFree: requestFree, world: () => driveWorld(true), input: driveInput, wantExit: () => !!S.dbgExit || (!renderer.xr.isPresenting && driveKeys().exit), onStart: (car) => toast('Driving the ' + VL.carName(car) + '. Right trigger gas, left trigger brake and reverse, left stick steer, both grips get out.', '#7ad0ff'), auth: () => isAuth(), onPose: sendPose, onStop: () => { toast('You got out.', '#7ad0ff'); if (!isAuth()) { S.fdIgnoreUntil = S.clock + 1.5; send({ k: 'ev', kind: 'dismount' }); } }, onBump: (imp) => buzz('both', Math.min(0.8, 0.25 + imp * 0.12), 120), onRunOver: runOverPeds, requestBoard: requestBoard, onPassStart: (car) => toast('You are riding on the ' + VL.carName(car) + '. Hold on! Both grips to get off.', '#7ad0ff'), onPassStop: (car, notify) => { if (notify) { if (isAuth()) S.vehs.removePass('me'); else { S.fdIgnoreUntil = S.clock + 1.5; send({ k: 'ev', kind: 'dismount' }); } } toast(notify ? 'You got off.' : 'The ride is over.', '#7ad0ff'); } } });
     S.sim.hearMul = mutatorActive() ? mutFactor('hear') : 1; S.night = X.newNight(); S.nightPh = 'calm'; S.powerOn = false; S.sprayAt = {}; S.alarmAt = {}; S.disUntil = {}; S.powerLeft = 0; S.powerCd = 0; S.disSent = false; S.powerSent = false;
     S.gx = createGtaProps({ buildings: S.buildings, api: {
         stars: () => S.sim.starsOf('me'), seenT: () => S.sim.heatOf('me').seenT,
@@ -170,7 +173,7 @@ export function build() {
     S.eggs = createGtaEggs({ buildings: S.buildings, api: { stars: () => S.sim.starsOf('me'), night: () => S.nightPh, ride: eggRide } });
     const secApi = { night: () => S.nightPh, storm: () => !!S.wx && S.wx.state === 'storm' };
     S.stunts = createGtaStunts({ buildings: S.buildings }); S.mystery = createGtaMystery({ buildings: S.buildings, api: secApi }); S.enc = createGtaEncounters({ api: secApi });
-    S.life = createGtaLife({ api: { night: () => S.nightPh, obstacles: lifeObstacles } }); S.dj = DJM.newDj(); S.esc = 1; S.blocks = BL.newBlocks(); S.rbfx = createGtaRoadblocks(); S.ctr = { run: CTm.newRun(), spr: getGta().sprayed, arrived: false, seen: false }; S.cmark = createGtaCopMarks({ api: { gm: () => S.gm } }); S.corp = createGtaCorpses({ api: { gore: () => SETTINGS.gore !== false, dead: N.setAvatarDead } }); S.hitMark = { t: 0, text: '' };
+    S.life = createGtaLife({ api: { night: () => S.nightPh, obstacles: lifeObstacles } }); S.dj = DJM.newDj(); S.esc = 1; S.blocks = BL.newBlocks(); S.rbfx = createGtaRoadblocks(); S.ccF = CCl.newFleet(); S.ccfx = createCopCars(); S.ccPins = {}; S.ccSnap = []; S.ccStat = { unloads: 0, pins: 0 }; S.ctr = { run: CTm.newRun(), spr: getGta().sprayed, arrived: false, seen: false }; S.cmark = createGtaCopMarks({ api: { gm: () => S.gm } }); S.corp = createGtaCorpses({ api: { gore: () => SETTINGS.gore !== false, dead: N.setAvatarDead } }); S.hitMark = { t: 0, text: '' };
     S.bb = createGtaBillboards({ buildings: S.buildings, api: { night: () => S.nightPh } });
     S.fdLast = {}; S.fdBad = {}; S.fdSeen = 0; S.fdIgnoreUntil = 0; S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
@@ -229,7 +232,7 @@ function buildMarina(geo, mat) {
 }
 // ----- rekwizyty: samochody (instancje + kolizje), palmy (instancje) -----
 function buildProps(geo, mat, R) {
-    const CI = C.CITY, cars = [], palms = [], vSpots = VL.VEHICLES.map(v => VL.startPoint(v.id));   // zaparkowane auta nie stoją przy stanowiskach pojazdów ucieczki (ten sam ciąg losowy: 3 losowania)
+    const CI = C.CITY, cars = [], palms = [], vSpots = VL.VEHICLES.map(v => VL.startPoint(v.id)).concat(VL.FREE_CARS.map(v => v.park));   // zaparkowane auta nie stoją przy stanowiskach pojazdów ucieczki (ten sam ciąg losowy: 3 losowania)
     const body = paint(new THREE.BoxGeometry(2, 0.7, 4.3).translate(0, 0.55, 0), 1, 1, 1), cab = paint(new THREE.BoxGeometry(1.7, 0.6, 2.2).translate(0, 1.15, -0.2), 0.45, 0.5, 0.55);
     const carG = geo(mergeGeometries([body, cab])), carI = new THREE.InstancedMesh(carG, mat(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.6 })), 60);
     let n = 0; const col = new THREE.Color(), dummy = new THREE.Object3D(), put = (x, z, alongZ) => { if (n >= 60) return; if (vSpots.some(s => Math.hypot(s.x - x, s.z - z) < 6)) { R(); R(); R(); return; } dummy.position.set(x, 0, z); dummy.rotation.set(0, alongZ ? 0 : Math.PI / 2, (R() - 0.5) * 0.04); dummy.updateMatrix(); carI.setMatrixAt(n, dummy.matrix); col.setHSL(R(), 0.55, 0.28 + R() * 0.2); carI.setColorAt(n, col); n++; addStaticBody(x, 0.7, z, new CANNON.Box(new CANNON.Vec3(alongZ ? 1.0 : 2.15, 0.7, alongZ ? 2.15 : 1.0)), carI, false); };
@@ -318,7 +321,7 @@ export function update(dt, t, ctx) {
     nightTick(dt);
     radioTick(dt); contractTick(dt, ctx.body.position.y);
     for (const f of S.fx) if (f.l.visible) { f.t -= dt; if (f.t <= 0) f.l.visible = false; }
-    S.hurtT = Math.max(0, S.hurtT - dt); S.hitMark.t = Math.max(0, S.hitMark.t - dt); S.corp.update(dt);
+    S.hurtT = Math.max(0, S.hurtT - dt); S.hitMark.t = Math.max(0, S.hitMark.t - dt); S.corp.update(dt); { const au = isAuth(); S.ccfx.update(au ? S.ccF.cars : S.ccSnap, dt, !au); }
     if (S.busted >= 0) { S.busted += dt; netStep(dt, p, 0); S.heliV.update(S.heli, dt); if (S.busted > 4.5) respawn(); S.hudT -= dt; if (S.hudT <= 0) { S.hudT = 0.3; drawHud(p); } return; }
     L.moveScale = PACE;   // ruch jak w lobby także z torbą (wcześniej ciężar łupu zabierał 8%)
     S.visT -= dt;
@@ -337,7 +340,7 @@ export function update(dt, t, ctx) {
     S.heliV.update(S.heli, dt);
     S.eyeOnMe = HL.heliSees(S.heli, { x: p.x, y: p.y, z: p.z }, { hidden: !!S.sim.hiddenNow.me, blocked: AI2.lineBlocked([S.heli.x, S.heli.y, S.heli.z], [p.x, p.y + 0.5, p.z], S.boxes) });
     // syreny: gdy policjant ściga gracza z bliska, naprzemienne tony (cichy sygnał ostrzegawczy; nie w trybie spokojnym gier, tu go nie ma)
-    S.sirenT = (S.sirenT || 0) - dt; if (S.sirenT <= 0 && S.sim.activeCops().some(c => c.st.mode === 'chase' && Math.hypot(c.bot.x - p.x, c.bot.z - p.z) < 45)) { S.sirenT = 0.5; S.sirenF = !S.sirenF; SFX.beep(S.sirenF ? 880 : 640, 0.04, 0.42); }
+    S.sirenT = (S.sirenT || 0) - dt; if (S.sirenT <= 0 && (S.sim.activeCops().some(c => c.st.mode === 'chase' && Math.hypot(c.bot.x - p.x, c.bot.z - p.z) < 45) || cruisers().some(c => Math.hypot(c.x - p.x, c.z - p.z) < 45))) { S.sirenT = 0.5; S.sirenF = !S.sirenF; SFX.beep(S.sirenF ? 880 : 640, 0.04, 0.42); }
     ensureGun(); if (S.gunMesh) S.gunMesh.g.visible = S.busted < 0;
     if (N.NET.mode !== 'solo') { MOD.boost = MOD.fly = MOD.noclip = MOD.sizeOn = false; MOD.size = 1; PERSONAL.speed = 1; }   // PvP: bez prędkości, latania, przenikania i rozmiaru z menu admina
     S.hidden = !!S.sim.hiddenNow.me; S.peakStars = Math.max(S.peakStars, S.sim.starsOf('me'));
@@ -346,7 +349,7 @@ export function update(dt, t, ctx) {
 // Złapanie (BUSTED): jumpscare (z uwzględnieniem ustawień), upuszczenie toreb, o jedną gwiazdkę mniej, odrodzenie w bezpiecznym punkcie po chwili
 function bust(b, remote) {
     if (S.busted >= 0) return;
-    S.busted = 0; S.busts++; S.flags.busted = true; S.fleet = VL.endDriveBy(S.fleet, 'me'); S.vehs.endFree(); S.scare.trigger(); releaseAll(); cancelRails(S.sim);
+    S.busted = 0; S.busts++; S.flags.busted = true; S.fleet = VL.endDriveBy(S.fleet, 'me'); S.vehs.endFree(); S.vehs.removePass('me'); S.vehs.endPass(false); S.scare.trigger(); releaseAll(); cancelRails(S.sim);
     const lost = S.got;
     if (!remote) { dropBags('me', b.x, b.y || 0, b.z); if (b.reason !== 'shot') S.sim.heats.me = WL.afterBust(S.sim.heatOf('me')); }
     S.gunS.me.deadUntil = S.clock + GU.GUN.RESPAWN;   // gość: torby i ciepło po stronie hosta (migawka)
@@ -437,6 +440,58 @@ function hostShot(id, sh, checked) {
     if (id === 'me' && landed) S.hitMark = { t: DL.DMG.HIT_SHOW, text: DL.hitText(res.zone, GU.damageOf(res.zone), kill) };   // znacznik trafienia u strzelca: HIT 25% / HEADSHOT 50% / KILL
     send({ k: 'fx', s: toNet(id), o: sh.o.map(v => +v.toFixed(2)), e: end.map(v => +v.toFixed(2)), h: res && res.kind === 'player' && landed ? toNet(res.id) : null, z: res && res.zone === 'head' ? 'h' : 'b', kill, c: res && res.kind === 'cop' ? 1 : 0, cb: body });
     if (id !== 'me') { drawTracer(sh.o, end); camera.getWorldPosition(_p); if (Math.hypot(_p.x - sh.o[0], _p.z - sh.o[2]) < 45) SFX.shot(); }
+}
+// ---------- RADIOWOZY (core/copcarlogic.js, core/gtacopcarfx.js): host (albo solo) liczy jazdę po grafie ulic i przyszpilenie auta gracza, goście rysują migawkę `pc` ----------
+const cruisers = () => !S || !S.ccF ? [] : (isAuth() ? S.ccF.cars : S.ccSnap);
+function cruiserTick(dt, players, maxStars) {
+    let lead = null, best = -1; for (const pl of players) { if (pl.busted) continue; const st = S.sim.starsOf(pl.id); if (st > best) { best = st; lead = pl; } }
+    const fcar = (id) => S.vehs.freePoseOf(id), L2 = lead && best >= 1 ? { x: lead.x, z: lead.z, v: S.vehs.freeSpeedOf(lead.id), car: inCarNow(lead.id) } : null;
+    const clear = (x1, z1, x2, z2) => !AI2.lineBlocked([x1, 1, z1], [x2, 1, z2], S.boxes);
+    const cars = S.ccF.cars, others = S.vehs.cars.filter(c => c.free).map(c => ({ x: c.free.pose.x, z: c.free.pose.z, r: 1.2 }));
+    const r = CCl.fleetStep(S.ccF, dt, { stars: maxStars, lead: L2, players: players.filter(q => !q.busted), clear, obstaclesFor: (c) => cars.filter(q => q !== c).map(q => ({ x: q.x, z: q.z, r: 1.2 })).concat(others) });
+    if (r.spawned) { if (S.clock - (S.ccToast || -99) > 30) { S.ccToast = S.clock; toast('Police cars are closing in!', '#ff6a6a'); } }
+    for (const u of r.unloads) { const n = S.sim.unloadCops(u.x, u.z, u.tx, u.tz, u.n); if (n) S.ccStat.unloads++; }
+    const pp = []; for (const pl of players) { const fp = fcar(pl.id); if (!pl.busted && fp) pp.push({ id: pl.id, x: fp.x, z: fp.z, inCar: true, speed: Math.abs(fp.v) }); }
+    for (const id of CCl.pinStep(S.ccPins, dt, cars, pp)) { const q = pp.find(z => z.id === id); S.ccStat.pins++; if (id === 'me') bust({ reason: 'cop', x: q.x, z: q.z }); else hostBust({ id: id, reason: 'cop', x: q.x, z: q.z }); }
+    if (S.ccPins.me > 0.6 && S.clock - (S.pinToast || -9) > 3) { S.pinToast = S.clock; toast('Boxed in! Drive off now!', '#ff6a6a'); }
+}
+// ---------- POTRĄCANIE (core/runoverlogic.js): host (albo solo) liczy z pozy swobodnych aut i własnego widoku głów; ofiary nie są popychane ----------
+const inCarNow = (id) => (!!S.fleet && S.fleet.some(c => c.occ === id)) || !!S.vehs.freeCarOf(id) || !!S.vehs.passCarOf(id);
+function runOverTick(players) {
+    const cars = [], prevs = S.roPrev || (S.roPrev = {}), cool = S.roCool || (S.roCool = {});
+    for (const c of S.vehs.cars) {
+        if (!c.free || !c.free.driver) { delete prevs[c.id]; continue; }
+        const cur = { x: c.free.pose.x, z: c.free.pose.z, yaw: c.free.pose.yaw, v: c.free.pose.v || 0 }, prev = prevs[c.id] || cur; prevs[c.id] = cur;
+        cars.push({ id: c.id, driver: c.free.driver, prev: prev, cur: cur, spec: c.spec });
+    }
+    if (!cars.length) return;
+    const victims = [];
+    for (const pl of players) {
+        const hd = headOf(pl.id), gs = S.gunS[pl.id]; if (!hd) continue;
+        victims.push({ id: pl.id, kind: 'player', x: hd.x, z: hd.z, y: hd.y, busy: inCarNow(pl.id), ignore: pl.busted || (gs && (S.clock < gs.protectUntil || S.clock < gs.deadUntil)) });
+    }
+    S.sim.cops.forEach((c, k) => { if (c.active) victims.push({ id: 'c' + k, kind: 'cop', x: c.bot.x, z: c.bot.z, y: 1.7 }); });
+    const fr = GU.friendlyFire(S.mode);
+    for (const h of RO.runOverStep(cool, { now: S.clock, cars: cars, victims: victims, canHurt: (a, b) => GM.canHurt(S.gm, a, b, fr) })) applyRunHit(h);
+}
+function applyRunHit(h) {
+    if (h.kind === 'cop') {
+        const c = S.sim.cops[+h.victim.slice(1)]; if (!c || !c.active) return;
+        c.hp = (c.hp === undefined ? GU.GUN.COP_HP : c.hp) - h.dmg; let body = null;
+        const kill = c.hp <= 0; if (kill) { body = [+c.bot.x.toFixed(2), +c.bot.z.toFixed(2), +h.yaw.toFixed(2)]; S.corp.spawn(h.victim, c.bot.x, c.bot.z, { kind: 'cop', yaw: h.yaw }); S.sim.despawn(c); S.sim.addHeat(h.by, WL.eventHeat('kill')); }
+        if (h.by === 'me') S.hitMark = { t: DL.DMG.HIT_SHOW, text: DL.hitText('run', h.dmg, kill) };
+        send({ k: 'hit', v: null, by: toNet(h.by), p: h.dmg, kill: kill, cb: body }); return;
+    }
+    const vs = S.gunS[h.victim] || (S.gunS[h.victim] = GU.newShooter()), r = GU.hurt(vs, h.dmg, S.clock); if (r.ignored) return;
+    if (h.victim === 'me') { S.hurtT = 0.45; buzz('both', 0.7, 120); const hd = headOf(h.by); if (hd) S.killer = { x: hd.x, z: hd.z }; }
+    if (r.dead) {
+        S.sim.addHeat(h.by, WL.eventHeat('kill'));
+        const line = GU.feedLine(nameOf(h.by), nameOf(h.victim), false, 'run'); pushFeed(line); send({ k: 'feed', t: line });
+        const hv = headOf(h.victim), px = hv ? hv.x : 0, pz = hv ? hv.z : 0, py = hv ? GN.bodyY(hv.y) : 0;
+        if (h.victim === 'me') bust({ reason: 'shot', x: px, z: pz, y: py, yaw: h.yaw }); else hostBust({ id: h.victim, reason: 'shot', x: px, z: pz, yaw: h.yaw });
+    }
+    if (h.by === 'me') S.hitMark = { t: DL.DMG.HIT_SHOW, text: DL.hitText('run', h.dmg, r.dead) };
+    send({ k: 'hit', v: toNet(h.victim), by: toNet(h.by), p: h.dmg, kill: r.dead, cb: null });
 }
 // Strzał w przechodniów (lokalnych): pierwszy na torze o -> e (przyciętym do budynków) pada i leży w kałuży; bez ciepła, nagrody i sieci, pocisk nie zatrzymuje się na nim
 function pedShot(o, e) {
@@ -529,7 +584,7 @@ function buildModePanel() {
     const scr = S.mterm.createMesh(1.7, 1.115); scr.position.set(3.4, 1.55, 53.2); L.root.add(scr); S.mterm.dirty = true;
 }
 // ----- pojazdy ucieczki (core/vehicles.js, core/vehiclelogic.js): host trzyma flotę, goście proszą o start i odtwarzają migawkę -----
-const riderOf = (id) => (!!S.fleet && S.fleet.some(c => c.occ === id)) || (id === 'me' && !!S.vehs && S.vehs.driving() && Math.abs(S.vehs.driveCar().v) > 2) || (id !== 'me' && !!S.vehs && S.vehs.freeSpeedOf(id) > 2);   // jadący (po szynach albo swobodnie szybciej niż 2 m/s) nie jest łapany dotykiem
+const riderOf = (id) => (!!S.fleet && S.fleet.some(c => c.occ === id)) || (id === 'me' && !!S.vehs && S.vehs.driving() && Math.abs(S.vehs.driveCar().v) > 2) || (id !== 'me' && !!S.vehs && S.vehs.freeSpeedOf(id) > 2) || (id === 'me' && !!S.vehs && S.vehs.passing() && S.vehs.freeSpeedOf('me') > 2);   // jadący (po szynach albo swobodnie szybciej niż 2 m/s) nie jest łapany dotykiem
 // Telefon: jedna linia ze wszystkimi licznikami sekretów i podpowiedź (notatka sprawy, gdy trwa; inaczej podpowiedź do następnego jajka)
 // Dzienne kontrakty: detektory z lokalnych danych (u gościa działają bez sieci); nagrody tylko poza mutatorem i poza rundą trybu
 function contractTick(dt, y, evIn) {
@@ -552,13 +607,13 @@ function secretsInfo() {
     return { line: 'EGGS ' + e.n + '/' + e.total + ' JUMPS ' + st.n + '/' + st.total + ' CASE ' + m.n + '/' + m.total + ' SEEN ' + en.n + '/' + en.total + ' DEALS ' + ci.n + '/' + ci.total, hint: m.note || e.hint || st.hint || (ci.next ? 'DEAL: ' + ci.next : '') };
 }
 // Przeszkody dla ruchu ulicznego (tylko wizualnego): pickupy i policjanci; gracz jest dodawany w module
-function lifeObstacles() { return (S.vehs ? S.vehs.cars.map(c => ({ x: c.m.position.x, z: c.m.position.z })) : []).concat(S.sim.activeCops().map(c => ({ x: c.bot.x, z: c.bot.z })), S.blocks ? S.blocks.nodes.map(i => BL.nodePos(i)).filter(Boolean) : []); }
+function lifeObstacles() { return (S.vehs ? S.vehs.cars.map(c => ({ x: c.m.position.x, z: c.m.position.z })) : []).concat(cruisers().map(c => ({ x: c.x, z: c.z })), S.sim.activeCops().map(c => ({ x: c.bot.x, z: c.bot.z })), S.blocks ? S.blocks.nodes.map(i => BL.nodePos(i)).filter(Boolean) : []); }
 function eggRide() { const f = S.fleet && S.fleet.find(q => q.occ === 'me'); if (!f || !S.vehs) return null; const c = S.vehs.cars.find(q => q.id === f.id); return c ? { x: c.m.position.x, z: c.m.position.z, yaw: c.m.rotation.y } : null; }
 // ---------- SWOBODNA JAZDA (core/drivelogic.js): kradzież auta dotknięciem drzwi kierowcy; kierowca liczy auto lokalnie ----------
-function driveWorld() {   // przeszkody dla auta: bryły z L.obstacles na wysokości auta (bez krawężników i rusztowań nad głową) i barykady
+function driveWorld(dyn) {   // przeszkody dla auta: bryły z L.obstacles na wysokości auta (bez krawężników i rusztowań nad głową) i barykady; dyn = także ruchome radiowozy (tylko lokalna jazda i auto-hamowanie, nigdy sprawdzanie pozy przez hosta)
     const boxes = []; for (const o of L.obstacles) { const b = o.box3; if (b.max.y < 0.45 || b.min.y > 1.4) continue; boxes.push({ x0: b.min.x, x1: b.max.x, z0: b.min.z, z1: b.max.z }); }
     for (const i of (S.blocks ? S.blocks.nodes : [])) { const p = BL.nodePos(i); if (!p) continue; const ax = BL.streetAlongX(i); boxes.push(ax ? { x0: p.x - 0.5, x1: p.x + 0.5, z0: p.z - 4.4, z1: p.z + 4.4 } : { x0: p.x - 4.4, x1: p.x + 4.4, z0: p.z - 0.5, z1: p.z + 0.5 }); }   // barykada stoi w poprzek ulicy (8,8 m): pojazdy ją omijają, piesi nie
-    return { boxes: boxes, bounds: { x0: C.CITY.X0, x1: C.CITY.X1, z0: C.CITY.Z0, z1: 52 } };
+    return { boxes: boxes, bounds: { x0: C.CITY.X0, x1: C.CITY.X1, z0: C.CITY.Z0, z1: 52 }, blockers: dyn ? CCl.blockersOf(cruisers()) : [] };
 }
 function driveInput() {
     if (S.dbgIn) return S.dbgIn;   // tylko testy
@@ -577,7 +632,7 @@ function hostFree(who, carId, head) {
     const car = S.vehs.cars.find(c => c.id === carId); if (!car || !head) return false;
     if (who !== 'me' && (S.bustUntil[who] || 0) > S.clock) return false;
     if (S.fleet.some(f => f.id === carId && f.occ) || S.fleet.some(f => f.occ === who) || S.vehs.freeDriver(carId)) return false;
-    const pose = car.free ? car.free.pose : VL.parkedPose(carId), door = DRV.doorPoint(pose); if (Math.hypot(head.x - door.x, head.z - door.z) > VL.RIDE.START_R) return false;
+    const pose = car.free ? car.free.pose : VL.parkedPose(carId), door = DRV.doorPoint(pose, car.spec); if (Math.hypot(head.x - door.x, head.z - door.z) > VL.RIDE.START_R) return false;
     const fresh = !car.free || car.free.remote;   // start z miejsca parkowania (albo cudze porzucone auto) to kradzież: alarm
     if (who === 'me') { if (!S.vehs.beginFree(carId)) return false; }
     else { S.vehs.setRemote(carId, who, { x: pose.x, z: pose.z, yaw: pose.yaw, v: 0 }); S.fdLast[carId] = { t: S.clock, pose: { x: pose.x, z: pose.z, yaw: pose.yaw, v: 0 } }; S.fdBad[who] = 0; }   // gość jedzie: host zna go jako kierowcę, a pozę dostaje od niego (hostPose)
@@ -587,12 +642,27 @@ function hostFree(who, carId, head) {
 // Gość kierowca wysyła pozę auta (8 Hz); host przyjmuje ją tylko od kierowcy tego auta i tylko, gdy jest wiarygodna (ruch i obrót w granicach, nie w bryle, w mieście, głowa blisko auta)
 function sendPose(p) { if (!isAuth()) send({ k: 'drv', car: p.car, x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(3), v: +p.v.toFixed(2) }); }
 function hostPose(g, msg) {
-    const p = DRV.cleanPose(msg); if (!p) return;
-    const car = S.vehs.cars.find(c => c.id === p.car); if (!car || !car.free || car.free.driver !== g.id) return;
-    const last = S.fdLast[p.car] || { t: S.clock - 0.125, pose: car.free.target || car.free.pose }, b = DRV.bodyPos(p);
+    const car0 = S.vehs.cars.find(c => c.id === msg.car); if (!car0) return;
+    const p = DRV.cleanPose(msg, car0.spec); if (!p) return;
+    const car = car0; if (!car.free || car.free.driver !== g.id) return;
+    const last = S.fdLast[p.car] || { t: S.clock - 0.125, pose: car.free.target || car.free.pose }, b = DRV.bodyPos(p, car.spec);
     if (Math.hypot(g.head.x - b.x, g.head.z - b.z) > 6) { S.vehs.releaseDriver(g.id); return; }   // głowa gościa nie jest w aucie
-    if (!DRV.poseOk(last.pose, p, S.clock - last.t, driveWorld())) { if ((S.fdBad[g.id] = (S.fdBad[g.id] || 0) + 1) > 12) { S.vehs.releaseDriver(g.id); S.fdBad[g.id] = 0; } return; }   // długo niewiarygodna poza: gość przestaje być kierowcą
+    if (!DRV.poseOk(last.pose, p, S.clock - last.t, driveWorld(), car.spec)) { if ((S.fdBad[g.id] = (S.fdBad[g.id] || 0) + 1) > 12) { S.vehs.releaseDriver(g.id); S.fdBad[g.id] = 0; } return; }   // długo niewiarygodna poza: gość przestaje być kierowcą
     S.fdBad[g.id] = 0; S.fdLast[p.car] = { t: S.clock, pose: p }; S.vehs.setRemote(p.car, g.id, p);
+}
+// PASAŻER: dotknięcie wolnego miejsca na aucie z kierowcą; host zatwierdza (pierwsze wolne miejsce, głowa w 3,4 m od niego, auto wolniejsze niż 2 m/s, gracz nie jedzie niczym ani nie jest złapany)
+function requestBoard(carId) {
+    if (!S || S.busted >= 0 || S.vehs.driving() || S.vehs.passing()) return;
+    if (isAuth()) { camera.getWorldPosition(_p); hostBoard('me', carId, { x: _p.x, z: _p.z }); } else send({ k: 'ev', kind: 'board', car: carId });
+}
+function hostBoard(who, carId, head) {
+    const car = S.vehs.cars.find(c => c.id === carId); if (!car || !car.free || !head) return false;
+    if (who !== 'me' && (S.bustUntil[who] || 0) > S.clock) return false;
+    const fr = car.free, busy = inCarNow(who) || !!S.vehs.passCarOf(who) || (who === 'me' && (S.vehs.driving() || S.busted >= 0));
+    const r = DRV.boardCheck({ car: { pose: fr.target || fr.pose, driver: fr.driver, pass: fr.pass, spec: car.spec }, who: who, head: head, busy: busy }); if (!r.ok) return false;
+    if (!S.vehs.addPass(carId, who, r.seat)) return false;
+    if (who === 'me') S.vehs.beginPass(carId);
+    return true;
 }
 function dismountMe() { S.fleet = VL.endDriveBy(S.fleet, 'me'); if (!isAuth()) send({ k: 'ev', kind: 'dismount' }); }
 function requestDrive(carId, idx) {
@@ -646,6 +716,7 @@ function netStep(dt, p, speed) {
         for (const g of players.slice(1)) if (g.speed > 4.3 && !S.sim.hiddenNow[g.id] && S.sim.activeCops().some(c => Math.hypot(c.bot.x - g.x, c.bot.z - g.z) < 12)) S.sim.addHeat(g.id, WL.eventHeat('run', dt));
         let seenAny = false, lead = null, maxStars = 0;
         for (const pl of players) { if (pl.busted) continue; const hid = !!S.sim.hiddenNow[pl.id], blocked = AI2.lineBlocked([S.heli.x, S.heli.y, S.heli.z], [pl.x, pl.y + 0.5, pl.z], S.boxes); if (HL.heliSees(S.heli, pl, { hidden: hid, blocked })) { S.sim.extSeen[pl.id] = true; S.sim.addHeat(pl.id, WL.eventHeat('heli', dt)); seenAny = true; } }
+        runOverTick(players);
         const out = S.sim.update(dt, players);
         // tryby: czas rundy, łapanie złodziei przez policjantów-graczy, wspólne ciepło w co-opie
         if (S.gm.phase === 'run') {
@@ -659,6 +730,7 @@ function netStep(dt, p, speed) {
         modePhaseToast();
         for (const pl of players) { if (pl.busted) continue; const st = S.sim.starsOf(pl.id); if (st > maxStars || (st === maxStars && !lead)) { maxStars = st; lead = { x: pl.x, z: pl.z }; } }
         { const br = BL.blockStep(S.blocks, dt, { stars: maxStars, lead: lead }); S.blocks = br.st; if (br.placed.length) { S.flags.block = true; } }
+        cruiserTick(dt, players, maxStars);
         const ev = HL.heliStep(S.heli, dt, { stars: maxStars, lead: maxStars > 0 ? lead : null, seen: seenAny });
         if (ev.spawn) toast('A police helicopter is coming. Get under cover!', '#ff6a6a');
         if (ev.swat) S.flags.swat = true;
@@ -677,11 +749,11 @@ function netStep(dt, p, speed) {
 function broadcastState(players) {
     const heats = {}; for (const pl of players) heats[toNet(pl.id)] = [+S.sim.heatOf(pl.id).v.toFixed(1), S.sim.hiddenNow[pl.id] ? 1 : 0];
     const hp = {}; for (const pl of players) hp[toNet(pl.id)] = (S.gunS[pl.id] || (S.gunS[pl.id] = GU.newShooter())).hp;
-    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli), fd: S.vehs.freePoses().map(f => [f.car, f.driver ? toNet(f.driver) : null, f.x, f.z, f.yaw, f.v]), nt: S.nightPh, rb: S.blocks.nodes, pw: S.powerLeft > 0 ? 1 : 0, gm: modeSnapNet(), veh: VL.fleetSnap(S.fleet.map(c => c.occ ? Object.assign({}, c, { occ: toNet(c.occ) }) : c), S.clock) });
+    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli), pc: CCl.snap(S.ccF), fd: S.vehs.freePoses().map(f => [f.car, f.driver ? toNet(f.driver) : null, f.x, f.z, f.yaw, f.v, f.pass.map(q => q ? toNet(q) : null)]), nt: S.nightPh, rb: S.blocks.nodes, pw: S.powerLeft > 0 ? 1 : 0, gm: modeSnapNet(), veh: VL.fleetSnap(S.fleet.map(c => c.occ ? Object.assign({}, c, { occ: toNet(c.occ) }) : c), S.clock) });
 }
 function hostBust(b) {
     const g = guestOf(b.id); if (!g || (S.bustUntil[b.id] || 0) > S.clock) return;
-    S.fleet = VL.endDriveBy(S.fleet, b.id); S.vehs.releaseDriver(b.id); S.bustUntil[b.id] = S.clock + GN.GN.BUST_PROTECT; dropBags(b.id, b.x, bodyYOf(g), b.z);
+    S.fleet = VL.endDriveBy(S.fleet, b.id); S.vehs.releaseDriver(b.id); S.vehs.removePass(b.id); S.bustUntil[b.id] = S.clock + GN.GN.BUST_PROTECT; dropBags(b.id, b.x, bodyYOf(g), b.z);
     (S.gunS[b.id] || (S.gunS[b.id] = GU.newShooter())).deadUntil = S.clock + GU.GUN.RESPAWN;
     const yaw = b.reason === 'shot' ? (b.yaw !== undefined ? b.yaw : DL.fallYaw(b.x, b.z, null)) : undefined;
     if (yaw !== undefined) S.corp.spawn(b.id, b.x, b.z, { kind: 'player', yaw: yaw });   // gość zabity: ciało w miejscu śmierci także u hosta
@@ -706,14 +778,14 @@ function onNet(msg, from) {
     if (msg.k === 'st') {
         S.lastHostMsg = S.clock;
         const cops = GN.cleanCops(msg.cops), bags = GN.cleanBags(msg.bags, BAG_IDS()), heats = GN.cleanHeats(msg.heats);
-        S.snap = { cops };
+        S.snap = { cops }; S.ccSnap = CCl.cleanCruisers(msg.pc);
         for (const e of bags) { const b = S.bags.find(q => q.id === e.id); if (!b) continue; const mine = e.holder === N.myId(); b.holder = e.holder ? (mine ? 'me' : e.holder) : null; b.got = !!e.holder; b.x = e.x; b.y = e.y; b.z = e.z; b.g.visible = !e.holder; b.g.position.set(e.x, e.y, e.z); }
         if (bags.length) { const was = S.got; S.got = S.bags.filter(q => q.holder === 'me').length; if (S.got > was) { const nb = S.bags.find(q => q.holder === 'me'); if (nb) bagToast(nb); } }
         const hl = GN.cleanHeli(msg.hl); if (hl) { const h = S.heli; h.x = hl.x; h.y = hl.y; h.z = hl.z; h.yaw = hl.yaw; h.lx = hl.lx; h.lz = hl.lz; h.mode = hl.mode; } else if (msg.hl === null) S.heli.mode = 'away';
         { const ms = GM.cleanModeSnap(msg.gm), map = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [fromNet(k), v])); S.gm = Object.assign(ms, { roles: map(ms.roles), score: map(ms.score), winner: ms.winner === N.myId() ? 'me' : ms.winner }); modePhaseToast(); }
         {   // swobodne auta od hosta: cudze interpolujemy, a gdy host uznał MNIE za kierowcę, zaczynam jechać (wejście potwierdza host); gdy host przestał mnie wymieniać, wysiadam
-            const fd = DRV.cleanFree(msg.fd, (id) => VL.VEHICLES.some(v => v.id === id)), seen = new Set();
-            for (const e of fd) { seen.add(e.car); const drv = e.driver ? fromNet(e.driver) : null; if (drv === 'me') { if (S.vehs.driving()) S.fdSeen = S.clock; else if (S.clock >= S.fdIgnoreUntil && S.vehs.beginFree(e.car)) S.fdSeen = S.clock; } else S.vehs.setRemote(e.car, drv, e.pose); }
+            const fd = DRV.cleanFree(msg.fd, VL.isCar), seen = new Set();
+            for (const e of fd) { seen.add(e.car); const drv = e.driver ? fromNet(e.driver) : null, pas = (e.pass || []).map(q => q ? fromNet(q) : null); if (drv === 'me') { if (S.vehs.driving()) { S.fdSeen = S.clock; S.vehs.setPass(e.car, pas); } else if (S.clock >= S.fdIgnoreUntil && S.vehs.beginFree(e.car)) S.fdSeen = S.clock; } else { S.vehs.setRemote(e.car, drv, e.pose, pas); if (pas.includes('me') && !S.vehs.passing() && !S.vehs.driving() && S.clock >= S.fdIgnoreUntil) S.vehs.beginPass(e.car); } }
             S.vehs.clearRemoteExcept(seen); if (S.vehs.driving() && S.clock - S.fdSeen > 1.2) S.vehs.endFree();
         }
         { const veh = VL.cleanVehicles(msg.veh); S.fleet = VL.newFleet().map(c => { const e = veh.find(q => q.car === c.id); return e ? { id: c.id, occ: fromNet(e.occ), route: e.route, t0: S.clock - e.age, stop: e.stop } : c; }); { const nb = BL.cleanBlocks(msg.rb); if (BL.newNodes(S.rbSeen ? S.blocks.nodes : null, nb).length) S.flags.block = true; S.rbSeen = true; S.blocks = { nodes: nb, quiet: 0 }; } }
@@ -727,6 +799,11 @@ function onNet(msg, from) {
         if (fx.hit === N.myId()) { S.hurtT = 0.45; buzz('both', 0.7, 120); }
         if (fromNet(fx.s) === 'me' && (fx.hit || fx.cop || fx.kill)) S.hitMark = { t: DL.DMG.HIT_SHOW, text: DL.hitText(fx.zone, GU.damageOf(fx.zone), fx.kill) };
         if (fx.body) S.corp.spawn('c' + fx.body[0].toFixed(1) + ',' + fx.body[1].toFixed(1), fx.body[0], fx.body[1], { kind: 'cop', yaw: fx.body[2] });
+    } else if (msg.k === 'hit') {   // potrącenie autem (host): czerwony błysk ofiary, znacznik RUN OVER u sprawcy, ciało zabitego policjanta
+        const ht = GU.cleanHit(msg); if (!ht) return;
+        if (ht.victim === N.myId()) { S.hurtT = 0.45; buzz('both', 0.7, 120); }
+        if (fromNet(ht.by) === 'me') S.hitMark = { t: DL.DMG.HIT_SHOW, text: DL.hitText('run', ht.pct, ht.kill) };
+        if (ht.body) S.corp.spawn('c' + ht.body[0].toFixed(1) + ',' + ht.body[1].toFixed(1), ht.body[0], ht.body[1], { kind: 'cop', yaw: ht.body[2] });
     } else if (msg.k === 'feed') {
         if (typeof msg.t === 'string') pushFeed(msg.t);
     } else if (msg.k === 'bust') {
@@ -745,8 +822,9 @@ export const debugOutbox = () => S ? S.sent : [];
 export const debugWeather = () => S ? { state: S.wx.state, rain: +S.wx.rain.toFixed(2), fog: +S.wx.fog.toFixed(2), bolts: S.weather.bolts, thunders: S.weather.thunders, mesh: S.weather.mesh.visible, n: S.weather.n, radio: S.radioText ? S.radioText.t : null } : null;
 export const debugWx = (state, flash) => { if (!S) return; if (state) { S.wx.state = state; S.wx.hold = 1e6; } if (flash) { S.wx.flash = WX.WX.FLASH; S.weather.pending.push(0.1); S.weather.bolts++; } };
 function hostExtra(g, kind, rq) {
+    if (kind === 'board') { hostBoard(g.id, rq.car, g.head); return; }
     if (kind === 'drive') { if (rq.route === 'drive') hostFree(g.id, rq.car, g.head); else hostDrive(g.id, rq.car, rq.route, g.head); return; }
-    if (kind === 'dismount') { S.fleet = VL.endDriveBy(S.fleet, g.id); S.vehs.releaseDriver(g.id); return; }
+    if (kind === 'dismount') { S.fleet = VL.endDriveBy(S.fleet, g.id); S.vehs.releaseDriver(g.id); S.vehs.removePass(g.id); return; }
     if (kind === 'deliver') { modeDeliver(g.id, S.bags.filter(b => b.holder === g.id).length); return; }
     const near = (pts, r) => pts.some(q => Math.hypot(g.head.x - q.x, g.head.z - q.z) < r), id = g.id, bank = S.buildings.find(b => b.name === 'bank'), ps = X.powerSpot();
     if (kind === 'spray' && near(X.SPRAY.SPOTS, X.SPRAY.R + 3) && (S.sprayAt[id] || 0) <= S.clock) { S.sprayAt[id] = S.clock + 60; S.sim.heats[id] = { v: 0, seenT: 99 }; }
@@ -760,6 +838,9 @@ export const debugDismount = () => { if (S) dismountMe(); };
 export const debugVeh = () => S ? { fleet: S.fleet, v: S.vehs.debug(), carCount: S.carCount } : null;
 export const debugDriveInput = (gas, brake, steer) => { if (S) S.dbgIn = gas === null ? null : { gas, brake, steer }; };   // tylko testy: wejście jazdy zamiast VR i klawiszy
 export const debugStartFree = (carId, who) => S ? hostFree(who || 'me', carId, who && who !== 'me' ? null : (camera.getWorldPosition(_p), { x: _p.x, z: _p.z })) : false;
+export const debugCruisers = () => S && S.ccF ? { host: isAuth(), cars: cruisers().map(c => [+c.x.toFixed(2), +c.z.toFixed(2), +c.yaw.toFixed(3), +c.v.toFixed(2)]), fx: S.ccfx.debug(), pins: Object.assign({}, S.ccPins), unloads: S.ccStat.unloads, bustsByPin: S.ccStat.pins, blockers: driveWorld(true).blockers.length } : null;   // dla testów
+export const debugCruiserClear = () => { if (S && S.ccF) { S.ccF.cars.length = 0; S.ccPins = {}; } };
+export const debugCruiserAdd = (x, z, yaw) => { if (S && S.ccF) { const c = CCl.newCar(S.ccF.nextId++, 0); c.x = x; c.z = z; c.yaw = yaw || 0; S.ccF.cars.push(c); } };
 export const debugCarTo = (x, z, yaw) => !!S && S.vehs.teleport(x, z, yaw);
 export const debugCarIdle = (id, t) => { if (S) S.vehs.testIdle(id, t); };
 export const debugDriveExit = (on) => { if (S) S.dbgExit = !!on; };
@@ -812,6 +893,7 @@ export function dispose() {
     if (S && S.bb) S.bb.dispose();
     if (S && S.life) S.life.dispose();
     if (S && S.rbfx) S.rbfx.dispose();
+    if (S && S.ccfx) S.ccfx.dispose();
     if (S && S.cmark) S.cmark.dispose();
     if (S && S.corp) S.corp.dispose();
     N.clearDeadAvatars();

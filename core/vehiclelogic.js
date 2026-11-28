@@ -13,6 +13,18 @@ export const VEHICLES = [
     { id: 'casino', name: 'Casino cruiser', at: [0, -62], routes: [{ id: 'plaza', name: 'To the plaza', to: [-38, 18] }, { id: 'east', name: 'To the east boulevard', to: [38, 40] }] },
     { id: 'motel', name: 'Motel mule', at: [0, -24], routes: [{ id: 'warehouse', name: 'To the warehouses', to: [38, 18] }, { id: 'north', name: 'To the north-east', to: [38, -39] }] }
 ];
+// Auta tylko do swobodnej jazdy (bez tras po szynach): stoją przy krawężnikach, każde ma rodzaj z SPECS w core/drivelogic.js (wolniejsze albo zwrotniejsze niż pickup, nigdy poza limitem komfortu RIDE).
+// To osobne obiekty (nie auta z ruchu ulicznego, które są instancjami z kolizjami), więc nie ma starego pudła kolizji, które kolidowałoby z kradzionym autem.
+export const FREE_CARS = [
+    { id: 'hauler', name: 'Cargo hauler', kind: 'hauler', park: { x: 41, z: 12, yaw: 0 } },
+    { id: 'buggy', name: 'Dune buggy', kind: 'buggy', park: { x: -20, z: 44, yaw: Math.PI / 2 } },
+    { id: 'moto', name: 'Night rider', kind: 'moto', park: { x: -41, z: -6, yaw: 0 } },
+    { id: 'moto2', name: 'Grave rider', kind: 'moto', park: { x: 72, z: -30, yaw: Math.PI } }
+];
+export const kindOf = (carId) => { const f = FREE_CARS.find(v => v.id === carId); return f ? f.kind : 'pickup'; };
+export const isCar = (carId) => typeof carId === 'string' && (VEHICLES.some(v => v.id === carId) || FREE_CARS.some(v => v.id === carId));
+export const carName = (carId) => { const v = VEHICLES.find(q => q.id === carId) || FREE_CARS.find(q => q.id === carId); return v ? v.name : 'car'; };
+export const allCarIds = () => VEHICLES.map(v => v.id).concat(FREE_CARS.map(v => v.id));
 let G = null; const graph = () => G || (G = streetGraph());
 const cache = {};
 const vById = (id) => VEHICLES.find(v => v.id === id) || null;
@@ -96,7 +108,7 @@ export function rideStats(ride) {
     return { vmax: vmax, amax: amax, lat: lat };
 }
 // Postój: pozycja i kierunek z początku trasy 0; klamki z obu boków (trasa 0 z lewej, trasa 1 z prawej)
-export function parkedPose(carId) { const r = buildRide(carId, VEHICLES.find(v => v.id === carId).routes[0].id), p = startPoint(carId); return { x: p.x, z: p.z, yaw: posAt(r, 0.01).yaw }; }
+export function parkedPose(carId) { const fc = FREE_CARS.find(v => v.id === carId); if (fc) return { x: fc.park.x, z: fc.park.z, yaw: fc.park.yaw }; const r = buildRide(carId, VEHICLES.find(v => v.id === carId).routes[0].id), p = startPoint(carId); return { x: p.x, z: p.z, yaw: posAt(r, 0.01).yaw }; }
 export function handlePoints(carId) {
     const pp = parkedPose(carId), sx = Math.cos(pp.yaw), sz = -Math.sin(pp.yaw);   // wektor w prawo od kierunku jazdy
     return [{ route: 0, x: pp.x - sx * 1.1, y: 1.0, z: pp.z - sz * 1.1 }, { route: 1, x: pp.x + sx * 1.1, y: 1.0, z: pp.z + sz * 1.1 }];
@@ -132,7 +144,7 @@ export function cleanVehicles(a) {
     return out;
 }
 // Żądanie gościa: { car, route } tylko ze znanych identyfikatorów
-export function cleanDrive(m) { if (!m || typeof m !== 'object') return null; if (m.route === 'drive' && typeof m.car === 'string' && vById(m.car)) return { car: m.car, route: 'drive' }; if (!routeOf(m.car, m.route)) return null; return { car: m.car, route: m.route }; }   // route 'drive' = swobodna jazda (kradzież auta, core/drivelogic.js)
+export function cleanDrive(m) { if (!m || typeof m !== 'object') return null; if (m.route === 'drive' && isCar(m.car)) return { car: m.car, route: 'drive' }; if (!routeOf(m.car, m.route)) return null; return { car: m.car, route: m.route }; }   // route 'drive' = swobodna jazda (kradzież auta, core/drivelogic.js)
 // Poprawność tras (do testów): węzły startu i celów istnieją, trasy mają długość, nigdy nie wchodzą w budynki (z marginesem), prędkości w granicach
 export function vehicleProblems(buildings) {
     const bad = [], ids = new Set();

@@ -86,6 +86,15 @@ export function createCitySim(o) {
         }
         return done;
     };
+    // Radiowóz wysadza n policjantów przy (x, z): zajmują wolne miejsca w puli albo najdalszych policjantów, od razu szukają celu (tx, tz); bez zjazdu na linach
+    G.unloadCops = (x, z, tx, tz, n) => {
+        const node = AI.nearestNode(G.graph, x, z); let done = 0;
+        for (let k = 0; k < n; k++) {
+            let c = G.cops.find(q => !q.active); if (!c) { c = G.activeCops().sort((a, b) => Math.hypot(b.bot.x - x, b.bot.z - z) - Math.hypot(a.bot.x - x, a.bot.z - z))[0]; if (!c) break; G.despawn(c); }
+            G.spawnCop(c, node); c.bot.x += (k ? 1.5 : -1.5); c.st.mode = 'search'; c.st.searchT = 0; c.st.last = { x: tx, z: tz }; done++;
+        }
+        return done;
+    };
     G.despawn = (c) => { c.active = false; c.m.group.visible = false; c.cone.visible = false; };
     const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s1 = new THREE.Vector3(1, 1, 1), _s0 = new THREE.Vector3(0, 0, 0), _c = new THREE.Color();
     // wybiera dla każdego policjanta pełny model, sylwetkę albo nic (core/coplod.js) i ustawia siatkę sylwetek; wołane tuż przed syncCones, także u gościa (puppet)

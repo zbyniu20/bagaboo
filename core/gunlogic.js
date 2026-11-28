@@ -77,4 +77,11 @@ export function cleanHp(o) {
     return out;
 }
 // Wpis w dzienniku zabójstw: tylko bezpieczne nicki (bez nowych linii, znaków sterujących i znaczników)
-export const feedLine = (a, v, head) => String(a || 'Player').replace(/[^\w-]/g, '').slice(0, 14) + (head ? ' HEADSHOT ' : ' shot ') + String(v || 'Player').replace(/[^\w-]/g, '').slice(0, 14);
+export const feedLine = (a, v, head, how) => String(a || 'Player').replace(/[^\w-]/g, '').slice(0, 14) + (how === 'run' ? ' ran over ' : head ? ' HEADSHOT ' : ' shot ') + String(v || 'Player').replace(/[^\w-]/g, '').slice(0, 14);
+// Trafienie autem od hosta (potrącenie): ofiara (null, gdy to policjant) i sprawca (krótkie identyfikatory), procent obrażeń 0-100, czy zabiło, a przy zabitym policjancie ciało (x, z, kierunek upadku); śmieci odpadają
+export function cleanHit(m) {
+    if (!m || typeof m !== 'object') return null;
+    const v = m.v === null || m.v === undefined ? null : tidy(m.v), by = tidy(m.by); if ((m.v !== null && m.v !== undefined && !v) || !by || !fin(m.p)) return null;
+    const cb = Array.isArray(m.cb) && m.cb.length === 3 && m.cb.every(fin) && Math.abs(m.cb[0]) < GUN.MAX_COORD && Math.abs(m.cb[1]) < GUN.MAX_COORD && Math.abs(m.cb[2]) <= 7 ? [m.cb[0], m.cb[1], m.cb[2]] : null;
+    return { victim: v, by: by, pct: Math.round(Math.max(0, Math.min(100, m.p))), kill: !!m.kill, body: cb };
+}
