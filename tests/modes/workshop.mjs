@@ -82,5 +82,5 @@ check(T('the race factory still pays the reward (levelReward call is code, not i
 check(T('the custom race never pays out Bagabucks and never writes records'), /reward:\s*0/.test(custom) && /noRecord:\s*true/.test(custom));
 const mainJs = fs.readFileSync(path.join(ROOT, 'main.js'), 'utf8');
 check(T('the custom race reads the map only from validated data (LEVEL_DATA) or the local store'), /LEVEL_DATA\.current/.test(custom) && /currentMap\(\)/.test(custom) && /demoMap\(\)/.test(custom));
-check(T('main.js passes level data from the network only through the level validator'), /LEVEL_DATA\.current = opts\.data !== undefined \? levelAccept\(id, opts\.data\)/.test(mainJs) && /data: data\.data/.test(mainJs) && /levelPayload\(id\)/.test(mainJs));
+check(T('main.js passes level data from the network only through the level validator'), /LEVEL_DATA\.current = opts\.data !== undefined \? levelAccept\(id, opts\.data\)/.test(mainJs) && /data: c\.data/.test(mainJs) && /levelPayload\(id\)/.test(mainJs));
 if (process.argv[1] && process.argv[1].endsWith('workshop.mjs')) done('workshop');

@@ -45,7 +45,9 @@ import { updateVrMenu, vrMenuTerminal } from './core/vrmenu.js';
 import { onLevelBuilt, updateVisuals } from './core/visuals.js';
 import { registerLevelLights, updateLightPool } from './core/lightpool.js';
 import { captureEnvironment } from './core/envcapture.js';
-import { LEVEL_DEFS, levelPath } from './core/registry.js';
+import { LEVEL_DEFS, LEVEL_BY_ID, levelPath } from './core/registry.js';
+import * as INVL from './core/invitelogic.js';
+import { showInvite, updateInvite } from './core/invite.js';
 import { isReservedNick, isStaffName } from './core/config.js';
 import * as AUTH from './core/auth.js';
 import * as SK from './core/staffkey.js';
@@ -170,15 +172,23 @@ PAUSE.onLogout = () => {
     if (online) { NETM.leaveNetwork('Logged out. You left the room and play solo as a guest.'); goToLevel('lobby'); }
     toast('Logged out. You play as a guest now.', '#ffd27a');
 };
-// Gość: host przeszedł przez drzwi, idziemy za nim (ten sam poziom i układ)
+// Gość: host przeszedł przez drzwi. Nikt nie jest ściągany siłą (gracze biegają swobodnie): dostajemy ZAPROSZENIE z odliczaniem 10 s (core/invite.js).
+// Przyjęcie = idziemy za hostem (ten sam poziom i układ), odrzucenie albo brak odpowiedzi = zostajemy i w tym poziomie nie gramy.
 let pendingFollow = null;
+function offerInvite(c) {
+    if (INVL.alreadyThere(levelId, c.level, SEEDED[c.level])) return;
+    showInvite(INVL.newInvite(c, LEVEL_NAMES[c.level] || c.level), (inv) => {
+        if (!INVL.shouldJoin(inv)) { toast(inv.state === 'timeout' ? 'No answer: you stay here and do not play.' : 'Declined: you stay here and do not play.', '#9fc8ff'); return; }
+        if (c.level === 'scarygta' && !gateOpen()) { toast('The host entered Scary GTA, but its gate is still locked for you (lobby annex).', '#ff7ac8'); return; }
+        toast('Following the host...', '#9fc8ff');
+        goToLevel(c.level, null, { seed: c.seed, noFollow: true, data: c.data });
+    });
+}
 NETM.onFollow((level, data) => {
     if (NETM.NET.mode !== 'guest') return;
-    if (level === levelId && !SEEDED[level]) return;   // już tu jesteśmy
-    if (!started) { pendingFollow = { level: level, data: data }; return; }
-    if (level === 'scarygta' && !gateOpen()) { toast('The host entered Scary GTA, but its gate is still locked for you (lobby annex).', '#ff7ac8'); return; }
-    toast('Following the host...', '#9fc8ff');
-    goToLevel(level, null, { seed: data.seed, noFollow: true, data: data.data });
+    const c = INVL.cleanInvite(level, data, LEVEL_BY_ID); if (!c) return;   // nieznany poziom albo pokój szefa przez follow: ignorujemy
+    if (!started) { pendingFollow = c; return; }
+    offerInvite(c);
 });
 // Gość: zaproszenie od hosta (pokój szefa) albo odesłanie do lobby
 // Haker przyłapany w pokoju szefa: skórka CHEATER na zawsze i ban na tydzień
@@ -248,7 +258,7 @@ function startGame(restorePosition) {
     if (!reward) { const st = ECO.loginStatus(); toast('Next login reward in ' + ECO.fmtDuration(st.msLeft)); }
     setInterval(() => NETM.networkTick(hands.L, hands.R), 1000 / 30);
     setInterval(saveNow, 30000);
-    if (pendingFollow) { const f = pendingFollow; pendingFollow = null; goToLevel(f.level, null, { seed: f.data.seed, noFollow: true }); }
+    if (pendingFollow) { const f = pendingFollow; pendingFollow = null; offerInvite(f); }
 }
 
 // Przed startem: ban na dobę i konto dla zastrzeżonego nicku
@@ -461,7 +471,7 @@ renderer.setAnimationLoop(() => {
     updateDebug(dt);
     if (t - uiTimer > 1) { uiTimer = t; drawScoreboard(); markAllDirty(); }
     redrawTerminals();
-    updateToast(dt);
+    updateToast(dt); updateInvite(dt);
     renderer.render(scene, camera);
 });
 

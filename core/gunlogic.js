@@ -68,7 +68,8 @@ const tidy = (id) => { const s = typeof id === 'string' ? id.replace(/[^\w:.-]/g
 export function cleanFx(m) {
     if (!m || typeof m !== 'object') return null;
     const o = vec(m.o), e = vec(m.e), s = tidy(m.s); if (!o || !e || !s) return null;
-    return { s: s, o: o, e: e, hit: m.h ? tidy(m.h) : null, zone: m.z === 'h' ? 'head' : 'body', kill: !!m.kill };
+    const cb = Array.isArray(m.cb) && m.cb.length === 3 && m.cb.every(fin) && Math.abs(m.cb[0]) < GUN.MAX_COORD && Math.abs(m.cb[1]) < GUN.MAX_COORD && Math.abs(m.cb[2]) <= 7 ? [m.cb[0], m.cb[1], m.cb[2]] : null;   // ciało zabitego policjanta: x, z, kierunek upadku
+    return { s: s, o: o, e: e, hit: m.h ? tidy(m.h) : null, zone: m.z === 'h' ? 'head' : 'body', kill: !!m.kill, cop: !!m.c, body: cb };
 }
 export function cleanHp(o) {
     const out = {}; if (!o || typeof o !== 'object' || Array.isArray(o)) return out; let n = 0;

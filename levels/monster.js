@@ -7,7 +7,7 @@
 // LOBBY: po wejściu (i po każdej rundzie) wszyscy trafiają do sali z trzema polami, po jednym na każdą z 3 LOSOWYCH map (z sześciu, bez ostatnio granej). Gracz głosuje, stając na polu; host (albo gracz solo) liczy głosy z pozycji głów (lobbylogic.js: padOf, countVotes, gateStep),
 // a wygrana mapa (remis losuje) ładuje się dla wszystkich. Przycisk START NOW na tablicy (tylko host) kończy głosowanie od razu. Przez sieć idą liczniki głosów (cleanVotes), numer mapy i ziarno (cleanMapPick).
 // ==========================================
-import { THREE, L, tex, camera, addCrispBlock, world, lighting, scene } from '../core/engine.js';
+import { THREE, L, tex, camera, addCrispBlock, addInstancedBlocks, world, lighting, scene } from '../core/engine.js';
 import { setDread, DREAD } from '../core/ambience.js';
 import { HUNT, pulseAt, finalHunt, monsterBoost, botBoost, fearLevel } from '../core/huntlogic.js';
 import * as T from '../core/textures.js';
@@ -99,6 +99,10 @@ function buildGenerated(md) {
     addCrispBlock(0, H + 0.5, 0, A * 2 + 2, 1, A * 2 + 2, md.ceil, 0x101018);
     for (const [x, z, w, d] of [[0, -A - 0.5, A * 2 + 2, 1], [0, A + 0.5, A * 2 + 2, 1], [-A - 0.5, 0, 1, A * 2], [A + 0.5, 0, 1, A * 2]]) addCrispBlock(x, H / 2, z, w, H, d, md.wall, 0x2a2a20, tex.wall);
     for (const b of md.boxes) addCrispBlock(b.x, b.y, b.z, b.w, b.h, b.d, b.c, 0x101018, (TEX[b.k] || TEX.wall)());
+    if (md.inst) {   // dużo małych brył (stacja: wagony, tory, schody, szyby): jedna siatka instancjonowana na rodzaj powierzchni zamiast osobnej siatki na bryłę
+        const by = {}; for (const b of md.inst) (by[b.k] || (by[b.k] = [])).push({ x: b.x, y: b.y, z: b.z, w: b.w, h: b.h, d: b.d, color: b.c });
+        for (const k of Object.keys(by)) addInstancedBlocks(by[k], (TEX[k] || TEX.wall)(), { uvMeters: 4 });
+    }
     for (const l of md.lights) { const pl = new THREE.PointLight(md.lightColor || 0xe8f0ff, md.lightPower || 20, 26, 1.6); pl.position.set(l[0], l[1], l[2]); L.root.add(pl); }
 }
 function removeFrom(arr, items) { const set = new Set(items); for (let i = arr.length - 1; i >= 0; i--) if (set.has(arr[i])) arr.splice(i, 1); }
@@ -122,7 +126,7 @@ function applyLayout(md, idx, seed, teleport) {
     const g = new THREE.Group(), root0 = L.root, n = { o: L.obstacles.length, b: L.bodies.length, p: L.portals.length };
     L.root = g;   // wszystko, co buduje mapa, trafia do jednej grupy: da się ją potem usunąć
     try {
-        if (md.fixed) buildStation(); else buildGenerated(md);
+        buildGenerated(md);
         if (md.pads) buildPads(md);
         buildDoor({ x: 0, z: md.A - 0.03, rotY: Math.PI, label: 'GAMES', color: '#d080ff', wood: 0x3a3048, portal: { target: 'games', spawn: ARRIVAL_FROM_MONSTER, onEnter: () => toast('Back to BagaBoo Games') } });
     } finally { L.root = root0; }
@@ -186,62 +190,6 @@ const mapBoard = new Terminal((t) => {
     t.scanlines();
 });
 
-// Stacja kolejowa: dwa perony, tory z pociągiem, kładka nad torami, filary, ławki, kasa,
-// automaty i szyby wentylacyjne (puste w środku), którymi można się przeczołgać i uciec
-function buildStation() {
-    const A = 30, H = 12;   // stacja kolejowa 60 x 60 m
-    const P = 1.2;   // wysokość peronu
-    addCrispBlock(0, -0.5, 0, A * 2 + 2, 1, A * 2 + 2, 0x6a6a6e, 0x101018, tex.floor, { rough: tex.floorRough });
-    addCrispBlock(0, H + 0.5, 0, A * 2 + 2, 1, A * 2 + 2, 0x2a2a30, 0x101018);
-    for (const [x, z, w, d] of [[0, -A - 0.5, A * 2 + 2, 1], [0, A + 0.5, A * 2 + 2, 1], [-A - 0.5, 0, 1, A * 2], [A + 0.5, 0, 1, A * 2]]) addCrispBlock(x, H / 2, z, w, H, d, 0xd8d0b8, 0x2a2a20, tex.wall);
-    // Perony (żółta linia przy krawędzi) i tory w wykopie
-    for (const s of [-1, 1]) {
-        addCrispBlock(s * 19, P / 2, 0, 22, P, A * 2, 0x8a8a90, 0x101018, tex.floor, { rough: tex.floorRough });
-        const line = new THREE.Mesh(new THREE.PlaneGeometry(0.25, A * 2), new THREE.MeshBasicMaterial({ color: 0xf0c020 })); line.rotation.x = -Math.PI / 2; line.position.set(s * 8.4, P + 0.01, 0); L.root.add(line);
-    }
-    const rail = new THREE.MeshStandardMaterial({ color: 0x8a8a8a, metalness: 0.9, roughness: 0.3 }), tie = new THREE.MeshStandardMaterial({ map: tex.wood, color: 0x4a3a2a, roughness: 0.9 });
-    for (const tx of [-4, 4]) {
-        for (const rx of [-0.72, 0.72]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, A * 2), rail); r.position.set(tx + rx, 0.07, 0); L.root.add(r); }
-        const ties = new THREE.InstancedMesh(new THREE.BoxGeometry(2.2, 0.08, 0.25), tie, 60);
-        const m4 = new THREE.Matrix4(); for (let i = 0; i < 60; i++) { m4.makeTranslation(tx, 0.04, -A + 0.5 + i); ties.setMatrixAt(i, m4); } L.root.add(ties);
-    }
-    // Pociąg na lewym torze: 3 wagony z oknami (dachy na 3,6 m, można na nie wejść)
-    const wc = T.makeCanvas(512, 256), wx = wc.getContext('2d');
-    wx.fillStyle = '#2a4a6a'; wx.fillRect(0, 0, 512, 256); wx.fillStyle = '#d8d0b0'; wx.fillRect(0, 170, 512, 20);
-    for (let i = 0; i < 4; i++) { wx.fillStyle = '#0a0e14'; wx.fillRect(30 + i * 122, 50, 92, 90); wx.fillStyle = 'rgba(120,160,200,0.25)'; wx.fillRect(34 + i * 122, 54, 40, 82); }
-    const wt = T.toTex(wc, false);
-    for (const z of [-20, -7, 6]) {
-        const car = addCrispBlock(-4, 1.9, z, 3.2, 3.4, 12, 0xffffff, 0x0a1018);
-        car.material.map = wt; car.material.normalMap = null; car.material.needsUpdate = true;
-        addCrispBlock(-4, 3.65, z, 3.0, 0.15, 11.6, 0x3a3a40, 0x0a1018);
-    }
-    // Kładka nad torami ze schodami na obu peronach
-    addCrispBlock(0, 6.0, 16, 2 * A - 4, 0.3, 2.6, 0x5a5a62, 0x101018);
-    for (const s of [-1, 1]) for (let i = 0; i < 12; i++) addCrispBlock(s * 26, P + 0.2 + i * 0.4, 26.2 - i * 0.75, 2.6, 0.4, 0.75, 0x7a7a80, 0x101018);   // schody od strony wejścia
-    // Filary, ławki, kasa biletowa, automaty
-    for (const s of [-1, 1]) for (const z of [-22, -11, 0, 11, 22]) addCrispBlock(s * 12, P + (H - P) / 2, z, 0.8, H - P, 0.8, 0x9a9488, 0x202020);
-    for (const s of [-1, 1]) for (const z of [-16, -5, 5]) addCrispBlock(s * 17, P + 0.25, z, 2.2, 0.5, 0.6, 0x7a4a2a, 0x201010, tex.wood);
-    addCrispBlock(22, P + 1.3, -2, 4, 2.6, 3, 0x3a5a7a, 0x101820);
-    for (const z of [-20, -18]) addCrispBlock(-28.6, P + 1.0, z, 1.2, 2.0, 1.4, 0xc02020, 0x200808);
-    // Szyby wentylacyjne: puste w środku (1,3 m), wejścia z obu końców
-    duct(-20, P, -26, 16, 'x');           // w głębi lewego peronu
-    duct(21, P, 20, 12, 'z');             // wzdłuż prawego peronu
-    duct(0, 4.4, -10, 26, 'x');           // wysoko nad torami: z dachu wagonu na drugi peron
-    for (const s of [-1, 1]) for (let i = 0; i < 6; i++) addCrispBlock(s * 14.4, 1.8 + i * 0.5, -10 + (i % 2 ? 0.5 : -0.5), 0.7, 0.18, 0.5, 0x5a5a5a, 0x101010);   // półki do wysokiego szybu
-    // Świetlówki i światła
-    for (const s of [-1, 1]) for (const z of [-20, 0, 20]) { const l = new THREE.PointLight(0xe8f0ff, 22, 26, 1.6); l.position.set(s * 16, H - 1.5, z); L.root.add(l); }
-    for (const s of [-1, 0, 1]) for (let z = -A + 4; z < A; z += 8) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 2.4), new THREE.MeshBasicMaterial({ color: 0xe8f0ff })); f.position.set(s * 16, H - 0.1, z); L.root.add(f); }
-}
-// Pusty w środku szyb wentylacyjny o długości len wzdłuż osi 'x' albo 'z'; (x, y, z) = środek podłogi
-function duct(x, y, z, len, axis) {
-    const W = 1.5, Hh = 1.4, t = 0.12, col = 0x8a9098, edge = 0x202428, along = axis === 'x';
-    const box = (dx, dy, dz, w, h, d) => addCrispBlock(x + dx, y + dy, z + dz, along ? len : w, h, along ? d : len, col, edge);
-    box(0, Hh + t / 2, 0, W + 2 * t, t, W + 2 * t);                          // sufit
-    if (y > 0.5) box(0, -t / 2, 0, W + 2 * t, t, W + 2 * t);                 // podłoga (gdy szyb wisi wyżej)
-    if (along) { box(0, Hh / 2, -(W / 2 + t / 2), 0, Hh, t); box(0, Hh / 2, W / 2 + t / 2, 0, Hh, t); }
-    else { box(-(W / 2 + t / 2), Hh / 2, 0, t, Hh, 0); box(W / 2 + t / 2, Hh / 2, 0, t, Hh, 0); }
-}
-
 // ---------- SIEĆ I ROLA ----------
 function isAuthority() {
     if (N.NET.mode !== 'guest') return true;
@@ -285,9 +233,9 @@ function broadcast() {
 function startedRound() {
     S.rewarded = false;
     // Potwór i uciekający startują w różnych końcach stacji
-    const md = S.md, jit = md.fixed ? 2 : 0;   // na wygenerowanych mapach starty są z wolnych miejsc, bez losowego przesunięcia
+    const md = S.md;   // starty są z wolnych miejsc mapy, bez losowego przesunięcia
     if (S.mon === 'me') setPlayerPosition(md.monster[0], md.monster[1], md.monster[2]);
-    else { const sp = md.survivors[(Math.random() * md.survivors.length) | 0]; setPlayerPosition(sp[0] + (Math.random() - 0.5) * jit, sp[1], sp[2] + (Math.random() - 0.5) * jit); }
+    else { const sp = md.survivors[(Math.random() * md.survivors.length) | 0]; setPlayerPosition(sp[0], sp[1], sp[2]); }
     // Start potwora: jumpscare u wszystkich uciekających (potwór dostaje ryk i wibrację)
     if (S.mon !== 'me' && S.scare) S.scare.trigger();
     if (S.mon !== 'me' && S.md && S.md.monster) SFX.roar(0.55, { x: S.md.monster[0], y: S.md.monster[1] + 1.5, z: S.md.monster[2] });   // uciekinierzy słyszą ryk z miejsca startu potwora
@@ -543,6 +491,19 @@ function specCandidates() {
     if (S.mon === 'bot' && S.bot) out.push({ id: 'bot', label: 'Mannequin', x: S.bot.x, y: S.bot.y + 1.5, z: S.bot.z, fx: 0, fz: -1 });
     return out;
 }
+export function debugMap(i, seed) { if (!S) return null; applyMap(i, seed, true); return { map: S.map, seed: S.seed, A: S.md.A, obstacles: S.mapObs.length, bodies: S.mapBodies.length, lights: S.md.lights.length, hides: S.md.hides ? S.md.hides.length : 0, spots: S.md.hides ? { car: S.md.hides.find(h => h[3] === 'car'), tunnel: S.md.hides.find(h => h[3] === 'tunnel'), room: S.md.hides.find(h => h[3] === 'room'), duct: S.md.hides.find(h => h[3] === 'duct') } : null }; }   // tylko dla testów (tests/station.mjs)
+export function debugBotRun(sx, sz, px, py, pz, seconds, trace) {   // tylko dla testów (tests/station.mjs): bot rusza z (sx, sz) i goni stałą pozycję gracza (ciało: px, py, pz); zwraca, czy dotknął gracza (contact: pierwsze złapanie może tylko urwać rękę), czy go złapał i gdzie jest
+    if (!S) return null;
+    S.phase = 'play'; S.mon = 'bot'; S.t = 999; S.caught = new Set(); S.dm = Object.create(null); S.rescued = new Set(); S.fallen = Object.create(null); S.grace = Object.create(null);
+    S.bot = { x: sx, y: 0, z: sz, vy: 0, speed: BOT_SPEED, ground: true, stuck: 0, lastD: 99, side: 0 };
+    const pp = { x: px, y: py, z: pz }, steps = Math.round((seconds || 30) * 60), tr = []; let maxY = 0, t = 0, contactAt = -1;
+    for (let i = 0; i < steps && contactAt < 0; i++) {
+        moveBot(1 / 60, pp); t += 1 / 60; S.clock += 1 / 60; maxY = Math.max(maxY, S.bot.y);
+        if (S.grace.me || S.caught.has('me')) contactAt = t;
+        if (trace && i % (trace === 2 ? 6 : 60) === 0) tr.push([+t.toFixed(1), +S.bot.x.toFixed(2), +S.bot.y.toFixed(2), +S.bot.z.toFixed(2)]);
+    }
+    return { contact: contactAt >= 0, at: +contactAt.toFixed(1), x: +S.bot.x.toFixed(1), y: +S.bot.y.toFixed(2), z: +S.bot.z.toFixed(1), maxY: +maxY.toFixed(2), dist: +Math.hypot(S.bot.x - px, S.bot.z - pz).toFixed(1), trace: trace ? tr : undefined };
+}
 export function debugCatch(id, pick) {   // tylko dla testów (tests/catch.mjs)
     if (!S) return null; catchPlayer(id, pick);
     return { dm: S.dm[toNet(id)] || 0, caught: S.caught.has(id), grace: graced(id), localDm: S.localDm || 0 };
@@ -558,7 +519,7 @@ function localCaught() { SFX.scare(); toast('You were caught! Watch the others.'
 function moveBot(dt, p) {
     const b = S.bot, R = 0.4, TALL = 1.2, jumpMax = S.md.botJump || BOT_JUMP_MAX;
     b.speed = Math.min(BOT_SPEED_MAX, b.speed + dt * 0.015);
-    const goal = S.md.nav ? S.md.nav.next(b.x, b.z, p.x, p.z) : p;   // w labiryncie bot idzie trasą po komórkach
+    const goal = S.md.nav ? S.md.nav.next(b.x, b.z, p.x, p.z, b.y, p.y) : p;   // w labiryncie i na stacji bot idzie trasą po komórkach (stacja zna też wysokości: wchodzi drzwiami, a nie wskakuje na dach nad ukrytym graczem)
     let dx = goal.x - b.x, dz = goal.z - b.z; const d = Math.hypot(p.x - b.x, p.z - b.z), dg = Math.hypot(dx, dz);
     if (dg > 0.05) { dx /= dg; dz /= dg; } else { dx = 0; dz = 0; }
     if (b.side) { const sx = -dz * b.side, sz = dx * b.side; dx = dx * 0.4 + sx; dz = dz * 0.4 + sz; b.sideT -= dt; if (b.sideT <= 0) b.side = 0; }   // obejście, gdy utknie
@@ -585,7 +546,7 @@ function moveBot(dt, p) {
     if (b.y <= 0) { b.y = 0; b.vy = 0; b.ground = true; }
     // Skok: na przeszkodę przed nim albo do gracza, który jest wyżej
     const wantUp = p.y - 0.35 > b.y + 0.8 && d < 3.5;
-    if (b.ground && (blockedTop !== null || wantUp)) {
+    if (b.ground && ((blockedTop !== null && !goal.walk) || wantUp)) {   // goal.walk: bot idzie drogą pieszo (stacja), więc otarcie o ścianę nie jest powodem do wskoczenia na nią
         const h = Math.min(jumpMax, Math.max(0.6, (blockedTop !== null ? blockedTop : p.y - 0.35) - b.y + 0.35));
         b.vy = Math.sqrt(2 * BOT_GRAVITY * h); b.ground = false;
     }
