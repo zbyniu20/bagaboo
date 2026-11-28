@@ -565,8 +565,8 @@ function driveInput() {
     if (renderer.xr.isPresenting) return { gas: triggerDown(1) ? 1 : 0, brake: triggerDown(0) ? 1 : 0, steer: stickX('left') };
     return driveKeys();
 }
-function runOverPeds(x, z, r, yaw) {   // przechodnie przed jadącym autem padają (lokalnie, jak po strzale: bez ciepła i nagrody)
-    if (!S.life) return 0; const list = S.life.runOver(x, z, r, yaw); for (const k of list) S.corp.spawn('ped' + (S.pedN = (S.pedN || 0) + 1), k.x, k.z, { kind: 'ped', yaw: yaw }); if (list.length) buzz('both', 0.6, 160); return list.length;
+function runOverPeds(x, z, r, yaw, quiet) {   // przechodnie przed jadącym autem padają (lokalnie, jak po strzale: bez ciepła i nagrody)
+    if (!S.life) return 0; const list = S.life.runOver(x, z, r, yaw); for (const k of list) S.corp.spawn('ped' + (S.pedN = (S.pedN || 0) + 1), k.x, k.z, { kind: 'ped', yaw: yaw }); if (list.length && !quiet) buzz('both', 0.6, 160); return list.length;
 }
 function requestFree(carId) {
     if (!S || S.busted >= 0) return;

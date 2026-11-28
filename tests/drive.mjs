@@ -31,22 +31,24 @@ await ev(async () => { const M = await import('./main.js'); await M.loadLevel('s
 await page.waitForTimeout(6000);
 const R = await ev(async () => {
     const G = await import('./levels/scarygta.js'), P = await import('./core/player.js'), VL = await import('./core/vehiclelogic.js'), DR = await import('./core/drivelogic.js'), E = await import('./core/engine.js');
-    const S = G.testState(), w = (ms) => new Promise(r => setTimeout(r, ms)), out = {}, st = () => G.debugDrive(), until = async (f, ms) => { for (let t = 0; t < ms && !f(); t += 100) await w(100); return f(); };   // czas symulacji odstaje od ściennego w wolnym renderowaniu: czekamy na warunek
+    const S = G.testState(), w = (ms) => new Promise(r => setTimeout(r, ms)), out = {}, st = () => G.debugDrive(), until = async (f, ms) => { for (let t = 0; t < ms && !f(); t += 100) { S.sim.heats = {}; await w(100); } return f(); };   // zeruje ciepło, żeby policjant nie złapał stojącego auta w czasie czekania (to zamierzona reguła, ale psuje test)   // czas symulacji odstaje od ściennego w wolnym renderowaniu: czekamy na warunek
     for (let i = 0; i < 300 && S.busted >= 0; i++) await w(100);
     S.sim.reset(); S.sim.heats = {}; G.debugHeat(0); G.debugBlocks && G.debugBlocks([]);
     const pp = VL.parkedPose('bank'), door = DR.doorPoint(pp);
     // 1) dłoń na drzwiach kierowcy kradnie auto (alarm +30 ciepła), ciało trafia do auta
     const h0 = S.sim.heatOf('me').v; P.setPlayerPosition(door.x + 0.5, 1.1, door.z); await w(500);
     await G.debugGtaTouch(() => [[door.x, 1.0, door.z]]); await w(1500); await G.debugGtaTouch(() => []);
-    out.start = st(); out.heat = S.sim.heatOf('me').v - h0;
+    out.start = st(); out.heat = S.sim.heatOf('me').v - h0; S.sim.heats = {};
     // 2) gaz: rozpędza się najwyżej do 7 m/s, jedzie do przodu
     G.debugDriveInput(1, 0, 0); const a0 = st().drive; await until(() => st().drive.v >= 6.9, 20000); const a1 = st().drive; out.fwd = { v: a1.v, d: Math.hypot(a1.x - a0.x, a1.z - a0.z), vmax: 0 };
     let vmax = 0; for (let i = 0; i < 20; i++) { vmax = Math.max(vmax, st().drive.v); await w(100); } out.fwd.vmax = vmax;
     // ciało przypięte przy tylnej osi
     const b = DR.bodyPos(st().drive), pb = P.playerBody.position; out.body = { dist: Math.hypot(pb.x - b.x, pb.z - b.z), y: pb.y };
     // 3) skręt w prawo zmniejsza yaw, w lewo zwiększa; przy dużej prędkości skręt jest ograniczony
-    G.debugDriveInput(0, 0, 0); await until(() => st().drive.v < 3, 20000); G.debugDriveInput(1, 0, 1); const y0 = st().drive.yaw; await w(2500); const y1 = st().drive.yaw; G.debugDriveInput(1, 0, -1); await w(5000); const y2 = st().drive.yaw;
-    let dr = y1 - y0; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); let dl = y2 - y1; dl = Math.atan2(Math.sin(dl), Math.cos(dl)); out.steer = { right: dr, left: dl };
+    G.debugDriveInput(0, 0, 0); await until(() => st().drive.v < 3, 20000); const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+    G.debugDriveInput(1, 0, 1); const y0 = st().drive.yaw; await until(() => wrap(st().drive.yaw - y0) < -0.3, 30000); const y1 = st().drive.yaw;
+    G.debugDriveInput(1, 0, -1); await until(() => wrap(st().drive.yaw - y1) > 0.3, 40000); const y2 = st().drive.yaw;
+    out.steer = { right: wrap(y1 - y0), left: wrap(y2 - y1) };
     // 4) broń schowana za kierownicą: spust nie strzela
     const ammo = S.gunS.me.ammo; E.L.onTrigger(1); out.gunKept = S.gunS.me.ammo === ammo;
     // 5) czołowe uderzenie w budynek z pełnym gazem: auto nigdy nie wjeżdża w bryłę, hamuje samo (bez twardego uderzenia)
@@ -114,6 +116,7 @@ const NW = await ev(async () => { try {
     N.NET.mode = 'guest'; N.playersState[N.GAME_PREFIX + N.NET.code] = { lvl: 'scarygta', head: { p: [0, 1.6, 0] } }; const me = N.myId(), pb = VL.parkedPose('bank'); S.fdSeen = 0; S.fdIgnoreUntil = 0;
     let cur = []; const hb = setInterval(() => G.debugNet({ k: 'st', cops: [], bags: [], heats: {}, hp: {}, fd: cur }, 'host'), 250);
     cur = [['casino', 'hostid', pb.x + 5, pb.z + 5, 1, 3]]; await w(700); out.other = free('casino');
+    const ro = { x: pb.x + 5 + Math.sin(1) * 1.9, z: pb.z + 5 + Math.cos(1) * 1.9 }; await w(1500); G.debugAddPed(ro.x, ro.z); const fx0 = G.debugLife().fixed; await w(1200); out.remoteRun = { lost: fx0 - G.debugLife().fixed, corpses: G.debugCorpses().ids };
     cur = [['evil', 'x', 0, 0, 0, 0], ['casino', 'hostid', NaN, 0, 0, 0], 'junk', null, ['casino', 'hostid', pb.x + 6, pb.z + 6, 1, 3]]; await w(700); out.junk = { casino: free('casino'), evil: free('evil')[3] };
     cur = [['bank', me, pb.x, pb.z, pb.yaw, 0]]; await w(900); out.mine = G.debugDrive().driving; G.debugDriveInput(1, 0, 0); await w(2500); out.poses = G.debugOutbox().filter(q => q.k === 'drv');
     cur = []; for (let i = 0; i < 80 && G.debugDrive().driving; i++) await w(100); out.dropped = !G.debugDrive().driving; out.dismountSent = G.debugOutbox().some(q => q.k === 'ev' && q.kind === 'dismount');
@@ -126,6 +129,7 @@ ok('the host takes poses only from the driver of that car: a small move is accep
 ok('the snapshot carries the free car with its driver and pose, and a moving guest driver counts as riding (cops cannot touch-catch him)', NW.snap && NW.snap.some(e => e[0] === 'casino' && e[1] === 'g1' && Number.isFinite(e[2]) && Number.isFinite(e[3])) && NW.speed > 2, [NW.snap, NW.speed]);
 ok('a driver whose head is far from the car is released (the car stays where it was); a getting-out guest leaves the car, listed without a driver; a disconnected driver loses the car', NW.far[3] === null && NW.out[3] === null && NW.snap2.some(e => e[0] === 'casino' && e[1] === null) && NW.again[3] === 'g1' && NW.again2 === 'g1' && NW.gone === null, [NW.far, NW.out, NW.snap2, NW.again, NW.gone]);
 ok('the guest side interpolates another driver car, drops a garbage entry but keeps the valid one, starts driving when the host names it the driver (sending poses at about 8 Hz), and gets out when the host stops naming it (telling the host)', NW.other && NW.other[3] === 'hostid' && NW.junk.casino[3] === 'hostid' && Math.abs(NW.junk.casino[5] - NW.other[5]) > 0.5 && NW.junk.evil === 'MISSING' && NW.mine === true && NW.poses.length >= 4 && NW.poses.every(m => Number.isFinite(m.x) && Number.isFinite(m.z) && Number.isFinite(m.yaw) && m.car === 'bank') && NW.dropped === true && NW.dismountSent, [NW.other, NW.junk, NW.mine, NW.poses.length, NW.dropped, NW.dismountSent]);
+ok('another driver car that passes at speed also runs over MY local pedestrians (each client processes what it sees), quietly (no haptic pulse for the watcher)', NW.remoteRun.lost === 1 && NW.remoteRun.corpses.some(i => /^ped/.test(i)), NW.remoteRun);
 ok('after getting out the guest does not start driving again from a stale snapshot (short ignore window)', NW.noRebegin === false, NW.noRebegin);
 ok('no page errors', errors.length === 0, errors);
 await browser.close(); server.close();

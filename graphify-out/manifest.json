@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795854961.956947,
-    "seen": 1795855438.8731785,
-    "ast_hash": "c6fa6406d6808f0eef3ddbd15b2af853",
+    "mtime": 1795856770.080032,
+    "seen": 1795856781.022709,
+    "ast_hash": "37a199a66982218cfc2c1ddab57beb34",
     "semantic_hash": ""
   },
   "README.md": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795853276.8714836,
-    "seen": 1795855438.8727453,
-    "ast_hash": "99443c12278492102f32173daeaafece",
+    "mtime": 1795855563.690327,
+    "seen": 1795856781.021979,
+    "ast_hash": "7b7ee0c9132e69980074c3b6f0c2677a",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -10992,9 +10992,9 @@
     "semantic_hash": ""
   },
   "core/vehicles.js": {
-    "mtime": 1795853712.650284,
-    "seen": 1795855438.8726618,
-    "ast_hash": "b7e192d18cae249944da453f4e9bdc95",
+    "mtime": 1795855563.6889803,
+    "seen": 1795856781.0218627,
+    "ast_hash": "b56b2ff69215015d894a73bad560585e",
     "semantic_hash": ""
   },
   "tests/vehicles.mjs": {
@@ -11214,9 +11214,9 @@
     "semantic_hash": ""
   },
   "tests/drive.mjs": {
-    "mtime": 1795854288.1960285,
-    "seen": 1795855438.8727844,
-    "ast_hash": "59fe33620d55c750c373a11cebbcfaa1",
+    "mtime": 1795856159.2873714,
+    "seen": 1795856781.0220456,
+    "ast_hash": "8bf0642f6535cc1bcf1d49815d79e32b",
     "semantic_hash": ""
   },
   "package-lock.json": {

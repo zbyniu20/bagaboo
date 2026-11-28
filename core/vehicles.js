@@ -46,6 +46,7 @@ export function createVehicles(api) {
             } else if (car.free) {   // auto wzięte do swobodnej jazdy (moje albo cudze) albo porzucone w miejscu, gdzie je zostawiono
                 const fr = car.free; if (fr.remote && fr.target) fr.pose = DL.blendPose(fr.pose, fr.target, dt);
                 car.m.position.set(fr.pose.x, 0, fr.pose.z); car.yaw = fr.pose.yaw; car.m.rotation.y = fr.pose.yaw;
+                if (fr.remote && fr.driver && api.drive.onRunOver) { const sp = DL.runOverSpot(fr.pose); if (sp) api.drive.onRunOver(sp.x, sp.z, sp.r, fr.pose.yaw, true); }   // cudze auto też potrąca MOICH (lokalnych) przechodniów: każdy klient przetwarza to, co widzi (jak strzały)
                 if (!fr.driver && (!fr.remote || (api.drive.auth && api.drive.auth()))) { const r = DL.returnStep(fr.idle, dt, false, G.playerDist ? G.playerDist(fr.pose.x, fr.pose.z) : 0); fr.idle = r.idle; if (r.back) car.free = null; }
             } else { const pp = VL.parkedPose(car.id); car.m.position.set(pp.x, 0, pp.z); car.yaw = pp.yaw; car.m.rotation.y = pp.yaw; }
             // start jazdy po szynach: dotknięcie klamki wolnego auta stojącego na miejscu parkowania (rzadkie żądania); drzwi kierowcy: swobodna jazda
