@@ -7,10 +7,13 @@
 //    Na poziomie brutalności Gentle tylko zastygają i patrzą (bez skradania).
 //  - Ruch: auta jeżdżą po ulicach wschód-zachód (oś ulicy, pas +-2 m, najwyżej 6,5 m/s), stają przed przeszkodą (gracz, pickup, policjant) bliżej niż 7 m z przodu, w blackoucie gasną i stoją,
 //    a jedno najbliższe budzi się z włączonymi światłami (nie rusza się).
+// STRZAŁY W PRZECHODNIÓW: każdy klient sprawdza tor KAŻDEGO strzału (host z własnego `hostShot`, gość z komunikatu `fx`) względem SWOICH przechodniów (są lokalni); trafiony pada i leży w kałuży
+// (core/gtacorpsefx.js, rodzaj `ped`). Tor jest przycięty do pierwszej przeszkody (budynek zasłania), a przechodnie NIE zatrzymują pocisku (host ich nie zna, więc pocisk leci dalej do gracza albo policjanta).
+// Bez ciepła, nagród i sieci: zabicie przechodnia nic nie kosztuje ani nie płaci, bo nie dałoby się go zweryfikować u hosta.
 // 3D i zapis: core/gtacrowdfx.js (instancje). Testy: tests/logic.mjs (blok "żywe miasto"), w przeglądarce tests/gtalife.mjs.
 // ==========================================
 import { CITY, cityWithInteriors } from './citylayout.js';
-import { streetGraph } from './cityai.js';
+import { streetGraph, lineBlocked } from './cityai.js';
 import { seenBy } from './statuelogic.js';
 const fin = (n) => typeof n === 'number' && Number.isFinite(n);
 const dtOf = (dt) => Math.min(Math.max(+dt || 0, 0), 0.5);
@@ -131,3 +134,35 @@ export function lifeProblems() {
     if (LIFE.CAR_SPEED[1] > 7) bad.push('traffic must stay slow (comfort)');
     return bad;
 }
+
+// ----- strzały i potrącenia przechodniów (czysta geometria; testy: tests/logic.mjs, blok "przechodnie") -----
+export const PED_HIT = { R: 0.4, H: 1.85, HEAD: 1.45 };
+const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+// Odcinek o -> e przycięty do pierwszej przeszkody z `boxes` (dzielenie połówkowe, bo lineBlocked odpowiada tylko tak lub nie)
+export function clipSegment(o, e, boxes) {
+    if (!Array.isArray(boxes) || !boxes.length || !lineBlocked(o, e, boxes)) return e.slice();
+    let lo = 0, hi = 1; for (let i = 0; i < 14; i++) { const m = (lo + hi) / 2; if (lineBlocked(o, lerp3(o, e, m), boxes)) hi = m; else lo = m; }
+    return lerp3(o, e, lo);
+}
+// Pierwszy przechodzień trafiony odcinkiem o -> e (pionowy walec o promieniu PED_HIT.R i wysokości PED_HIT.H): { i, t, zone, x, z } albo null
+export function pedHit(peds, o, e) {
+    if (!Array.isArray(peds) || !Array.isArray(o) || !Array.isArray(e) || ![...o, ...e].every(fin)) return null;
+    const dx = e[0] - o[0], dy = e[1] - o[1], dz = e[2] - o[2], a = dx * dx + dz * dz; let best = null;
+    for (let i = 0; i < peds.length; i++) {
+        const p = peds[i]; if (!p || p.gone || !fin(p.x) || !fin(p.z)) continue;
+        const ox = o[0] - p.x, oz = o[2] - p.z, c = ox * ox + oz * oz - PED_HIT.R * PED_HIT.R;
+        let t0 = 0, t1 = 1;
+        if (a > 1e-9) { const b = 2 * (ox * dx + oz * dz), disc = b * b - 4 * a * c; if (disc < 0) continue; const sq = Math.sqrt(disc); t0 = Math.max(0, (-b - sq) / (2 * a)); t1 = Math.min(1, (-b + sq) / (2 * a)); }
+        else if (c > 0) continue;   // strzał pionowy: tylko gdy zaczyna się nad walcem
+        if (t0 > t1) continue;
+        if (Math.abs(dy) > 1e-9) { const ya = (0 - o[1]) / dy, yb = (PED_HIT.H - o[1]) / dy; t0 = Math.max(t0, Math.min(ya, yb)); t1 = Math.min(t1, Math.max(ya, yb)); if (t0 > t1) continue; }
+        else if (o[1] < 0 || o[1] > PED_HIT.H) continue;
+        if (best && t0 >= best.t) continue;
+        const y = o[1] + dy * t0; best = { i: i, t: t0, zone: y > PED_HIT.HEAD ? 'head' : 'body', x: p.x, z: p.z };
+    }
+    return best;
+}
+// Strzał z przycięciem do przeszkód: pierwszy przechodzień na torze albo null
+export const shootPeds = (peds, o, e, boxes) => pedHit(peds, o, clipSegment(o, e, boxes));
+// Przechodnie w promieniu r od punktu (auto na nich najeżdża): indeksy
+export function pedsNear(peds, x, z, r) { const out = []; if (!Array.isArray(peds) || !fin(x) || !fin(z) || !fin(r)) return out; for (let i = 0; i < peds.length; i++) { const p = peds[i]; if (p && !p.gone && Math.hypot(p.x - x, p.z - z) <= r) out.push(i); } return out; }

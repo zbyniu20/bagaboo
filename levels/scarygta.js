@@ -431,9 +431,16 @@ function hostShot(id, sh, checked) {
             }
         }
     }
+    pedShot(sh.o, end);   // host i solo widzą każdy strzał tu (własnego `fx` nie dostają)
     if (id === 'me' && landed) S.hitMark = { t: DL.DMG.HIT_SHOW, text: DL.hitText(res.zone, GU.damageOf(res.zone), kill) };   // znacznik trafienia u strzelca: HIT 25% / HEADSHOT 50% / KILL
     send({ k: 'fx', s: toNet(id), o: sh.o.map(v => +v.toFixed(2)), e: end.map(v => +v.toFixed(2)), h: res && res.kind === 'player' && landed ? toNet(res.id) : null, z: res && res.zone === 'head' ? 'h' : 'b', kill, c: res && res.kind === 'cop' ? 1 : 0, cb: body });
     if (id !== 'me') { drawTracer(sh.o, end); camera.getWorldPosition(_p); if (Math.hypot(_p.x - sh.o[0], _p.z - sh.o[2]) < 45) SFX.shot(); }
+}
+// Strzał w przechodniów (lokalnych): pierwszy na torze o -> e (przyciętym do budynków) pada i leży w kałuży; bez ciepła, nagrody i sieci, pocisk nie zatrzymuje się na nim
+function pedShot(o, e) {
+    if (!S || !S.life || !S.corp) return;
+    const k = S.life.shoot(o, e, S.boxes); if (!k) return;
+    S.corp.spawn('ped' + (S.pedN = (S.pedN || 0) + 1), k.x, k.z, { kind: 'ped', yaw: k.yaw });
 }
 function pushFeed(line) { S.feed.push({ t: S.clock, s: String(line).replace(/[^\w \-!]/g, '').slice(0, 40) }); if (S.feed.length > 3) S.feed.shift(); }
 function giveBag(b, who) {
@@ -666,6 +673,7 @@ function onNet(msg, from) {
         const mh = heats[N.myId()]; if (mh) { S.sim.heats.me = { v: mh.v, seenT: 0 }; S.sim.hiddenNow.me = mh.hidden; }
     } else if (msg.k === 'fx') {
         const fx = GU.cleanFx(msg); if (!fx) return;
+        pedShot(fx.o, fx.e);   // także własne strzały gościa wracają tu jako `fx`
         if (fromNet(fx.s) !== 'me') { drawTracer(fx.o, fx.e); camera.getWorldPosition(_p); if (Math.hypot(_p.x - fx.o[0], _p.z - fx.o[2]) < 45) SFX.shot(); }
         if (fx.hit === N.myId()) { S.hurtT = 0.45; buzz('both', 0.7, 120); }
         if (fromNet(fx.s) === 'me' && (fx.hit || fx.cop || fx.kill)) S.hitMark = { t: DL.DMG.HIT_SHOW, text: DL.hitText(fx.zone, GU.damageOf(fx.zone), fx.kill) };
@@ -701,6 +709,7 @@ export const debugMode = () => S ? { gm: S.gm, ids: modeIds(), myRole: roleOf('m
 export const debugModeSet = (m, start) => { if (!S) return; setMode(m); if (start) toggleRound(); };
 export const debugDismount = () => { if (S) dismountMe(); };
 export const debugVeh = () => S ? { fleet: S.fleet, v: S.vehs.debug(), carCount: S.carCount } : null;
+export const debugAddPed = (x, z) => !!S && S.life.add(x, z);   // tylko dla testów: stojący przechodzień w znanym miejscu
 export const debugCopMarks = () => S ? S.cmark.debug() : null;
 export const debugCorpses = () => S ? Object.assign(S.corp.debug(), { hit: S.hitMark.text, hitT: S.hitMark.t }) : null;   // dla testów
 export const debugCorpseAt = (id, x, z, kind, yaw) => { if (S) S.corp.spawn(id, x, z, { kind: kind || 'player', yaw: yaw || 0 }); };

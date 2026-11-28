@@ -5,7 +5,7 @@
 // a jego ciało leży w miejscu śmierci. Wszystko wizualne i lokalne: reguły życia i śmierci zostają po stronie hosta (core/gunlogic.js, levels/scarygta.js).
 // 3D: core/gtacorpsefx.js. Testy: tests/logic.mjs (blok "obrażenia"), w przeglądarce tests/gtadamage.mjs.
 // ==========================================
-export const DMG = { MAX_HP: 100, FALL: 0.75, POOL_DELAY: 0.45, POOL_GROW: 5, POOL_R: 1.05, LINGER: 16, FADE: 3, HIDE_AVATAR: 5, MAX_CORPSES: 10, HIT_SHOW: 0.9, MAX_COORD: 400 };
+export const DMG = { MAX_HP: 100, FALL: 0.75, POOL_DELAY: 0.45, POOL_GROW: 5, POOL_R: 1.05, LINGER: 16, FADE: 3, HIDE_AVATAR: 5, MAX_CORPSES: 10, MAX_PEDS: 12, HIT_SHOW: 0.9, MAX_COORD: 400 };
 const fin = (n) => typeof n === 'number' && Number.isFinite(n);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 // Procent obrażeń z zdrowia: 100 HP = 0%, 0 HP = 100%; śmieci dają 0%
@@ -23,7 +23,7 @@ export function fallYaw(vx, vz, from) {
 // Nowe ciało: id (identyfikator sieciowy gracza albo 'cN' policjanta), kind 'player' | 'cop', gore = czy rysować krew
 export function newCorpse(id, x, z, o) {
     const op = o || {};
-    return { id: String(id).slice(0, 48), kind: op.kind === 'cop' ? 'cop' : 'player', x: clamp(fin(x) ? x : 0, -DMG.MAX_COORD, DMG.MAX_COORD), z: clamp(fin(z) ? z : 0, -DMG.MAX_COORD, DMG.MAX_COORD), yaw: fin(op.yaw) ? op.yaw : 0, gore: !!op.gore, age: 0 };
+    return { id: String(id).slice(0, 48), kind: op.kind === 'cop' ? 'cop' : (op.kind === 'ped' ? 'ped' : 'player'), x: clamp(fin(x) ? x : 0, -DMG.MAX_COORD, DMG.MAX_COORD), z: clamp(fin(z) ? z : 0, -DMG.MAX_COORD, DMG.MAX_COORD), yaw: fin(op.yaw) ? op.yaw : 0, gore: !!op.gore, age: 0 };
 }
 const smooth = (t) => { const k = clamp(t, 0, 1); return k * k * (3 - 2 * k); };
 // Stan ciała po `age` sekundach: fall 0..1 (przewrót: wolny start, szybki koniec), pool 0..1 (rozlewanie), scale 1..0 (blednięcie), alive
@@ -32,10 +32,11 @@ export function corpseState(c) {
     const fade = a > DMG.LINGER - DMG.FADE ? clamp((DMG.LINGER - a) / DMG.FADE, 0, 1) : 1;
     return { fall: clamp(fall, 0, 1), pool: c.gore ? smooth(t / DMG.POOL_GROW) : 0, scale: fade, alive: a < DMG.LINGER, avatarHidden: c.kind === 'player' && a < DMG.HIDE_AVATAR };
 }
-// Lista ciał: nowe ciało tego samego id zastępuje stare, a po przekroczeniu limitu odpada najstarsze
+// Lista ciał: nowe ciało tego samego id zastępuje stare; gracze i policjanci mają limit MAX_CORPSES, przechodnie OSOBNY limit MAX_PEDS (tłum nie wypiera ciał graczy); po przekroczeniu odpada najstarsze z tego rodzaju
 export function addCorpse(list, c) {
     const out = list.filter(q => q.id !== c.id); out.push(c);
-    while (out.length > DMG.MAX_CORPSES) { let k = 0; for (let i = 1; i < out.length; i++) if (out[i].age > out[k].age) k = i; out.splice(k, 1); }
+    const isPed = (q) => q.kind === 'ped', cap = isPed(c) ? DMG.MAX_PEDS : DMG.MAX_CORPSES;
+    while (out.filter(q => isPed(q) === isPed(c)).length > cap) { let k = -1; for (let i = 0; i < out.length; i++) if (isPed(out[i]) === isPed(c) && (k < 0 || out[i].age > out[k].age)) k = i; out.splice(k, 1); }
     return out;
 }
 export function stepCorpses(list, dt) {

@@ -39,9 +39,9 @@ export function createGtaLife(o) {
         const night = api.night(), blackout = night === 'blackout', look = Math.hypot(c.dx, c.dz) || 1, ctx = { px: c.x, pz: c.z, lx: c.dx / look, lz: c.dz / look, night: night, gentle: gentle() };
         // --- przechodnie ---
         const wantP = night === 'horde' ? 0 : counts.ped;
-        for (let i = G.peds.length - 1; i >= 0; i--) { K.pedStep(G.peds[i], dt, ctx); if (G.peds[i].gone) G.peds.splice(i, 1); }
+        for (let i = G.peds.length - 1; i >= 0; i--) { if (!G.peds[i].fixed) K.pedStep(G.peds[i], dt, ctx); if (G.peds[i].gone) G.peds.splice(i, 1); }
         if (G.peds.length < wantP) { const p = K.spawnPed(Math.random, c.x, c.z); if (p && hidden(p.x, p.z, c, ctx)) G.peds.push(p); }
-        else if (G.peds.length > wantP && !blackout) G.peds.length = wantP;
+        else if (G.peds.length > wantP && !blackout) { for (let i = G.peds.length - 1; i >= wantP; i--) if (!G.peds[i].fixed) G.peds.splice(i, 1); }   // nadmiar znika od końca (przechodnie `fixed` z testów zostają)
         for (let i = 0; i < MAXP; i++) {
             const p = G.peds[i];
             if (!p) { G.body.setMatrixAt(i, _m.compose(_p.set(0, -50, 0), _q.identity(), _s0)); G.head.setMatrixAt(i, _m); continue; }
@@ -68,7 +68,12 @@ export function createGtaLife(o) {
     }
     return {
         update, counts,
-        debug: () => ({ peds: G.peds.length, cars: G.cars.length, frozen: G.peds.filter(p => p.mode === 'freeze').length, creeping: G.peds.filter(p => Math.hypot(p.ox, p.oz) > 0.05).length, dead: G.cars.filter(c => c.dead).length, haunted: G.cars.filter(c => c.haunted).length, moving: G.cars.filter(c => c.v > 0.1).length, wantP: counts.ped, wantC: counts.cars, meshes: [G.body.visible, G.head.visible, G.carM.visible].filter(Boolean).length, list: G.peds.slice(0, 40).map(p => [+p.x.toFixed(1), +p.z.toFixed(1), p.mode]) }),
+        debug: () => ({ peds: G.peds.length, fixed: G.peds.filter(p => p.fixed).length, cars: G.cars.length, frozen: G.peds.filter(p => p.mode === 'freeze').length, creeping: G.peds.filter(p => Math.hypot(p.ox, p.oz) > 0.05).length, dead: G.cars.filter(c => c.dead).length, haunted: G.cars.filter(c => c.haunted).length, moving: G.cars.filter(c => c.v > 0.1).length, wantP: counts.ped, wantC: counts.cars, meshes: [G.body.visible, G.head.visible, G.carM.visible].filter(Boolean).length, list: G.peds.slice(0, 40).map(p => [+p.x.toFixed(1), +p.z.toFixed(1), p.mode]) }),
+        // Strzał: pierwszy przechodzień na torze o -> e (przyciętym do budynków z `boxes`) pada; zwraca { x, z, yaw } (yaw: kierunek strzału) albo null. Nie zatrzymuje pocisku.
+        shoot(o, e, boxes) { const h = K.shootPeds(G.peds, o, e, boxes); if (!h) return null; const p = G.peds.splice(h.i, 1)[0]; return { x: p.x, z: p.z, yaw: Math.atan2(e[0] - o[0], e[2] - o[2]), zone: h.zone }; },
+        // Auto najeżdża: wszyscy w promieniu r od punktu padają (kierunek jazdy yaw); zwraca listę { x, z, yaw }
+        runOver(x, z, r, yaw) { const idx = K.pedsNear(G.peds, x, z, r), out = []; for (let k = idx.length - 1; k >= 0; k--) { const p = G.peds.splice(idx[k], 1)[0]; out.push({ x: p.x, z: p.z, yaw: yaw }); } return out; },
+        add: (x, z) => { G.peds.push({ s: 0, t: 0, dir: 1, side: 1, speed: 0, hue: 0, x: x, z: z, yaw: 0, headYaw: 0, mode: 'stand', ox: 0, oz: 0, gone: false, bob: 0, fixed: true }); return true; },   // test: przechodzień stojący w znanym miejscu (nie jest ruszany w update)
         seed: (n) => { for (let i = 0; i < n; i++) { const p = K.spawnPed(Math.random, 0, 0); if (p) G.peds.push(p); } },
         dispose() { for (const m of [G.body, G.head, G.carM]) { m.removeFromParent(); m.dispose(); } for (const g of G.geos) g.dispose(); for (const m of G.mats) m.dispose(); G.peds.length = 0; G.cars.length = 0; }
     };
