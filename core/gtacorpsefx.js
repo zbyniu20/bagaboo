@@ -22,10 +22,10 @@ export function createGtaCorpses({ api }) {
     ];
     const geo = mergeGeometries(parts.map(g => g.toNonIndexed())); for (const g of parts) g.dispose();
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0.05 });
-    const bodies = new THREE.InstancedMesh(geo, mat, DL.DMG.MAX_CORPSES);
+    const bodies = new THREE.InstancedMesh(geo, mat, DL.DMG.MAX_CORPSES + DL.DMG.MAX_PEDS);
     const pgeo = new THREE.CircleGeometry(1, 24); pgeo.rotateX(-Math.PI / 2);
     const pmat = new THREE.MeshBasicMaterial({ color: 0x3e0505, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-    const pools = new THREE.InstancedMesh(pgeo, pmat, DL.DMG.MAX_CORPSES);
+    const pools = new THREE.InstancedMesh(pgeo, pmat, DL.DMG.MAX_CORPSES + DL.DMG.MAX_PEDS);
     for (const m of [bodies, pools]) { m.frustumCulled = false; m.count = 0; m.visible = false; L.root.add(m); }
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), qx = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3(), c = new THREE.Color(), ax = new THREE.Vector3(1, 0, 0), ay = new THREE.Vector3(0, 1, 0);
     let list = [], hidden = new Set();

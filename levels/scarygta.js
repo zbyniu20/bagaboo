@@ -4,7 +4,7 @@
 // sześć toreb łupu (jubiler, bank, kasyno na dachu, stacja benzynowa, wieża radiowa na szczycie, jacht) i wyjście łodzią z pirsu (drzwi EXIT, wymaga co najmniej jednej torby).
 // Ruch jak w lobby (L.moveScale = PACE), także z torbą. Kolejne etapy: policja i gwiazdki, online i strzelanie graczy, helikopter, nowy potwór.
 // ==========================================
-import { THREE, CANNON, L, scene, camera, addStaticBody } from '../core/engine.js';
+import { THREE, CANNON, L, scene, camera, renderer, addStaticBody } from '../core/engine.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { levelReward, diffOf, unlockAchievement, recordTime, addBones, dailyDate } from '../core/economy.js';
 import { getGta, setGta } from '../core/gtastore.js';
@@ -17,7 +17,9 @@ import { PACE } from '../core/config.js';
 import { ARRIVAL_FROM_SCARYGTA } from './levels.js';
 import { buildDoor, cameraPanel, panelBg, createJumpscare } from '../core/levelkit.js';
 import { setDread, DREAD } from '../core/ambience.js';
-import { setPlayerPosition, releaseAll, hands, gripDown } from '../core/player.js';
+import { setPlayerPosition, releaseAll, hands, gripDown, triggerDown, stickX } from '../core/player.js';
+import { driveKeys } from '../core/desktop.js';
+import * as DRV from '../core/drivelogic.js';
 import { buzz } from '../core/haptics.js';
 import { MOD, PERSONAL } from '../core/modstate.js';
 import { SAVE } from '../core/economy.js';
@@ -154,7 +156,7 @@ export function build() {
     S.busted = -1; S.micCd = 0; S.busts = 0; S.runHeatT = 0;
     // dodatki (core/gtaprops.js): kabiny, przebranie, wspinaczki, paczki, manekiny, sejf, prąd, dźwig, telefon; noc (blackout i horda)
     S.gm = GM.newModeState(); S.gmPhase = 'idle'; buildModePanel();
-    S.fleet = VL.newFleet(); S.vehs = createVehicles({ clock: () => S.clock, myKey: 'me', requestStart: requestDrive, onBoard: (car, route) => toast(VL.routeOf(car, route).name + '. Stand still and hold on (both grips to jump off).', '#7ad0ff'), onArrive: () => { toast('You arrived.', '#7ad0ff'); const f = S.fleet && S.fleet.find(q => q.occ === 'me'); if (S.ctr && !(f && f.stop)) S.ctr.arrived = true; }, dismount: dismountMe });
+    S.fleet = VL.newFleet(); S.vehs = createVehicles({ clock: () => S.clock, myKey: 'me', requestStart: requestDrive, onBoard: (car, route) => toast(VL.routeOf(car, route).name + '. Stand still and hold on (both grips to jump off).', '#7ad0ff'), onArrive: () => { toast('You arrived.', '#7ad0ff'); const f = S.fleet && S.fleet.find(q => q.occ === 'me'); if (S.ctr && !(f && f.stop)) S.ctr.arrived = true; }, dismount: dismountMe, drive: { requestFree: requestFree, world: driveWorld, input: driveInput, wantExit: () => !!S.dbgExit || (!renderer.xr.isPresenting && driveKeys().exit), onStart: (car) => toast('Driving the ' + VL.VEHICLES.find(v => v.id === car).name + '. Right trigger gas, left trigger brake and reverse, left stick steer, both grips get out.', '#7ad0ff'), auth: () => isAuth(), onPose: sendPose, onStop: () => { toast('You got out.', '#7ad0ff'); if (!isAuth()) { S.fdIgnoreUntil = S.clock + 1.5; send({ k: 'ev', kind: 'dismount' }); } }, onBump: (imp) => buzz('both', Math.min(0.8, 0.25 + imp * 0.12), 120), onRunOver: runOverPeds } });
     S.sim.hearMul = mutatorActive() ? mutFactor('hear') : 1; S.night = X.newNight(); S.nightPh = 'calm'; S.powerOn = false; S.sprayAt = {}; S.alarmAt = {}; S.disUntil = {}; S.powerLeft = 0; S.powerCd = 0; S.disSent = false; S.powerSent = false;
     S.gx = createGtaProps({ buildings: S.buildings, api: {
         stars: () => S.sim.starsOf('me'), seenT: () => S.sim.heatOf('me').seenT,
@@ -170,7 +172,7 @@ export function build() {
     S.stunts = createGtaStunts({ buildings: S.buildings }); S.mystery = createGtaMystery({ buildings: S.buildings, api: secApi }); S.enc = createGtaEncounters({ api: secApi });
     S.life = createGtaLife({ api: { night: () => S.nightPh, obstacles: lifeObstacles } }); S.dj = DJM.newDj(); S.esc = 1; S.blocks = BL.newBlocks(); S.rbfx = createGtaRoadblocks(); S.ctr = { run: CTm.newRun(), spr: getGta().sprayed, arrived: false, seen: false }; S.cmark = createGtaCopMarks({ api: { gm: () => S.gm } }); S.corp = createGtaCorpses({ api: { gore: () => SETTINGS.gore !== false, dead: N.setAvatarDead } }); S.hitMark = { t: 0, text: '' };
     S.bb = createGtaBillboards({ buildings: S.buildings, api: { night: () => S.nightPh } });
-    S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
+    S.fdLast = {}; S.fdBad = {}; S.fdSeen = 0; S.fdIgnoreUntil = 0; S.peakStars = 0; S.track = {}; S.bustUntil = {}; S.rideUntil = {}; S.shoutAt = {}; S.netT = 0; S.lastHostMsg = 0; S.snap = null; S.sent = []; S.takeCd = {}; S.rideT = 0; S.gotPrev = 0;
     N.onLevelMsg(onNet);
     S.wx = WX.newWeather(Math.random, Math.random() < 0.5 ? 'clear' : 'drizzle'); S.weather = createWeather();   // pogoda lokalna: każdy klient ma własną
     S.radio = RD.newRadio(); S.radioText = null; S.radioEnd = 0; S.flags = { swat: false, shot: false, busted: false, block: false };
@@ -291,7 +293,7 @@ function drawHud(p) {
     const cops = S.sim.activeCops(), near = cops.filter(c => Math.hypot(c.bot.x - p.x, c.bot.z - p.z) < 30), chasing = cops.some(c => c.st.mode === 'chase');
     x.font = 'bold 26px "Courier New", monospace'; x.fillStyle = S.eyeOnMe ? '#ff2a2a' : S.hidden ? '#9ad0ff' : (chasing ? '#ff4a2a' : (near.length ? '#ffb030' : '#8a8090'));
     x.fillText(S.busted >= 0 ? 'BUSTED... back at a safe house soon' : (S.eyeOnMe ? 'THE EYE SEES YOU! Get under a roof or hide!' : S.hidden ? 'HIDDEN: stay still, they cannot see you' : (chasing ? 'THEY SEE YOU! Run, climb or hide!' : (near.length ? 'Cops nearby (' + near.length + '). Stay out of the light.' : 'Quiet. Keep it that way.'))), 30, 196);
-    x.font = '22px "Courier New", monospace'; x.fillStyle = '#8a7a9a'; if (S.radioText && S.clock < S.radioText.until) { x.fillStyle = '#9ad0ff'; x.fillText('RADIO: ' + S.radioText.t, 30, 232); } else x.fillText('Hide next to dumpsters. Cops cannot climb: use roofs and the cable rides.', 30, 232);
+    x.font = '22px "Courier New", monospace'; x.fillStyle = '#8a7a9a'; if (S.radioText && S.clock < S.radioText.until) { x.fillStyle = '#9ad0ff'; x.fillText('RADIO: ' + S.radioText.t, 30, 232); } else if (S.vehs && S.vehs.driving()) { x.fillStyle = '#9ad0ff'; x.fillText('DRIVING ' + Math.abs(S.vehs.driveCar().v).toFixed(1) + ' m/s  R trigger gas, L trigger brake, L stick steer, both grips out', 30, 232); } else x.fillText('Hide next to dumpsters. Cops cannot climb: use roofs and the cable rides.', 30, 232);
     const gs = S.gunS.me, ready = gs.reloadAt < 0 || S.clock >= gs.reloadAt;
     x.font = 'bold 28px "Courier New", monospace'; const dmgP = DL.damagePct(gs.hp); x.fillStyle = DL.damageColor(dmgP); x.fillText('DAMAGE ' + dmgP + '%' + (dmgP >= 100 ? ' DEAD' : ''), 30, 270);
     x.fillStyle = ready ? '#ffd27a' : '#ff9a3a'; x.fillText(ready ? 'AMMO ' + (gs.reloadAt >= 0 ? GU.GUN.MAG : gs.ammo) + '/' + GU.GUN.MAG : 'RELOADING', 330, 270);
@@ -344,7 +346,7 @@ export function update(dt, t, ctx) {
 // Złapanie (BUSTED): jumpscare (z uwzględnieniem ustawień), upuszczenie toreb, o jedną gwiazdkę mniej, odrodzenie w bezpiecznym punkcie po chwili
 function bust(b, remote) {
     if (S.busted >= 0) return;
-    S.busted = 0; S.busts++; S.flags.busted = true; S.fleet = VL.endDriveBy(S.fleet, 'me'); S.scare.trigger(); releaseAll(); cancelRails(S.sim);
+    S.busted = 0; S.busts++; S.flags.busted = true; S.fleet = VL.endDriveBy(S.fleet, 'me'); S.vehs.endFree(); S.scare.trigger(); releaseAll(); cancelRails(S.sim);
     const lost = S.got;
     if (!remote) { dropBags('me', b.x, b.y || 0, b.z); if (b.reason !== 'shot') S.sim.heats.me = WL.afterBust(S.sim.heatOf('me')); }
     S.gunS.me.deadUntil = S.clock + GU.GUN.RESPAWN;   // gość: torby i ciepło po stronie hosta (migawka)
@@ -387,7 +389,7 @@ function drawTracer(o, e) {
     const f = S.fx.find(q => !q.l.visible) || S.fx[0], a = f.l.geometry.attributes.position; a.setXYZ(0, o[0], o[1], o[2]); a.setXYZ(1, e[0], e[1], e[2]); a.needsUpdate = true; f.l.visible = true; f.t = 0.07;
 }
 function fire(i) {
-    if (!S || S.busted >= 0 || S.leaving || i !== 1 || !hands.R || gripDown(1)) return;
+    if (!S || S.busted >= 0 || S.leaving || i !== 1 || !hands.R || gripDown(1) || (S.vehs && S.vehs.driving())) return;   // za kierownicą broń jest schowana (spust to gaz)
     const q = new THREE.Quaternion(); hands.R.getWorldQuaternion(q);
     const o = new THREE.Vector3(0, 0.03, -0.24).applyQuaternion(q).add(hands.R.position), d = new THREE.Vector3(0, 0, -1).applyQuaternion(q).normalize();
     camera.getWorldPosition(_p);
@@ -431,9 +433,16 @@ function hostShot(id, sh, checked) {
             }
         }
     }
+    pedShot(sh.o, end);   // host i solo widzą każdy strzał tu (własnego `fx` nie dostają)
     if (id === 'me' && landed) S.hitMark = { t: DL.DMG.HIT_SHOW, text: DL.hitText(res.zone, GU.damageOf(res.zone), kill) };   // znacznik trafienia u strzelca: HIT 25% / HEADSHOT 50% / KILL
     send({ k: 'fx', s: toNet(id), o: sh.o.map(v => +v.toFixed(2)), e: end.map(v => +v.toFixed(2)), h: res && res.kind === 'player' && landed ? toNet(res.id) : null, z: res && res.zone === 'head' ? 'h' : 'b', kill, c: res && res.kind === 'cop' ? 1 : 0, cb: body });
     if (id !== 'me') { drawTracer(sh.o, end); camera.getWorldPosition(_p); if (Math.hypot(_p.x - sh.o[0], _p.z - sh.o[2]) < 45) SFX.shot(); }
+}
+// Strzał w przechodniów (lokalnych): pierwszy na torze o -> e (przyciętym do budynków) pada i leży w kałuży; bez ciepła, nagrody i sieci, pocisk nie zatrzymuje się na nim
+function pedShot(o, e) {
+    if (!S || !S.life || !S.corp) return;
+    const k = S.life.shoot(o, e, S.boxes); if (!k) return;
+    S.corp.spawn('ped' + (S.pedN = (S.pedN || 0) + 1), k.x, k.z, { kind: 'ped', yaw: k.yaw });
 }
 function pushFeed(line) { S.feed.push({ t: S.clock, s: String(line).replace(/[^\w \-!]/g, '').slice(0, 40) }); if (S.feed.length > 3) S.feed.shift(); }
 function giveBag(b, who) {
@@ -520,7 +529,7 @@ function buildModePanel() {
     const scr = S.mterm.createMesh(1.7, 1.115); scr.position.set(3.4, 1.55, 53.2); L.root.add(scr); S.mterm.dirty = true;
 }
 // ----- pojazdy ucieczki (core/vehicles.js, core/vehiclelogic.js): host trzyma flotę, goście proszą o start i odtwarzają migawkę -----
-const riderOf = (id) => !!S.fleet && S.fleet.some(c => c.occ === id);
+const riderOf = (id) => (!!S.fleet && S.fleet.some(c => c.occ === id)) || (id === 'me' && !!S.vehs && S.vehs.driving() && Math.abs(S.vehs.driveCar().v) > 2) || (id !== 'me' && !!S.vehs && S.vehs.freeSpeedOf(id) > 2);   // jadący (po szynach albo swobodnie szybciej niż 2 m/s) nie jest łapany dotykiem
 // Telefon: jedna linia ze wszystkimi licznikami sekretów i podpowiedź (notatka sprawy, gdy trwa; inaczej podpowiedź do następnego jajka)
 // Dzienne kontrakty: detektory z lokalnych danych (u gościa działają bez sieci); nagrody tylko poza mutatorem i poza rundą trybu
 function contractTick(dt, y, evIn) {
@@ -545,6 +554,46 @@ function secretsInfo() {
 // Przeszkody dla ruchu ulicznego (tylko wizualnego): pickupy i policjanci; gracz jest dodawany w module
 function lifeObstacles() { return (S.vehs ? S.vehs.cars.map(c => ({ x: c.m.position.x, z: c.m.position.z })) : []).concat(S.sim.activeCops().map(c => ({ x: c.bot.x, z: c.bot.z })), S.blocks ? S.blocks.nodes.map(i => BL.nodePos(i)).filter(Boolean) : []); }
 function eggRide() { const f = S.fleet && S.fleet.find(q => q.occ === 'me'); if (!f || !S.vehs) return null; const c = S.vehs.cars.find(q => q.id === f.id); return c ? { x: c.m.position.x, z: c.m.position.z, yaw: c.m.rotation.y } : null; }
+// ---------- SWOBODNA JAZDA (core/drivelogic.js): kradzież auta dotknięciem drzwi kierowcy; kierowca liczy auto lokalnie ----------
+function driveWorld() {   // przeszkody dla auta: bryły z L.obstacles na wysokości auta (bez krawężników i rusztowań nad głową) i barykady
+    const boxes = []; for (const o of L.obstacles) { const b = o.box3; if (b.max.y < 0.45 || b.min.y > 1.4) continue; boxes.push({ x0: b.min.x, x1: b.max.x, z0: b.min.z, z1: b.max.z }); }
+    for (const i of (S.blocks ? S.blocks.nodes : [])) { const p = BL.nodePos(i); if (!p) continue; const ax = BL.streetAlongX(i); boxes.push(ax ? { x0: p.x - 0.5, x1: p.x + 0.5, z0: p.z - 4.4, z1: p.z + 4.4 } : { x0: p.x - 4.4, x1: p.x + 4.4, z0: p.z - 0.5, z1: p.z + 0.5 }); }   // barykada stoi w poprzek ulicy (8,8 m): pojazdy ją omijają, piesi nie
+    return { boxes: boxes, bounds: { x0: C.CITY.X0, x1: C.CITY.X1, z0: C.CITY.Z0, z1: 52 } };
+}
+function driveInput() {
+    if (S.dbgIn) return S.dbgIn;   // tylko testy
+    if (renderer.xr.isPresenting) return { gas: triggerDown(1) ? 1 : 0, brake: triggerDown(0) ? 1 : 0, steer: stickX('left') };
+    return driveKeys();
+}
+function runOverPeds(x, z, r, yaw, quiet) {   // przechodnie przed jadącym autem padają (lokalnie, jak po strzale: bez ciepła i nagrody)
+    if (!S.life) return 0; const list = S.life.runOver(x, z, r, yaw); for (const k of list) S.corp.spawn('ped' + (S.pedN = (S.pedN || 0) + 1), k.x, k.z, { kind: 'ped', yaw: yaw }); if (list.length && !quiet) buzz('both', 0.6, 160); return list.length;
+}
+function requestFree(carId) {
+    if (!S || S.busted >= 0) return;
+    if (isAuth()) { camera.getWorldPosition(_p); hostFree('me', carId, { x: _p.x, z: _p.z }); } else send({ k: 'ev', kind: 'drive', car: carId, route: 'drive' });
+}
+// Host (albo solo) zatwierdza kradzież: auto wolne (nie jedzie po szynach, nikt nim nie jeździ), gracz nie jedzie niczym innym, głowa blisko drzwi; start z miejsca parkowania to alarm (+30 ciepła)
+function hostFree(who, carId, head) {
+    const car = S.vehs.cars.find(c => c.id === carId); if (!car || !head) return false;
+    if (who !== 'me' && (S.bustUntil[who] || 0) > S.clock) return false;
+    if (S.fleet.some(f => f.id === carId && f.occ) || S.fleet.some(f => f.occ === who) || S.vehs.freeDriver(carId)) return false;
+    const pose = car.free ? car.free.pose : VL.parkedPose(carId), door = DRV.doorPoint(pose); if (Math.hypot(head.x - door.x, head.z - door.z) > VL.RIDE.START_R) return false;
+    const fresh = !car.free || car.free.remote;   // start z miejsca parkowania (albo cudze porzucone auto) to kradzież: alarm
+    if (who === 'me') { if (!S.vehs.beginFree(carId)) return false; }
+    else { S.vehs.setRemote(carId, who, { x: pose.x, z: pose.z, yaw: pose.yaw, v: 0 }); S.fdLast[carId] = { t: S.clock, pose: { x: pose.x, z: pose.z, yaw: pose.yaw, v: 0 } }; S.fdBad[who] = 0; }   // gość jedzie: host zna go jako kierowcę, a pozę dostaje od niego (hostPose)
+    if (fresh) { S.sim.addHeat(who, WL.eventHeat('alarm')); S.sim.addEvent('alarm', door.x, door.z); }
+    return true;
+}
+// Gość kierowca wysyła pozę auta (8 Hz); host przyjmuje ją tylko od kierowcy tego auta i tylko, gdy jest wiarygodna (ruch i obrót w granicach, nie w bryle, w mieście, głowa blisko auta)
+function sendPose(p) { if (!isAuth()) send({ k: 'drv', car: p.car, x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(3), v: +p.v.toFixed(2) }); }
+function hostPose(g, msg) {
+    const p = DRV.cleanPose(msg); if (!p) return;
+    const car = S.vehs.cars.find(c => c.id === p.car); if (!car || !car.free || car.free.driver !== g.id) return;
+    const last = S.fdLast[p.car] || { t: S.clock - 0.125, pose: car.free.target || car.free.pose }, b = DRV.bodyPos(p);
+    if (Math.hypot(g.head.x - b.x, g.head.z - b.z) > 6) { S.vehs.releaseDriver(g.id); return; }   // głowa gościa nie jest w aucie
+    if (!DRV.poseOk(last.pose, p, S.clock - last.t, driveWorld())) { if ((S.fdBad[g.id] = (S.fdBad[g.id] || 0) + 1) > 12) { S.vehs.releaseDriver(g.id); S.fdBad[g.id] = 0; } return; }   // długo niewiarygodna poza: gość przestaje być kierowcą
+    S.fdBad[g.id] = 0; S.fdLast[p.car] = { t: S.clock, pose: p }; S.vehs.setRemote(p.car, g.id, p);
+}
 function dismountMe() { S.fleet = VL.endDriveBy(S.fleet, 'me'); if (!isAuth()) send({ k: 'ev', kind: 'dismount' }); }
 function requestDrive(carId, idx) {
     const v = VL.VEHICLES.find(q => q.id === carId), route = v && v.routes[idx]; if (!route || S.busted >= 0) return;
@@ -552,7 +601,7 @@ function requestDrive(carId, idx) {
     if (isAuth()) { camera.getWorldPosition(_p); hostDrive('me', carId, route.id, { x: _p.x, z: _p.z }); } else send({ k: 'ev', kind: 'drive', car: carId, route: route.id });
 }
 function hostDrive(who, carId, routeId, head) {
-    const sp = VL.startPoint(carId); if (!sp || !head) return;
+    const sp = VL.startPoint(carId); if (!sp || !head || S.vehs.isFree(carId)) return;   // auto, którym ktoś jechał swobodnie, nie jest na miejscu parkowania: po szynach nie pojedzie
     if (who !== 'me' && (S.bustUntil[who] || 0) > S.clock) return;
     const rb = BL.rideBlock(carId, routeId, S.blocks.nodes); if (rb.kind === 'blocked') return;   // barykada tuż przy starcie: auto nie rusza (gość dostaje napis od siebie)
     const r = VL.startDrive(S.fleet, carId, routeId, who, S.clock, Math.hypot(head.x - sp.x, head.z - sp.z), rb.stop); if (!r.ok) return;
@@ -589,6 +638,7 @@ function netStep(dt, p, speed) {
         }
         for (const id of Object.keys(S.track)) if (!ids.has(id)) delete S.track[id];
         S.fleet = VL.fleetStep(S.fleet, S.clock, ids);   // auta wolne po dojeździe i gdy pasażera już nie ma
+        for (const c of S.vehs.cars) if (c.free && c.free.driver && !ids.has(c.free.driver)) S.vehs.releaseDriver(c.free.driver);   // kierowca wyszedł z poziomu albo się rozłączył: auto zostaje porzucone
         for (const id of Object.keys(S.gunS)) { if (id !== 'me' && !ids.has(id)) { delete S.gunS[id]; continue; } const st = S.gunS[id]; if (id !== 'me' && st.deadUntil > 0 && S.clock >= st.deadUntil) GU.revive(st, S.clock); }
         // gracz, który wyszedł z poziomu albo się rozłączył, traci torby (wracają na swoje miejsca)
         for (const b of S.bags) if (b.holder && !ids.has(b.holder)) { b.holder = null; b.got = false; b.g.visible = true; b.x = b.ox; b.y = b.oy; b.z = b.oz; b.g.position.set(b.x, b.y, b.z); }
@@ -627,11 +677,11 @@ function netStep(dt, p, speed) {
 function broadcastState(players) {
     const heats = {}; for (const pl of players) heats[toNet(pl.id)] = [+S.sim.heatOf(pl.id).v.toFixed(1), S.sim.hiddenNow[pl.id] ? 1 : 0];
     const hp = {}; for (const pl of players) hp[toNet(pl.id)] = (S.gunS[pl.id] || (S.gunS[pl.id] = GU.newShooter())).hp;
-    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli), nt: S.nightPh, rb: S.blocks.nodes, pw: S.powerLeft > 0 ? 1 : 0, gm: modeSnapNet(), veh: VL.fleetSnap(S.fleet.map(c => c.occ ? Object.assign({}, c, { occ: toNet(c.occ) }) : c), S.clock) });
+    send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(b => [b.id, +b.x.toFixed(2), +b.y.toFixed(2), +b.z.toFixed(2), b.holder ? toNet(b.holder) : null]), heats, hp, m: S.mode, hl: HL.heliSnap(S.heli), fd: S.vehs.freePoses().map(f => [f.car, f.driver ? toNet(f.driver) : null, f.x, f.z, f.yaw, f.v]), nt: S.nightPh, rb: S.blocks.nodes, pw: S.powerLeft > 0 ? 1 : 0, gm: modeSnapNet(), veh: VL.fleetSnap(S.fleet.map(c => c.occ ? Object.assign({}, c, { occ: toNet(c.occ) }) : c), S.clock) });
 }
 function hostBust(b) {
     const g = guestOf(b.id); if (!g || (S.bustUntil[b.id] || 0) > S.clock) return;
-    S.fleet = VL.endDriveBy(S.fleet, b.id); S.bustUntil[b.id] = S.clock + GN.GN.BUST_PROTECT; dropBags(b.id, b.x, bodyYOf(g), b.z);
+    S.fleet = VL.endDriveBy(S.fleet, b.id); S.vehs.releaseDriver(b.id); S.bustUntil[b.id] = S.clock + GN.GN.BUST_PROTECT; dropBags(b.id, b.x, bodyYOf(g), b.z);
     (S.gunS[b.id] || (S.gunS[b.id] = GU.newShooter())).deadUntil = S.clock + GU.GUN.RESPAWN;
     const yaw = b.reason === 'shot' ? (b.yaw !== undefined ? b.yaw : DL.fallYaw(b.x, b.z, null)) : undefined;
     if (yaw !== undefined) S.corp.spawn(b.id, b.x, b.z, { kind: 'player', yaw: yaw });   // gość zabity: ciało w miejscu śmierci także u hosta
@@ -643,6 +693,7 @@ function onNet(msg, from) {
     if (!S || !msg || typeof msg !== 'object') return;
     if (N.NET.mode === 'host') {
         const g = guestOf(from); if (g && msg.k === 'shot') { const sh = GU.cleanShot(msg); if (sh) hostShot(g.id, sh, false); return; }
+        if (g && msg.k === 'drv') { hostPose(g, msg); return; }
         const rq = GN.cleanRequest(msg, BAG_IDS()); if (!g || !rq) return;
         if (rq.k === 'take') { const b = S.bags.find(q => q.id === rq.b); if (b && !b.got && roleOf(g.id) !== 'cop' && (S.bustUntil[g.id] || 0) <= S.clock && GN.validTake(b, g.head, b.holder)) { giveBag(b, g.id); send({ k: 'st', cops: S.sim.copSnap(), bags: S.bags.map(q => [q.id, q.x, q.y, q.z, q.holder ? toNet(q.holder) : null]), heats: {} }); } }
         else if (rq.k === 'ev' && rq.kind === 'shout') { if ((S.shoutAt[g.id] || 0) <= S.clock) { S.shoutAt[g.id] = S.clock + GN.GN.SHOUT_GAP; S.sim.addEvent('shout', g.head.x, g.head.z); S.sim.addHeat(g.id, WL.eventHeat('shout')); } }
@@ -660,12 +711,18 @@ function onNet(msg, from) {
         if (bags.length) { const was = S.got; S.got = S.bags.filter(q => q.holder === 'me').length; if (S.got > was) { const nb = S.bags.find(q => q.holder === 'me'); if (nb) bagToast(nb); } }
         const hl = GN.cleanHeli(msg.hl); if (hl) { const h = S.heli; h.x = hl.x; h.y = hl.y; h.z = hl.z; h.yaw = hl.yaw; h.lx = hl.lx; h.lz = hl.lz; h.mode = hl.mode; } else if (msg.hl === null) S.heli.mode = 'away';
         { const ms = GM.cleanModeSnap(msg.gm), map = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [fromNet(k), v])); S.gm = Object.assign(ms, { roles: map(ms.roles), score: map(ms.score), winner: ms.winner === N.myId() ? 'me' : ms.winner }); modePhaseToast(); }
+        {   // swobodne auta od hosta: cudze interpolujemy, a gdy host uznał MNIE za kierowcę, zaczynam jechać (wejście potwierdza host); gdy host przestał mnie wymieniać, wysiadam
+            const fd = DRV.cleanFree(msg.fd, (id) => VL.VEHICLES.some(v => v.id === id)), seen = new Set();
+            for (const e of fd) { seen.add(e.car); const drv = e.driver ? fromNet(e.driver) : null; if (drv === 'me') { if (S.vehs.driving()) S.fdSeen = S.clock; else if (S.clock >= S.fdIgnoreUntil && S.vehs.beginFree(e.car)) S.fdSeen = S.clock; } else S.vehs.setRemote(e.car, drv, e.pose); }
+            S.vehs.clearRemoteExcept(seen); if (S.vehs.driving() && S.clock - S.fdSeen > 1.2) S.vehs.endFree();
+        }
         { const veh = VL.cleanVehicles(msg.veh); S.fleet = VL.newFleet().map(c => { const e = veh.find(q => q.car === c.id); return e ? { id: c.id, occ: fromNet(e.occ), route: e.route, t0: S.clock - e.age, stop: e.stop } : c; }); { const nb = BL.cleanBlocks(msg.rb); if (BL.newNodes(S.rbSeen ? S.blocks.nodes : null, nb).length) S.flags.block = true; S.rbSeen = true; S.blocks = { nodes: nb, quiet: 0 }; } }
         setNight(msg.nt); if (msg.pw === 1 || msg.pw === 0) { const on = msg.pw === 1; if (on !== S.powerOn && !S.gx.debug().power) { S.powerOn = on; applyLights(); } }
         const hpm = GU.cleanHp(msg.hp); if (Number.isFinite(hpm[N.myId()])) S.gunS.me.hp = hpm[N.myId()]; if (msg.m === 'coop' || msg.m === 'ffa') S.mode = msg.m;
         const mh = heats[N.myId()]; if (mh) { S.sim.heats.me = { v: mh.v, seenT: 0 }; S.sim.hiddenNow.me = mh.hidden; }
     } else if (msg.k === 'fx') {
         const fx = GU.cleanFx(msg); if (!fx) return;
+        pedShot(fx.o, fx.e);   // także własne strzały gościa wracają tu jako `fx`
         if (fromNet(fx.s) !== 'me') { drawTracer(fx.o, fx.e); camera.getWorldPosition(_p); if (Math.hypot(_p.x - fx.o[0], _p.z - fx.o[2]) < 45) SFX.shot(); }
         if (fx.hit === N.myId()) { S.hurtT = 0.45; buzz('both', 0.7, 120); }
         if (fromNet(fx.s) === 'me' && (fx.hit || fx.cop || fx.kill)) S.hitMark = { t: DL.DMG.HIT_SHOW, text: DL.hitText(fx.zone, GU.damageOf(fx.zone), fx.kill) };
@@ -688,8 +745,8 @@ export const debugOutbox = () => S ? S.sent : [];
 export const debugWeather = () => S ? { state: S.wx.state, rain: +S.wx.rain.toFixed(2), fog: +S.wx.fog.toFixed(2), bolts: S.weather.bolts, thunders: S.weather.thunders, mesh: S.weather.mesh.visible, n: S.weather.n, radio: S.radioText ? S.radioText.t : null } : null;
 export const debugWx = (state, flash) => { if (!S) return; if (state) { S.wx.state = state; S.wx.hold = 1e6; } if (flash) { S.wx.flash = WX.WX.FLASH; S.weather.pending.push(0.1); S.weather.bolts++; } };
 function hostExtra(g, kind, rq) {
-    if (kind === 'drive') { hostDrive(g.id, rq.car, rq.route, g.head); return; }
-    if (kind === 'dismount') { S.fleet = VL.endDriveBy(S.fleet, g.id); return; }
+    if (kind === 'drive') { if (rq.route === 'drive') hostFree(g.id, rq.car, g.head); else hostDrive(g.id, rq.car, rq.route, g.head); return; }
+    if (kind === 'dismount') { S.fleet = VL.endDriveBy(S.fleet, g.id); S.vehs.releaseDriver(g.id); return; }
     if (kind === 'deliver') { modeDeliver(g.id, S.bags.filter(b => b.holder === g.id).length); return; }
     const near = (pts, r) => pts.some(q => Math.hypot(g.head.x - q.x, g.head.z - q.z) < r), id = g.id, bank = S.buildings.find(b => b.name === 'bank'), ps = X.powerSpot();
     if (kind === 'spray' && near(X.SPRAY.SPOTS, X.SPRAY.R + 3) && (S.sprayAt[id] || 0) <= S.clock) { S.sprayAt[id] = S.clock + 60; S.sim.heats[id] = { v: 0, seenT: 99 }; }
@@ -701,6 +758,14 @@ export const debugMode = () => S ? { gm: S.gm, ids: modeIds(), myRole: roleOf('m
 export const debugModeSet = (m, start) => { if (!S) return; setMode(m); if (start) toggleRound(); };
 export const debugDismount = () => { if (S) dismountMe(); };
 export const debugVeh = () => S ? { fleet: S.fleet, v: S.vehs.debug(), carCount: S.carCount } : null;
+export const debugDriveInput = (gas, brake, steer) => { if (S) S.dbgIn = gas === null ? null : { gas, brake, steer }; };   // tylko testy: wejście jazdy zamiast VR i klawiszy
+export const debugStartFree = (carId, who) => S ? hostFree(who || 'me', carId, who && who !== 'me' ? null : (camera.getWorldPosition(_p), { x: _p.x, z: _p.z })) : false;
+export const debugCarTo = (x, z, yaw) => !!S && S.vehs.teleport(x, z, yaw);
+export const debugCarIdle = (id, t) => { if (S) S.vehs.testIdle(id, t); };
+export const debugDriveExit = (on) => { if (S) S.dbgExit = !!on; };
+export const debugDrive = () => S && S.vehs ? S.vehs.debug() : null;
+export const debugDriveWorld = () => S ? driveWorld() : null;
+export const debugAddPed = (x, z) => !!S && S.life.add(x, z);   // tylko dla testów: stojący przechodzień w znanym miejscu
 export const debugCopMarks = () => S ? S.cmark.debug() : null;
 export const debugCorpses = () => S ? Object.assign(S.corp.debug(), { hit: S.hitMark.text, hitT: S.hitMark.t }) : null;   // dla testów
 export const debugCorpseAt = (id, x, z, kind, yaw) => { if (S) S.corp.spawn(id, x, z, { kind: kind || 'player', yaw: yaw || 0 }); };

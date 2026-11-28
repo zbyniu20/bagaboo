@@ -377,6 +377,18 @@ export function faceWorldYaw(target) {
 const _yAxis = new THREE.Vector3(0, 1, 0), _headLocal = new THREE.Vector3(), _flyDir = new THREE.Vector3();
 // Czy spust kontrolera (0 = lewy, 1 = prawy) jest wciśnięty: BagaBooModMenu zmienia nim rozmiar goryla
 export const triggerDown = (i) => !!ctrlInput[i].select;
+// Wychylenie gałki podanej ręki ('left' | 'right') w poziomie, od -1 do 1 (z martwą strefą); poza VR i bez kontrolera 0. Prawa gałka obraca głowę, więc kierownica auta używa LEWEJ (core/drivelogic.js).
+export function stickX(hand) {
+    if (!renderer.xr.isPresenting) return 0;
+    const session = renderer.xr.getSession && renderer.xr.getSession(); if (!session) return 0;
+    for (const src of session.inputSources) {
+        if (src.handedness !== hand || !src.gamepad) continue;
+        const ax = src.gamepad.axes, v = ax.length >= 4 ? ax[2] : (ax[0] || 0);
+        if (Math.abs(v) < HEAD_STICK_DEADZONE) return 0;
+        return Math.max(-1, Math.min(1, (v - Math.sign(v) * HEAD_STICK_DEADZONE) / (1 - HEAD_STICK_DEADZONE)));
+    }
+    return 0;
+}
 // Wychylenie prawej gałki w poziomie, od -1 (lewo) do 1 (prawo), z martwą strefą
 function readHeadStick() {
     if (!renderer.xr.isPresenting) return 0;

@@ -76,6 +76,40 @@ ok('without Gore there is a body but no pool of blood', R.nogore.bodies === 1 &&
 ok('at most 10 corpses, a new corpse of the same id replaces the old one', R.cap.n === 10 && R.cap.ids.filter(i => i === 'p13').length === 1, R.cap);
 ok('the guest gets the corpse of another shot player (garbage coordinates and non-shot busts are ignored, the yaw is clamped)', R.guestOther.ids.join() === 'g7,g10' || R.guestOther.ids.sort().join() === 'g10,g7', R.guestOther);
 ok('the guest gets a dead cop from the fx, a hit marker for its own shot at a player, and a forged far body is ignored', R.guestCop.ids.length === R.guestOther.n + 1 && R.guestCop.ids.some(i => i.startsWith('c')) && R.guestHit === 'HIT 25%' && R.badBody === R.guestCop.n, [R.guestCop, R.guestHit, R.badBody]);
+const PD = await ev(async () => {
+    const N = await import('./core/network.js'), G = await import('./levels/scarygta.js'), P = await import('./core/player.js'), E = await import('./core/engine.js'), D = await import('./core/desktop.js'), ST = await import('./core/settings.js');
+    const S = G.testState(), wt = (ms) => new Promise(r => setTimeout(r, ms)), clock = async (t) => { for (let i = 0; i < 600 && S.clock < t; i++) await wt(100); }, out = {};
+    N.NET.mode = 'host'; for (let i = 0; i < 600 && S.busted >= 0; i++) await wt(100); S.sim.reset(); ST.SETTINGS.gore = true; S.sim.heats = {}; S.bustUntil = {}; S.gunS = { me: S.gunS.me }; S.mode = 'ffa';
+    G.debugCorpseStep(0.5, 60);
+    P.setPlayerPosition(-38, 1.2, 0); D.setDesktopFacing(0); await wt(900);
+    const c = E.camera.getWorldPosition(new E.THREE.Vector3()), o = [c.x, c.y, c.z];
+    // 1) przechodzień na torze strzału do gościa, drugi za gościem (poza końcem toru): pada tylko pierwszy, pocisk leci dalej do gościa
+    delete N.playersState['g1']; N.playersState['g1'] = { lvl: 'scarygta', head: { p: [-38, 1.7, 10] }, h1: { p: [0, 0, 0] }, h2: { p: [0, 0, 0] }, profile: { name: 'Bob' } }; await wt(600);
+    G.debugAddPed(-38, 5); G.debugAddPed(-38, 16); const before = G.debugLife().fixed; const l = Math.hypot(0, 1.7 - c.y, 10 - c.z), d = [0, (1.7 - c.y) / l, (10 - c.z) / l];
+    await clock(S.clock + 0.4); G.debugShoot('me', o, d);
+    out.shot = { peds: before - G.debugLife().fixed, corpses: G.debugCorpses(), guestHp: S.gunS['g1'] && S.gunS['g1'].hp, msgs: G.debugOutbox().filter(m => m.k === 'fx').length };
+    G.debugCorpseStep(0.5, 8); out.later = G.debugCorpses();
+    // 2) przechodzień za budynkiem nie jest trafiony (tor przycięty do ściany)
+    const b = S.boxes.find(q => q.x1 - q.x0 > 8 && q.z1 - q.z0 > 8 && q.y1 > 6 && q.x0 > -70 && q.x1 < 70), zm = (b.z0 + b.z1) / 2;
+    delete N.playersState['g1']; P.setPlayerPosition(b.x0 - 8, 1.2, zm); D.setDesktopFacing(-Math.PI / 2); await wt(900);
+    const c2 = E.camera.getWorldPosition(new E.THREE.Vector3()); G.debugAddPed(b.x1 + 4, zm); const n2 = G.debugLife().fixed, k2 = G.debugCorpses().n;
+    await clock(S.clock + 0.4); G.debugShoot('me', [c2.x, c2.y, c2.z], [1, 0, 0]);
+    out.wall = { lost: n2 - G.debugLife().fixed, corpses: G.debugCorpses().n - k2 };
+    // 3) ten sam przechodzień bez budynku na drodze (po drugiej stronie, strzał od ściany w otwartą stronę) pada
+    P.setPlayerPosition(b.x1 + 14, 1.2, zm); await wt(900); const c3 = E.camera.getWorldPosition(new E.THREE.Vector3());
+    await clock(S.clock + 0.4); G.debugShoot('me', [c3.x, c3.y, c3.z], [-1, 0, 0]);
+    out.open = { lost: n2 - G.debugLife().fixed, corpses: G.debugCorpses().n - k2, ids: G.debugCorpses().ids };
+    // 4) gość: własny strzał wraca jako fx i też trafia jego przechodniów
+    N.NET.mode = 'guest'; const me = N.myId(); G.debugCorpseStep(0.5, 60); G.debugAddPed(-30, 40); const n4 = G.debugLife().fixed;
+    G.debugNet({ k: 'fx', s: me, o: [-30, 1.2, 30], e: [-30, 1.2, 50], h: null, z: 'b', kill: false, c: 0, cb: null }, 'host');
+    out.guest = { lost: n4 - G.debugLife().fixed, corpses: G.debugCorpses() };
+    N.NET.mode = 'host'; G.debugCorpseStep(0.5, 60);
+    return out;
+});
+ok('a shot through a pedestrian drops it (the second one behind the guest is untouched) and the bullet still reaches the guest behind it', PD.shot.peds === 1 && PD.shot.guestHp === 50 && PD.shot.msgs > 0, PD.shot);
+ok('the dead pedestrian is a corpse of kind ped with a pool of blood after the fall (no hidden avatar)', PD.shot.corpses.ids.some(i => /^ped/.test(i)) && PD.later.pools >= 1 && PD.later.hidden.every(i => !/^ped/.test(i)), [PD.shot.corpses, PD.later]);
+ok('a pedestrian behind a building is not hit, the same line with the wall out of the way is', PD.wall.lost === 0 && PD.wall.corpses === 0 && PD.open.lost === 1 && PD.open.corpses === 1, [PD.wall, PD.open]);
+ok('a guest own shot comes back as fx and hits ITS pedestrians too', PD.guest.lost === 1 && PD.guest.corpses.ids.some(i => /^ped/.test(i)), PD.guest);
 if (SP) {
     fs.mkdirSync(SP, { recursive: true });
     await ev(async () => { const G = await import('./levels/scarygta.js'), P = await import('./core/player.js'), D = await import('./core/desktop.js'), ST = await import('./core/settings.js'); ST.SETTINGS.gore = true; P.setPlayerPosition(-38, 1.2, 0); D.setDesktopFacing(Math.PI, -0.25); const E = await import('./core/engine.js'); for (const c of E.camera.children) c.visible = false; G.debugCorpseAt('c1', -38, 4, 'player', 0.4); G.debugCorpseAt('c2', -36.2, 5.2, 'cop', 2.6); G.debugCorpseAt('c3', -40, 6.5, 'player', 5); G.debugCorpseStep(0.25, 16); });
