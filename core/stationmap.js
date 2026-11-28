@@ -2,7 +2,7 @@
 // MAPA "TRAIN STATION" DLA BECOME THE MONSTER (czysty generator, bez THREE; testy: tests/modes/monster.mjs). 80 x 80 m, wysokość hali 12 m, układ z ziarna (deterministyczny: host i gość budują to samo).
 // Stacja czołowa (tory kończą się przy hali kasowej na południu): pięć peronów (dwa boczne i trzy wyspowe, 1,2 m nad torami), cztery tory, trzy POCIĄGI z pustymi wagonami (drzwi z obu stron,
 // ławki w środku, dachy 3,5 m), KŁADKA 6 m nad torami ze schodami na każdym peronie, poczekalnie i kioski jako kryjówki, SZYBY WENTYLACYJNE (dwa przy ścianach peronu i jeden wysoko nad torami,
-// zdatne do przeczołgania), TRZY UKRYTE TUNELE za ścianami (jeden przy północnej ścianie, dwa przy południowej; wejścia to wąskie luki w ścianie od strony hali) oraz hala kasowa z budkami,
+// zdatne do przeczołgania), TRZY UKRYTE TUNELE za ścianami (jeden przy północnej ścianie, dwa przy południowej; wejścia to luki 1,4 m w ścianie od strony hali) oraz hala kasowa z budkami,
 // automatami i szafkami. Potwór startuje na północnym podwórku, uciekinierzy w hali kasowej przy drzwiach GAMES (z = +40).
 // Koszt rysowania: tylko pięć peronów to osobne siatki; WSZYSTKO inne to instancje (`inst`: jedna siatka na rodzaj powierzchni), więc cała stacja kosztuje kilka wywołań rysowania.
 // Dane: { boxes (siatki: perony), inst (instancje), lights, entry, monster, survivors, hides ([x, y podłogi, z, rodzaj]), botJump, floor, wall, ceil }.
@@ -89,7 +89,7 @@ export function stationLayout(R) {
     };
     const roomAt = shuffle([[1, 14], [2, -22], [3, 11], [3, -18], [1, -10]]).slice(0, 3);
     for (const [pi, z] of roomAt) { const [x0, x1] = PLAT[pi], c = (x0 + x1) / 2; room(c, z, 7, 5, P, 2.8, [{ side: 'N', at: 0, gap: 1.4 }, { side: 'E', at: 1.2, gap: 1.0 }, { side: 'S', at: -2, gap: 1.2 }], 0xb8b0a0, 'room'); }
-    for (const [pi, z] of [[0, 6], [4, -14], [4, 14]]) { const [x0, x1] = PLAT[pi], c = pi === 0 ? x0 + 4.5 : x1 - 4.5; room(c, z, 2.4, 2.4, P, 2.5, [{ side: pi === 0 ? 'E' : 'W', at: 0, gap: 1.1 }], 0x7a5a3a, 'kiosk'); }
+    for (const [pi, z] of [[0, 6], [4, -14], [4, 14]]) { const [x0, x1] = PLAT[pi], c = pi === 0 ? x0 + 4.5 : x1 - 4.5; room(c, z, 2.4, 2.4, P, 2.5, [{ side: pi === 0 ? 'E' : 'W', at: 0, gap: 1.5 }], 0x7a5a3a, 'kiosk'); }
     // ---- szyby wentylacyjne (dwa przy ścianach peronu, jeden wysoko nad torami) ----
     const duct = (x, z, y0, L, axis, mkc) => {
         const W = 1.5, Hh = 1.45, t = 0.12, col = mkc || 0x8a9098, al = axis === 'x';
@@ -101,11 +101,11 @@ export function stationLayout(R) {
     duct(-38.7, -10, P, 38, 'z'); hides.push([-38.7, P, -10, 'duct']);
     duct(38.7, 4, P, 40, 'z'); hides.push([38.7, P, 4, 'duct']);
     duct(-24, -22, 4.6, 30, 'x', 0x7a8088);   // wysoko nad torami: z dachu wagonu na sąsiedni peron
-    for (const z of [-23.2, -20.8]) for (let k = 0; k < 4; k++) add(mk(-38.9, 1.7 + k * 0.7, z, 0.5, 0.18, 0.5, 0x5a5a5a, 'metal'));   // półki do wspinania się do wysokiego szybu przy zachodniej ścianie
-    // ---- ukryte tunele za ścianami: luki 0,9-1,0 m od strony hali, końce zamknięte; północny przy ścianie północnej, dwa południowe przy hali kasowej ----
+    // do wysokiego szybu wchodzi się wspinaczką z dachu dolnego szybu (2,8 m) albo z dachu wagonu (3,55 m); bez półek, bo stałyby w przekroju dolnego szybu
+    // ---- ukryte tunele za ścianami: luki 1,4 m od strony hali, końce zamknięte; północny przy ścianie północnej, dwa południowe przy hali kasowej ----
     const tunnelX = (x0, x1, zi0, zi1, hatches, col) => {
         const front = zi1 > zi0 ? zi1 + 0.15 : zi1 - 0.15, ce = (zi0 + zi1) / 2;
-        for (const [a, b] of segs(x0, x1, hatches.map(h => [h - 0.5, h + 0.5]))) add(mk((a + b) / 2, 1.3, front, b - a, 2.6, 0.3, col, 'wall'));
+        for (const [a, b] of segs(x0, x1, hatches.map(h => [h - 0.7, h + 0.7]))) add(mk((a + b) / 2, 1.3, front, b - a, 2.6, 0.3, col, 'wall'));
         add(mk((x0 + x1) / 2, 2.75, ce, x1 - x0 + 0.3, 0.3, Math.abs(zi1 - zi0) + 0.2, 0x4a4a52, 'metal'));
         for (const e of [x0, x1]) add(mk(e, 1.3, ce, 0.3, 2.6, Math.abs(zi1 - zi0), col, 'wall'));
         for (const h of hatches) hides.push([h, 0, ce, 'tunnel']);
@@ -149,7 +149,9 @@ export function stationLayout(R) {
     const m = mc.length ? pick(mc) : [0, -36];
     const lights = []; for (const x of [-30, -12, 12, 30]) for (const z of [-28, -8, 12]) lights.push([x, 8.6, z]);   // lampy wiszą 3,4 m pod sufitem: platformy są oświetlone lepiej niż z samego sufitu
     lights.push([0, 8.6, 33], [-25, 8.6, 33], [25, 8.6, 33], [0, 7, -37]);
-    return { boxes, inst, lights, entry: [0, 1.0, A - 2], monster: [m[0], 1.0, m[1]], survivors, hides, trains, botJump: 4.8, lightPower: 30, floor: 0x6a6a6e, wall: 0xd8d0b8, ceil: 0x2a2a30 };
+    const md = { boxes, inst, lights, entry: [0, 1.0, A - 2], monster: [m[0], 1.0, m[1]], survivors, hides, trains, botJump: 4.8, lightPower: 30, nav: null, floor: 0x6a6a6e, wall: 0xd8d0b8, ceil: 0x2a2a30 };
+    md.nav = stationNav(md);   // nawigacja bota: droga pieszo przez drzwi i luki (patrz wyżej)
+    return md;
 }
 
 // ---------- kontrola układu (używa jej test): osiągalność pieszo (siatka 0,5 m, stopień do 0,55 m, przeskok luki do 1 m, wysokość głowy 1,4 m) ----------
@@ -166,25 +168,65 @@ export function walkField(md) {
     };
     return { N, cells, stand, ci, cellCenter: (i, j) => [-A + (i + 0.5) * CELL, -A + (j + 0.5) * CELL] };
 }
-export function reachFrom(md, x, z, y0) {
-    const F = walkField(md), { N } = F, seen = new Map(), key = (i, j, h) => (j * N + i) * 64 + Math.round(h * 10), q = [];
-    const si = F.ci(x), sj = F.ci(z), s0 = F.stand(si, sj).reduce((b, h) => Math.abs(h - (y0 || 0)) < Math.abs(b - (y0 || 0)) ? h : b, 99);
-    if (s0 === 99) return { F, seen, has: () => false };
-    seen.set(key(si, sj, s0), 1); q.push([si, sj, s0]);
+// Reguły ruchu pieszo (wspólne dla kontroli osiągalności i nawigacji bota): zwraca funkcję sąsiadów stanu (komórka i, j, wysokość h)
+function mover(F) {
+    const { N } = F;
     const free = (i, j, h) => { const l = F.cells[j * N + i]; return !l || !l.some(([lo, hi]) => hi > h + 0.05 && lo < h + ST.CLEAR - 0.001); };
     const colFree = (i, j, from, to) => { const l = F.cells[j * N + i]; return !l || !l.some(([lo, hi]) => hi > from + 0.06 && lo < to); };   // zeskok tylko w wolną przestrzeń (nie przez płytę sufitu)
     const moves = (ni, nj, h) => F.stand(ni, nj).filter(nh => nh <= h + 0.55 && h - nh <= 7 && (h - nh <= 0.55 || colFree(ni, nj, nh, h)));
-    while (q.length) {
-        const [i, j, h] = q.pop();
+    return (i, j, h) => {
+        const out = [];
         for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (const hop of [1, 2]) {
             const ni = i + di * hop, nj = j + dj * hop; if (ni < 0 || nj < 0 || ni >= N || nj >= N) break;
             if (hop === 2 && !free(i + di, j + dj, h)) break;   // przeskok tylko nad luką, nie nad ścianą
             const ms = moves(ni, nj, h);
-            for (const nh of ms) { const k = key(ni, nj, nh); if (!seen.has(k)) { seen.set(k, 1); q.push([ni, nj, nh]); } }
+            for (const nh of ms) out.push([ni, nj, nh]);
             if (hop === 1 && ms.length) break;   // zwykły krok wystarczył: bez przeskoku
         }
-    }
+        return out;
+    };
+}
+export function reachFrom(md, x, z, y0) {
+    const F = walkField(md), { N } = F, seen = new Map(), key = (i, j, h) => (j * N + i) * 64 + Math.round(h * 10), q = [], nb = mover(F);
+    const si = F.ci(x), sj = F.ci(z), s0 = F.stand(si, sj).reduce((b, h) => Math.abs(h - (y0 || 0)) < Math.abs(b - (y0 || 0)) ? h : b, 99);
+    if (s0 === 99) return { F, seen, has: () => false };
+    seen.set(key(si, sj, s0), 1); q.push([si, sj, s0]);
+    while (q.length) { const [i, j, h] = q.pop(); for (const [ni, nj, nh] of nb(i, j, h)) { const k = key(ni, nj, nh); if (!seen.has(k)) { seen.set(k, 1); q.push([ni, nj, nh]); } } }
     return { F, seen, has: (px, pz, py) => { const i = F.ci(px), j = F.ci(pz); return F.stand(i, j).some(h => Math.abs(h - py) < 0.3 && seen.has(key(i, j, h))); } };
+}
+// Nawigacja bota (md.nav.next jak w labiryncie, z wysokościami): najkrótsza droga PIESZO po stanach (komórka, wysokość) do komórki gracza, liczona od nowa, gdy zmieni się komórka bota albo gracza
+// (najwyżej raz na 12 wywołań); zwraca punkt około 1-2 m dalej wzdłuż drogi. Bez drogi (gracz na dachu wagonu, w powietrzu) zwraca gracza: bot idzie wtedy prosto i wskakuje, jak dotąd.
+export function stationNav(md) {
+    let F = null, nb = null, cache = null, since = 99;
+    const init = () => { if (!F) { F = walkField(md); nb = mover(F); } };
+    const near = (i, j, y) => { const hs = F.stand(i, j); if (!hs.length) return null; let best = hs[0]; for (const h of hs) if (Math.abs(h - y) < Math.abs(best - y) && h <= y + 0.7) best = h; return best; };
+    function search(si, sj, sh, ti, tj, ty) {
+        const N = F.N, key = (i, j, h) => (j * N + i) * 64 + Math.round(h * 10), par = new Map([[key(si, sj, sh), null]]), q = [[si, sj, sh]];
+        for (let qi = 0; qi < q.length; qi++) {
+            const [i, j, h] = q[qi];
+            if (i === ti && j === tj && h <= ty + 0.5 && h >= ty - 1.6) { const path = []; let c = [i, j, h]; while (c) { path.push(c); c = par.get(key(c[0], c[1], c[2])); } return path.reverse(); }
+            for (const n of nb(i, j, h)) { const k = key(n[0], n[1], n[2]); if (!par.has(k)) { par.set(k, [i, j, h]); q.push(n); } }
+        }
+        return null;
+    }
+    return {
+        cell: (x, z) => { init(); return [F.ci(x), F.ci(z)]; },
+        next(fx, fz, tx, tz, fy, ty) {
+            init(); const y = fy || 0, t = ty === undefined ? 1.3 : ty, si = F.ci(fx), sj = F.ci(fz), ti = F.ci(tx), tj = F.ci(tz), key = si + ',' + sj + ',' + ti + ',' + tj + ',' + Math.round(y * 2);
+            if (!cache || cache.key !== key || (since += 1) > 12) { const sh = near(si, sj, y); cache = { key: key, path: sh === null ? null : search(si, sj, sh, ti, tj, t - 0.3) }; since = 0; }
+            const path = cache.path; if (!path || path.length < 2) return { x: tx, z: tz, walk: false };
+            // pierwszy punkt drogi, który jest już co najmniej 1 m od bota (najwyżej 4 komórki naprzód, byle prosto)
+            let k = 1; while (k < path.length - 1 && k < 4) { const c = F.cellCenter(path[k][0], path[k][1]); if (Math.hypot(c[0] - fx, c[1] - fz) >= 1.0) break; k++; }
+            const c = F.cellCenter(path[k][0], path[k][1]), pk = path[k - 1], h = path[k][2];
+            // centrowanie w wolnym przekroju (szyb 1,5 m, luka, drzwi): środek wolnych komórek w poprzek kierunku marszu, żeby bot (promień 0,4 m) nie ocierał o ścianę
+            const alongX = Math.abs(path[k][0] - pk[0]) >= Math.abs(path[k][1] - pk[1]), freeAt = (i, j) => { if (i < 0 || j < 0 || i >= F.N || j >= F.N) return false; const l = F.cells[j * F.N + i]; return !l || !l.some(([lo, hi]) => hi > h + 0.05 && lo < h + ST.CLEAR - 0.001); };
+            let lo = 0, hi = 0; const [ci, cj] = [path[k][0], path[k][1]];
+            while (lo > -3 && freeAt(alongX ? ci : ci + lo - 1, alongX ? cj + lo - 1 : cj)) lo--;
+            while (hi < 3 && freeAt(alongX ? ci : ci + hi + 1, alongX ? cj + hi + 1 : cj)) hi++;
+            const shift = (lo + hi) / 2 * ST.CELL;
+            return { x: c[0] + (alongX ? 0 : shift), z: c[1] + (alongX ? shift : 0), walk: true };   // walk: bot idzie drogą pieszo, więc nie wskakuje na ściany przy otarciu
+        }
+    };
 }
 export function stationProblems(md) {
     const bad = [], A = ST.A, all = md.boxes.concat(md.inst || []);

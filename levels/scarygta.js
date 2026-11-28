@@ -432,7 +432,7 @@ function hostShot(id, sh, checked) {
         }
     }
     if (id === 'me' && landed) S.hitMark = { t: DL.DMG.HIT_SHOW, text: DL.hitText(res.zone, GU.damageOf(res.zone), kill) };   // znacznik trafienia u strzelca: HIT 25% / HEADSHOT 50% / KILL
-    send({ k: 'fx', s: toNet(id), o: sh.o.map(v => +v.toFixed(2)), e: end.map(v => +v.toFixed(2)), h: res && res.kind === 'player' ? toNet(res.id) : null, z: res && res.zone === 'head' ? 'h' : 'b', kill, c: res && res.kind === 'cop' ? 1 : 0, cb: body });
+    send({ k: 'fx', s: toNet(id), o: sh.o.map(v => +v.toFixed(2)), e: end.map(v => +v.toFixed(2)), h: res && res.kind === 'player' && landed ? toNet(res.id) : null, z: res && res.zone === 'head' ? 'h' : 'b', kill, c: res && res.kind === 'cop' ? 1 : 0, cb: body });
     if (id !== 'me') { drawTracer(sh.o, end); camera.getWorldPosition(_p); if (Math.hypot(_p.x - sh.o[0], _p.z - sh.o[2]) < 45) SFX.shot(); }
 }
 function pushFeed(line) { S.feed.push({ t: S.clock, s: String(line).replace(/[^\w \-!]/g, '').slice(0, 40) }); if (S.feed.length > 3) S.feed.shift(); }

@@ -52,6 +52,16 @@ ok('changing the map removes the old colliders (no leak: the station twice gives
 // wyjście ze stacji przez drzwi GAMES jest wolne: gracz stoi przy drzwiach i nie jest w przeszkodzie
 const door = await ev(async () => { const E = await import('./core/engine.js'), P = await import('./core/player.js'); P.setPlayerPosition(0, 1.0, 38); await new Promise(r => setTimeout(r, 500)); const b = P.playerBody.position; return { x: b.x, y: b.y, z: b.z }; });
 ok('the player can stand at the GAMES door (nothing blocks it)', Math.abs(door.x) < 0.5 && door.z > 37 && door.y < 2, door);
+// bot-potwór (solo) musi umieć złapać gracza ukrytego w każdym rodzaju kryjówki (dach nad kryjówką nie może go zatrzymać)
+const bots = await ev(async () => {
+    const G = await import('./levels/monster.js'), out = {}, md = G.debugMap(0, 7); const sp = md.spots;
+    const ms = { car: sp.car, tunnel: sp.tunnel, room: sp.room, duct: sp.duct, platform: [0, 1.2, 20], bridge: [0, 6.0, -4], roof: [sp.car[0], 3.55, sp.car[2]] };
+    for (const [k, v] of Object.entries(ms)) out[k] = G.debugBotRun(-30, -36, v[0], v[1] + 0.3, v[2], 70, k === 'duct');
+    out.far = G.debugBotRun(-30, -36, 0, 1.5, 33, 70);
+    return out;
+});
+console.log('      bot:', JSON.stringify(bots));
+for (const k of ['car', 'tunnel', 'room', 'duct', 'platform', 'bridge', 'roof', 'far']) ok('the bot reaches a player hiding in: ' + k + ' (within 70 s)', bots[k] && bots[k].contact, bots[k]);
 if (SP) {
     fs.mkdirSync(SP, { recursive: true });
     if (process.env.REF) { await ev(async (i) => { const G = await import('./levels/monster.js'), E = await import('./core/engine.js'), P = await import('./core/player.js'), D = await import('./core/desktop.js'); G.debugMap(i, 5); await new Promise(r => setTimeout(r, 1200)); for (const c of E.camera.children) c.visible = false; P.setPlayerPosition(0, 1.2, 20); D.setDesktopFacing(0, -0.05); }, +process.env.REF); await page.waitForTimeout(900); await page.screenshot({ path: path.join(SP, 'ref-' + process.env.REF + '.png') }); }

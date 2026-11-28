@@ -492,6 +492,18 @@ function specCandidates() {
     return out;
 }
 export function debugMap(i, seed) { if (!S) return null; applyMap(i, seed, true); return { map: S.map, seed: S.seed, A: S.md.A, obstacles: S.mapObs.length, bodies: S.mapBodies.length, lights: S.md.lights.length, hides: S.md.hides ? S.md.hides.length : 0, spots: S.md.hides ? { car: S.md.hides.find(h => h[3] === 'car'), tunnel: S.md.hides.find(h => h[3] === 'tunnel'), room: S.md.hides.find(h => h[3] === 'room'), duct: S.md.hides.find(h => h[3] === 'duct') } : null }; }   // tylko dla testów (tests/station.mjs)
+export function debugBotRun(sx, sz, px, py, pz, seconds, trace) {   // tylko dla testów (tests/station.mjs): bot rusza z (sx, sz) i goni stałą pozycję gracza (ciało: px, py, pz); zwraca, czy dotknął gracza (contact: pierwsze złapanie może tylko urwać rękę), czy go złapał i gdzie jest
+    if (!S) return null;
+    S.phase = 'play'; S.mon = 'bot'; S.t = 999; S.caught = new Set(); S.dm = Object.create(null); S.rescued = new Set(); S.fallen = Object.create(null); S.grace = Object.create(null);
+    S.bot = { x: sx, y: 0, z: sz, vy: 0, speed: BOT_SPEED, ground: true, stuck: 0, lastD: 99, side: 0 };
+    const pp = { x: px, y: py, z: pz }, steps = Math.round((seconds || 30) * 60), tr = []; let maxY = 0, t = 0, contactAt = -1;
+    for (let i = 0; i < steps && contactAt < 0; i++) {
+        moveBot(1 / 60, pp); t += 1 / 60; S.clock += 1 / 60; maxY = Math.max(maxY, S.bot.y);
+        if (S.grace.me || S.caught.has('me')) contactAt = t;
+        if (trace && i % (trace === 2 ? 6 : 60) === 0) tr.push([+t.toFixed(1), +S.bot.x.toFixed(2), +S.bot.y.toFixed(2), +S.bot.z.toFixed(2)]);
+    }
+    return { contact: contactAt >= 0, at: +contactAt.toFixed(1), x: +S.bot.x.toFixed(1), y: +S.bot.y.toFixed(2), z: +S.bot.z.toFixed(1), maxY: +maxY.toFixed(2), dist: +Math.hypot(S.bot.x - px, S.bot.z - pz).toFixed(1), trace: trace ? tr : undefined };
+}
 export function debugCatch(id, pick) {   // tylko dla testów (tests/catch.mjs)
     if (!S) return null; catchPlayer(id, pick);
     return { dm: S.dm[toNet(id)] || 0, caught: S.caught.has(id), grace: graced(id), localDm: S.localDm || 0 };
@@ -507,7 +519,7 @@ function localCaught() { SFX.scare(); toast('You were caught! Watch the others.'
 function moveBot(dt, p) {
     const b = S.bot, R = 0.4, TALL = 1.2, jumpMax = S.md.botJump || BOT_JUMP_MAX;
     b.speed = Math.min(BOT_SPEED_MAX, b.speed + dt * 0.015);
-    const goal = S.md.nav ? S.md.nav.next(b.x, b.z, p.x, p.z) : p;   // w labiryncie bot idzie trasą po komórkach
+    const goal = S.md.nav ? S.md.nav.next(b.x, b.z, p.x, p.z, b.y, p.y) : p;   // w labiryncie i na stacji bot idzie trasą po komórkach (stacja zna też wysokości: wchodzi drzwiami, a nie wskakuje na dach nad ukrytym graczem)
     let dx = goal.x - b.x, dz = goal.z - b.z; const d = Math.hypot(p.x - b.x, p.z - b.z), dg = Math.hypot(dx, dz);
     if (dg > 0.05) { dx /= dg; dz /= dg; } else { dx = 0; dz = 0; }
     if (b.side) { const sx = -dz * b.side, sz = dx * b.side; dx = dx * 0.4 + sx; dz = dz * 0.4 + sz; b.sideT -= dt; if (b.sideT <= 0) b.side = 0; }   // obejście, gdy utknie
@@ -534,7 +546,7 @@ function moveBot(dt, p) {
     if (b.y <= 0) { b.y = 0; b.vy = 0; b.ground = true; }
     // Skok: na przeszkodę przed nim albo do gracza, który jest wyżej
     const wantUp = p.y - 0.35 > b.y + 0.8 && d < 3.5;
-    if (b.ground && (blockedTop !== null || wantUp)) {
+    if (b.ground && ((blockedTop !== null && !goal.walk) || wantUp)) {   // goal.walk: bot idzie drogą pieszo (stacja), więc otarcie o ścianę nie jest powodem do wskoczenia na nią
         const h = Math.min(jumpMax, Math.max(0.6, (blockedTop !== null ? blockedTop : p.y - 0.35) - b.y + 0.35));
         b.vy = Math.sqrt(2 * BOT_GRAVITY * h); b.ground = false;
     }

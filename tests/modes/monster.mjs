@@ -32,6 +32,11 @@ const ST = await import(pathToFileURL(path.join(ROOT, 'core/stationmap.js')).hre
         const noSteps = Object.assign({}, g, { inst: g.inst.filter(b => !(b.k === 'step' && b.h <= 0.8 && b.w >= 10 && (Math.abs(b.z - 27.45) < 0.1 || Math.abs(b.z - 28.35) < 0.1))) });
         return ST.stationProblems(g).length === 0 && ST.stationProblems(sealed).some(m => /tunnel/.test(m)) && ST.stationProblems(noSteps).some(m => /monster|platform/.test(m)) && !!k;
     })());
+    check(T('station: the bot navigation gives a finite waypoint at most a few metres ahead, marked as walking, from the monster start to every survivor start and to every hiding place; without a way (target on a train roof) it falls back to the target itself'), [1, 7].every(sd2 => {
+        const g = M.generateMap('station', sd2), nav = g.nav, spots = g.survivors.map(p => [p[0], 1.0, p[2]]).concat(g.hides.map(h => [h[0], h[1] + 0.3, h[2]]));
+        const roof = nav.next(g.monster[0], g.monster[2], g.hides.find(h => h[3] === 'car')[0], g.hides.find(h => h[3] === 'car')[2], 0, 3.9);
+        return typeof nav.next === 'function' && roof.walk === false && spots.every(sp => { const w = nav.next(g.monster[0], g.monster[2], sp[0], sp[2], 0, sp[1] + 0.3); return Number.isFinite(w.x) && Number.isFinite(w.z) && w.walk === true && Math.hypot(w.x - g.monster[0], w.z - g.monster[2]) < 4.6 && Math.hypot(w.x - g.monster[0], w.z - g.monster[2]) > 0.2; });
+    }));
     check(T('station: it is the same for the same seed and differs between seeds (trains, rooms, props, hatches)'), JSON.stringify(layout(M.generateMap('station', 5))) === JSON.stringify(layout(M.generateMap('station', 5))) && new Set(SEEDS.map(sd2 => JSON.stringify(layout(M.generateMap('station', sd2))))).size > 30);
 }
 
