@@ -1303,5 +1303,67 @@ check('cosmetics: Furasek has the cat mask and the fluffy tail (catMask and tail
         const g = fs.readFileSync(path.join(ROOT, 'levels/scarygta.js'), 'utf8').replace(/\/\/.*$/gm, ''), f = g.slice(g.indexOf('function pedShot'), g.indexOf('function pushFeed')), fx = g.slice(g.indexOf("} else if (msg.k === 'fx') {"), g.indexOf("} else if (msg.k === 'feed') {"));
         return /S\.life\.shoot\(o, e, S\.boxes\)/.test(f) && /kind: 'ped'/.test(f) && !/addHeat|addBones|send\(/.test(f) && /pedShot\(sh\.o, end\)/.test(g) && /pedShot\(fx\.o, fx\.e\)/.test(fx) && fx.indexOf('pedShot(fx.o, fx.e)') < fx.indexOf("fromNet(fx.s) !== 'me'");
     })());
+    // --- swobodna jazda autem (core/drivelogic.js, core/vehicles.js, levels/scarygta.js) ---
+    const DRt = await import(url('core/drivelogic.js')), CYt = await import(url('core/citylayout.js')), VLd = await import(url('core/vehiclelogic.js'));
+    const cityBoxes = CYt.cityWithInteriors(1337).flatMap(b => b.hollow ? CYt.hollowBoxes(b) : [{ x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1 }]), cityBounds = { x0: CYt.CITY.X0, x1: CYt.CITY.X1, z0: CYt.CITY.Z0, z1: 52 };
+    const fuzzDrive = (runs, steps) => {
+        let seed = 987654321; const R = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296; const st = { vmax: 0, rev: 0, a: 0, lat: 0, inside: 0, out: 0, impact: 0, moved: 0 };
+        for (let run = 0; run < runs; run++) {
+            const v = VLd.VEHICLES[run % 3], pp = VLd.parkedPose(v.id); let car = DRt.newCar(pp.x, pp.z, pp.yaw), inp = { gas: 0, brake: 0, steer: 0 }, hold = 0;
+            for (let i = 0; i < steps; i++) {
+                if (--hold <= 0) { hold = 20 + Math.floor(R() * 90); inp = { gas: R() < 0.7 ? 1 : 0, brake: R() < 0.2 ? 1 : 0, steer: R() < 0.3 ? 0 : (R() * 2 - 1) }; }
+                const r = DRt.driveStep(car, inp, 1 / 60, { boxes: cityBoxes, bounds: cityBounds }); st.moved += Math.hypot(r.car.x - car.x, r.car.z - car.z); car = r.car;
+                st.vmax = Math.max(st.vmax, car.v); st.rev = Math.max(st.rev, -car.v); st.lat = Math.max(st.lat, r.lat); st.impact = Math.max(st.impact, r.impact); if (!r.impact) st.a = Math.max(st.a, Math.abs(r.a));
+                for (const c of DRt.circles(car)) { for (const b of cityBoxes) { const dx = c.x - Math.min(b.x1, Math.max(b.x0, c.x)), dz = c.z - Math.min(b.z1, Math.max(b.z0, c.z)); if (Math.hypot(dx, dz) < c.r - 0.03) st.inside++; } if (c.x < cityBounds.x0 || c.x > cityBounds.x1 || c.z < cityBounds.z0 || c.z > cityBounds.z1) st.out++; }
+            }
+        }
+        return st;
+    };
+    const FZ = fuzzDrive(8, 3000);
+    check('drive: random inputs over the real city never exceed the VR comfort limits (speed 7, reverse 2.5, braking 3 m/s^2 without a crash, lateral acceleration 2 m/s^2), the car really moves, and a crash is never harder than 4 m/s', FZ.vmax <= DRt.DRIVE.VMAX + 1e-9 && FZ.rev <= DRt.DRIVE.REV_MAX + 1e-9 && FZ.a <= DRt.DRIVE.BRAKE * 1.01 && FZ.lat <= DRt.DRIVE.ALAT * 1.01 && FZ.moved > 200 && FZ.impact <= 4, FZ);
+    check('drive: random inputs over the real city never put a car circle inside a building, car or any box, and never leave the city bounds (with the margin kept)', FZ.inside === 0 && FZ.out === 0, FZ);
+    check('drive: the comfort constants come from the rail rides (one source of truth) and the steering limit keeps lateral acceleration at the limit at every speed (and a full lock is allowed when slow)', DRt.DRIVE.VMAX === VLd.RIDE.VMAX && DRt.DRIVE.ACC === VLd.RIDE.ACC && DRt.DRIVE.ALAT === VLd.RIDE.ALAT && [0.5, 2, 4, 6, 7].every(v => Math.abs(v) * Math.abs(v) * Math.abs(DRt.curvature(DRt.steerLimit(v))) <= DRt.DRIVE.ALAT * 1.001) && DRt.steerLimit(1) === 1 && DRt.steerLimit(7) < 0.3 && DRt.steerLimit(3) <= DRt.steerLimit(2) && DRt.speedLimit(0) === DRt.DRIVE.VMAX && DRt.speedLimit(1) < DRt.DRIVE.VMAX);
+    check('drive: steering right turns the heading clockwise (yaw down) and the car drifts to the right hand of the driver, steering left the opposite; with no input the car coasts to a stop and never reverses by itself', (() => {
+        const run = (steer) => { let c = DRt.newCar(0, 0, 0.7); const y0 = c.yaw; for (let i = 0; i < 180; i++) c = DRt.driveStep(c, { gas: i < 120 ? 1 : 0, brake: 0, steer: i < 30 ? 0 : steer }, 1 / 60, {}).car; const right = { x: -Math.cos(y0), z: Math.sin(y0) }; return { dy: Math.atan2(Math.sin(c.yaw - y0), Math.cos(c.yaw - y0)), lat: c.x * right.x + c.z * right.z }; };
+        const r = run(1), l = run(-1); let c = DRt.newCar(0, 0, 0); for (let i = 0; i < 200; i++) c = DRt.driveStep(c, { gas: i < 100 ? 1 : 0, brake: 0, steer: 0 }, 1 / 60, {}).car; let min = 0; for (let i = 0; i < 600; i++) { c = DRt.driveStep(c, { gas: 0, brake: 0, steer: 0 }, 1 / 60, {}).car; min = Math.min(min, c.v); }
+        return r.dy < -0.05 && r.lat > 0.1 && l.dy > 0.05 && l.lat < -0.1 && c.v === 0 && min >= 0;
+    })());
+    check('drive: brake stops and then reverses (up to 2.5 m/s), gas while rolling backwards brakes first, brake and gas together do nothing, and the speed never goes past the limits', (() => {
+        let c = DRt.newCar(0, 0, 0); const step = (g, b, n) => { for (let i = 0; i < n; i++) c = DRt.driveStep(c, { gas: g, brake: b, steer: 0 }, 1 / 60, {}).car; };
+        step(1, 0, 200); const fast = c.v; step(0, 1, 150); const stopped = c.v <= 0.3; step(0, 1, 300); const rev = c.v; step(1, 0, 10); const braking = c.v > rev; const both = (() => { const k = DRt.driveStep(c, { gas: 1, brake: 1, steer: 0 }, 1 / 60, {}).car; return Math.abs(k.v - c.v) < 1e-9; })();
+        return fast > 5 && stopped && rev < -2 && rev >= -DRt.DRIVE.REV_MAX - 1e-9 && braking && both;
+    })());
+    check('drive: it brakes by itself in front of a wall (a head-on drive at full gas from 30 m stops short of it without ever going inside it and without a hard impact (under 1 m/s, the bump threshold of the game)), and still scrapes along a wall without getting stuck inside it', (() => {
+        const wall = [{ x0: 20, x1: 30, z0: -20, z1: 20 }]; let c = DRt.newCar(-10, 0, Math.PI / 2), maxImpact = 0, inside = 0; for (let i = 0; i < 900; i++) { const r = DRt.driveStep(c, { gas: 1, brake: 0, steer: 0 }, 1 / 60, { boxes: wall }); c = r.car; maxImpact = Math.max(maxImpact, r.impact); for (const ci of DRt.circles(c)) if (ci.x + ci.r > 20 + 0.03) inside++; }
+        let s = DRt.newCar(10, 0, Math.PI / 2 - 0.3), moved = 0; for (let i = 0; i < 300; i++) { const r = DRt.driveStep(s, { gas: 1, brake: 0, steer: 0 }, 1 / 60, { boxes: wall }); moved += Math.hypot(r.car.x - s.x, r.car.z - s.z); s = r.car; }
+        return maxImpact < 1.0 && inside === 0 && c.v < 0.3 && c.x > 10 && moved > 1 && DRt.circles(s).every(ci => ci.x + ci.r <= 20.05);
+    })());
+    check('drive: barricade blockers and the city bounds stop the car too, a garbage input (NaN, strings, huge) acts like no input, NaN or huge time steps do nothing harmful, and the input car is never mutated', (() => {
+        const car = DRt.newCar(0, 0, 0), copy = JSON.stringify(car); const r = DRt.driveStep(car, { gas: NaN, brake: 'x', steer: Infinity }, NaN, {}), r2 = DRt.driveStep(car, { gas: 9, brake: -3, steer: 99 }, 1e9, {});
+        let c = DRt.newCar(0, 0, 0); for (let i = 0; i < 600; i++) c = DRt.driveStep(c, { gas: 1, brake: 0, steer: 0 }, 1 / 60, { blockers: [{ x: 0, z: 25, r: 2 }] }).car;
+        let e = DRt.newCar(0, 0, 0); for (let i = 0; i < 2000; i++) e = DRt.driveStep(e, { gas: 1, brake: 0, steer: 0 }, 1 / 60, { bounds: { x0: -50, x1: 50, z0: -50, z1: 50 } }).car;
+        return JSON.stringify(car) === copy && r.car.v === 0 && r.car.x === 0 && Number.isFinite(r2.car.v) && Math.abs(r2.car.v) <= 0.2 && c.z < 25 - 2 && e.z <= 50 - DRt.DRIVE.MARGIN + 1e-9 && JSON.stringify(DRt.cleanInput(null)) === '{"gas":0,"brake":0,"steer":0}';
+    })());
+    check('drive: the driver door is on the LEFT of the cab (1.1 m aside, 1.2 m ahead), the body stands 1.1 m behind the car centre (near the rear axle), cars that move forward faster than 2.2 m/s collect pedestrians 1.9 m ahead and reversing or slow cars do not', (() => {
+        const car = DRt.newCar(10, 20, 0.9), d = DRt.doorPoint(car), b = DRt.bodyPos(car), f = DRt.forward(0.9), l = { x: Math.cos(0.9), z: -Math.sin(0.9) };
+        const ro = DRt.runOverSpot(Object.assign({}, car, { v: 3 }));
+        return Math.abs((d.x - car.x) * l.x + (d.z - car.z) * l.z - 1.1) < 1e-9 && Math.abs((d.x - car.x) * f.x + (d.z - car.z) * f.z - 1.2) < 1e-9 && Math.abs(Math.hypot(b.x - car.x, b.z - car.z) - 1.1) < 1e-9 && (b.x - car.x) * f.x + (b.z - car.z) * f.z < 0 && ro && Math.abs(Math.hypot(ro.x - car.x, ro.z - car.z) - 1.9) < 1e-9 && DRt.runOverSpot(Object.assign({}, car, { v: 1 })) === null && DRt.runOverSpot(Object.assign({}, car, { v: -4 })) === null;
+    })());
+    check('drive: an abandoned car goes back to its parking place only after 45 s without a driver while the player is 40 m or more away; a driver or a near player resets the count', (() => {
+        let r = { idle: 0, back: false }; for (let i = 0; i < 88; i++) r = DRt.returnStep(r.idle, 0.5, false, 60); const a = r.back; for (let i = 0; i < 4; i++) r = DRt.returnStep(r.idle, 0.5, false, 60); const b = r.back, near = DRt.returnStep(30, 5, false, 10), driven = DRt.returnStep(30, 5, true, 99), bad = DRt.returnStep(30, 5, false, NaN);
+        return !a && b && near.idle === 0 && !near.back && driven.idle === 0 && !driven.back && bad.idle === 0 && DRt.DRIVE.RETURN_AFTER === 45 && DRt.DRIVE.FAR === 40;
+    })());
+    check('drive: a pose from the network is accepted only as finite numbers inside the map (speed clamped, yaw wrapped), and the host believes a new pose only when it is not faster than the limit (with slack), not turning faster than possible, inside the bounds and not inside a box; interpolation takes the shortest way round', (() => {
+        const ok = DRt.cleanPose({ car: 'bank', x: 1, z: 2, yaw: 7, v: 99 }); const prev = { x: 0, z: 0, yaw: 0, v: 5 }, w = { boxes: [{ x0: 20, x1: 30, z0: -5, z1: 5 }], bounds: { x0: -80, x1: 80, z0: -75, z1: 52 } };
+        const bl = DRt.blendPose({ x: 0, z: 0, yaw: 3.1, v: 0 }, { x: 10, z: 0, yaw: -3.1, v: 5 }, 0.1);
+        return ok && Math.abs(ok.yaw - (7 - 2 * Math.PI)) < 1e-9 && ok.v === DRt.DRIVE.VMAX && DRt.cleanPose({ car: 'bank', x: NaN, z: 0, yaw: 0, v: 0 }) === null && DRt.cleanPose({ car: 5, x: 0, z: 0, yaw: 0, v: 0 }) === null && DRt.cleanPose({ car: 'bank', x: 1e9, z: 0, yaw: 0, v: 0 }) === null && DRt.cleanPose(null) === null
+            && DRt.poseOk(prev, { x: 0.5, z: 0, yaw: 0.05, v: 5 }, 0.12, w) && !DRt.poseOk(prev, { x: 30, z: 0, yaw: 0, v: 5 }, 0.12, w) && !DRt.poseOk(prev, { x: 0.3, z: 0, yaw: 3, v: 5 }, 0.12, w) && !DRt.poseOk({ x: 17, z: 0, yaw: Math.PI / 2, v: 5 }, { x: 18.5, z: 0, yaw: Math.PI / 2, v: 5 }, 0.3, w) && !DRt.poseOk({ x: 79, z: 0, yaw: 0, v: 5 }, { x: 81, z: 0, yaw: 0, v: 5 }, 0.5, w) && !DRt.poseOk(prev, { x: 0, z: 0, yaw: 0, v: 0 }, NaN, w) && !DRt.poseOk(null, prev, 0.1, w)
+            && bl.yaw > 3.1 && Math.abs(bl.yaw) > 3 && bl.x > 0 && bl.x < 10;
+    })());
+    check('drive: wired (the driver door and the car on the free spot go through the free-driving API only, the gun is put away while driving, the rail ride refuses a displaced car, a caught player gets out, cops cannot touch-catch a fast driver, the phone map follows the moving mesh, no new meshes)', (() => {
+        const vj = fs.readFileSync(path.join(ROOT, 'core/vehicles.js'), 'utf8').replace(/\/\/.*$/gm, ''), g = fs.readFileSync(path.join(ROOT, 'levels/scarygta.js'), 'utf8').replace(/\/\/.*$/gm, '');
+        return /DL\.doorPoint\(car\.free \? car\.free\.pose : VL\.parkedPose\(car\.id\)\)/.test(vj) && /if \(!car\.free\) for \(const h of car\.handles\)/.test(vj) && /api\.drive\.requestFree\(car\.id\)/.test(vj) && /DL\.driveStep\(d\.st, api\.drive\.input\(\), step \/ n, api\.drive\.world\(\)\)/.test(vj) && /new THREE\.Mesh\(g, mat\)/.test(vj) && (vj.match(/new THREE\.Mesh\(/g) || []).length === 1
+            && /gripDown\(1\) \|\| \(S\.vehs && S\.vehs\.driving\(\)\)\) return/.test(g) && /S\.vehs\.isFree\(carId\)\) return/.test(g) && /S\.vehs\.endFree\(\); S\.scare\.trigger\(\)/.test(g) && /Math\.abs\(S\.vehs\.driveCar\(\)\.v\) > 2/.test(g) && /c\.m\.position\.x/.test(g) && /requestFree: requestFree, world: driveWorld, input: driveInput/.test(g) && /const fresh = !car\.free \|\| car\.free\.remote/.test(g) && /k\.exit|driveKeys\(\)\.exit/.test(g) && /stickX\('left'\)/.test(g);
+    })());
 }
 done('logic');

@@ -54,9 +54,9 @@
     "semantic_hash": "1a0c199812e4f9b4514bacad8ecf811d"
   },
   "core/desktop.js": {
-    "mtime": 1795708452.158789,
-    "seen": 1795709513.1857698,
-    "ast_hash": "ad6b3fb876ca3d315a9a0af59d24a13b",
+    "mtime": 1795851191.5959995,
+    "seen": 1795853163.0070252,
+    "ast_hash": "65a0b3a4111601ee68b7a77631aad5bd",
     "semantic_hash": ""
   },
   "core/device.js": {
@@ -216,9 +216,9 @@
     "semantic_hash": ""
   },
   "core/player.js": {
-    "mtime": 1795819396.7314548,
-    "seen": 1795819476.1641243,
-    "ast_hash": "2025e33b6b5186b7535163bcee4a1518",
+    "mtime": 1795851191.595183,
+    "seen": 1795853163.0072637,
+    "ast_hash": "34317014e31bdd5f8484511273431906",
     "semantic_hash": ""
   },
   "core/presence.js": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795850831.7729452,
-    "seen": 1795850848.4649136,
-    "ast_hash": "19454846a469cf7689772bfce3c9a1cc",
+    "mtime": 1795853091.9424326,
+    "seen": 1795853163.0078976,
+    "ast_hash": "d96d1e9aefcc5455ee66f3f9361353d2",
     "semantic_hash": ""
   },
   "README.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": "cd9534071bbb01cf8476b67bfb37b406"
   },
   "index.html": {
-    "mtime": 1795821153.0210278,
-    "seen": 1795822073.5169575,
-    "ast_hash": "5abdcc05c1d8fb86580781c919487902",
+    "mtime": 1795851235.2104425,
+    "seen": 1795853163.007907,
+    "ast_hash": "26dcf03eb70519e0ba09a50a6b0948b3",
     "semantic_hash": ""
   },
   "core/gooby.webp": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "tests/logic.mjs": {
-    "mtime": 1795850379.0271225,
-    "seen": 1795850848.4646347,
-    "ast_hash": "e3ed8f35e00aaf71349824ecacebc541",
+    "mtime": 1795852654.6588721,
+    "seen": 1795853163.0075324,
+    "ast_hash": "fe4a8d88d635bdf87c0d0f90c5d58d30",
     "semantic_hash": ""
   },
   "tests/node-setup.mjs": {
@@ -10050,9 +10050,9 @@
     "semantic_hash": ""
   },
   "tests/tsconfig.json": {
-    "mtime": 1795821153.0210514,
-    "seen": 1795822073.5167801,
-    "ast_hash": "bd504435ea275b5a6f7b7a7397c2286c",
+    "mtime": 1795851235.213014,
+    "seen": 1795853163.0075924,
+    "ast_hash": "e0bbfaa1d68b703b65fbc3fe72b50857",
     "semantic_hash": ""
   },
   ".github/workflows/pages.yml": {
@@ -10818,9 +10818,9 @@
     "semantic_hash": ""
   },
   "levels/scarygta.js": {
-    "mtime": 1795850339.5901241,
-    "seen": 1795850848.4645557,
-    "ast_hash": "aebbcb9fac59d68d538860c530e4e290",
+    "mtime": 1795851475.0156581,
+    "seen": 1795853163.0074286,
+    "ast_hash": "d8ebdc0bd986382610aac7296c027b7d",
     "semantic_hash": ""
   },
   "tests/city.mjs": {
@@ -10992,9 +10992,9 @@
     "semantic_hash": ""
   },
   "core/vehicles.js": {
-    "mtime": 1795759771.0197926,
-    "seen": 1795760010.607361,
-    "ast_hash": "8d7df6b300b88a02957dba810ac9eff4",
+    "mtime": 1795851260.9582078,
+    "seen": 1795853163.0073493,
+    "ast_hash": "722812d3e14994b8fa0ed6db7b3ba8d7",
     "semantic_hash": ""
   },
   "tests/vehicles.mjs": {
@@ -11205,6 +11205,18 @@
     "mtime": 1795823298.5983522,
     "seen": 1795824033.7823188,
     "ast_hash": "9cb4f02303ea83545fea8d8e834a7545",
+    "semantic_hash": ""
+  },
+  "core/drivelogic.js": {
+    "mtime": 1795852585.6587706,
+    "seen": 1795853163.007036,
+    "ast_hash": "ff2c8bbb671f28a87f1ea30d94562cbb",
+    "semantic_hash": ""
+  },
+  "tests/drive.mjs": {
+    "mtime": 1795852226.448576,
+    "seen": 1795853163.007487,
+    "ast_hash": "65de8bcc1e6e14c7a1c0e6d81dddfa37",
     "semantic_hash": ""
   },
   "package-lock.json": {
