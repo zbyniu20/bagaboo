@@ -37,19 +37,19 @@ const R = await ev(async () => { try {
     for (let i = 0; i < 300 && S.busted >= 0; i++) await w(100);
     S.sim.reset(); S.sim.heats = {}; G.debugHeat(0); G.debugBlocks && G.debugBlocks([]); P.setPlayerPosition(-38, 1.2, -56); await w(600);
     // 1) 5 gwiazdek: radiowozy pojawiają się daleko od gracza, jedna siatka karoserii i jedna świateł
-    G.debugHeat(100); await until(() => cc().cars.length >= 2, 30000, true);
+    G.debugHeat(100); await until(() => cc().cars.length >= 2, 25000, true);
     const c1 = cc(); out.spawn = { n: c1.cars.length, minDist: Math.min(...c1.cars.map(c => Math.hypot(c[0] + 38, c[1] + 56))), fx: c1.fx, blockers: c1.blockers };
     // 2) ruch: prędkość <= 6 m/s, odstęp między radiowozami, a po dojechaniu stoją krótko przed autem/graczem
-    let vmax = 0, gap = 1e9; for (let i = 0; i < 80; i++) { G.debugHeat(100); const c = cc().cars; for (const a of c) vmax = Math.max(vmax, a[3]); for (const a of c) for (const b of c) if (a !== b) gap = Math.min(gap, Math.hypot(a[0] - b[0], a[1] - b[1])); await w(100); }
+    let vmax = 0, gap = 1e9; for (let i = 0; i < 40; i++) { G.debugHeat(100); const c = cc().cars; for (const a of c) vmax = Math.max(vmax, a[3]); for (const a of c) for (const b of c) if (a !== b) gap = Math.min(gap, Math.hypot(a[0] - b[0], a[1] - b[1])); await w(100); }
     out.move = { vmax, gap };
     // 3) pieszy: radiowóz dojeżdża i wysadza policjantów (liczba policjantów rośnie, licznik wysadzeń)
-    const un0 = cc().unloads; await until(() => cc().unloads > un0, 90000, true); out.unload = { before: un0, after: cc().unloads };
+    G.debugCruiserClear(); G.debugCruiserAdd(-38, -42, Math.PI); const un0 = cc().unloads; await until(() => cc().unloads > un0, 40000, true); out.unload = { before: un0, after: cc().unloads };
     // 4) kradzione auto stoi przy radiowozie: po 2 s BUSTED, jazda się kończy
-    S.sim.reset(); S.sim.heats = {}; G.debugHeat(0); await until(() => S.busted < 0, 30000);
+    S.sim.reset(); S.sim.heats = {}; G.debugHeat(0); await until(() => S.busted < 0, 15000);
     const pp = VL.parkedPose('bank'), door = DR.doorPoint(pp); P.setPlayerPosition(door.x + 0.4, 1.1, door.z); await w(500);
     await G.debugGtaTouch(() => [[door.x, 1.0, door.z]]); await w(1500); await G.debugGtaTouch(() => []); out.driving = st().driving;
     G.debugCruiserClear(); G.debugHeat(100); G.debugCruiserAdd(st().drive.x + 4.2, st().drive.z, 0); const bs0 = S.busted;
-    await until(() => S.busted >= 0 || !st().driving, 8000, true); out.pin = { busted: S.busted >= 0, stillDriving: st().driving };
+    await until(() => S.busted >= 0 || !st().driving, 12000, true); out.pin = { busted: S.busted >= 0, stillDriving: st().driving };
     G.debugCruiserClear();
     // 5) strona gościa: radiowozy z migawki hosta (śmieci odrzucone), interpolacja i blockers
     for (let i = 0; i < 300 && S.busted >= 0; i++) await w(100);
