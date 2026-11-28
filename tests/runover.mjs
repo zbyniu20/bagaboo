@@ -52,7 +52,7 @@ const R = await ev(async () => { try {
     // 5) dach: głowa wysoko (4 m) nie jest potrącona
     S.gunS.g1.hp = 100; await run(-38, -58, 4.0); out.roof = hp();
     // 6) śmierć: drugie trafienie po odnowieniu zabija (60% + 60%), wpis w dzienniku i bust z kierunkiem jazdy
-    S.gunS.g1.hp = 45; G.debugOutbox().length = 0; await run(-38, -58); out.kill = { hp: hp(), feed: S.feed.map(f => f.s), bust: G.debugOutbox().filter(q => q.k === 'bust').pop() || null, hitMark: S.hitMark.text };
+    S.gunS.g1.hp = 45; G.debugOutbox().length = 0; await run(-38, -58); out.kill = { drive: !!st().drive, busted: S.busted, g1: !!N.playersState.g1, hp: hp(), feed: S.feed.map(f => f.s), bust: G.debugOutbox().filter(q => q.k === 'bust').pop() || null, hitMark: S.hitMark.text };
     out.dmgLimit = RO.runDamage(7);
     G.debugDriveInput(null); delete N.playersState['g1'];
     return out;
