@@ -33,14 +33,14 @@ await page.waitForTimeout(6000);
 const R = await ev(async () => { try {
     const G = await import('./levels/scarygta.js'), P = await import('./core/player.js'), VL = await import('./core/vehiclelogic.js'), DR = await import('./core/drivelogic.js'), N = await import('./core/network.js'), E = await import('./core/engine.js');
     const S = G.testState(), w = (ms) => new Promise(r => setTimeout(r, ms)), st = () => G.debugDrive(), out = {}, cc = () => G.debugCruisers();
-    const until = async (f, ms, keep) => { for (let t = 0; t < ms && !f(); t += 100) { if (keep) G.debugHeat(100); await w(100); } return f(); };
+    const until = async (f, ms, keep) => { const t0 = Date.now(); while (Date.now() - t0 < ms && !f()) { if (keep) G.debugHeat(100); await w(100); } return f(); };
     for (let i = 0; i < 300 && S.busted >= 0; i++) await w(100);
     S.sim.reset(); S.sim.heats = {}; G.debugHeat(0); G.debugBlocks && G.debugBlocks([]); P.setPlayerPosition(-38, 1.2, -56); await w(600);
     // 1) 5 gwiazdek: radiowozy pojawiają się daleko od gracza, jedna siatka karoserii i jedna świateł
     G.debugHeat(100); await until(() => cc().cars.length >= 2, 25000, true);
     const c1 = cc(); out.spawn = { n: c1.cars.length, minDist: Math.min(...c1.cars.map(c => Math.hypot(c[0] + 38, c[1] + 56))), fx: c1.fx, blockers: c1.blockers };
     // 2) ruch: prędkość <= 6 m/s, odstęp między radiowozami, a po dojechaniu stoją krótko przed autem/graczem
-    let vmax = 0, gap = 1e9; for (let i = 0; i < 40; i++) { G.debugHeat(100); const c = cc().cars; for (const a of c) vmax = Math.max(vmax, a[3]); for (const a of c) for (const b of c) if (a !== b) gap = Math.min(gap, Math.hypot(a[0] - b[0], a[1] - b[1])); await w(100); }
+    let vmax = 0, gap = 1e9; const tm = Date.now(); for (let i = 0; i < 40 && Date.now() - tm < 15000; i++) { G.debugHeat(100); const c = cc().cars; for (const a of c) vmax = Math.max(vmax, a[3]); for (const a of c) for (const b of c) if (a !== b) gap = Math.min(gap, Math.hypot(a[0] - b[0], a[1] - b[1])); await w(100); }
     out.move = { vmax, gap };
     // 3) pieszy: radiowóz dojeżdża i wysadza policjantów (liczba policjantów rośnie, licznik wysadzeń)
     G.debugCruiserClear(); G.debugCruiserAdd(-38, -42, Math.PI); const un0 = cc().unloads; await until(() => cc().unloads > un0, 40000, true); out.unload = { before: un0, after: cc().unloads };

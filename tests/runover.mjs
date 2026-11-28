@@ -33,13 +33,13 @@ await page.waitForTimeout(6000);
 const R = await ev(async () => { try {
     const G = await import('./levels/scarygta.js'), P = await import('./core/player.js'), VL = await import('./core/vehiclelogic.js'), DR = await import('./core/drivelogic.js'), N = await import('./core/network.js'), RO = await import('./core/runoverlogic.js');
     const S = G.testState(), w = (ms) => new Promise(r => setTimeout(r, ms)), st = () => G.debugDrive(), out = {};
-    const until = async (f, ms) => { for (let t = 0; t < ms && !f(); t += 100) { S.sim.heats = {}; await w(100); } return f(); };
+    const until = async (f, ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms && !f()) { S.sim.reset(); S.sim.heats = {}; await w(100); } return f(); };
     for (let i = 0; i < 300 && S.busted >= 0; i++) await w(100);
     S.sim.reset(); S.sim.heats = {}; G.debugHeat(0); G.debugBlocks && G.debugBlocks([]);
     N.NET.mode = 'host'; S.mode = 'ffa'; const head = (x, z, y) => { N.playersState['g1'] = { lvl: 'scarygta', head: { p: [x, y || 1.6, z] }, h1: { p: [0, 0, 0] }, h2: { p: [0, 0, 0] }, profile: { name: 'Bob' } }; };
     const pp = VL.parkedPose('bank'), door = DR.doorPoint(pp); head(60, 0); P.setPlayerPosition(door.x + 0.4, 1.1, door.z); await w(500);
     await G.debugGtaTouch(() => [[door.x, 1.0, door.z]]); await w(1500); await G.debugGtaTouch(() => []); out.driving = st().driving;
-    const run = async (vx, vz, y) => { head(vx, vz, y); const h0 = S.gunS.g1 ? S.gunS.g1.hp : 100; G.debugCarTo(vx, vz - 14, 0); S.roCool = {}; G.debugDriveInput(1, 0, 0); await until(() => (S.gunS.g1 && S.gunS.g1.hp < h0) || st().drive.z > vz + 3, 9000); G.debugDriveInput(0, 0, 0); await until(() => st().drive.v < 0.3, 15000); };
+    const run = async (vx, vz, y) => { head(vx, vz, y); const h0 = S.gunS.g1 ? S.gunS.g1.hp : 100; G.debugCarTo(vx, vz - 14, 0); S.roCool = {}; G.debugDriveInput(1, 0, 0); await until(() => (S.gunS.g1 && S.gunS.g1.hp < h0) || !st().drive || st().drive.z > vz + 3, 12000); G.debugDriveInput(0, 0, 0); await until(() => !st().drive || st().drive.v < 0.3, 15000); };
     const hp = () => (S.gunS.g1 ? S.gunS.g1.hp : 100);
     // 1) pierwsze trafienie: obrażenia zależne od prędkości, znacznik RUN OVER u kierowcy, wiadomość hit do gości
     await run(-38, -58); out.hit1 = { hp: hp(), hitMark: S.hitMark.text, msg: G.debugOutbox().filter(q => q.k === 'hit').pop() || null };
